@@ -31,6 +31,7 @@
     "test:cli": "vitest run packages/purescience",
     "test:npm-release": "vitest run scripts/validate-npm-release.test.ts",
     "release:notes": "node scripts/release-notes.mjs",
+    "release:verify": "node scripts/verify-release.mjs",
     "publish:model-weights": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/publish-model-weights.mjs",
     "check:model-weights": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-model-weight-manifest.mjs",
     "check:script-entrypoints": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-script-entrypoints.mjs",

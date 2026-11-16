@@ -19378,3 +19378,54 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ① 先读 Release（`4f26b9bd`）判决；页与资产按四平台清单核，落定后才恢复推送；
 - ② 推送本笔 + 盯 `Nightly` / `Windows Full Test` 双绿；
 - ③ 之后仍不碰别人正在写的那批 `src/renderer/src/i18n/*.ts`（他们是字典文件，本轮的 `languages.ts` 不在其中）。
+
+## 三百四十四、本轮追加（执行器，2026-11-16 22:2x–23:0x）—— 发版验收收成一条命令（页 ↔ 资产 ↔ 摘要 ↔ 提交）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 4f26b9bd`（公证上限改 3 小时），本地 `HEAD` 停在上一轮的 `38e6e199`：
+  **两笔分叉**（它只动 `.github/workflows/notarize-mac.yml`，与本轮路径不相交）。
+  先按「同内容重放」把它落到 4f26b9bd 之上（`git reset --mixed origin/main` → 只 `git add` 自己那 9 个路径 →
+  重新提交为 `c867118e`），并确认 `notarize-mac.yml` 的差异只是工作区里的**旧版本**（逐行比对 4f26b9bd 的补丁为
+  其反向），复原地提交版本后才提交。
+- 工作区**仍带别人未提交的在制品**（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`，即 §三百四十三 点名的那族 `messageKey` 活）⇒ 一律不碰、不 stash、不提交。
+  **因此本轮不能做任何要加 i18n 键的单元**（九份字典都在别人手里），只取自拟的主进程/工具链单元。
+- 发版窗口：v2.27.0 的 Release run（`4f26b9bd`）仍在跑，arm64 公证在 Apple 队列里（本机 `notarytool info
+  ffc77d68` = `In Progress`，提交 12:10:35Z）⇒ 推送前现查在飞车道：主干两条在本轮推之前都已落定（4f26b9bd 的
+  Nightly/Windows 均 success），**本次推送没有取消任何人的判决**；Release 是 tag 驱动的独立并发组，不受主干推送影响。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-release-acceptance-command.md`）
+
+`scripts/verify-release.mjs`（+ 21 条用例、`package.json` 的 `release:verify` 入口）把每次发版都要手搓的那张清单
+收成一条命令：页面三态（存在/非 draft/非 pre）、**21 个资产族**逐族点名、正文长度与「生成器噪声行」、
+`sourceSha` 与 `git rev-parse '<tag>^{commit}'` 逐字符比对、记录里的产物必须都在页上、
+`SHA256SUMS.txt` 与认证记录两侧摘要相等（**解析出 0 行判失败**，不读成一致）、
+签名状态**逐平台照抄记录**（`--require-signed` 才把非 Developer ID 判失败）。
+
+**为什么是它**：历史上真出过的坏发版形状是「页在、资产只有 3 个」（发布作业被跳过），而两次误判
+（靠记忆的短清单判「资产不全」、大小写不对判「认证件不存在」）都是仪器错。这条命令把判据钉在流水线自己产出的
+记录上，不靠记忆。
+
+### 二 读数与门禁（本机实跑）
+
+- 真实发布页 `v2.26.0`：11 条检查全 OK、`VERDICT: accepted`、退出码 0（21 族/21 资产、8 个摘要相等、
+  `sourceSha=9388544e…` 与 tag 提交一致、mac 两个平台 `unsigned` 且 `credentialsPresent=false`）——
+  与历史手工结论逐项吻合。
+- **变异自证**：把两侧摘要比较改成恒不触发 ⇒ 对应用例当场红（其余 20 条仍绿），改回后 21/21。
+- 定向 vitest **1 file / 21 passed**；`typecheck:node` **0**、`typecheck:web` **0**；
+  `eslint --no-cache`（两个新文件）**0 error / 0 warning**。
+
+### 三 边界与具名未办
+
+- 不判**资产内容**对不对（不下载大件、不重算 dmg 摘要），也不做 `codesign`/`spctl`/`stapler` 的真实性验证 ——
+  那属装机取证；本命令只如实转抄记录里的签名状态。
+- **v2.27.0 尚无读数**：页还没出现（arm64 公证在 Apple 队列里）⇒ 只登记「等页出现后补一条」，不预填。
+- 本轮无真机窗口读数（本单元是工具链，不新增界面/数据路径），证据等级 = 真实发布页读数 + 定向用例 + 双类型检查。
+
+### 四 下一轮第一步
+
+- ① 先读 Release（`4f26b9bd`）判决与 arm64 公证状态；页出现后立刻 `npm run release:verify -- v2.27.0 --require-signed`
+  并把读数记档，再按排期档 v2.27.0 第 2、3 条（`spctl` 验收、cask 去掉 `--no-quarantine`）收口；
+- ② 按完整 40 位 SHA 读 `c867118e` 的 Nightly / Windows Full Test 两条车道；
+- ③ 仍不碰别人正在写的九份 i18n 字典；下一单元继续取主进程/工具链方向（不需加 i18n 键的那种）。
