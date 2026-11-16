@@ -160,3 +160,47 @@ gh workflow run notary-status.yml --ref main -f probe=true
 
 判据顺序照旧：**先读状态，再决定要不要重跑**。四条分支（缺凭据 / 历史 / 指定 id / 探针超时与有判决）
 都在本机用替身 `xcrun` 跑过，不是照着 YAML 推演的。
+
+## 公证排队到底有多久（2026-11-16 实测，v2.27.0 发版当天的读数）
+
+同一天、同一账号、同一份构建脚本，四个包的等待时间：
+
+| 包 | 提交 → 判决 | 结果 |
+|---|---|---|
+| mac-arm64.dmg | 36 分钟 | Accepted |
+| mac-x64.dmg | 2 小时 11 分 | Accepted |
+| mac-arm64.dmg（另一个提交） | 4 小时 53 分 | Accepted |
+| mac-arm64.dmg（重建后重提） | 89 分钟 | Accepted |
+| 203 字节未签名探针 | 22 分钟 | Invalid（正常） |
+
+结论有三条，都进了工作流：
+
+1. **等待时长与包大小、与我们的配置都无关**，是苹果侧调度。45 分钟上限在这种分布下是必然的假失败
+   （那次 x64 包已经做完、只差判决，超时把整个发布窗口耗掉）⇒ 轮询上限改成 3 小时，job 上限 240 分钟。
+   3 小时也不是保险：上表有一单 4 小时 53 分才出结论，所以超时仍然要按超时报告，不能当成被拒。
+2. **「按文件名复用已 Accepted 的提交」是错的前提**。重建后文件名一模一样、字节不同，票据认的是 cdhash，
+   `stapler` 会报 `CloudKit query … Record not found` + `Error 65`。复用之后必须真的 staple 一次，
+   失败就判定为「旧票据」并重新提交这批字节——写成 `FORCE_FRESH=1 submit` 的分支，
+   在 v2.27.0 上第一次运行就命中了。
+3. **探针仍然是唯一能在开发机上把「苹果慢」和「包坏了」分开的手段**，22 分钟回 `Invalid` 说明队列在动。
+
+## 已知缺口：dmg 钉了票，包里的 .app 没有
+
+对线上实际分发的 `zerolink-purescience-2.27.0-mac-arm64.dmg` 逐字节验证：
+
+```
+sha256        c90065bc…                  与 SHA256SUMS.txt 一致
+stapler       dmg: The validate action worked!     ← 有票
+spctl         dmg: accepted, source=Notarized Developer ID
+codesign      包内 .app: Authority=Developer ID Application: kai wang (UGQZPJ74DF), Runtime 26.5.0
+stapler       包内 .app: does not have a ticket stapled to it   ← 没票
+spctl         包内 .app: accepted, source=Notarized Developer ID
+```
+
+也就是说：**联网**状态下 Gatekeeper 放行（走在线核验），但把 .app 拖进「应用程序」后**离线首次启动**
+会缺票——而「内网离线可用」正是企业场景的卖点。
+
+正确顺序是：先给 .app 钉票（票来自那次提交，里面就含它的 cdhash），再由钉好票的 .app 重新打包 dmg/zip，
+**不要**再给 dmg 钉票（dmg 不会被执行，Gatekeeper 评估的是里面的 app）。当前流程反了：只钉 dmg。
+下次发版前要改，并连带解决 staple 重打包导致的 `.blockmap` 丢失（v2.27.0 少了 4 个 mac blockmap，
+`latest-mac.yml` 未引用它们，所以更新不报错，只是从旧版升级要下完整包）。
