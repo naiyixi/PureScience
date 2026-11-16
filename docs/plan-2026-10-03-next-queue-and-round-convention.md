@@ -19267,3 +19267,55 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 
 - ① 按完整 40 位 SHA 读本笔两条车道（`fcc93101` 的判决会被本笔顶掉 ⇒ 按祖先关系引本笔的判决）；
 - ② 先做「系统横幅正文按系统语言投递」（连锁 3–4 文件），再做连接器诊断九语。
+
+## 三百四十二、本轮追加（执行器，2026-11-16 14:1x–）—— 连接器配置诊断的 34 个码进九语（含真机读数）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后工作树**不带任何未提交改动以外的在制**：13 个改动路径 + 两个新文件全是**上一轮（12:1x）
+  开了头就被中断**的那一笔（`Operation interrupted: waiting for model response`），与 §三百四十一 末行
+  「连接器配置诊断的 34 个码仍在英文」对得上 ⇒ 本轮是**续做同一单元**，不是重做。
+  三份 `docs/evidence/2026-11-0{1,4}-*` 未跟踪证据档**不是本轮的**，一个字节没碰。
+- 上一轮 §四 的候选已由会话侧落成 `cc64f0f7` + `101ecf52`（横幅正文按系统语言投递 + 真机 spec）⇒ 不重做。
+- 全树 `grep "connectorDiagnosticCopy"` 只命中本单元的两处面板与它自己的用例，无第二个执行体在改同一件事。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-connector-diagnostics-nine-languages.md`）
+
+解析器 34 处诊断构造点把句子需要的值放进新增的 `params`（规范英文 `message` 一字未改）；渲染层新增
+`connector-diagnostic-copy.ts`（码 → 字典键 + 值，**缺码或缺参数即返回 `undefined` ⇒ 整句回落英文**），
+两个面板（导入预览、导出预览）改读它；九语字典新增 37 个 `connectorImport.diag.*`，外加导出页三处
+英文字面量（`Command`/`Server URL`/OAuth 与密文名提示）改读字典。`type` 三态与身份冲突两态各自成键，
+不在译文里塞条件词。
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest | **4 files / 67 passed** |
+| i18n 全套（含 translation-quality） | **5 files / 57 passed** |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache .`（全仓） | **0 error / 94 warning**（与基线同数） |
+| 全量 vitest `--maxWorkers=4` | **1486 files / 18647 passed**（31 + 228 skipped），exit 0；较上一笔 +2 文件 +15 例 |
+| 真机认证 spec | `connector-diagnostic-language.spec.ts` **1 passed (14.8 s)** |
+
+### 三 真机读数
+
+`build:e2e` 后真窗口：语言置 `zh-Hant` 并重载 → `設定` → 连接器 → `新增連接器` → `匯入組態` →
+向真实投放区投一个真实 `File`（200 字符的 name）→
+`rows=1 row="name 超過 128 個字元。" canonicalEnglishOnScreen=false`。
+反向判据是同一条：规范英文整句在屏上**不存在**（只断言「有字出现」的写法，在面板根本没翻译时也会通过）。
+
+### 四 边界与具名未办
+
+- 八种非英文行无母语审校（术语对齐既有字典；`zh-Hant` 由简体字扫描与「不得等于英文」两条守住）。
+- `connector-template.ts` 里的 `throw new Error(...)` 几处仍是英文，它们走渲染层错误横幅而非诊断行，
+  属另一族（§三百四十 §三 已具名立案）。
+- 装机版随下次发版生效。
+- 公证读数改由每 20 分钟的 `notarize-resume-v2270` 专岗报，本循环不再重复取。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道（Nightly / Windows Full Test），红了按失败作业的性质归因；
+- ② 下一单元候选（都敞着、都不需要发版窗口）：(a) 上面那族 `throw new Error` 的英文文案是否该走渲染层
+  的 `messageKey` 通道（先核渲染层现在怎么显示它们，别造第二套）；(b) 任务栏/托盘菜单里的可见文案
+  （原生菜单，与文件面板同族但走 `Menu` 而不是对话框）——先 `grep` 现有覆盖再立项。
