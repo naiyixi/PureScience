@@ -5,6 +5,7 @@ import {
   evaluateRelease,
   parseGatekeeperAssessment,
   parseSha256Sums,
+  planConditionalAssets,
   planRequiredAssets,
   readCertification
 } from './verify-release.mjs'
@@ -123,10 +124,21 @@ describe('planRequiredAssets', () => {
     const planned = planRequiredAssets('9.9.9')
     const suffixes = planned.map((entry: { suffix: string }) => entry.suffix)
     expect(suffixes).toContain('_9.9.9_amd64.deb')
-    expect(suffixes).toContain('-mac-arm64.zip.blockmap')
     expect(suffixes).toContain('RELEASE-CERTIFICATION.json')
-    // 21 families: 8 mac, 2 linux, 3 windows, 8 metadata. A change here is a pipeline change.
-    expect(planned).toHaveLength(21)
+    // 17 families: 4 mac, 2 linux, 3 windows, 8 metadata. A change here is a pipeline change.
+    expect(planned).toHaveLength(17)
+  })
+
+  it('keeps the mac blockmaps out of the required list — the notarized path drops them by design', () => {
+    const required = planRequiredAssets('9.9.9').map((entry: { suffix: string }) => entry.suffix)
+    expect(required).not.toContain('-mac-arm64.zip.blockmap')
+    const conditional = planConditionalAssets().map((entry: { suffix: string }) => entry.suffix)
+    expect(conditional).toEqual([
+      '-mac-arm64.dmg.blockmap',
+      '-mac-arm64.zip.blockmap',
+      '-mac-x64.dmg.blockmap',
+      '-mac-x64.zip.blockmap'
+    ])
   })
 })
 
@@ -205,6 +217,29 @@ describe('evaluateRelease', () => {
     const result = verdict({ assetNames: assetNamesFor().map((name) => name.toLowerCase()) })
     expect(result.ok).toBe(false)
     expect(failing(result)).toContain('assets-complete')
+  })
+
+  it('accepts a notarized page without mac blockmaps and names why they are absent', () => {
+    // v2.27.0's real shape: the notarized re-emit drops the pre-staple mac blockmaps, so demanding them
+    // made a correctly published page read as incomplete (measured on the live page before this change).
+    const notarized = assetNamesFor().filter(
+      (name) => !name.includes('-mac-') || !name.endsWith('.blockmap')
+    )
+    const result = verdict({ assetNames: notarized })
+    expect(failing(result)).toEqual([])
+    expect(result.ok).toBe(true)
+    const reading = result.checks.find((c: { name: string }) => c.name === 'mac-blockmaps')
+    expect(reading.ok).toBe(true)
+    expect(reading.detail).toContain('4/4 mac blockmaps not published')
+    expect(reading.detail).toContain('notarized re-emit drops pre-staple blockmaps by design')
+  })
+
+  it('says which mac blockmaps survived instead of just reporting a count', () => {
+    const partial = assetNamesFor().filter((name) => !name.endsWith('-mac-x64.zip.blockmap'))
+    const reading = verdict({ assetNames: partial }).checks.find(
+      (c: { name: string }) => c.name === 'mac-blockmaps'
+    )
+    expect(reading.detail).toContain('mac-x64-zip-blockmap')
   })
 
   it('rejects a body shorter than the floor and one that still carries generator noise', () => {
@@ -305,9 +340,10 @@ describe('evaluateRelease', () => {
   })
 })
 
-// The two outputs below are what the tools actually print on this machine (accepted form read from a
-// notarized dmg, rejected form from an ad-hoc one); the parser must not be tuned to a cleaner shape
-// than the real one.
+// The two shapes below are the ones these tools print in reality: the accepted form was read on this
+// machine from a notarized third-party dmg (`accepted` / `source=Notarized Developer ID` / stapler
+// "The validate action worked!"), the rejected form from our own ad-hoc v2.26.0 dmg. The parser must
+// not be tuned to a cleaner shape than the real one.
 const SPCTL_ACCEPTED = [
   '/tmp/x.dmg: accepted',
   'source=Notarized Developer ID',

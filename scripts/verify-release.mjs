@@ -12,7 +12,10 @@
 // What this is NOT: it cannot tell you the assets are *correct*, only that every family the pipeline
 // promises is on the page, that the page is published, that `SHA256SUMS.txt` and the certification
 // record agree on the digests they both list, that the record names the commit the tag points at, and
-// that the release body is not the raw generator output. Signing is reported verbatim from the record
+// that the release body is not the raw generator output. A family whose presence depends on the path
+// that produced the mac artifacts (the four mac blockmaps) is reported by name rather than demanded —
+// demanding them made a correctly published notarized page read as incomplete, and ignoring them would
+// hide a real loss on the unnotarized path. Signing is reported verbatim from the record
 // and never inferred from a green job: an unsigned release is accepted (that was the shipped state
 // before credentials existed) unless `--require-signed` asks for a Developer ID signature.
 //
@@ -30,16 +33,18 @@ import { join } from 'node:path'
 
 export const DEFAULT_MIN_BODY_BYTES = 2000
 
-// Every family the release pipeline promises, as a name suffix. A missing member is a named failure.
+// Every family the release pipeline always promises, as a name suffix. A missing member is a named
+// failure. The four mac blockmaps are NOT here on purpose: `notarize-mac.yml` re-emits the stapled
+// dmg/zip and drops the pre-staple blockmaps, because a blockmap computed over bytes that no longer
+// exist would describe a differential patch nobody can apply — the notarized mac path ships full-zip
+// updates in v1 (see that workflow's "Regenerate mac update feed" comment). An unsigned/unnotarized
+// release still carries them, so their presence is reported by name (see `planConditionalAssets`)
+// instead of being demanded or ignored.
 export const planRequiredAssets = (version) => [
   { id: 'mac-arm64-dmg', suffix: '-mac-arm64.dmg' },
-  { id: 'mac-arm64-dmg-blockmap', suffix: '-mac-arm64.dmg.blockmap' },
   { id: 'mac-arm64-zip', suffix: '-mac-arm64.zip' },
-  { id: 'mac-arm64-zip-blockmap', suffix: '-mac-arm64.zip.blockmap' },
   { id: 'mac-x64-dmg', suffix: '-mac-x64.dmg' },
-  { id: 'mac-x64-dmg-blockmap', suffix: '-mac-x64.dmg.blockmap' },
   { id: 'mac-x64-zip', suffix: '-mac-x64.zip' },
-  { id: 'mac-x64-zip-blockmap', suffix: '-mac-x64.zip.blockmap' },
   { id: 'linux-appimage', suffix: '-linux-x86_64.AppImage' },
   { id: 'linux-deb', suffix: `_${version}_amd64.deb` },
   { id: 'win-setup', suffix: '-win-x64-setup.exe' },
@@ -53,6 +58,16 @@ export const planRequiredAssets = (version) => [
   { id: 'feed-mac', suffix: 'latest-mac.yml' },
   { id: 'feed-mac-arm64', suffix: 'arm64-mac.yml' },
   { id: 'feed-mac-x64', suffix: 'x64-mac.yml' }
+]
+
+// Families whose presence depends on which path produced the mac artifacts. Reported, never silently
+// dropped: a page without them gets a reading that names why they are absent, so "missing" and
+// "deliberately not produced on this path" stay two different answers.
+export const planConditionalAssets = () => [
+  { id: 'mac-arm64-dmg-blockmap', suffix: '-mac-arm64.dmg.blockmap' },
+  { id: 'mac-arm64-zip-blockmap', suffix: '-mac-arm64.zip.blockmap' },
+  { id: 'mac-x64-dmg-blockmap', suffix: '-mac-x64.dmg.blockmap' },
+  { id: 'mac-x64-zip-blockmap', suffix: '-mac-x64.zip.blockmap' }
 ]
 
 const versionFromTag = (tag) => tag.replace(/^v/, '')
@@ -195,6 +210,24 @@ export const evaluateRelease = ({
       missing.length === 0
         ? `${planned.length} families present of ${present.size} assets`
         : `missing ${missing.length}: ${missing.join(', ')}`
+    )
+  )
+
+  // Conditional families: present or absent both pass, but the reading says which and why. A page that
+  // silently lost them would still be visible here instead of being absorbed by the required list.
+  const conditional = planConditionalAssets()
+  const conditionalPresent = conditional.filter((entry) =>
+    [...present].some((assetName) => assetName.endsWith(entry.suffix))
+  )
+  const conditionalAbsent = conditional.filter((entry) => !conditionalPresent.includes(entry))
+  checks.push(
+    check(
+      'mac-blockmaps',
+      true,
+      conditionalAbsent.length === 0
+        ? `${conditionalPresent.length}/${conditional.length} mac blockmaps published (unnotarized path)`
+        : `${conditionalAbsent.length}/${conditional.length} mac blockmaps not published — ${conditionalAbsent.map((e) => e.id).join(', ')}; the notarized re-emit drops pre-staple blockmaps by design (full-zip mac updates in v1)`,
+      false
     )
   )
 
