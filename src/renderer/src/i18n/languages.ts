@@ -1,3 +1,8 @@
+import {
+  localeCodeFromTagOrUndefined,
+  type SupportedLocaleCode
+} from '../../../shared/locale-codes'
+
 import { de } from './de'
 import { en } from './en'
 import { es } from './es'
@@ -8,7 +13,11 @@ import { ru } from './ru'
 import { zh } from './zh'
 import { zhHant } from './zh-Hant'
 
-export type Language = 'zh' | 'zh-Hant' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'ru'
+// The nine shipped languages come from `src/shared/locale-codes.ts` rather than being spelled out
+// here: the renderer dictionaries, the native menu/tray tables and the served pages must agree, and
+// the dictionaries map below is a total `Record<Language, …>` — so a language in the shared set with
+// no dictionary fails to compile, and a dictionary for a language outside the set cannot be keyed.
+export type Language = SupportedLocaleCode
 
 // A user preference is either an explicit language or 'system' (follow the OS/browser language).
 export type LanguagePreference = 'system' | Language
@@ -72,20 +81,8 @@ export const LOCALE_TAG: Record<Language, string> = {
   ru: 'ru'
 }
 
-// Maps the browser's navigator.language (e.g. 'zh-TW', 'ja-JP') onto the supported set.
-export const languageFromLocale = (locale: string): Language | undefined => {
-  const normalized = locale.toLowerCase()
-  if (normalized.startsWith('zh')) {
-    if (normalized.includes('tw') || normalized.includes('hk') || normalized.includes('hant')) {
-      return 'zh-Hant'
-    }
-    return 'zh'
-  }
-  if (normalized.startsWith('ja')) return 'ja'
-  if (normalized.startsWith('ko')) return 'ko'
-  if (normalized.startsWith('fr')) return 'fr'
-  if (normalized.startsWith('de')) return 'de'
-  if (normalized.startsWith('es')) return 'es'
-  if (normalized.startsWith('ru')) return 'ru'
-  return undefined
-}
+// Maps the browser's navigator.language (e.g. 'zh-TW', 'ja-JP') onto the supported set. The cascade
+// itself is shared with the native surfaces (`src/shared/locale-codes.ts`) so the two cannot disagree
+// about a tag — 'zh-MO' used to resolve to Simplified here while the menu drew Traditional for it.
+export const languageFromLocale = (locale: string): Language | undefined =>
+  localeCodeFromTagOrUndefined(locale)

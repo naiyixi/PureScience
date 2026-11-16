@@ -19330,3 +19330,51 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ② 下一单元候选（都敞着、都不需要发版窗口）：(a) 上面那族 `throw new Error` 的英文文案是否该走渲染层
   的 `messageKey` 通道（先核渲染层现在怎么显示它们，别造第二套）；(b) 任务栏/托盘菜单里的可见文案
   （原生菜单，与文件面板同族但走 `Menu` 而不是对话框）——先 `grep` 现有覆盖再立项。
+
+## 三百四十三、本轮追加（执行器，2026-11-16 20:0x–）—— 「九种语言」从四份实现收成一份，两张原生表补回编译期门
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = `4f26b9bd`（公证 45 分钟上限改 3 小时），本地 `HEAD` = `b0bbccec`
+  ⇒ 本地落后一笔、**无本地领先提交**。工作区**不干净**：`src/renderer/src/i18n/{de,en,es,fr,ja,ko,ru,zh,zh-Hant}.ts`
+  与 `main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}` 有**别人未提交的在制品**
+  （17:37–17:51 落笔，正是上一节 ②(a) 那族 `throw` 文案走 `messageKey` 的活）⇒ 一律不碰、不 stash、
+  不提交；本轮只 `git add` 自己那 7 个路径。
+- **发版窗口**：v2.27.0 的 Release run（`4f26b9bd`）正在飞，notarize 两个作业 pending ⇒ 本轮**零推送**，
+  只在本地落提交，等 Release 落定后再推。
+- 去重：上一节 ②(b) 提的「托盘/菜单文案」经核**早已九语**（`src/shared/tray-labels.ts`、
+  `src/shared/app-menu-labels.ts` 各九行）⇒ 它不是文案缺口。真缺口在**门**：两张表声明成
+  `Record<string, T>`，少一种语言编译期无人说话；且「怎么把标签解析成九码」在树里有**四份**实现。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-one-locale-cascade.md`）
+
+- 新增 `src/shared/locale-codes.ts`（九码 + 纯级联，两个方向：落英文 / 答 `undefined`）；
+  `native-locale.ts`、`tray-labels.ts`、`app-menu-labels.ts`、渲染层 `languages.ts` 四处旧级联删除改调它；
+  两张原生表 + 渲染层 `Language` 全部收紧到共享九码类型。
+- 顺带修掉两处真实解析差异：**`zh-MO` 归繁体**（此前菜单画繁体、原生对话框画简体，同一个 OS 语言设置）、
+  下划线标签（`zh_TW`）按连字符归一。
+- 新增两支用例（`src/shared/locale-codes.test.ts`、`src/renderer/src/i18n/languages.test.ts`），
+  判据三层：集合自洽 / 「不是英文行抄九遍」（八种非英文语言逐个断言至少一个标签与英文不同）/
+  托盘与菜单对同一标签**必须解析到同一张表**。
+
+### 二 门禁（本机实跑）
+
+- `npx vitest run src/shared/ src/renderer/src/i18n/ src/main/{app-menu,tray,native-locale,native-file-dialogs,native-dialog-strings}.test.ts`
+  ⇒ **168 files / 1851 passed**；
+- `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` ⇒ 0；`npm run typecheck:web` ⇒ 0；
+- `npx eslint --no-cache` 七个改动文件 ⇒ **0 error 0 warning**。
+  （两处 `Abort trap: 6`：本机 node 默认堆跑 `tsc` 与全仓 eslint 都会崩，抬到 8192 后正常 —— 这是环境，
+  不是代码。）
+
+### 三 边界与具名未办
+
+- **本条没有真机读数**，原因具名：改动是纯解析函数与表类型，可观测差异只对 `zh-MO`/下划线标签存在，
+  取这条读数需要把系统语言改成澳门中文；证据等级 = 函数级 + 编译期，不冒充真窗口读数。
+- 既有 16 条映射断言全绿 ⇒ 常见标签的解析结果与改动前一致，这不是一次行为迁移。
+- 装机版随下次发版生效。
+
+### 四 下一轮第一步
+
+- ① 先读 Release（`4f26b9bd`）判决；页与资产按四平台清单核，落定后才恢复推送；
+- ② 推送本笔 + 盯 `Nightly` / `Windows Full Test` 双绿；
+- ③ 之后仍不碰别人正在写的那批 `src/renderer/src/i18n/*.ts`（他们是字典文件，本轮的 `languages.ts` 不在其中）。

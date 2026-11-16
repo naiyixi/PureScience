@@ -1,5 +1,11 @@
 import { app } from 'electron'
 
+import {
+  SUPPORTED_LOCALE_CODES,
+  localeCodeFromTag,
+  type SupportedLocaleCode
+} from '../shared/locale-codes'
+
 // The nine languages the renderer ships. Main-process copy that has no renderer i18n provider to read
 // from — a native dialog, a menu item, and the HTML pages served to a browser (the remote-pairing
 // page and the OAuth callback page) — resolves the language the way menus and the tray already do:
@@ -7,39 +13,18 @@ import { app } from 'electron'
 // and always wins wherever it can render; main's approximation exists only for the surfaces that are
 // drawn outside the renderer, and it is stated as an approximation rather than passed off as the
 // user's setting.
-export type NativeLocaleCode = 'en' | 'zh' | 'zh-Hant' | 'ja' | 'ko' | 'es' | 'de' | 'fr' | 'ru'
+//
+// The set itself and the tag cascade now live in `src/shared/locale-codes.ts`: the menu and tray
+// tables used to carry their own copies, and the copies answered differently for the same OS locale
+// (see the zh-MO note there). One source, one answer, and every table typed against it.
+export type NativeLocaleCode = SupportedLocaleCode
 
-export const NATIVE_LOCALE_CODES: readonly NativeLocaleCode[] = [
-  'en',
-  'zh',
-  'zh-Hant',
-  'ja',
-  'ko',
-  'es',
-  'de',
-  'fr',
-  'ru'
-]
+export const NATIVE_LOCALE_CODES: readonly NativeLocaleCode[] = SUPPORTED_LOCALE_CODES
 
 // Pure, so the cascade itself is unit-testable without Electron: every tag Electron can report
 // ('zh-Hant', 'zh-TW', 'zh-HK', 'pt-BR', …) maps deterministically, and anything unrecognised lands
 // on English instead of on an empty string.
-export const nativeLocaleCodeFrom = (raw: string): NativeLocaleCode => {
-  const locale = raw.toLowerCase()
-  if (locale.startsWith('zh')) {
-    return locale.startsWith('zh-hant') || locale.startsWith('zh-tw') || locale.startsWith('zh-hk')
-      ? 'zh-Hant'
-      : 'zh'
-  }
-  if (locale.startsWith('ja')) return 'ja'
-  if (locale.startsWith('ko')) return 'ko'
-  if (locale.startsWith('es')) return 'es'
-  if (locale.startsWith('de')) return 'de'
-  if (locale.startsWith('fr')) return 'fr'
-  if (locale.startsWith('ru')) return 'ru'
-  return 'en'
-}
-
+export const nativeLocaleCodeFrom = (raw: string): NativeLocaleCode => localeCodeFromTag(raw)
 export const resolveNativeLocaleCode = (): NativeLocaleCode => {
   try {
     return nativeLocaleCodeFrom(app.getLocale())

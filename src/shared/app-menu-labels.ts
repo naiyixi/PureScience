@@ -1,3 +1,5 @@
+import { localeCodeFromTag, type SupportedLocaleCode } from './locale-codes'
+
 export type AppMenuLabels = {
   about: string
   services: string
@@ -29,7 +31,9 @@ export type AppMenuLabels = {
   help: string
 }
 
-export const APP_MENU_LABELS: Record<string, AppMenuLabels> = {
+// Typed against the shared nine-language set: a language missing from this table fails to compile
+// rather than shipping English labels to that reader.
+export const APP_MENU_LABELS: Record<SupportedLocaleCode, AppMenuLabels> = {
   en: {
     about: 'About PureScience',
     services: 'Services',
@@ -302,17 +306,5 @@ export const APP_MENU_LABELS: Record<string, AppMenuLabels> = {
   }
 }
 
-export const appMenuLabelsForLocale = (locale: string): AppMenuLabels => {
-  const l = String(locale ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/_/g, '-')
-  if (!l) return APP_MENU_LABELS.en
-  if (l.startsWith('zh')) {
-    return /^zh-(tw|hk|mo|hant)(-|$)/.test(l) ? APP_MENU_LABELS['zh-Hant'] : APP_MENU_LABELS.zh
-  }
-  const prefix = (['ja', 'ko', 'fr', 'de', 'es', 'ru'] as const).find(
-    (p) => l === p || l.startsWith(p + '-')
-  )
-  return prefix ? APP_MENU_LABELS[prefix] : APP_MENU_LABELS.en
-}
+export const appMenuLabelsForLocale = (locale: string): AppMenuLabels =>
+  APP_MENU_LABELS[localeCodeFromTag(locale)]

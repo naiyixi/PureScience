@@ -1,6 +1,11 @@
 // Native tray labels per supported UI language. The tray lives in the main process where the
 // renderer dictionaries are not importable, so this small table keeps the handful of tray strings
 // localized. Follows the persisted/system language at tray creation time.
+//
+// Typed against the shared nine-language set (not `Record<string, …>`): a language left out of this
+// table is a compile error instead of a silent English label for that reader.
+import { localeCodeFromTag, type SupportedLocaleCode } from './locale-codes'
+
 export type TrayLabels = {
   show: string
   hide: string
@@ -11,7 +16,9 @@ export type TrayLabels = {
   webTooltip: string
 }
 
-const TRAY_LABELS: Record<string, TrayLabels> = {
+// Exported so the shared language test can pin the table's key set to the nine-code set (the same way
+// APP_MENU_LABELS is), rather than trusting the type alone.
+export const TRAY_LABELS: Record<SupportedLocaleCode, TrayLabels> = {
   en: {
     show: 'Show',
     hide: 'Hide',
@@ -95,23 +102,8 @@ const TRAY_LABELS: Record<string, TrayLabels> = {
   }
 }
 
-const normalizeTrayLocale = (locale: string): string => {
-  const normalized = locale.toLowerCase()
-  if (normalized.startsWith('zh')) {
-    return normalized.includes('tw') || normalized.includes('hk') || normalized.includes('hant')
-      ? 'zh-Hant'
-      : 'zh'
-  }
-  if (normalized.startsWith('ja')) return 'ja'
-  if (normalized.startsWith('ko')) return 'ko'
-  if (normalized.startsWith('fr')) return 'fr'
-  if (normalized.startsWith('de')) return 'de'
-  if (normalized.startsWith('es')) return 'es'
-  if (normalized.startsWith('ru')) return 'ru'
-  return 'en'
-}
-
 // Resolves tray labels from an Electron/BCP-47 locale string (e.g. 'zh-CN', 'de-DE'); English when
-// the locale is outside the supported set.
+// the locale is outside the supported set. The cascade is shared with the menu, the native dialogs
+// and the served pages — one implementation, so the tray cannot disagree with them for the same tag.
 export const trayLabelsForLocale = (locale: string): TrayLabels =>
-  TRAY_LABELS[normalizeTrayLocale(locale)] ?? TRAY_LABELS.en
+  TRAY_LABELS[localeCodeFromTag(locale)]
