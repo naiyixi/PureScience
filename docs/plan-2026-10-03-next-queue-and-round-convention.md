@@ -19313,6 +19313,17 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - 装机版随下次发版生效。
 - 公证读数改由每 20 分钟的 `notarize-resume-v2270` 专岗报，本循环不再重复取。
 
+### 四-2 本笔的 CI 判决与随之修掉的一条抖动用例
+
+- `89721aad`（九语本体 + spec）与 `22d75d48`（抖动修复）：`Windows Full Test` **success**；
+  `Nightly` 的 `build / Verify` **failure**，红在 `src/main/compute/job-poller.test.ts` 的
+  「emits notification for dispatcher-written error jobs via the recovery scan」——`update` 一次都没被调用。
+  与本笔路径无关（连接器诊断、字典、一个 e2e spec），同一文件本机连跑 **3/3 全绿（31 passed）**。
+- 根因是**固定 10 ms 睡眠等一个 fire-and-forget 的写入**：满载 runner 上通知路径跑不完 10 ms。
+  改成 `vi.waitFor` 等那次写入本身；**变异自证**：让 `findErrorUnnotified` 返回空列表 ⇒ 该用例与相邻的
+  重叠守卫用例各红一条（说明「等」没有把断言变松）。相邻两处固定睡眠保留：它们等的是「没有第二次写入」
+  这类缺席事实，waitFor 表达不了。
+
 ### 五 下一轮第一步
 
 - ① 按完整 40 位 SHA 读本笔两条车道（Nightly / Windows Full Test），红了按失败作业的性质归因；
