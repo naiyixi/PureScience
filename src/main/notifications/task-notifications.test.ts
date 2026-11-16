@@ -51,7 +51,12 @@ describe('describePermissionNotification', () => {
     ).toEqual({
       title: 'Approval needed',
       body: '"Plot the curve" needs your approval: Run command',
-      attention: true
+      attention: true,
+      descriptor: {
+        kind: 'authorization.required',
+        task: 'Plot the curve',
+        detail: 'Run command'
+      }
     })
   })
 
@@ -59,7 +64,8 @@ describe('describePermissionNotification', () => {
     expect(describePermissionNotification(permissionRequest('Edit results.csv'))).toEqual({
       title: 'Approval needed',
       body: 'The agent needs your approval: Edit results.csv',
-      attention: true
+      attention: true,
+      descriptor: { kind: 'authorization.required', detail: 'Edit results.csv' }
     })
   })
 
@@ -84,7 +90,12 @@ describe('describeConnectorApprovalNotification', () => {
     ).toEqual({
       title: 'Approval needed',
       body: '"Plot the curve" needs your approval: pubchem search compound',
-      attention: true
+      attention: true,
+      descriptor: {
+        kind: 'authorization.required',
+        task: 'Plot the curve',
+        detail: 'pubchem search compound'
+      }
     })
   })
 
@@ -92,7 +103,8 @@ describe('describeConnectorApprovalNotification', () => {
     expect(describeConnectorApprovalNotification({ connector: 'zinc', method: 'search' })).toEqual({
       title: 'Approval needed',
       body: 'The agent needs your approval: zinc search',
-      attention: true
+      attention: true,
+      descriptor: { kind: 'authorization.required', detail: 'zinc search' }
     })
   })
 })
@@ -101,14 +113,16 @@ describe('describeTaskNotification', () => {
   it('names the task from the prompt snippet when a turn completes', () => {
     expect(describeTaskNotification(stopEvent('end_turn'), 'Plot the curve')).toEqual({
       title: 'Task completed',
-      body: 'The agent finished responding to "Plot the curve".'
+      body: 'The agent finished responding to "Plot the curve".',
+      descriptor: { kind: 'task.completed', task: 'Plot the curve' }
     })
   })
 
   it('falls back to a generic body when no prompt was tracked', () => {
     expect(describeTaskNotification(stopEvent('end_turn'))).toEqual({
       title: 'Task completed',
-      body: 'The agent finished responding.'
+      body: 'The agent finished responding.',
+      descriptor: { kind: 'task.completed' }
     })
   })
 
@@ -119,21 +133,24 @@ describe('describeTaskNotification', () => {
   it('explains a max_tokens stop in plain language', () => {
     expect(describeTaskNotification(stopEvent('max_tokens'), 'Plot the curve')).toEqual({
       title: 'Task needs attention',
-      body: '"Plot the curve" stopped early — the answer hit the model\'s length limit.'
+      body: '"Plot the curve" stopped early — the answer hit the model\'s length limit.',
+      descriptor: { kind: 'task.needs-attention', task: 'Plot the curve', reason: 'max-tokens' }
     })
   })
 
   it('explains a max_turn_requests stop as waiting for the user', () => {
     expect(describeTaskNotification(stopEvent('max_turn_requests'), 'Plot the curve')).toEqual({
       title: 'Task needs attention',
-      body: '"Plot the curve" paused — send a message to keep it going.'
+      body: '"Plot the curve" paused — send a message to keep it going.',
+      descriptor: { kind: 'task.needs-attention', task: 'Plot the curve', reason: 'max-turns' }
     })
   })
 
   it('explains a refusal without jargon', () => {
     expect(describeTaskNotification(stopEvent('refusal'), 'Plot the curve')).toEqual({
       title: 'Task needs attention',
-      body: '"Plot the curve" was declined by the agent.'
+      body: '"Plot the curve" was declined by the agent.',
+      descriptor: { kind: 'task.needs-attention', task: 'Plot the curve', reason: 'refusal' }
     })
     expect(describeTaskNotification(stopEvent('refusal'))?.body).toBe(
       'The agent declined the request.'
@@ -143,7 +160,13 @@ describe('describeTaskNotification', () => {
   it('does not misreport an unknown stop reason as success', () => {
     expect(describeTaskNotification(stopEvent('budget_exceeded'), 'Plot the curve')).toEqual({
       title: 'Task needs attention',
-      body: '"Plot the curve" finished without a clean completion status (budget exceeded).'
+      body: '"Plot the curve" finished without a clean completion status (budget exceeded).',
+      descriptor: {
+        kind: 'task.needs-attention',
+        task: 'Plot the curve',
+        reason: 'unclean',
+        detail: ' (budget exceeded)'
+      }
     })
     expect(describeTaskNotification(stopEvent('budget_exceeded'))?.body).toBe(
       'The agent finished without a clean completion status (budget exceeded).'
@@ -164,7 +187,14 @@ describe('describeTaskNotification', () => {
 
     expect(describeTaskNotification(event, 'Plot the curve')).toEqual({
       title: 'Task needs attention',
-      body: '"Plot the curve" finished without a clean completion status.'
+      body: '"Plot the curve" finished without a clean completion status.',
+      // No raw reason reached the descriptor, so the parenthesised detail is empty rather than absent.
+      descriptor: {
+        kind: 'task.needs-attention',
+        task: 'Plot the curve',
+        reason: 'unclean',
+        detail: ''
+      }
     })
   })
 
@@ -194,7 +224,8 @@ describe('describeTaskNotification', () => {
   it('includes the error text when a turn fails', () => {
     expect(describeTaskNotification(errorEvent('Rate limit reached'), 'Plot the curve')).toEqual({
       title: 'Task failed',
-      body: '"Plot the curve" failed: Rate limit reached'
+      body: '"Plot the curve" failed: Rate limit reached',
+      descriptor: { kind: 'task.failed', task: 'Plot the curve', detail: 'Rate limit reached' }
     })
   })
 
@@ -302,7 +333,10 @@ describe('TaskNotificationService', () => {
     expect(shown).toHaveLength(1)
     expect(shown[0]).toMatchObject({
       title: 'Task completed',
-      body: 'The agent finished responding to "Plot the curve".'
+      body: 'The agent finished responding to "Plot the curve".',
+      // The banner is re-rendered from this descriptor at the delivery seam, so the service — not the
+      // seam's fixtures — has to be the thing that proves the structured sentence arrives intact.
+      descriptor: { kind: 'task.completed', task: 'Plot the curve' }
     })
     expect(attentionRequests).toEqual([])
     expect(unreadSessionIds).toEqual(['session-1'])

@@ -6,11 +6,21 @@ import type {
   ConnectorApprovalRequest,
   ConversationSkillImportApprovalRequest
 } from '../../shared/settings'
+import {
+  renderTaskNotification,
+  type TaskNotificationDescriptor
+} from './task-notification-strings'
 
 export type TaskNotification = {
+  // Canonical English wording, rendered from `descriptor` in this module's own table. Kept on the
+  // object because the service's log line and its tests read the sentence a reader of English sees;
+  // the banner itself is re-rendered in the OS language at the delivery seam.
   title: string
   body: string
   attention?: boolean
+  // The same sentence in structured form. Required, not optional: a new notification kind that forgot
+  // to describe itself would ship an English-only banner to the other eight languages.
+  descriptor: TaskNotificationDescriptor
 }
 
 export type TaskNotificationRequest = TaskNotification & {
@@ -69,9 +79,9 @@ export const runTaskNotificationInBackground = (
 }
 
 // Notification bodies are single-line and get truncated hard on some platforms (Windows toasts
-// clip around 200 chars), so the task name and error text are kept short.
+// clip around 200 chars), so the task name and error text are kept short. The body ceiling itself
+// lives with the copy table, so the localized sentence is capped by the same number.
 const MAX_SNIPPET_LENGTH = 80
-const MAX_BODY_LENGTH = 200
 
 // Bounds the sessionId -> prompt snippet map; entries are dropped when the turn terminates, the
 // cap only guards against leaks from turns that never report a terminal event.
@@ -92,20 +102,6 @@ const toPromptSnippet = (text: string): string | undefined => {
   return truncate(firstLine, MAX_SNIPPET_LENGTH)
 }
 
-// Quotes the task name so a body like '"Plot the curve" finished.' stays readable.
-const quoteSnippet = (snippet: string): string => `"${snippet}"`
-
-// Plain-language phrasing for the stop reasons that mean "ended, but not cleanly": the raw ACP
-// reasons (max_tokens, max_turn_requests, refusal) are developer jargon users shouldn't see.
-const EARLY_STOP_BODY: Record<string, (taskName?: string) => string> = {
-  max_tokens: (taskName) =>
-    `${taskName ?? 'The agent'} stopped early — the answer hit the model's length limit.`,
-  max_turn_requests: (taskName) =>
-    `${taskName ?? 'The agent'} paused — send a message to keep it going.`,
-  refusal: (taskName) =>
-    taskName ? `${taskName} was declined by the agent.` : 'The agent declined the request.'
-}
-
 // Strips control characters, folds whitespace, and turns underscores into spaces so an arbitrary
 // stop-reason text (or one from a future ACP extension) reads naturally and can't smuggle newlines
 // or terminal escapes into a single-line OS-notification body — some platforms truncate hard or
@@ -122,6 +118,17 @@ const sanitizeReason = (text: string): string => {
   return stripped.replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+// Renders the descriptor in English, which is what the log line and the service's tests read. The
+// banner is re-rendered in the OS language at the delivery seam (electron-wiring).
+const composed = (
+  descriptor: TaskNotificationDescriptor,
+  attention?: boolean
+): TaskNotification => {
+  const { title, body } = renderTaskNotification(descriptor, 'en')
+
+  return attention ? { title, body, descriptor, attention } : { title, body, descriptor }
+}
+
 // Maps a terminal runtime event to the notification to show, or null when the event should stay
 // silent: user-cancelled turns (deliberate), recoverable context overflows (the renderer
 // auto-compacts and retries, so a failure banner would be a false alarm), and session-scoped error
@@ -131,18 +138,23 @@ export const describeTaskNotification = (
   event: AcpRuntimeEvent,
   promptSnippet?: string
 ): TaskNotification | null => {
-  const taskName = promptSnippet ? quoteSnippet(promptSnippet) : undefined
-
   if (event.kind === 'stop') {
     const reason = event.text
 
     if (reason === 'cancelled') return null
 
-    if (reason === 'max_tokens' || reason === 'max_turn_requests' || reason === 'refusal') {
-      return {
-        title: 'Task needs attention',
-        body: truncate(EARLY_STOP_BODY[reason](taskName), MAX_BODY_LENGTH)
-      }
+    // The raw ACP stop reasons are developer jargon users shouldn't see: each is described in plain
+    // language by the copy table, per language.
+    if (reason === 'max_tokens') {
+      return composed({ kind: 'task.needs-attention', task: promptSnippet, reason: 'max-tokens' })
+    }
+
+    if (reason === 'max_turn_requests') {
+      return composed({ kind: 'task.needs-attention', task: promptSnippet, reason: 'max-turns' })
+    }
+
+    if (reason === 'refusal') {
+      return composed({ kind: 'task.needs-attention', task: promptSnippet, reason: 'refusal' })
     }
 
     // Only an explicit end_turn counts as a clean completion. Any other value — including an
@@ -150,58 +162,35 @@ export const describeTaskNotification = (
     // ACP stop reason we don't yet know — is surfaced as needing attention.
     if (reason !== 'end_turn') {
       const cleaned = reason ? sanitizeReason(reason) : ''
-      const suffix = cleaned ? ` (${cleaned})` : ''
-      const body = taskName
-        ? `${taskName} finished without a clean completion status${suffix}.`
-        : `The agent finished without a clean completion status${suffix}.`
 
-      return {
-        title: 'Task needs attention',
-        body: truncate(body, MAX_BODY_LENGTH)
-      }
+      return composed({
+        kind: 'task.needs-attention',
+        task: promptSnippet,
+        reason: 'unclean',
+        detail: cleaned ? ` (${cleaned})` : ''
+      })
     }
 
-    return {
-      title: 'Task completed',
-      body: truncate(
-        taskName
-          ? `The agent finished responding to ${taskName}.`
-          : 'The agent finished responding.',
-        MAX_BODY_LENGTH
-      )
-    }
+    return composed({ kind: 'task.completed', task: promptSnippet })
   }
 
   if (event.kind === 'error') {
     if (event.title !== ACP_PROMPT_FAILED_EVENT_TITLE) return null
     if (event.recoverable === 'context-overflow') return null
 
-    const reason = event.text?.trim() || 'Unknown error.'
-
-    return {
-      title: 'Task failed',
-      body: truncate(taskName ? `${taskName} failed: ${reason}` : reason, MAX_BODY_LENGTH)
-    }
+    return composed({
+      kind: 'task.failed',
+      task: promptSnippet,
+      detail: event.text?.trim() || 'Unknown error.'
+    })
   }
 
   return null
 }
 
 // Formats every blocking approval surface with the same task-aware wording.
-const describeApprovalNotification = (detail: string, promptSnippet?: string): TaskNotification => {
-  const taskName = promptSnippet ? quoteSnippet(promptSnippet) : undefined
-
-  return {
-    title: 'Approval needed',
-    body: truncate(
-      taskName
-        ? `${taskName} needs your approval: ${detail}`
-        : `The agent needs your approval: ${detail}`,
-      MAX_BODY_LENGTH
-    ),
-    attention: true
-  }
-}
+const describeApprovalNotification = (detail: string, promptSnippet?: string): TaskNotification =>
+  composed({ kind: 'authorization.required', task: promptSnippet, detail }, true)
 
 // Maps a parked permission request to the notification to show. The turn hangs until the user
 // answers, so this is the "requires user attention" case from the original feature request.

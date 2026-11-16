@@ -7,6 +7,8 @@ import type {
 } from '../../shared/settings'
 import type { ComputeApprovalContext } from '../compute/compute-approval-broker'
 import type { Logger } from '../logger'
+import type { NativeLocaleCode } from '../native-locale'
+import { renderTaskNotification } from './task-notification-strings'
 import {
   runTaskNotificationInBackground,
   type TaskNotificationRequest,
@@ -22,30 +24,44 @@ export type BuildTaskNotificationShowDeps = {
   liveNotifications: Set<Notification>
   log: Pick<Logger, 'info'>
   headless: boolean
+  // The language this banner is drawn in. A banner is drawn by the OS with no renderer behind it, so
+  // the in-app language preference is unreachable here; the caller passes the OS locale resolved by
+  // native-locale.ts. Required rather than defaulted: a delivery path that forgot it would quietly
+  // ship English to the other eight languages, which is the defect this seam exists to close.
+  resolveLocaleCode: () => NativeLocaleCode
 }
 
 export const buildTaskNotificationShow =
   (deps: BuildTaskNotificationShowDeps) =>
   (request: TaskNotificationRequest): void => {
-    const { title, body, onClick } = request
-
     // Headless --serve launches never notify by contract: there is no local desktop user to see the
     // banner, and a click here would create a main window where none belongs.
     if (deps.headless) return
     // Daemon-less Linux hosts degrade the same way.
     if (!deps.notificationCtor.isSupported()) return
 
+    // The banner text is re-rendered in the OS language from the structured descriptor. `request.title`
+    // is the canonical English wording, kept for the log: the two together make "delivered in the
+    // wrong language" and "the wording drifted" distinguishable after the fact.
+    const language = deps.resolveLocaleCode()
+    const { title, body } = renderTaskNotification(request.descriptor, language)
+
     const notification = new deps.notificationCtor({ title, body })
 
     // Logged so a silently-swallowed banner (OS permission, Focus mode) is distinguishable from a
     // gate that stopped delivery source.
-    deps.log.info('delivering task notification', { title, supported: true })
+    deps.log.info('delivering task notification', {
+      title,
+      canonicalTitle: request.title,
+      language,
+      supported: true
+    })
     // Retain the instance until the banner resolves; a GC before click would silently drop the
     // handler on some platforms.
     deps.liveNotifications.add(notification)
     notification.once('click', () => {
       deps.liveNotifications.delete(notification)
-      onClick()
+      request.onClick()
     })
     notification.once('close', () => deps.liveNotifications.delete(notification))
     notification.show()

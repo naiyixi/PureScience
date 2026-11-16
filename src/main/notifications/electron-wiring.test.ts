@@ -6,6 +6,7 @@ import type {
   ConversationSkillImportApprovalRequest
 } from '../../shared/settings'
 import { TaskNotificationService } from './task-notifications'
+import type { TaskNotificationRequest } from './task-notifications'
 import {
   buildComputeApprovalBroadcast,
   buildConnectorApprovalBroadcast,
@@ -39,6 +40,20 @@ const createLog = (): { info: (message: string, data?: unknown) => void } => ({
   info: vi.fn() as unknown as (message: string, data?: unknown) => void
 })
 
+// A notification request as the service builds one: the descriptor is the structured sentence, the
+// title/body are its canonical English rendering.
+const notificationRequest = (
+  onClick: () => void,
+  overrides: Partial<TaskNotificationRequest> = {}
+): TaskNotificationRequest => ({
+  title: 'Task completed',
+  body: 'The agent finished responding.',
+  attention: true,
+  descriptor: { kind: 'task.completed' },
+  onClick,
+  ...overrides
+})
+
 afterEach(() => {
   FakeNotification.reset()
 })
@@ -51,10 +66,11 @@ describe('buildTaskNotificationShow', () => {
       notificationCtor: FakeNotification as never,
       liveNotifications: notifications as never,
       log,
-      headless: true
+      headless: true,
+      resolveLocaleCode: () => 'en'
     })
 
-    show({ title: 't', body: 'b', attention: true, onClick: vi.fn() })
+    show(notificationRequest(vi.fn()))
 
     expect(notifications.size).toBe(0)
     expect(log.info).not.toHaveBeenCalled()
@@ -68,22 +84,56 @@ describe('buildTaskNotificationShow', () => {
       notificationCtor: FakeNotification as never,
       liveNotifications: notifications as never,
       log,
-      headless: false
+      headless: false,
+      resolveLocaleCode: () => 'en'
     })
 
-    show({ title: 'Task completed', body: 'b', attention: true, onClick })
+    show(notificationRequest(onClick))
 
     const [notification] = Array.from(notifications)
     expect(notification?.show).toHaveBeenCalledTimes(1)
     expect(log.info).toHaveBeenCalledWith(
       'delivering task notification',
-      expect.objectContaining({ title: 'Task completed' })
+      expect.objectContaining({ title: 'Task completed', language: 'en' })
     )
 
     // The click handler stays live across the lifetime of the banner (not GC'd).
     notification?.fire('click')
     expect(onClick).toHaveBeenCalledTimes(1)
     expect(notifications.has(notification)).toBe(false)
+  })
+
+  it('draws the banner in the OS language, not in the canonical English it was described in', () => {
+    const log = createLog()
+    const notifications = new Set<FakeNotification>()
+    const captured: Array<{ title: string; body: string }> = []
+    class CapturingNotification extends FakeNotification {
+      constructor(options: { title: string; body: string }) {
+        super()
+        captured.push(options)
+      }
+    }
+    const show = buildTaskNotificationShow({
+      notificationCtor: CapturingNotification as never,
+      liveNotifications: notifications as never,
+      log,
+      headless: false,
+      resolveLocaleCode: () => 'zh'
+    })
+
+    show(notificationRequest(vi.fn()))
+
+    // The descriptor is what gets rendered: no quoted task, so the bare Chinese sentence.
+    expect(captured).toEqual([{ title: '任务完成', body: '智能体已完成回复。' }])
+    // Both wordings are on the log line: what was drawn, and the canonical English it came from.
+    expect(log.info).toHaveBeenCalledWith(
+      'delivering task notification',
+      expect.objectContaining({
+        title: '任务完成',
+        canonicalTitle: 'Task completed',
+        language: 'zh'
+      })
+    )
   })
 
   it('skips delivery when Notification.isSupported() reports no daemon', () => {
@@ -94,10 +144,11 @@ describe('buildTaskNotificationShow', () => {
       notificationCtor: FakeNotification as never,
       liveNotifications: notifications as never,
       log,
-      headless: false
+      headless: false,
+      resolveLocaleCode: () => 'en'
     })
 
-    show({ title: 't', body: 'b', attention: true, onClick: vi.fn() })
+    show(notificationRequest(vi.fn()))
 
     expect(notifications.size).toBe(0)
     expect(log.info).not.toHaveBeenCalled()
@@ -115,7 +166,8 @@ describe('buildTaskNotificationShow', () => {
         notificationCtor: FakeNotification as never,
         liveNotifications: notifications as never,
         log,
-        headless: false
+        headless: false,
+        resolveLocaleCode: () => 'en'
       })
     })
     service.setAttentionHandlers({ request: requestAttention, clear: vi.fn() })

@@ -165,6 +165,7 @@ import {
   buildConnectorApprovalBroadcast,
   buildTaskNotificationShow
 } from './notifications/electron-wiring'
+import { resolveNativeLocaleCode } from './native-locale'
 import { createLogger, diagnosticErrorFields, errorLogFields, getLogFilePath } from './logger'
 import {
   deleteProjectNotebookData,
@@ -1310,7 +1311,9 @@ const createApplicationModules = async (
       notificationCtor: Notification,
       liveNotifications,
       log: notificationsLog,
-      headless
+      headless,
+      // A banner has no renderer behind it, so its language comes from the OS locale.
+      resolveLocaleCode: resolveNativeLocaleCode
     }),
     onDeliveryError: (error) =>
       notificationsLog.warn('task notification delivery failed', errorLogFields(error)),
