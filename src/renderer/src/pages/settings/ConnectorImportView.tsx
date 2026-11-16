@@ -14,6 +14,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { FileDropOverlay } from '@/components/FileDropOverlay'
 import { Button } from '@/components/ui/button'
 import { useFileDropZone } from '@/hooks/useFileDropZone'
+import { connectorDiagnosticCopy } from './connector-diagnostic-copy'
 
 type ConnectorImportViewProps = {
   onUse: (definition: ConnectorTemplateDefinition) => void
@@ -180,15 +181,18 @@ export function ConnectorImportView({
 
         {preview?.diagnostics.length ? (
           <div className="space-y-2" aria-label={t('connectorImport.configDiagnostics')}>
-            {preview.diagnostics.map((item) => (
-              <div
-                key={`${item.code}:${item.path ?? ''}`}
-                className={`flex items-start gap-2 text-xs ${diagnosticClassName(item)}`}
-              >
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <span>{item.message}</span>
-              </div>
-            ))}
+            {preview.diagnostics.map((item) => {
+              const copy = connectorDiagnosticCopy(item)
+              return (
+                <div
+                  key={`${item.code}:${item.path ?? ''}`}
+                  className={`flex items-start gap-2 text-xs ${diagnosticClassName(item)}`}
+                >
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  <span>{copy ? t(copy.key, copy.values) : item.message}</span>
+                </div>
+              )
+            })}
           </div>
         ) : null}
 

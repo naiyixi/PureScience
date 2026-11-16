@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 
 import type { ConnectorTemplateExportPreview } from '../../../../shared/settings'
 import { Button } from '@/components/ui/button'
+import { connectorDiagnosticCopy } from './connector-diagnostic-copy'
 
 type ConnectorExportViewProps = {
   id: string
@@ -108,7 +109,7 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
               </div>
               <div className="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
                 <dt className="text-muted-foreground">
-                  {definition.transport === 'stdio' ? 'Command' : 'Server URL'}
+                  {definition.transport === 'stdio' ? t('common.command') : t('common.serverUrl')}
                 </dt>
                 <dd className="min-w-0 break-all font-mono text-xs text-foreground">
                   {definition.transport === 'stdio'
@@ -120,9 +121,9 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
                 <dt className="text-muted-foreground">{t('connectorShare.credentials')}</dt>
                 <dd className="text-foreground">
                   {definition.oauth
-                    ? 'OAuth configuration only; tokens excluded'
+                    ? t('connectorExport.oauthOnly')
                     : secretNames.length
-                      ? `Names only: ${secretNames.join(', ')}`
+                      ? t('connectorExport.namesOnly', { names: secretNames.join(', ') })
                       : t('settings.noneDeclared')}
                 </dd>
               </div>
@@ -132,19 +133,22 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
 
         {preview?.diagnostics.length ? (
           <div className="space-y-2" aria-label={t('connectorExport.configDiagnostics')}>
-            {preview.diagnostics.map((item) => (
-              <div
-                key={`${item.code}:${item.path ?? ''}`}
-                className={`flex items-start gap-2 text-xs ${
-                  item.severity === 'warning'
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-destructive'
-                }`}
-              >
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <span>{item.message}</span>
-              </div>
-            ))}
+            {preview.diagnostics.map((item) => {
+              const copy = connectorDiagnosticCopy(item)
+              return (
+                <div
+                  key={`${item.code}:${item.path ?? ''}`}
+                  className={`flex items-start gap-2 text-xs ${
+                    item.severity === 'warning'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-destructive'
+                  }`}
+                >
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  <span>{copy ? t(copy.key, copy.values) : item.message}</span>
+                </div>
+              )
+            })}
           </div>
         ) : null}
 

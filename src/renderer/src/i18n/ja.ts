@@ -5278,5 +5278,54 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'a11y.removeFailedAttachment': '失敗した添付 {name} を削除',
   'a11y.parentDirectory': '親ディレクトリへ{action}',
   'a11y.scrollablePreview': '{name} のスクロール可能なプレビュー',
-  'a11y.stepStatus': '{step} のステータス: {status}'
+  'a11y.stepStatus': '{step} のステータス: {status}',
+  'connectorImport.diag.required': '{path} がありません。',
+  'connectorImport.diag.typeString': '{path} は文字列である必要があります。',
+  'connectorImport.diag.typeArray': '{path} は配列である必要があります。',
+  'connectorImport.diag.typeObject': '{path} はオブジェクトである必要があります。',
+  'connectorImport.diag.empty': '{path} を空にすることはできません。',
+  'connectorImport.diag.tooLong': '{path} が {max} 文字を超えています。',
+  'connectorImport.diag.tooMany': '{path} が {max} 件を超えています。',
+  'connectorImport.diag.tooLarge': 'コネクタ設定ファイルは 256 KiB 以下である必要があります。',
+  'connectorImport.diag.invalidName': '{path} に使用できない文字が含まれています。',
+  'connectorImport.diag.unknownField': '不明なフィールド "{field}" です。',
+  'connectorImport.diag.invalidJson': '選択したファイルは有効な JSON ではありません。',
+  'connectorImport.diag.root': 'コネクタ設定は JSON オブジェクトである必要があります。',
+  'connectorImport.diag.schemaVersion': 'schemaVersion は 1 である必要があります。',
+  'connectorImport.diag.kind': 'kind は "purescience.connector" である必要があります。',
+  'connectorImport.diag.slug': 'slug には小文字、数字、ハイフンのみ使用できます。',
+  'connectorImport.diag.transport':
+    'transport は stdio、streamable_http、sse のいずれかである必要があります。',
+  'connectorImport.diag.command': 'stdio には command が必要です。',
+  'connectorImport.diag.url': '{path} は有効な URL である必要があります。',
+  'connectorImport.diag.urlProtocol': '{path} は http または https を使用する必要があります。',
+  'connectorImport.diag.urlCredentials': '{path} に認証情報を含めることはできません。',
+  'connectorImport.diag.urlSecret': '{path} に認証情報らしきクエリパラメータが含まれています。',
+  'connectorImport.diag.urlRequired': 'リモート伝送には url が必要です。',
+  'connectorImport.diag.localCommand':
+    '{path} にローカルパスが含まれているため、別のコンピューターでは変更が必要になる場合があります。',
+  'connectorImport.diag.localArgument':
+    '{path} にローカルパスが含まれているため、別のコンピューターでは変更が必要になる場合があります。',
+  'connectorImport.diag.argumentLineBreak': '{path} に改行を含めることはできません。',
+  'connectorImport.diag.argumentSecret': '{path} に認証情報が含まれている可能性があります。',
+  'connectorImport.diag.stdioRemoteFields': 'stdio には url や oauth を含められません。',
+  'connectorImport.diag.stdioHeaders': 'stdio には必須のヘッダーシークレットを含められません。',
+  'connectorImport.diag.remoteCommand': 'リモート伝送には command を含められません。',
+  'connectorImport.diag.remoteEnvironment':
+    'リモート伝送には必須の環境変数シークレットを含められません。',
+  'connectorImport.diag.oauthHeaders': 'OAuth と必須のヘッダーシークレットは同時に設定できません。',
+  'connectorImport.diag.reservedName':
+    'コネクタ名 "{value}" は組み込みコネクタ用に予約されています。',
+  'connectorImport.diag.duplicateName':
+    '"{value}" という名前のカスタムコネクタは既にインストールされています。',
+  'connectorImport.diag.identityConflictName':
+    'コネクタ名 "{value}" は既存コネクタの識別子と競合します。',
+  'connectorImport.diag.identityConflictId':
+    'コネクタ ID "{value}" は既存コネクタのエイリアスと競合します。',
+  'connectorImport.diag.reservedSlug':
+    'コネクタ ID "{value}" は組み込みコネクタ用に予約されています。',
+  'connectorImport.diag.duplicateSlug':
+    'ID "{value}" のカスタムコネクタは既にインストールされています。',
+  'connectorExport.oauthOnly': 'OAuth 設定のみで、トークンは含みません。',
+  'connectorExport.namesOnly': '名前のみ: {names}'
 }

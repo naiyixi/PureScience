@@ -1560,6 +1560,12 @@ export type ConnectorTemplateDiagnostic = {
   code: string
   message: string
   path?: string
+  /**
+   * Values the sentence needs beyond the code itself (the expected type, an item count, the offending
+   * name). The message above stays canonical English for logs and tests; a localized sentence is
+   * assembled from `code` + these values, so no sentence needs to be parsed to be translated.
+   */
+  params?: Record<string, string | number>
 }
 
 export type ConnectorTemplatePreview = {

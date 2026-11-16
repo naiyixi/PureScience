@@ -81,9 +81,16 @@ const diagnostic = (
   severity: ConnectorTemplateDiagnostic['severity'],
   code: string,
   message: string,
-  path?: string
+  path?: string,
+  params?: Record<string, string | number>
 ): void => {
-  diagnostics.push({ severity, code, message, ...(path ? { path } : {}) })
+  diagnostics.push({
+    severity,
+    code,
+    message,
+    ...(path ? { path } : {}),
+    ...(params ? { params } : {})
+  })
 }
 
 const rejectUnknownFields = (
@@ -99,7 +106,8 @@ const rejectUnknownFields = (
         'error',
         'connector-template.unknown-field',
         `Unknown field "${prefix}${key}".`,
-        `${prefix}${key}`
+        `${prefix}${key}`,
+        { field: `${prefix}${key}` }
       )
     }
   }
@@ -118,7 +126,9 @@ const readString = (
     return undefined
   }
   if (typeof value !== 'string') {
-    diagnostic(diagnostics, 'error', 'connector-template.type', `${path} must be a string.`, path)
+    diagnostic(diagnostics, 'error', 'connector-template.type', `${path} must be a string.`, path, {
+      expected: 'string'
+    })
     return undefined
   }
   const result = value.trim()
@@ -132,7 +142,8 @@ const readString = (
       'error',
       'connector-template.too-long',
       `${path} exceeds ${options.max} characters.`,
-      path
+      path,
+      { max: options.max }
     )
     return undefined
   }
@@ -147,7 +158,9 @@ const readStringList = (
 ): string[] | undefined => {
   if (value === undefined) return undefined
   if (!Array.isArray(value)) {
-    diagnostic(diagnostics, 'error', 'connector-template.type', `${path} must be an array.`, path)
+    diagnostic(diagnostics, 'error', 'connector-template.type', `${path} must be an array.`, path, {
+      expected: 'array'
+    })
     return undefined
   }
   if (value.length > options.maxItems) {
@@ -156,7 +169,8 @@ const readStringList = (
       'error',
       'connector-template.too-many',
       `${path} exceeds ${options.maxItems} entries.`,
-      path
+      path,
+      { max: options.maxItems }
     )
     return undefined
   }
@@ -234,7 +248,16 @@ const readOAuth = (
 ): ConnectorTemplateDefinition['oauth'] | undefined => {
   if (value === undefined) return undefined
   if (!isRecord(value)) {
-    diagnostic(diagnostics, 'error', 'connector-template.type', 'oauth must be an object.', 'oauth')
+    diagnostic(
+      diagnostics,
+      'error',
+      'connector-template.type',
+      'oauth must be an object.',
+      'oauth',
+      {
+        expected: 'object'
+      }
+    )
     return undefined
   }
   rejectUnknownFields(value, OAUTH_FIELDS, diagnostics, 'oauth.')
@@ -270,7 +293,8 @@ const readRequiredSecrets = (
       'error',
       'connector-template.type',
       'requiredSecrets must be an object.',
-      'requiredSecrets'
+      'requiredSecrets',
+      { expected: 'object' }
     )
     return undefined
   }
@@ -509,7 +533,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.reserved-name',
         `Connector name "${name}" is reserved by a built-in connector.`,
-        'name'
+        'name',
+        { value: name }
       )
     }
     if (options.existingNames?.some((item) => item.toLowerCase() === normalizedName)) {
@@ -518,7 +543,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.duplicate-name',
         `A custom Connector named "${name}" is already installed.`,
-        'name'
+        'name',
+        { value: name }
       )
     } else if (
       [...(options.existingSlugs ?? []), ...(options.existingIds ?? [])].some(
@@ -530,7 +556,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.identity-conflict',
         `Connector name "${name}" conflicts with an installed Connector identity.`,
-        'name'
+        'name',
+        { kind: 'name', value: name }
       )
     }
   }
@@ -541,7 +568,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.reserved-slug',
         `Connector ID "${slug}" is reserved by a built-in connector.`,
-        'slug'
+        'slug',
+        { value: slug }
       )
     }
     if (options.existingSlugs?.includes(slug)) {
@@ -550,7 +578,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.duplicate-slug',
         `A custom Connector with ID "${slug}" is already installed.`,
-        'slug'
+        'slug',
+        { value: slug }
       )
     } else if (
       [...(options.existingNames ?? []), ...(options.existingIds ?? [])].some(
@@ -562,7 +591,8 @@ export const parseConnectorTemplate = (
         'error',
         'connector-template.identity-conflict',
         `Connector ID "${slug}" conflicts with an installed Connector alias.`,
-        'slug'
+        'slug',
+        { kind: 'id', value: slug }
       )
     }
   }

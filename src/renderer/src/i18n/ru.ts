@@ -5300,5 +5300,54 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'a11y.removeFailedAttachment': 'Удалить неудавшееся вложение {name}',
   'a11y.parentDirectory': '{action} в родительский каталог',
   'a11y.scrollablePreview': 'Прокручиваемый просмотр: {name}',
-  'a11y.stepStatus': '{step} — состояние: {status}'
+  'a11y.stepStatus': '{step} — состояние: {status}',
+  'connectorImport.diag.required': 'Не указано поле {path}.',
+  'connectorImport.diag.typeString': '{path} должно быть строкой.',
+  'connectorImport.diag.typeArray': '{path} должно быть массивом.',
+  'connectorImport.diag.typeObject': '{path} должно быть объектом.',
+  'connectorImport.diag.empty': '{path} не может быть пустым.',
+  'connectorImport.diag.tooLong': '{path} превышает {max} символов.',
+  'connectorImport.diag.tooMany': '{path} превышает {max} записей.',
+  'connectorImport.diag.tooLarge': 'Файлы конфигурации коннектора должны быть не больше 256 KiB.',
+  'connectorImport.diag.invalidName': '{path} содержит неподдерживаемые символы.',
+  'connectorImport.diag.unknownField': 'Неизвестное поле "{field}".',
+  'connectorImport.diag.invalidJson': 'Выбранный файл не является корректным JSON.',
+  'connectorImport.diag.root': 'Конфигурация коннектора должна быть объектом JSON.',
+  'connectorImport.diag.schemaVersion': 'schemaVersion должно быть равно 1.',
+  'connectorImport.diag.kind': 'kind должно быть "purescience.connector".',
+  'connectorImport.diag.slug': 'slug может содержать только строчные буквы, цифры и дефисы.',
+  'connectorImport.diag.transport': 'transport должно быть stdio, streamable_http или sse.',
+  'connectorImport.diag.command': 'для stdio требуется command.',
+  'connectorImport.diag.url': '{path} должно быть корректным URL.',
+  'connectorImport.diag.urlProtocol': '{path} должно использовать http или https.',
+  'connectorImport.diag.urlCredentials': '{path} не может содержать учётные данные.',
+  'connectorImport.diag.urlSecret': '{path} содержит параметр запроса, похожий на учётные данные.',
+  'connectorImport.diag.urlRequired': 'для удалённых транспортов требуется url.',
+  'connectorImport.diag.localCommand':
+    '{path} использует локальный путь, на другом компьютере его, возможно, придётся изменить.',
+  'connectorImport.diag.localArgument':
+    '{path} использует локальный путь, на другом компьютере его, возможно, придётся изменить.',
+  'connectorImport.diag.argumentLineBreak': '{path} не может содержать перевод строки.',
+  'connectorImport.diag.argumentSecret': '{path} похоже, содержит учётные данные.',
+  'connectorImport.diag.stdioRemoteFields': 'stdio не может содержать url или oauth.',
+  'connectorImport.diag.stdioHeaders': 'stdio не может содержать обязательные секреты заголовков.',
+  'connectorImport.diag.remoteCommand': 'удалённые транспорты не могут содержать command.',
+  'connectorImport.diag.remoteEnvironment':
+    'удалённые транспорты не могут содержать обязательные секреты окружения.',
+  'connectorImport.diag.oauthHeaders':
+    'OAuth и обязательные секреты заголовков нельзя задать одновременно.',
+  'connectorImport.diag.reservedName':
+    'Имя коннектора "{value}" зарезервировано за встроенным коннектором.',
+  'connectorImport.diag.duplicateName':
+    'Пользовательский коннектор с именем "{value}" уже установлен.',
+  'connectorImport.diag.identityConflictName':
+    'Имя коннектора "{value}" конфликтует с идентификатором установленного коннектора.',
+  'connectorImport.diag.identityConflictId':
+    'Идентификатор коннектора "{value}" конфликтует с псевдонимом установленного коннектора.',
+  'connectorImport.diag.reservedSlug':
+    'Идентификатор коннектора "{value}" зарезервирован за встроенным коннектором.',
+  'connectorImport.diag.duplicateSlug':
+    'Пользовательский коннектор с идентификатором "{value}" уже установлен.',
+  'connectorExport.oauthOnly': 'Только конфигурация OAuth, без токенов.',
+  'connectorExport.namesOnly': 'Только имена: {names}'
 }

@@ -5186,5 +5186,52 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'a11y.removeFailedAttachment': '실패한 첨부 {name} 제거',
   'a11y.parentDirectory': '상위 폴더로 {action}',
   'a11y.scrollablePreview': '{name} 스크롤 가능한 미리보기',
-  'a11y.stepStatus': '{step} 상태: {status}'
+  'a11y.stepStatus': '{step} 상태: {status}',
+  'connectorImport.diag.required': '{path}이(가) 없습니다.',
+  'connectorImport.diag.typeString': '{path}은(는) 문자열이어야 합니다.',
+  'connectorImport.diag.typeArray': '{path}은(는) 배열이어야 합니다.',
+  'connectorImport.diag.typeObject': '{path}은(는) 객체여야 합니다.',
+  'connectorImport.diag.empty': '{path}은(는) 비워 둘 수 없습니다.',
+  'connectorImport.diag.tooLong': '{path}이(가) {max}자를 초과합니다.',
+  'connectorImport.diag.tooMany': '{path}이(가) {max}개 항목을 초과합니다.',
+  'connectorImport.diag.tooLarge': '커넥터 구성 파일은 256 KiB 이하여야 합니다.',
+  'connectorImport.diag.invalidName': '{path}에 지원되지 않는 문자가 있습니다.',
+  'connectorImport.diag.unknownField': '알 수 없는 필드 "{field}"입니다.',
+  'connectorImport.diag.invalidJson': '선택한 파일이 올바른 JSON이 아닙니다.',
+  'connectorImport.diag.root': '커넥터 구성은 JSON 객체여야 합니다.',
+  'connectorImport.diag.schemaVersion': 'schemaVersion은(는) 1이어야 합니다.',
+  'connectorImport.diag.kind': 'kind은(는) "purescience.connector"여야 합니다.',
+  'connectorImport.diag.slug': 'slug에는 소문자, 숫자, 하이픈만 사용할 수 있습니다.',
+  'connectorImport.diag.transport':
+    'transport은(는) stdio, streamable_http, sse 중 하나여야 합니다.',
+  'connectorImport.diag.command': 'stdio에는 command가 필요합니다.',
+  'connectorImport.diag.url': '{path}은(는) 올바른 URL이어야 합니다.',
+  'connectorImport.diag.urlProtocol': '{path}은(는) http 또는 https를 사용해야 합니다.',
+  'connectorImport.diag.urlCredentials': '{path}에는 자격 증명을 포함할 수 없습니다.',
+  'connectorImport.diag.urlSecret': '{path}에 자격 증명으로 보이는 쿼리 매개변수가 있습니다.',
+  'connectorImport.diag.urlRequired': '원격 전송에는 url이 필요합니다.',
+  'connectorImport.diag.localCommand':
+    '{path}에 로컬 경로가 포함되어 있어 다른 컴퓨터에서 바꿔야 할 수 있습니다.',
+  'connectorImport.diag.localArgument':
+    '{path}에 로컬 경로가 포함되어 있어 다른 컴퓨터에서 바꿔야 할 수 있습니다.',
+  'connectorImport.diag.argumentLineBreak': '{path}에는 줄바꿈을 포함할 수 없습니다.',
+  'connectorImport.diag.argumentSecret': '{path}에 자격 증명이 포함된 것으로 보입니다.',
+  'connectorImport.diag.stdioRemoteFields': 'stdio에는 url 또는 oauth를 포함할 수 없습니다.',
+  'connectorImport.diag.stdioHeaders': 'stdio에는 필수 헤더 시크릿을 포함할 수 없습니다.',
+  'connectorImport.diag.remoteCommand': '원격 전송에는 command를 포함할 수 없습니다.',
+  'connectorImport.diag.remoteEnvironment':
+    '원격 전송에는 필수 환경 변수 시크릿을 포함할 수 없습니다.',
+  'connectorImport.diag.oauthHeaders': 'OAuth와 필수 헤더 시크릿은 함께 설정할 수 없습니다.',
+  'connectorImport.diag.reservedName': '커넥터 이름 "{value}"은(는) 기본 제공 커넥터가 사용합니다.',
+  'connectorImport.diag.duplicateName':
+    '"{value}" 이름의 사용자 지정 커넥터가 이미 설치되어 있습니다.',
+  'connectorImport.diag.identityConflictName':
+    '커넥터 이름 "{value}"이(가) 설치된 커넥터 식별자와 충돌합니다.',
+  'connectorImport.diag.identityConflictId':
+    '커넥터 ID "{value}"이(가) 설치된 커넥터 별칭과 충돌합니다.',
+  'connectorImport.diag.reservedSlug': '커넥터 ID "{value}"은(는) 기본 제공 커넥터가 사용합니다.',
+  'connectorImport.diag.duplicateSlug':
+    'ID "{value}"의 사용자 지정 커넥터가 이미 설치되어 있습니다.',
+  'connectorExport.oauthOnly': 'OAuth 구성만 포함되며 토큰은 제외됩니다.',
+  'connectorExport.namesOnly': '이름만: {names}'
 }

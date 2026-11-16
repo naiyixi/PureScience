@@ -5427,5 +5427,57 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'a11y.removeFailedAttachment': 'Retirer la pièce jointe en échec {name}',
   'a11y.parentDirectory': '{action} le dossier parent',
   'a11y.scrollablePreview': 'Aperçu défilable de {name}',
-  'a11y.stepStatus': '{step} — statut : {status}'
+  'a11y.stepStatus': '{step} — statut : {status}',
+  'connectorImport.diag.required': '{path} est manquant.',
+  'connectorImport.diag.typeString': '{path} doit être une chaîne de caractères.',
+  'connectorImport.diag.typeArray': '{path} doit être un tableau.',
+  'connectorImport.diag.typeObject': '{path} doit être un objet.',
+  'connectorImport.diag.empty': '{path} ne peut pas être vide.',
+  'connectorImport.diag.tooLong': '{path} dépasse {max} caractères.',
+  'connectorImport.diag.tooMany': '{path} dépasse {max} entrées.',
+  'connectorImport.diag.tooLarge':
+    'Les fichiers de configuration de connecteur doivent faire 256 KiB au maximum.',
+  'connectorImport.diag.invalidName': '{path} contient des caractères non pris en charge.',
+  'connectorImport.diag.unknownField': 'Champ inconnu « {field} ».',
+  'connectorImport.diag.invalidJson': "Le fichier sélectionné n'est pas un JSON valide.",
+  'connectorImport.diag.root': 'La configuration du connecteur doit être un objet JSON.',
+  'connectorImport.diag.schemaVersion': 'schemaVersion doit valoir 1.',
+  'connectorImport.diag.kind': 'kind doit valoir "purescience.connector".',
+  'connectorImport.diag.slug':
+    'slug ne peut contenir que des minuscules, des chiffres et des tirets.',
+  'connectorImport.diag.transport': 'transport doit être stdio, streamable_http ou sse.',
+  'connectorImport.diag.command': 'stdio exige command.',
+  'connectorImport.diag.url': '{path} doit être une URL valide.',
+  'connectorImport.diag.urlProtocol': '{path} doit utiliser http ou https.',
+  'connectorImport.diag.urlCredentials': "{path} ne peut pas contenir d'identifiants.",
+  'connectorImport.diag.urlSecret':
+    '{path} contient un paramètre de requête qui ressemble à un identifiant.',
+  'connectorImport.diag.urlRequired': 'Les transports distants exigent url.',
+  'connectorImport.diag.localCommand':
+    '{path} utilise un chemin local et devra peut-être être modifié sur un autre ordinateur.',
+  'connectorImport.diag.localArgument':
+    '{path} utilise un chemin local et devra peut-être être modifié sur un autre ordinateur.',
+  'connectorImport.diag.argumentLineBreak': '{path} ne peut pas contenir de retour à la ligne.',
+  'connectorImport.diag.argumentSecret': '{path} semble contenir un identifiant.',
+  'connectorImport.diag.stdioRemoteFields': 'stdio ne peut inclure ni url ni oauth.',
+  'connectorImport.diag.stdioHeaders': "stdio ne peut pas inclure de secrets d'en-tête requis.",
+  'connectorImport.diag.remoteCommand': 'Les transports distants ne peuvent pas inclure command.',
+  'connectorImport.diag.remoteEnvironment':
+    "Les transports distants ne peuvent pas inclure de secrets d'environnement requis.",
+  'connectorImport.diag.oauthHeaders':
+    "OAuth et les secrets d'en-tête requis ne peuvent pas être configurés ensemble.",
+  'connectorImport.diag.reservedName':
+    'Le nom de connecteur « {value} » est réservé à un connecteur intégré.',
+  'connectorImport.diag.duplicateName':
+    'Un connecteur personnalisé nommé « {value} » est déjà installé.',
+  'connectorImport.diag.identityConflictName':
+    "Le nom de connecteur « {value} » entre en conflit avec l'identité d'un connecteur installé.",
+  'connectorImport.diag.identityConflictId':
+    "L'ID de connecteur « {value} » entre en conflit avec un alias de connecteur installé.",
+  'connectorImport.diag.reservedSlug':
+    "L'ID de connecteur « {value} » est réservé à un connecteur intégré.",
+  'connectorImport.diag.duplicateSlug':
+    "Un connecteur personnalisé avec l'ID « {value} » est déjà installé.",
+  'connectorExport.oauthOnly': 'Configuration OAuth uniquement ; jetons exclus.',
+  'connectorExport.namesOnly': 'Noms uniquement : {names}'
 }

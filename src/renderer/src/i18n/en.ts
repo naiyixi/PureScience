@@ -5307,5 +5307,53 @@ export const en: Record<ZhKey, string> = {
   'a11y.removeFailedAttachment': 'Remove failed attachment {name}',
   'a11y.parentDirectory': '{action} parent directory',
   'a11y.scrollablePreview': '{name} scrollable preview',
-  'a11y.stepStatus': '{step} status: {status}'
+  'a11y.stepStatus': '{step} status: {status}',
+  'connectorImport.diag.required': 'Missing {path}.',
+  'connectorImport.diag.typeString': '{path} must be a string.',
+  'connectorImport.diag.typeArray': '{path} must be an array.',
+  'connectorImport.diag.typeObject': '{path} must be an object.',
+  'connectorImport.diag.empty': '{path} cannot be empty.',
+  'connectorImport.diag.tooLong': '{path} exceeds {max} characters.',
+  'connectorImport.diag.tooMany': '{path} exceeds {max} entries.',
+  'connectorImport.diag.tooLarge': 'Connector configuration files must be 256 KiB or smaller.',
+  'connectorImport.diag.invalidName': '{path} contains unsupported characters.',
+  'connectorImport.diag.unknownField': 'Unknown field "{field}".',
+  'connectorImport.diag.invalidJson': 'The selected file is not valid JSON.',
+  'connectorImport.diag.root': 'The Connector configuration must be a JSON object.',
+  'connectorImport.diag.schemaVersion': 'schemaVersion must be 1.',
+  'connectorImport.diag.kind': 'kind must be "purescience.connector".',
+  'connectorImport.diag.slug': 'slug must use only lowercase letters, numbers, and hyphens.',
+  'connectorImport.diag.transport': 'transport must be stdio, streamable_http, or sse.',
+  'connectorImport.diag.command': 'stdio requires command.',
+  'connectorImport.diag.url': '{path} must be a valid URL.',
+  'connectorImport.diag.urlProtocol': '{path} must use http or https.',
+  'connectorImport.diag.urlCredentials': '{path} cannot contain credentials.',
+  'connectorImport.diag.urlSecret': '{path} contains a credential-like query parameter.',
+  'connectorImport.diag.urlRequired': 'Remote transports require url.',
+  'connectorImport.diag.localCommand':
+    '{path} uses a local path and may need to be changed on another computer.',
+  'connectorImport.diag.localArgument':
+    '{path} uses a local path and may need to be changed on another computer.',
+  'connectorImport.diag.argumentLineBreak': '{path} cannot contain a line break.',
+  'connectorImport.diag.argumentSecret': '{path} appears to contain a credential.',
+  'connectorImport.diag.stdioRemoteFields': 'stdio cannot include url or oauth.',
+  'connectorImport.diag.stdioHeaders': 'stdio cannot include required header secrets.',
+  'connectorImport.diag.remoteCommand': 'Remote transports cannot include command.',
+  'connectorImport.diag.remoteEnvironment':
+    'Remote transports cannot include required environment secrets.',
+  'connectorImport.diag.oauthHeaders':
+    'OAuth and required header secrets cannot be configured together.',
+  'connectorImport.diag.reservedName':
+    'Connector name "{value}" is reserved by a built-in connector.',
+  'connectorImport.diag.duplicateName': 'A custom Connector named "{value}" is already installed.',
+  'connectorImport.diag.identityConflictName':
+    'Connector name "{value}" conflicts with an installed Connector identity.',
+  'connectorImport.diag.identityConflictId':
+    'Connector ID "{value}" conflicts with an installed Connector alias.',
+  'connectorImport.diag.reservedSlug':
+    'Connector ID "{value}" is reserved by a built-in connector.',
+  'connectorImport.diag.duplicateSlug':
+    'A custom Connector with ID "{value}" is already installed.',
+  'connectorExport.oauthOnly': 'OAuth configuration only; tokens excluded',
+  'connectorExport.namesOnly': 'Names only: {names}'
 }
