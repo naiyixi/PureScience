@@ -19,6 +19,13 @@
 // and never inferred from a green job: an unsigned release is accepted (that was the shipped state
 // before credentials existed) unless `--require-signed` asks for a Developer ID signature.
 //
+// House rule learned the hard way here: a gate may only demand a literal that its *producer* writes.
+// `--require-signed` first demanded `macSignature === 'developer-id'` — a word the recorder
+// (`scripts/ci/mac-signing-status.mjs`) never emits, since it writes `signed`/`unsigned`/`unproven` —
+// so the check passed its own fixture and could never pass on a real page, while its failure line read
+// "signing required but record says: signed". Requirements now go through `signingEvidenceGap`, which
+// takes the producer's word *and* the evidence that attributes it.
+//
 // Usage:
 //   node scripts/verify-release.mjs v2.27.0
 //   node scripts/verify-release.mjs v2.27.0 --json --require-signed
@@ -102,7 +109,8 @@ export const readCertification = (record) => {
       macSigning.push({
         platform: platform.platform ?? '(unnamed)',
         macSignature: platform.macSignature,
-        credentialsPresent: platform.macSignatureEvidence?.credentialsPresent
+        credentialsPresent: platform.macSignatureEvidence?.credentialsPresent,
+        evidence: platform.macSignatureEvidence ?? null
       })
     }
   }
@@ -111,6 +119,32 @@ export const readCertification = (record) => {
     artifacts,
     macSigning
   }
+}
+
+// What `--require-signed` actually demands. The recorder (`scripts/ci/mac-signing-status.mjs`) writes
+// `signed` / `unsigned` / `unproven`, and `signed` already means "signed by the team this project
+// provisions" — but only because the same record carries the team the state was read from. So the gate
+// requires the state *and* the evidence that makes it attributable; a record that merely asserts
+// `signed` with nothing to attribute it to is `unproven` wearing a better word. Both vocabulary
+// mistakes are possible and both were made once: demanding a literal the recorder never writes
+// (`developer-id`) made a notarized, stapled release read as unsigned, and accepting the literal alone
+// would let a claim with no team pass. Returns null when the entry establishes the property, else a
+// short gap string that becomes part of the failing line.
+export const signingEvidenceGap = (entry) => {
+  if (entry?.macSignature !== 'signed') {
+    return `macSignature=${typeof entry?.macSignature === 'string' ? entry.macSignature : 'absent'}`
+  }
+  const evidence = entry.evidence ?? {}
+  const team = typeof evidence.teamIdentifier === 'string' ? evidence.teamIdentifier.trim() : ''
+  if (team === '' || team === 'not set') return 'signed with no attributable TeamIdentifier'
+  const expected = typeof evidence.teamIdExpected === 'string' ? evidence.teamIdExpected.trim() : ''
+  if (evidence.teamIdExpectation === 'configured' && expected !== '' && team !== expected) {
+    return `TeamIdentifier=${team} is not the expected ${expected}`
+  }
+  if (typeof evidence.readingSource !== 'string' || evidence.readingSource.trim() === '') {
+    return 'signed with no readingSource (asserted, not observed)'
+  }
+  return null
 }
 
 // Gatekeeper's own verdict on a shipped installer, parsed from the two tools a user's Mac effectively
@@ -349,12 +383,19 @@ export const evaluateRelease = ({
           })`
       )
       .join('; ')
-    const signed = macSigning.every((entry) => entry.macSignature === 'developer-id')
+    const gaps = macSigning
+      .map((entry) => ({ platform: entry.platform, gap: signingEvidenceGap(entry) }))
+      .filter(({ gap }) => gap !== null)
+    const signed = gaps.length === 0
     checks.push(
       check(
         'mac-signing-observed',
         !requireSigned || signed,
-        requireSigned && !signed ? `signing required but record says: ${line}` : line
+        requireSigned && !signed
+          ? `signing required but not established: ${gaps
+              .map(({ platform, gap }) => `${platform}: ${gap}`)
+              .join('; ')} (record says: ${line})`
+          : line
       )
     )
   } else {

@@ -52,7 +52,13 @@ type FixtureArtifact = { name: string; sha256: string }
 type FixturePlatform = {
   platform: string
   macSignature?: string
-  macSignatureEvidence?: { credentialsPresent?: boolean }
+  macSignatureEvidence?: {
+    credentialsPresent?: boolean
+    teamIdentifier?: string
+    teamIdExpected?: string
+    teamIdExpectation?: string
+    readingSource?: string
+  }
   artifacts: FixtureArtifact[]
 }
 type FixtureCertification = {
@@ -91,6 +97,17 @@ const certificationFor = (overrides: Partial<FixtureCertification> = {}): Fixtur
   ],
   ...overrides
 })
+
+// The evidence fields below are the ones v2.27.0's record actually carries (read from the published
+// RELEASE-CERTIFICATION.json): the state word is `signed` — not a literal of our choosing — and it is
+// only attributable because the same object names the team it was read from.
+const SIGNED_EVIDENCE = {
+  credentialsPresent: true,
+  teamIdExpected: 'UGQZPJ74DF',
+  teamIdExpectation: 'configured',
+  teamIdentifier: 'UGQZPJ74DF',
+  readingSource: 'shipped-zip'
+}
 
 const body = 'x'.repeat(DEFAULT_MIN_BODY_BYTES)
 
@@ -163,8 +180,18 @@ describe('readCertification', () => {
     expect(record.sourceSha).toBe('deadbeef')
     expect(record.artifacts.size).toBe(8)
     expect(record.macSigning).toEqual([
-      { platform: 'macos-arm64', macSignature: 'unsigned', credentialsPresent: false },
-      { platform: 'macos-x64', macSignature: 'unsigned', credentialsPresent: false }
+      {
+        platform: 'macos-arm64',
+        macSignature: 'unsigned',
+        credentialsPresent: false,
+        evidence: { credentialsPresent: false }
+      },
+      {
+        platform: 'macos-x64',
+        macSignature: 'unsigned',
+        credentialsPresent: false,
+        evidence: { credentialsPresent: false }
+      }
     ])
   })
 
@@ -320,15 +347,57 @@ describe('evaluateRelease', () => {
     expect(verdict().ok).toBe(true)
 
     const signed = certificationFor()
-    signed.platforms![0]!.macSignature = 'developer-id'
-    signed.platforms![1]!.macSignature = 'developer-id'
+    signed.platforms![0]!.macSignature = 'signed'
+    signed.platforms![0]!.macSignatureEvidence = SIGNED_EVIDENCE
+    signed.platforms![1]!.macSignature = 'signed'
+    signed.platforms![1]!.macSignatureEvidence = SIGNED_EVIDENCE
     expect(verdict({ certification: signed, requireSigned: true }).ok).toBe(true)
 
     const halfSigned = certificationFor()
-    halfSigned.platforms![0]!.macSignature = 'developer-id'
+    halfSigned.platforms![0]!.macSignature = 'signed'
+    halfSigned.platforms![0]!.macSignatureEvidence = SIGNED_EVIDENCE
     const rejected = verdict({ certification: halfSigned, requireSigned: true })
     expect(rejected.ok).toBe(false)
     expect(failing(rejected)).toContain('mac-signing-observed')
+  })
+
+  it('does not take the word `signed` without the evidence that attributes it', () => {
+    const claimOnly = certificationFor()
+    claimOnly.platforms![0]!.macSignature = 'signed'
+    claimOnly.platforms![0]!.macSignatureEvidence = { credentialsPresent: true }
+    claimOnly.platforms![1]!.macSignature = 'signed'
+    claimOnly.platforms![1]!.macSignatureEvidence = { credentialsPresent: true }
+    const rejected = verdict({ certification: claimOnly, requireSigned: true })
+    expect(rejected.ok).toBe(false)
+    const signing = rejected.checks.find((c: { name: string }) => c.name === 'mac-signing-observed')
+    expect(signing!.ok).toBe(false)
+    expect(signing!.detail).toContain('no attributable TeamIdentifier')
+  })
+
+  it('rejects a signature by a team this project does not provision', () => {
+    const foreign = certificationFor()
+    for (const platform of foreign.platforms!.slice(0, 2)) {
+      platform.macSignature = 'signed'
+      platform.macSignatureEvidence = { ...SIGNED_EVIDENCE, teamIdentifier: 'ZZZZZZZZZZ' }
+    }
+    const rejected = verdict({ certification: foreign, requireSigned: true })
+    expect(rejected.ok).toBe(false)
+    expect(
+      rejected.checks.find((c: { name: string }) => c.name === 'mac-signing-observed')!.detail
+    ).toContain('is not the expected UGQZPJ74DF')
+  })
+
+  it('rejects `unproven` — an unobserved state is not a signature', () => {
+    const unproven = certificationFor()
+    for (const platform of unproven.platforms!.slice(0, 2)) {
+      platform.macSignature = 'unproven'
+      platform.macSignatureEvidence = SIGNED_EVIDENCE
+    }
+    const rejected = verdict({ certification: unproven, requireSigned: true })
+    expect(rejected.ok).toBe(false)
+    expect(
+      rejected.checks.find((c: { name: string }) => c.name === 'mac-signing-observed')!.detail
+    ).toContain('macSignature=unproven')
   })
 
   it('refuses to call a record without any signature reading signed', () => {

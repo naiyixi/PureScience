@@ -19465,6 +19465,9 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - 同一条命令加 `--require-notarized` ⇒ 同样四条判 `FAIL`、`VERDICT: rejected`、`EXIT=1`。
 - **变异自证**：把严模式判据从「`accepted` 且 `source` 含 Notarized」降到「`accepted`」⇒ 只红
   `accepts a signed-but-unstapled image only when notarization was required` 一条（其余 31 条仍绿）。
+- **「通过」那一支也不是猜的形状**：本机拿一台已公证的**第三方** dmg（另一发布方、只读）喂同一对工具，读出
+  `accepted` / `source=Notarized Developer ID` / `The validate action worked!`，与解析器两种形状逐字一致 ⇒
+  证明的是「解析器认得出真公证件的输出」，**不是我方包已公证**（我方第一份 `accepted` 仍等 v2.27.0 的页）。
 
 ### 三 门禁（本机实跑）
 
@@ -19491,3 +19494,59 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ② 恢复推送时这一笔与 `01b58d2f` 一并推（`git log --oneline origin/main..HEAD` 会看到两笔，都是我的），
   推后按完整 40 位 SHA 盯双车道；
 - ③ 若 `18:33Z` 到点仍无判决 ⇒ 记读数、**不 rerun**（rerun 会再提交一笔公证），把「等 Apple」写进汇报。
+
+## 三百四十六、本轮追加（执行器，2026-11-17 05:0x–）—— v2.27.0 页已落、首份 `accepted` 取到；顺带修掉一条「字面量从未与生产者一致」的门
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 444fcce8`；本地 `HEAD = 08722b23`，领先 5 笔（`01b58d2f`、`8041535d`、`0c74c080`、
+  `44269ed1` merge、`08722b23`）——**都是上一轮与上上轮的发版验收工作，发版窗口里攒着没推**，不是分叉。
+- **v2.27.0 页已落**（`2026-11-16T17:07:54Z` 发布）：`Latest`、`draft=false`、`isPrerelease=false`、17 族资产齐、
+  `sourceSha = 4f26b9bd…` 与 `git rev-parse 'v2.27.0^{commit}'` 逐字一致 ⇒ **发版窗口结束**，可以恢复推送。
+- Release `43849287714`（`4f26b9bd`）**success**；`c867118e` 的 Nightly / Windows Full Test 均 success。
+  按需派发的 `Notary status (read-only)` run `43911423636` 作业级是 **`cancelled`**（`444fcce8` 推上去时被顶掉）
+  ⇒ 不是红，不据此下任何结论。
+- 工作区**仍带别人未提交的在制品**（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪的 `e2e/certification/connector-refusal-language.spec.ts`、三份更早的未跟踪证据档）
+  ⇒ 一律不碰、不 stash、不提交；本轮单元不需要新 i18n 键，因此不受影响。
+- `hermes cron list` 只有本任务一个执行器；进程表里只有常驻 `electron-vite dev`（launchd 无头实例）⇒ 无第二执行体在跑。
+
+### 一 交付
+
+1. **首份真机 `accepted` 读数**（排期档 v2.27.0 第 2 条收口）：`node scripts/verify-release.mjs v2.27.0
+   --require-signed --require-notarized` ⇒ `VERDICT: accepted (0 failure(s), 0 warning(s))`，两张 dmg 均
+   `accepted source=Notarized Developer ID` + `stapler validate=valid`，17 族资产齐、`body 77,061 bytes`、
+   8 条摘要双侧一致、`sourceSha` 与 tag 提交逐字一致。**这是本项目第一份「OS 认、票钉在包上」的发布读数。**
+2. **修掉本轮首跑暴露的门缺陷**（`scripts/verify-release.mjs`）：`mac-signing-observed` 原判
+   `macSignature === 'developer-id'`，而记录器（`scripts/ci/mac-signing-status.mjs`）写的是
+   `signed|unsigned|unproven`；那个字面量**只存在于本工具的夹具里**，于是这条门在真实页面上**从未可能通过**，
+   失败文案还自我矛盾（「要求签名，记录说 signed」）。改为 `signingEvidenceGap()` 四判（状态词 + TeamIdentifier
+   非空 + 与 `teamIdExpected` 一致 + `readingSource` 非空），**收紧不是放宽**。
+3. **测试**：夹具换成 v2.27.0 记录的真实形状，另加三例（只有 `signed` 一词无 TeamIdentifier ⇒ 红、
+   TeamIdentifier 非本项目配置 ⇒ 红、`unproven` ⇒ 红）；`readCertification` 形状用例随新字段更新。
+4. **文档**：证据档新增 §三之一（读数 + 缺陷根因 + 修法），§五第 1 条与 §六按事实改写（旧句「页未出现」就地标注被取代）。
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/verify-release.test.ts` | **1 file / 38 passed** |
+| `npx vitest run scripts/verify-release.test.ts scripts/macos-package-smoke.test.ts` | **2 files / 60 passed** |
+| `npm run typecheck:node` | 0（**须 `NODE_OPTIONS=--max-old-space-size=8192`**；默认堆 `Abort trap: 6`，本机小内存老形状） |
+| `npm run typecheck:web` | 0 |
+| `npx eslint --no-cache scripts/verify-release.mjs scripts/verify-release.test.ts` | **0 error / 0 warning** |
+
+### 三 边界
+
+- 只判**这一层**：不重算 dmg 摘要、不挂载安装、不跑应用；`codesign -d --verbose=4` 的 Team ID 与「装上去能启动」
+  仍属装机取证，未做 ⇒ **不许把「OS 认这两个 dmg」写成「装机可启动」**。
+- `--assess-installers` 冷跑下载两张 dmg（约 300 MB）在本机 > 300 s 会超时，热跑 < 180 s，所以默认不开。
+- 本单元是工具链，无界面/数据路径 ⇒ 没有窗口读数。
+
+### 四 下一轮第一步
+
+- ① 收口排期档 v2.27.0 **第 3 条**（cask 去 `--no-quarantine` 与 README 签名自陈）：`0c74c080` 自称已同步 ⇒
+  **先核它、不重做**（`grep -rn "no-quarantine\|ad-hoc" README.md README.en.md` + tap 仓库 cask caveats）。
+- ② 把「门禁要求的字面量必须取自生产者自己的枚举」写成常驻口径（本轮教训），并在 `verify-release.mjs`
+  头注里点名这一条。
+- ③ 恢复推送：把本地 5 笔 + 本轮这笔一并推，推前 `gh run list` 确认无在飞车道，推后按完整 40 位 SHA 盯双车道。
