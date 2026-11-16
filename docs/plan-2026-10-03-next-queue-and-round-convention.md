@@ -19524,7 +19524,11 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
    非空 + 与 `teamIdExpected` 一致 + `readingSource` 非空），**收紧不是放宽**。
 3. **测试**：夹具换成 v2.27.0 记录的真实形状，另加三例（只有 `signed` 一词无 TeamIdentifier ⇒ 红、
    TeamIdentifier 非本项目配置 ⇒ 红、`unproven` ⇒ 红）；`readCertification` 形状用例随新字段更新。
-4. **文档**：证据档新增 §三之一（读数 + 缺陷根因 + 修法），§五第 1 条与 §六按事实改写（旧句「页未出现」就地标注被取代）。
+4. **文档**：证据档新增 §三之一（读数 + 缺陷根因 + 修法），§五第 1 条与 §六按事实改写（旧句「页未出现」就地标注被取代）；
+   另立 `docs/evidence/2026-11-17-v2270-closeout.md` 记三项排期条目的收口（含 cask 远端 tap 的读数）并回填排期档。
+5. **发布页正文补两段**（`gh release edit v2.27.0 --notes-file`）：① 本轮 `accepted` 读数与 v2.26.0 的反向读数；
+   ② **仍空的一格**——mac 原地更新只有代码侧的门，应用级真机读数等下一次签名版。回读：`assets=17`、
+   `draft=false`、`isPrerelease=false`、正文含该小节 1 处、仍是 `Latest`。
 
 ### 二 门禁（本机实跑）
 
