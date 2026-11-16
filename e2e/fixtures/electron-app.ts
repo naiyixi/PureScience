@@ -121,6 +121,12 @@ type ElectronApp = {
    * Undefined only before the first launch.
    */
   readonly currentLaunchLogPath: string | undefined
+  /**
+   * Removes OS focus from every window and reads the result back. Only the main process can change native
+   * focus, and the task-notification service suppresses delivery while a window is focused, so a spec
+   * observing a banner has to ask for this explicitly — and reads `true` only when the blur really took.
+   */
+  blurMainWindow: () => Promise<boolean>
   completeOnboarding: () => Promise<Page>
   configureFakeAgent: () => Promise<Page>
   createTestDirectory: (name: string) => Promise<string>
@@ -533,6 +539,23 @@ class ElectronAppHarness implements ElectronApp {
       },
       { width: size.width, height: size.height, belowMinimum: options.belowMinimum === true }
     )
+  }
+
+  /**
+   * Takes OS focus away from every app window and reads the result back.
+   *
+   * The task-notification service suppresses a banner while any window is focused (the reader is
+   * already looking at the app), so a spec that wants to observe delivery has to make the window
+   * unfocused first. It cannot be done from the renderer: Electron reports *native* window focus, which
+   * only the main process can change. Returning whether it actually took effect keeps the seam from
+   * becoming a no-op a spec would read as "the banner was suppressed for another reason".
+   */
+  async blurMainWindow(): Promise<boolean> {
+    return this.runningApplication.evaluate(({ BrowserWindow }) => {
+      for (const window of BrowserWindow.getAllWindows()) window.blur()
+
+      return BrowserWindow.getAllWindows().every((window) => !window.isFocused())
+    })
   }
 
   async launchSecondInstance(): Promise<Page> {
