@@ -1462,13 +1462,19 @@ describe('compute_done notification on dispatch_failed (error) jobs', () => {
     })
 
     await poller.tick()
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    // The emit is fire-and-forget (`void emitJobNotification`), so the write lands on a later turn of
+    // the loop. A fixed sleep here used to be the whole wait: on a loaded runner the notification path
+    // outran 10 ms and this test failed with `update` never called, while the same file passed 3/3 on an
+    // idle machine. Waiting for the write itself — not for a duration — keeps the assertion as strong
+    // (a write that never comes still fails) without borrowing the machine's speed.
+    await vi.waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ notifiedAt: expect.any(Date) })
+      )
+    )
 
     // notifiedAt written and broadcast fired for the error job
-    expect(update).toHaveBeenCalledWith(
-      'job-1',
-      expect.objectContaining({ notifiedAt: expect.any(Date) })
-    )
     expect(broadcast).toHaveBeenCalledOnce()
     expect(broadcast.mock.calls[0][0].status).toBe('error')
   })
