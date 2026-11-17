@@ -56,6 +56,10 @@ import type {
   NotebookExecutor
 } from './runtime-service'
 import { DEFAULT_TIMEOUT_MS, TimeoutController } from './timeout-controller'
+import {
+  notebookExecutionTimeoutMessage,
+  notebookStartupGraceMessage
+} from './kernel-timeout-message'
 import { isApplicationShutdownRequested } from '../application-shutdown-trigger'
 
 // Unified child-process proxy environment: every spawned kernel resolves the
@@ -683,9 +687,14 @@ class NotebookKernelExecutor implements NotebookExecutor {
         proc,
         pending?.timeout.timedOut
           ? new NotebookExecutionTimeoutError(
+              // Name the mechanism, not just the clock. Field evidence: 113 notebook/bash timeouts in
+              // seventeen days, and the message said only that the budget ran out — so the next attempt
+              // was the same cell again. It now says the soft interrupt was already tried, that the kernel
+              // was dropped as a result, and what to change (split the cell, raise the budget, or find the
+              // loop that never ends).
               pending.timeout.executing
-                ? `Notebook execution timed out after ${pending.timeoutMs}ms.`
-                : 'Notebook kernel never began executing: its startup grace expired.'
+                ? notebookExecutionTimeoutMessage(pending.timeoutMs)
+                : notebookStartupGraceMessage()
             )
           : crashingRunError()
       )

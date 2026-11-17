@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
-  "alwaysLanes": ["policy"],
+  "alwaysLanes": [
+    "policy"
+  ],
   "laneOrder": [
     "policy",
     "docs",
@@ -21,7 +23,14 @@
     "e2e_accessibility_macos",
     "e2e_visual_macos"
   ],
-  "bundleOrder": ["policy", "static", "unit", "windows_core", "macos_e2e", "windows_e2e"],
+  "bundleOrder": [
+    "policy",
+    "static",
+    "unit",
+    "windows_core",
+    "macos_e2e",
+    "windows_e2e"
+  ],
   "laneBundles": {
     "policy": "policy",
     "docs": "static",
@@ -71,33 +80,54 @@
         ".github/CODEOWNERS",
         "CODEOWNERS"
       ],
-      "capabilities": ["ci_integrity_surface"]
+      "capabilities": [
+        "ci_integrity_surface"
+      ]
     },
     {
       "id": "documentation",
       "role": "owner",
-      "paths": ["**/*.md", "docs/**", "LICENSE", ".gitignore"],
-      "capabilities": ["documentation"]
+      "paths": [
+        "**/*.md",
+        "docs/**",
+        "LICENSE",
+        ".gitignore"
+      ],
+      "capabilities": [
+        "documentation"
+      ]
     },
     {
       "id": "shared_contract",
       "role": "owner",
       "fallbackOwner": true,
-      "paths": ["src/shared/**"],
-      "capabilities": ["shared_contract"]
+      "paths": [
+        "src/shared/**"
+      ],
+      "capabilities": [
+        "shared_contract"
+      ]
     },
     {
       "id": "preload_contract",
       "role": "owner",
-      "paths": ["src/preload/**"],
-      "capabilities": ["preload_contract"]
+      "paths": [
+        "src/preload/**"
+      ],
+      "capabilities": [
+        "preload_contract"
+      ]
     },
     {
       "id": "main_runtime",
       "role": "owner",
       "fallbackOwner": true,
-      "paths": ["src/main/**"],
-      "capabilities": ["main_runtime"]
+      "paths": [
+        "src/main/**"
+      ],
+      "capabilities": [
+        "main_runtime"
+      ]
     },
     {
       "id": "windows_sensitive",
@@ -128,6 +158,7 @@
         "src/main/notebook/environment-state-tracker.ts",
         "src/main/notebook/execution-owner.ts",
         "src/main/notebook/kernel-executor.ts",
+        "src/main/notebook/kernel-timeout-message.ts",
         "src/main/notebook/kernel-idle-spin.ts",
         "src/main/notebook/local-rpc-server.ts",
         "src/main/notebook/managed-runtime-guard.ts",
@@ -184,14 +215,20 @@
         "src/shared/settings.ts",
         "src/shared/update.ts"
       ],
-      "capabilities": ["windows_sensitive"]
+      "capabilities": [
+        "windows_sensitive"
+      ]
     },
     {
       "id": "renderer_view",
       "role": "owner",
       "fallbackOwner": true,
-      "paths": ["src/renderer/**"],
-      "capabilities": ["renderer_view"]
+      "paths": [
+        "src/renderer/**"
+      ],
+      "capabilities": [
+        "renderer_view"
+      ]
     },
     {
       "id": "renderer_state",
@@ -202,19 +239,30 @@
         "src/renderer/src/navigation/**",
         "src/renderer/src/pages/workspace/**"
       ],
-      "capabilities": ["renderer_state"]
+      "capabilities": [
+        "renderer_state"
+      ]
     },
     {
       "id": "cli_sdk",
       "role": "owner",
-      "paths": ["cli/**", "packages/purescience/**"],
-      "capabilities": ["cli_sdk"]
+      "paths": [
+        "cli/**",
+        "packages/purescience/**"
+      ],
+      "capabilities": [
+        "cli_sdk"
+      ]
     },
     {
       "id": "settings_ipc",
       "role": "overlay",
-      "paths": ["src/main/settings/ipc.ts"],
-      "capabilities": ["settings_ipc"]
+      "paths": [
+        "src/main/settings/ipc.ts"
+      ],
+      "capabilities": [
+        "settings_ipc"
+      ]
     }
   ],
   "capabilities": {
@@ -224,10 +272,14 @@
     },
     "documentation": {
       "consumers": [],
-      "lanes": ["docs"]
+      "lanes": [
+        "docs"
+      ]
     },
     "shared_contract": {
-      "consumers": ["preload_adapter"],
+      "consumers": [
+        "preload_adapter"
+      ],
       "lanes": [
         "format",
         "lint",
@@ -250,12 +302,27 @@
       ]
     },
     "main_runtime": {
-      "consumers": ["renderer_runtime"],
-      "lanes": ["format", "lint", "typecheck_node", "interface_contracts", "unit_macos"]
+      "consumers": [
+        "renderer_runtime"
+      ],
+      "lanes": [
+        "format",
+        "lint",
+        "typecheck_node",
+        "interface_contracts",
+        "unit_macos"
+      ]
     },
     "renderer_runtime": {
-      "consumers": ["e2e_functional", "e2e_workspace"],
-      "lanes": ["typecheck_web", "unit_macos", "build"]
+      "consumers": [
+        "e2e_functional",
+        "e2e_workspace"
+      ],
+      "lanes": [
+        "typecheck_web",
+        "unit_macos",
+        "build"
+      ]
     },
     "windows_sensitive": {
       "consumers": [],
@@ -267,44 +334,85 @@
       ]
     },
     "renderer_view": {
-      "consumers": ["e2e_functional", "e2e_accessibility", "e2e_visual"],
-      "lanes": ["format", "lint", "typecheck_web", "unit_macos", "build"]
+      "consumers": [
+        "e2e_functional",
+        "e2e_accessibility",
+        "e2e_visual"
+      ],
+      "lanes": [
+        "format",
+        "lint",
+        "typecheck_web",
+        "unit_macos",
+        "build"
+      ]
     },
     "renderer_state": {
-      "consumers": ["e2e_workspace"],
+      "consumers": [
+        "e2e_workspace"
+      ],
       "lanes": []
     },
     "cli_sdk": {
       "consumers": [],
-      "lanes": ["format", "lint", "cli_sdk"]
+      "lanes": [
+        "format",
+        "lint",
+        "cli_sdk"
+      ]
     },
     "settings_ipc": {
-      "consumers": ["preload_adapter"],
-      "lanes": ["typecheck_node", "interface_contracts"]
+      "consumers": [
+        "preload_adapter"
+      ],
+      "lanes": [
+        "typecheck_node",
+        "interface_contracts"
+      ]
     },
     "preload_adapter": {
-      "consumers": ["renderer_settings"],
-      "lanes": ["typecheck_web", "build"]
+      "consumers": [
+        "renderer_settings"
+      ],
+      "lanes": [
+        "typecheck_web",
+        "build"
+      ]
     },
     "renderer_settings": {
-      "consumers": ["e2e_functional", "e2e_workspace", "e2e_accessibility", "e2e_visual"],
-      "lanes": ["unit_macos"]
+      "consumers": [
+        "e2e_functional",
+        "e2e_workspace",
+        "e2e_accessibility",
+        "e2e_visual"
+      ],
+      "lanes": [
+        "unit_macos"
+      ]
     },
     "e2e_functional": {
       "consumers": [],
-      "lanes": ["e2e_functional_macos"]
+      "lanes": [
+        "e2e_functional_macos"
+      ]
     },
     "e2e_workspace": {
       "consumers": [],
-      "lanes": ["e2e_workspace_macos"]
+      "lanes": [
+        "e2e_workspace_macos"
+      ]
     },
     "e2e_accessibility": {
       "consumers": [],
-      "lanes": ["e2e_accessibility_macos"]
+      "lanes": [
+        "e2e_accessibility_macos"
+      ]
     },
     "e2e_visual": {
       "consumers": [],
-      "lanes": ["e2e_visual_macos"]
+      "lanes": [
+        "e2e_visual_macos"
+      ]
     }
   }
 }
