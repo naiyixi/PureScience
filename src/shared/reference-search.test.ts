@@ -64,6 +64,26 @@ describe('searchReferences', () => {
     })
   ]
 
+  it('finds a Chinese query typed without spaces, and still ranks the real phrase first', () => {
+    // The reader types one run of characters; the title holds the same ideas in another order. Before this
+    // fallback both records were invisible, because an exact-substring test cannot see through the ordering.
+    const phrase = build({ id: 'phrase', title: '深度学习医学影像的进展' })
+    const scattered = build({ id: 'scattered', title: '医学影像中的深度学习' })
+
+    const results = searchReferences([scattered, phrase], '深度学习医学影像')
+
+    expect(results.map((result) => result.reference.id)).toEqual(['phrase', 'scattered'])
+    // Half weight on the character-level match: the record holding the phrase must come first.
+    expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0)
+  })
+
+  it('keeps the exact-substring rule for non-Chinese queries', () => {
+    const record = build({ title: 'Deep learning in medical imaging' })
+    expect(searchReferences([record], 'deep imaging')).toHaveLength(1)
+    // Character-level fallback is CJK-only: 'dpimg' must not match an English title.
+    expect(searchReferences([record], 'dpimg')).toHaveLength(0)
+  })
+
   it('searches nothing for a blank query — the caller keeps its own list', () => {
     expect(searchReferences(references, '   ')).toEqual([])
   })

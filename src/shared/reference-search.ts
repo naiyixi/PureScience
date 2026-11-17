@@ -32,6 +32,18 @@ const FIELD_WEIGHTS: Record<ReferenceSearchField, number> = {
 
 const SNIPPET_RADIUS = 48
 
+// A Chinese query arrives without spaces, and a title almost never repeats it verbatim: a reader types
+// 深度学习医学影像 for a record titled 医学影像中的深度学习, and an exact-substring search finds nothing. For a
+// CJK-only term that has no exact hit, a field containing every one of its characters counts as a weaker
+// match — half weight, so a record holding the real phrase still outranks one that merely holds the words.
+const CJK_PATTERN = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/
+
+const isCjkOnlyTerm = (term: string): boolean =>
+  term.length >= 2 && [...term].every((character) => CJK_PATTERN.test(character))
+
+const containsEveryCharacter = (haystack: string, term: string): boolean =>
+  [...term].every((character) => haystack.includes(character))
+
 const fieldsOf = (reference: Reference): Array<{ field: ReferenceSearchField; text: string }> => {
   const fields: Array<{ field: ReferenceSearchField; text: string }> = [
     { field: 'title', text: reference.title ?? '' }
@@ -116,6 +128,20 @@ export const searchReferences = (
           })
         }
       }
+      if (bestWeight === 0 && isCjkOnlyTerm(term)) {
+        for (const field of fields) {
+          if (!containsEveryCharacter(field.lower, term)) continue
+          bestWeight = Math.max(bestWeight, Math.max(1, Math.floor(FIELD_WEIGHTS[field.field] / 2)))
+          if (!matches.has(field.field)) {
+            const at = field.lower.indexOf([...term][0] ?? '')
+            matches.set(field.field, {
+              field: field.field,
+              snippet: windowsAround(field.text.trim(), Math.max(0, at), term.length)
+            })
+          }
+        }
+      }
+
       if (bestWeight === 0) {
         matchedEveryTerm = false
         break
