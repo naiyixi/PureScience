@@ -50,9 +50,9 @@ test('sends the answer-language requirement with the turn, ahead of everything e
 
   // A real window, a real turn, and the content the model was handed: the requirement is first in the
   // prompt, which is the only placement that survives a turn carrying English tool output.
-  await expect.poll(lastAgentPromptHead, { timeout: 15_000 }).toContain(
-    'Answer language — hard requirement'
-  )
+  await expect
+    .poll(lastAgentPromptHead, { timeout: 15_000 })
+    .toContain('Answer language — hard requirement')
 })
 
 test('edits and navigates message revisions that persist after relaunch', async ({ app }) => {
