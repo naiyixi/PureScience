@@ -4339,7 +4339,10 @@ describe('installClaude (app-managed source)', () => {
     })
 
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('version') })
-    expect(logs.at(-1)).toContain('incompatible or incomplete')
+    // The log line must now name the mechanism: this path does not exist on disk, so the failure is a
+    // missing file (security software / rollback), not "the binary is incompatible".
+    expect(logs.at(-1)).toContain('there is no file at the installed path')
+    expect(logs.at(-1)).toContain('(evidence: file missing)')
     expect((await service.getSettingsView()).claude).toEqual({})
   })
 
