@@ -1,5 +1,44 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十二、本轮追加（执行器，2026-11-18 05:1x–）—— v2.29.0 发版：v2.28.0 两次没页的真凶分开定因，两批合并发出
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main` 进轮时为 `271a1701`（v2.29.0 就绪件，已推）；工作树里另有一批**不是我的**未提交路径
+  （`src/renderer/src/i18n/*`、连接器三个组件、`src/renderer/src/lib/main-message-catalog*`、
+  `src/shared/background-delivery-labels*`、`e2e/certification/connector-refusal-language.spec.ts`）⇒ 一个字节没碰。
+- B 段三件（A7 / S3 / M2）此前已全部收口或顺延，本轮不再从 B 段取任务；本轮先解决**卡在发版上的外部阻塞**。
+
+### 一 定因（两次红是两件事，不许混成一句「runner 抖动」）
+
+| 现象 | 判据（作业级日志/注解原文） | 归属 |
+|---|---|---|
+| v2.28.0 三次 Release 全红在 `Build & package`（两个 mac 架构，同一嵌套文件 `.../af.lproj/locale.pak`，`--timestamp` 后 93 s 失败） | `A timestamp was expected but was not found.` | **Apple 时间戳服务不可达**（网络侧，非代码；`build/adhoc-sign.cjs` 与 `v2.27.0` 逐字相同，无签名相关改动） |
+| 本轮 arm64 `Notarize + staple` = `cancelled`，`runner_name` 为空、`steps: []` | 注解：`The job was not acquired by Runner of type hosted even after multiple attempts` + `Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.` | **GitHub macOS arm64 runner 容量**（基础设施） |
+
+**两次都没改代码**：第一次等 Apple 时间戳服务恢复（新 tag 事件重新走到签名即成功，两个 mac 架构 `Build & package` 均 success），
+第二次对 `gh run rerun --failed` 重跑该 notarize 作业（该作业上一次产出为零 ⇒ 不会造成同名重复产物）。
+
+### 二 交付
+
+- **合并发布**：v2.28.0 从未有过 Release 页 ⇒ 删 tag（`2c131939`，指向 `f9e8fb80`）不再重建，改在 `271a1701` 打 **v2.29.0** 发一次，
+  两批内容一起发出（v2.29.0 的 CHANGELOG 段本就含 v2.28.0 段）。
+- **清单式核验（全部现取）**：Release run `44177680252` —— `Verify(lint+typecheck+带覆盖单测+package)` **success**、
+  四平台 build **全 success**、mac P0 Electron 认证 **success**、两个 `Notarize + staple` **success**、`publish` **success**；
+  页 `gh release list` = **Latest**、`draft=false`/`isPrerelease=false`、**17 资产**（与 v2.27.0 家族逐项同形；
+  mac 无 blockmap 是这个仓的既有形状，不是缺件）；`RELEASE-CERTIFICATION.json` 的 `sourceSha = 271a1701…` 与 `git rev-parse 'v2.29.0^{commit}'` 逐字符一致。
+- **正文自己写**：`node scripts/release-notes.mjs v2.29.0` → 首行加一段「关于版本号」说明 v2.28.0 为什么没有页 →
+  `gh release edit --notes-file` → 回读 **73,610 字节**、`关于版本号` 命中 1 处、`## v2.29.0` 在第 18 行。
+- **顺手修掉一处会 404 的链接**：README 双语横幅里 `Previous: [v2.28.0](…/releases/tag/v2.28.0)` 指向不存在的页 ⇒
+  改为指向 `blob/main/CHANGELOG.md`，`node scripts/check-readme-sync.mjs` 通过（提交 `02fde670`）。
+
+### 三 边界（不许读成更强）
+
+- `windows-upgrade-smoke` 在本轮收口时仍 `in_progress`，**不否定已发布资产**；它的判决下一轮读，红了先 `rerun --failed` 判抖动，**不许因此重打 tag**。
+- 本轮**没有**新增任何产品能力；v2.29.0 的「不在本版」三条（重放报告 / 第三方读 `ro-crate-metadata.json` / 十语对照版式 的真机读数）
+  与「Windows 真机读数仍缺」原样留在 CHANGELOG 里，下一轮按台账认领。
+
+
 > 本文件由用户与会话共同定稿，写给**自主执行器的每一轮**。两件事：**收口约定**（别把半成品留给下一轮）与
 > **排序**（每轮都能有"完成项"落地，而不是几天都在同一片里打转）。
 
