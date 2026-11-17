@@ -62,6 +62,16 @@ const facts: SupportBundleFacts = {
     unsampledReasons: [],
     latest: [],
     records: []
+  },
+  notebookKernelMemory: {
+    capacity: 120,
+    rounds: 0,
+    dropped: 0,
+    status: 'monitor-not-started',
+    monitor: 'never-started',
+    unmeasuredReasons: [],
+    latest: [],
+    records: []
   }
 }
 

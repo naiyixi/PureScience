@@ -17,7 +17,7 @@ import { createStartupStepsHolder } from './startup-steps-snapshot'
 import { createComposeStepRecorder } from './compose-steps'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 import { createIpcChannelLatency } from './ipc-channel-latency'
-import { createKernelCpuRing } from '../notebook/kernel-idle-spin'
+import { createKernelCpuRing, createKernelMemoryRing } from '../notebook/kernel-idle-spin'
 
 const roots: string[] = []
 
@@ -75,6 +75,9 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     // The kernel cpu ring's own empty state: `monitor-not-started`, which is what a bundle exported before any
     // kernel spawned carries. Written by the factory, not by hand.
     notebookKernelCpu: createKernelCpuRing().summary(),
+    // The memory ledger's own empty state, written by its factory for the same reason: a bundle exported
+    // before any kernel spawned says `monitor-not-started`, which is a different answer from "holding nothing".
+    notebookKernelMemory: createKernelMemoryRing().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -584,6 +587,75 @@ describe('support bundle: trajectory section', () => {
     expect(section.records[0].windowMs).toBe(15_000)
     expect(section.latest).toHaveLength(1)
     expect(section.latest[0]).toMatchObject({ pid: 79142, cpuPercent: 97.6, spinning: true })
+  })
+
+  it('carries what the idle kernels are holding, with the round counts that make the total readable', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const ring = createKernelMemoryRing()
+    ring.noteMonitorStarted()
+    ring.recordRound({
+      at: '2026-11-17T13:00:00.000Z',
+      entries: [
+        {
+          key: 'python:default',
+          kind: 'python',
+          env: 'default',
+          pid: 4201,
+          reading: { status: 'observed', residentBytes: 430_000_000 }
+        },
+        {
+          key: 'r:default',
+          kind: 'r',
+          env: 'default',
+          pid: 4202,
+          reading: { status: 'observed', residentBytes: 120_000_000 }
+        },
+        {
+          key: 'repl:',
+          kind: 'repl',
+          env: '',
+          pid: 4203,
+          reading: { status: 'unmeasured', reason: 'probe-failed' }
+        }
+      ]
+    })
+
+    const result = await createSupportBundle({ ...input, notebookKernelMemory: ring.summary() })
+
+    expect(result.entries).toContain('diagnostics/notebook-kernel-memory.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const section = JSON.parse(
+      await readFrom(target, 'diagnostics/notebook-kernel-memory.json')
+    ) as {
+      status: string
+      last: { kernels: number; measured: number; unmeasured: number; totalResidentBytes?: number }
+      latest: { key: string; residentBytes: number }[]
+      unmeasuredReasons: string[]
+    }
+    expect(section.status).toBe('samples')
+    expect(section.latest.map((sample) => sample.key).sort()).toEqual([
+      'python:default',
+      'r:default'
+    ])
+    expect(section.latest.map((sample) => sample.residentBytes).sort((a, b) => a - b)).toEqual([
+      120_000_000, 430_000_000
+    ])
+    // The total belongs to one round, and that round says two of its three kernels were measured: a reader
+    // can see that 550 MB is not "what all three hold".
+    expect(section.last).toMatchObject({
+      kernels: 3,
+      measured: 2,
+      unmeasured: 1,
+      totalResidentBytes: 550_000_000
+    })
+    expect(section.unmeasuredReasons).toEqual(['probe-failed'])
+    // The README has to describe the section it ships, or a reader of the archive cannot know what the
+    // absence of a total means.
+    expect(await readFrom(target, 'README.txt')).toContain(
+      'diagnostics/notebook-kernel-memory.json'
+    )
   })
 
   it('names the state where no kernel cpu was ever looked at, instead of shipping an empty list', async () => {

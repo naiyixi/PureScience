@@ -25,7 +25,9 @@ import {
   KernelIdleSpinMonitor,
   type IdleSpinReport,
   type IdleSpinUnsampledReason,
-  type KernelCpuProbe
+  type KernelCpuProbe,
+  type KernelMemoryProbe,
+  type KernelMemoryRing
 } from './kernel-idle-spin'
 import type { Logger } from '../logger'
 import { confineKernelWrites, protectManagedRuntimeWrites } from './managed-runtime-guard'
@@ -154,6 +156,11 @@ export type NotebookKernelExecutorOptions = {
   idleSpinProbe?: KernelCpuProbe
   idleSpinIntervalMs?: number
   idleSpinThresholdPercent?: number
+  // The memory half of the same observation: one reading per idle kernel per round. Injectable for the
+  // same reason as the cpu probe — a test must not have to wait out a real interval — and the ring is a
+  // seam because the default is the process-wide one the support bundle reads.
+  idleSpinMemoryProbe?: KernelMemoryProbe
+  idleSpinMemoryRing?: KernelMemoryRing
 }
 
 // One in-flight request awaiting a matching loop response line.
@@ -400,6 +407,8 @@ class NotebookKernelExecutor implements NotebookExecutor {
       onSpin: (report) => this.reportIdleSpin(report),
       onUnsampled: (reason) => this.reportIdleSpinUnsampled(reason),
       probe: options.idleSpinProbe,
+      memoryProbe: options.idleSpinMemoryProbe,
+      memoryRing: options.idleSpinMemoryRing,
       platform: this.platform,
       intervalMs: options.idleSpinIntervalMs,
       thresholdPercent: options.idleSpinThresholdPercent

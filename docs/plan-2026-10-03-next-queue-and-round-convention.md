@@ -19799,3 +19799,67 @@ frozen mirror: 141 of 1179 — 0 already say so, 141 disagree:
 - ② 若开发实例在下一轮之前重启过（日志出现新的 `app starting`），先在它的语料里核那两条相隔 ~60 s 的检查；
   没有就继续等机器下一次合盖唤醒 —— 这是本改动唯一的真机判据，不另造实验。
 - ③ i18n 那批在制品仍留在别人手里，继续不动。
+
+## 三百五十一、本轮追加（执行器，2026-11-17 21:2x–）—— 空闲内核占了多少内存：诊断包里多一格「谁在吃掉那 2.4 GB」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = fba0fcd3`（同日 21:11 桌面会话的提交），`git log origin/main..HEAD` 为空。
+  上一笔 `6bcb6977` 的双车道判决**到手**：`Nightly` 与 `Windows Full Test` 均 `completed / success`
+  （按完整 40 位 SHA 查：`6bcb6977ba83c0cecd7c0ffea564040e92913e2c`）。
+- 在飞车道：`fba0fcd3` 的 `Nightly` / `Windows Full Test` 21:16 起跑 ⇒ 本笔**先落本地**，推前再查一次。
+- 工作区带别人未提交的在制品（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪 e2e spec、四份未跟踪证据档）⇒ 一个字节没碰，只提交自己那七个文件。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；C 段外部阻塞。本单元取记事本 `round-kernels` 点名的下一单元候选，
+  只做**观测**那一半（回收会丢命名空间，属需拍板项，不动）。
+
+### 一 交付（证据档 `docs/evidence/2026-11-17-kernel-memory-in-support-bundle.md`）
+
+CPU 那一格（空闲内核烧 CPU → 具名日志行 + `diagnostics/notebook-kernel-cpu.json`）早就有了；缺的是**另一半**：
+上一轮读到 11 个 python 内核常驻合计 ≈2,376 MB、swap 用到 10.4/11.2 GB，而其中 9 个内核 0% CPU ⇒ CPU 那一格对它们
+一个字都不会说。内核是按会话**故意保留**的（`DEFAULT_IDLE_MS = 0`，注释写明回收会丢命名空间），所以缺的是读数不是控制。
+
+1. `src/main/notebook/kernel-idle-spin.ts` 新增内存台账：`KernelMemoryReading` / `KernelMemorySample` /
+   `KernelMemoryRound` / `NotebookKernelMemorySummary` / `createKernelMemoryRing` / `sharedKernelMemory`，
+   真探针 `ps -o rss=` + `parseResidentBytes`（KB→字节）。监控器在**同一拍、同一份 idle 目标表**上多测一轮内存；
+   内存探针失败**不动** CPU 基线（两条读数独立）。
+2. `src/main/notebook/kernel-executor.ts` 透传两个 seam（`idleSpinMemoryProbe` / `idleSpinMemoryRing`），生产走默认。
+3. `src/main/diagnostics/support-bundle.ts` 新增必填段 `notebookKernelMemory` → `diagnostics/notebook-kernel-memory.json`
+   + README 一节；`src/main/ipc.ts` 组合根喂 `sharedKernelMemory.summary()`。
+4. 三条语义纪律各配一条用例：**水位不是速率**；**总量必须带分母**（`kernels/measured/unmeasured`，没测到记具名原因、不记 0）；
+   **`rss` 是常驻集不是 `phys_footprint`**（跨内核求和是上界，逐内核数字才是主读数）。
+
+### 二 真机读数（本机 darwin-arm64）
+
+- 整条链跑真内核：新增用例起**真 REPL 内核进程**（`resources/notebook/repl_loop.js`），走**默认真 `ps -o rss=` 探针**，
+  实测 **46,153,728 字节（44.0 MB）**，`last = { kernels: 1, measured: 1, unmeasured: 0 }`。
+- 探针校准（独立于产品代码）：`Buffer.alloc(150 MB)` 的 node 子进程 → `ps -o rss=` 打 `169952` KB → **174,030,848 字节**；
+  证明单位是 KB（读成页会是 2.6 GB）。
+- **读数时刻本机存活内核数 = 0**（打包版与开发实例都在跑，但它们的会话内核已随会话关闭退出）⇒ 上一轮那 11 个内核的
+  2,376 MB **不能当本笔读数**；本笔给的是「链通」的读数。
+
+### 三 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/notebook src/main/diagnostics --maxWorkers=3` | **131 files（122 passed / 9 skipped）／1,718 passed / 101 skipped**，退出 0 |
+| 变异证明（`measured > 0` → `measured >= 0`；`kilobytes * 1024` → `kilobytes`） | **3 例红**（解析换算 / 全失败轮仍给总量 / 真探针区间），还原后全绿 |
+| `npx eslint --no-cache`（本笔七个文件） | **0 error**；2 条 warning 在 `kernel-executor.ts:746/756`，是 **HEAD 上就有**的 prettier 漂移（用 `git show HEAD:` 复制同目录复验同样告警），不是本笔引入 |
+| `npm run typecheck:node` / `typecheck:web` | **0 / 0** |
+
+### 四 边界与具名未办
+
+1. **安装版还没这个段**：`/Applications/PureScience.app` 是 2.27.0 ⇒ 「从真诊断包里读到 `notebook-kernel-memory.json`」
+   这半格未取证，要等下一次发版后的真机导出。
+2. **没有界面**：主进程观测（与 CPU 那一格同形），不新增通道、不动渲染层 ⇒ 无窗口读数，按纪律具名。
+3. **不回收**：关闭空闲内核会丢命名空间，属需拍板项，本笔不动。
+4. Windows 没有对等读数 ⇒ 该平台记具名 `unsupported-platform`。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔双车道。
+- ② 若开发实例在下一轮之前重启过（日志出现新的 `app starting`），先按 §三百五十 §四① 的判据核那两条相隔 ~60 s 的
+  `update-check`；这条仍是「唤醒后退避」唯一的真机判据。
+- ③ 若那台机器上又有会话起了内核，把本轮这格接到真诊断包上（导出 → 解包 → 读 `notebook-kernel-memory.json`），
+  这是本格剩下的那半。
+- ④ i18n 那批在制品仍归别人，继续不动。

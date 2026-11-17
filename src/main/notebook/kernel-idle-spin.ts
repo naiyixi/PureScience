@@ -246,6 +246,276 @@ export const createKernelCpuRing = (input: KernelCpuRingInput = {}): KernelCpuRi
 // Written by every idle-spin monitor in this process, read by the support bundle facts.
 export const sharedKernelCpu: KernelCpuRing = createKernelCpuRing()
 
+// -- how much memory the idle kernels are holding ----------------------------------------------
+//
+// The CPU ring answers "which kernel is burning a core". The other half of "the machine got slow" is
+// "where did the memory go": kernels are kept alive on purpose (DEFAULT_IDLE_MS in kernel-executor), so a
+// session that once ran an analysis leaves its interpreter resident after the cell returned. On the 8 GB
+// machine measured on 2026-11-17, eleven live python kernels held ~2.4 GB between them while swap sat at
+// 10.4 of 11.2 GB — and nothing in the bundle said so. The log line for a spinning kernel carries one
+// number for one kernel; a kernel holding 470 MB quietly was invisible.
+//
+// What is measured, and what is not:
+//
+//   * `ps -o rss=` reports RESIDENT SET SIZE, which is what this records. It is not `phys_footprint`
+//     (macOS's own accounting) and it is not the kernel's heap: shared pages count in every process that
+//     maps them, so a sum over kernels over-counts. That is why the total below is always accompanied by
+//     how many kernels it covers, and why the per-kernel number is the primary reading.
+//   * Memory is a LEVEL, not a rate. It is recorded as one entry per idle kernel per sampling round rather
+//     than as a window: subtracting two levels gives a per-window delta nobody asked for, and a level is
+//     what a reader comparing kernels needs.
+//   * A round whose probe failed is kept as a round with `measured` < `kernels`, never as zeros — the same
+//     rule the cpu ring follows, for the same reason.
+
+export type KernelMemoryReading =
+  | { status: 'observed'; residentBytes: number }
+  | { status: 'unmeasured'; reason: KernelMemoryUnmeasuredReason }
+
+export type KernelMemoryUnmeasuredReason = 'unsupported-platform' | 'probe-failed' | 'parse-failed'
+
+export type KernelMemoryProbe = (pid: number) => Promise<KernelMemoryReading>
+
+/** One kernel's reading in one round. */
+export type KernelMemorySample = Readonly<{
+  /** Wall clock of the round this reading came from (ISO 8601). */
+  at: string
+  key: string
+  kind: string
+  env: string
+  pid: number
+  residentBytes: number
+}>
+
+export type KernelMemoryRoundEntry = Readonly<{
+  key: string
+  kind: string
+  env: string
+  pid: number
+  reading: KernelMemoryReading
+}>
+
+/** One sampling round: every kernel that was idle at that moment, measured or not. */
+export type KernelMemoryRound = Readonly<{
+  at: string
+  entries: readonly KernelMemoryRoundEntry[]
+}>
+
+/**
+ * The newest round, with the counts that make its total readable. `totalResidentBytes` covers the
+ * `measured` kernels of THIS round only: a total that silently folded in a stale reading from an earlier
+ * round, or that excluded an unmeasured kernel without saying so, would be a number about nothing.
+ */
+export type KernelMemoryRoundSummary = Readonly<{
+  at: string
+  kernels: number
+  measured: number
+  unmeasured: number
+  totalResidentBytes?: number
+}>
+
+export type NotebookKernelMemoryStatus =
+  | 'samples'
+  | 'no-samples'
+  | 'monitor-not-started'
+  | 'unsupported-platform'
+  | 'probe-failed'
+  | 'parse-failed'
+
+export type NotebookKernelMemorySummary = Readonly<{
+  capacity: number
+  /** Rounds recorded since the ring was created (kept + dropped). */
+  rounds: number
+  /** Rounds recorded but no longer kept: the oldest ones, dropped first. */
+  dropped: number
+  status: NotebookKernelMemoryStatus
+  monitor: 'running' | 'stopped' | 'never-started'
+  /** Every named reason a reading could not be taken; empty when they all were. */
+  unmeasuredReasons: KernelMemoryUnmeasuredReason[]
+  /** The newest round with its counts; absent before the first round. */
+  last?: KernelMemoryRoundSummary
+  /** Newest round per kernel, kept independently of the timeline's rotation. */
+  latest: KernelMemorySample[]
+  /** Per-kernel readings, oldest first. */
+  records: KernelMemorySample[]
+}>
+
+export type KernelMemoryRing = Readonly<{
+  recordRound: (round: KernelMemoryRound) => void
+  noteMonitorStarted: () => void
+  noteMonitorStopped: () => void
+  noteUnsampled: (reason: KernelMemoryUnmeasuredReason) => void
+  summary: () => NotebookKernelMemorySummary
+  /** Test seam: forget everything without rebuilding the ring. */
+  clear: () => void
+}>
+
+export type KernelMemoryRingInput = Readonly<{
+  /** Per-kernel readings kept. 120 at the 15 s interval is a quarter hour for one kernel, a few KB. */
+  capacity?: number
+  /** Rounds kept, newest last. 40 rounds is ten minutes of rounds and is where the total comes from. */
+  roundCapacity?: number
+  /** Kernels whose newest reading is kept regardless of rotation. */
+  latestCapacity?: number
+}>
+
+export const DEFAULT_KERNEL_MEMORY_RING_CAPACITY = 120
+export const DEFAULT_KERNEL_MEMORY_ROUND_CAPACITY = 40
+export const DEFAULT_KERNEL_MEMORY_LATEST_CAPACITY = 32
+
+export const createKernelMemoryRing = (input: KernelMemoryRingInput = {}): KernelMemoryRing => {
+  const capacity = Math.max(1, Math.floor(input.capacity ?? DEFAULT_KERNEL_MEMORY_RING_CAPACITY))
+  const roundCapacity = Math.max(
+    1,
+    Math.floor(input.roundCapacity ?? DEFAULT_KERNEL_MEMORY_ROUND_CAPACITY)
+  )
+  const latestCapacity = Math.max(
+    1,
+    Math.floor(input.latestCapacity ?? DEFAULT_KERNEL_MEMORY_LATEST_CAPACITY)
+  )
+  const records: KernelMemorySample[] = []
+  const rounds: KernelMemoryRoundSummary[] = []
+  const latest = new Map<string, KernelMemorySample>()
+  const reasons = new Set<KernelMemoryUnmeasuredReason>()
+  let observedRounds = 0
+  let everStarted = false
+  let running = false
+
+  const recordRound = (round: KernelMemoryRound): void => {
+    const entries = Array.isArray(round.entries) ? round.entries : []
+    let measured = 0
+    let totalResidentBytes = 0
+    for (const entry of entries) {
+      if (entry.reading.status === 'unmeasured') {
+        // Named, not zeroed: a kernel whose probe failed is a kernel this round knows nothing about.
+        reasons.add(entry.reading.reason)
+        continue
+      }
+      if (!Number.isFinite(entry.reading.residentBytes) || entry.reading.residentBytes <= 0) {
+        reasons.add('parse-failed')
+        continue
+      }
+      const sample: KernelMemorySample = {
+        at: round.at,
+        key: entry.key,
+        kind: entry.kind,
+        env: entry.env,
+        pid: entry.pid,
+        residentBytes: entry.reading.residentBytes
+      }
+      records.push(sample)
+      latest.set(sample.key, sample)
+      measured += 1
+      totalResidentBytes += sample.residentBytes
+    }
+    while (records.length > capacity) records.shift()
+    while (latest.size > latestCapacity) {
+      // Oldest by the round's own clock, so a replaced kernel does not pin an entry forever.
+      const oldest = [...latest.entries()].sort((left, right) =>
+        left[1].at.localeCompare(right[1].at)
+      )[0]
+      if (!oldest) break
+      latest.delete(oldest[0])
+    }
+    // An empty round is not recorded: "no kernel was idle at this moment" is the absence of a round, and
+    // keeping it would let `rounds` claim the monitor saw something when it saw nothing.
+    if (entries.length === 0) return
+    rounds.push({
+      at: round.at,
+      kernels: entries.length,
+      measured,
+      unmeasured: entries.length - measured,
+      // Only when at least one kernel was measured. A `totalResidentBytes: 0` for a round nobody could be
+      // measured in would read as "the kernels hold nothing".
+      ...(measured > 0 ? { totalResidentBytes } : {})
+    })
+    while (rounds.length > roundCapacity) rounds.shift()
+    observedRounds += 1
+  }
+
+  const summary = (): NotebookKernelMemorySummary => {
+    const last = rounds.length > 0 ? rounds[rounds.length - 1] : undefined
+    const namedReasons = [...reasons]
+    const status: NotebookKernelMemoryStatus =
+      records.length > 0
+        ? 'samples'
+        : namedReasons.includes('unsupported-platform')
+          ? 'unsupported-platform'
+          : namedReasons.includes('probe-failed')
+            ? 'probe-failed'
+            : namedReasons.includes('parse-failed')
+              ? 'parse-failed'
+              : everStarted
+                ? 'no-samples'
+                : 'monitor-not-started'
+    return {
+      capacity,
+      rounds: observedRounds,
+      dropped: observedRounds - rounds.length,
+      status,
+      monitor: running ? 'running' : everStarted ? 'stopped' : 'never-started',
+      unmeasuredReasons: namedReasons,
+      ...(last ? { last } : {}),
+      latest: [...latest.values()].sort((left, right) => left.at.localeCompare(right.at)),
+      records: records.map((sample) => ({ ...sample }))
+    }
+  }
+
+  return {
+    recordRound,
+    noteMonitorStarted: (): void => {
+      everStarted = true
+      running = true
+    },
+    noteMonitorStopped: (): void => {
+      running = false
+    },
+    noteUnsampled: (reason): void => {
+      reasons.add(reason)
+    },
+    summary,
+    clear: (): void => {
+      records.length = 0
+      rounds.length = 0
+      latest.clear()
+      reasons.clear()
+      observedRounds = 0
+      everStarted = false
+      running = false
+    }
+  }
+}
+
+// Written by every idle-spin monitor in this process, read by the support bundle facts.
+export const sharedKernelMemory: KernelMemoryRing = createKernelMemoryRing()
+
+// `ps -o rss=` prints a bare number of 1024-byte units on both platforms this observation supports.
+// Anything else (`''` for a pid that just exited, a locale-odd string) is undefined so the caller can name
+// a failed probe — 0 bytes is not one of the answers this observation is allowed to invent.
+const RESIDENT_PATTERN = /^\s*(\d+)\s*$/
+
+export const parseResidentBytes = (raw: string): number | undefined => {
+  const match = RESIDENT_PATTERN.exec(raw)
+  if (!match) return undefined
+  const kilobytes = Number(match[1])
+  if (!Number.isFinite(kilobytes) || kilobytes <= 0) return undefined
+  return kilobytes * 1024
+}
+
+// One short-lived `ps` per idle kernel per round, same shape and cost as the cpu probe. Reading another
+// process's memory of the same user needs no extra permission, which is why this needs no native module.
+const psResidentProbe: KernelMemoryProbe = (pid) =>
+  new Promise((resolve) => {
+    execFile('ps', ['-o', 'rss=', '-p', String(pid)], { timeout: 5_000 }, (error, stdout) => {
+      if (error) return resolve({ status: 'unmeasured', reason: 'probe-failed' })
+      const residentBytes = parseResidentBytes(stdout)
+      resolve(
+        residentBytes === undefined
+          ? { status: 'unmeasured', reason: 'parse-failed' }
+          : { status: 'observed', residentBytes }
+      )
+    })
+  })
+
 // `[DD-]HH:MM:SS[.ss]` and `MM:SS.ss`. ps prints the short form until an hour is reached, so the last two
 // components are always minutes and seconds.
 const CUMULATIVE_CPU_PATTERN = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/
@@ -299,6 +569,10 @@ export type KernelIdleSpinMonitorOptions = {
   // per tick.
   onUnsampled?: (reason: IdleSpinUnsampledReason) => void
   probe?: KernelCpuProbe
+  /** Reads how much memory an idle kernel holds. Defaults to the real `ps -o rss=` probe. */
+  memoryProbe?: KernelMemoryProbe
+  /** Where memory rounds land. Defaults to the process-wide ring the support bundle reads. */
+  memoryRing?: KernelMemoryRing
   platform?: NodeJS.Platform
   intervalMs?: number
   thresholdPercent?: number
@@ -325,6 +599,8 @@ export class KernelIdleSpinMonitor {
   private readonly onSpin: (report: IdleSpinReport) => void
   private readonly onUnsampled?: (reason: IdleSpinUnsampledReason) => void
   private readonly probe: KernelCpuProbe
+  private readonly memoryProbe: KernelMemoryProbe
+  private readonly memoryRing: KernelMemoryRing
   private readonly platform: NodeJS.Platform
   private readonly intervalMs: number
   private readonly thresholdPercent: number
@@ -342,6 +618,8 @@ export class KernelIdleSpinMonitor {
     this.onSpin = options.onSpin
     this.onUnsampled = options.onUnsampled
     this.probe = options.probe ?? psCpuProbe
+    this.memoryProbe = options.memoryProbe ?? psResidentProbe
+    this.memoryRing = options.memoryRing ?? sharedKernelMemory
     this.platform = options.platform ?? process.platform
     this.intervalMs = options.intervalMs ?? DEFAULT_IDLE_SPIN_INTERVAL_MS
     this.thresholdPercent = options.thresholdPercent ?? DEFAULT_IDLE_SPIN_THRESHOLD_PERCENT
@@ -356,6 +634,7 @@ export class KernelIdleSpinMonitor {
     if (this.handle) return
     if (this.platform === 'win32') {
       this.ring.noteUnsampled('unsupported-platform')
+      this.memoryRing.noteUnsampled('unsupported-platform')
       this.reportUnsampled('unsupported-platform')
       return
     }
@@ -372,6 +651,7 @@ export class KernelIdleSpinMonitor {
     this.handle = undefined
     this.samples.clear()
     this.ring.noteMonitorStopped()
+    this.memoryRing.noteMonitorStopped()
   }
 
   get running(): boolean {
@@ -458,6 +738,30 @@ export class KernelIdleSpinMonitor {
           windowMs,
           thresholdPercent: this.thresholdPercent,
           consecutiveSamples: state.streak
+        })
+      }
+
+      // Memory, measured in the same round and over the same target list: the executor's `pending` field is
+      // the only authority on "idle", and a second ticker would re-derive it. A failed memory probe never
+      // touches the cpu baselines above — the two readings are independent on purpose.
+      if (this.platform === 'win32') {
+        this.memoryRing.noteUnsampled('unsupported-platform')
+      } else {
+        const memoryReadings = await Promise.all(
+          targets.map(async (target) => ({
+            target,
+            reading: await this.memoryProbe(target.pid)
+          }))
+        )
+        this.memoryRing.recordRound({
+          at: new Date(atMs).toISOString(),
+          entries: memoryReadings.map(({ target, reading }) => ({
+            key: target.key,
+            kind: target.kind,
+            env: target.env,
+            pid: target.pid,
+            reading
+          }))
         })
       }
     } finally {

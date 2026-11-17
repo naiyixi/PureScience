@@ -180,7 +180,7 @@ import {
   sharedWebRpcChannelLatency
 } from './diagnostics/ipc-channel-latency'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
-import { sharedKernelCpu } from './notebook/kernel-idle-spin'
+import { sharedKernelCpu, sharedKernelMemory } from './notebook/kernel-idle-spin'
 import {
   createNotebookApplicationModule,
   createNotebookLocalRpcModule,
@@ -2735,6 +2735,10 @@ const createApplicationModules = async (
       // "the machine got slow and the fan never stopped", and the line that recorded it is in a log the
       // bundle may already have rotated past. Its `status` says whether anything was ever looked at.
       notebookKernelCpu: sharedKernelCpu.summary(),
+      // …and the memory those same idle kernels are holding, from the ring written by the same monitor in
+      // the same round. Same reasoning as above: on an 8 GB machine the kernels that stayed resident are a
+      // large part of "the machine got slow", and their footprint is not in any log line that survived.
+      notebookKernelMemory: sharedKernelMemory.summary(),
       // …and the same reading for the calls the Web UI made over its socket, in its own section: a channel
       // that is fast in-process and slow over HTTP is a different problem, and one blended median would hide it.
       webRpcChannelLatency: sharedWebRpcChannelLatency.summary(),

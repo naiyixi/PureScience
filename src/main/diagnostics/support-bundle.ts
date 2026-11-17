@@ -14,6 +14,7 @@ import * as tar from 'tar'
 
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
 import type { NotebookKernelCpuSummary } from '../notebook/kernel-idle-spin'
+import type { NotebookKernelMemorySummary } from '../notebook/kernel-idle-spin'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 import type { HostTimelineSummary } from './host-stall-sampler'
 import type { IpcChannelLatencySummary } from './ipc-channel-latency'
@@ -112,6 +113,16 @@ export type SupportBundleInput = {
    * machine.
    */
   notebookKernelCpu: NotebookKernelCpuSummary
+  /**
+   * How much memory the idle kernels are holding (see `kernel-idle-spin` in `../notebook`, memory ledger).
+   * The cpu section answers "which kernel is burning a core"; this one answers "where did the memory go",
+   * which on this class of machine is the other half of the same complaint. One entry per idle kernel per
+   * round, as a level rather than a window; `last` carries the newest round with its own `measured` /
+   * `unmeasured` counts so a partial round can never be read as a complete total. Its `status` names
+   * `monitor-not-started`, `unsupported-platform`, `probe-failed` and `parse-failed` instead of shipping an
+   * empty list that would read as an idle machine holding nothing.
+   */
+  notebookKernelMemory: NotebookKernelMemorySummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -217,6 +228,15 @@ diagnostics/notebook-kernel-cpu.json
                    portable cumulative-CPU probe) and "probe-failed" (the probe could not read the pid)
                    instead of an empty list that would read as a quiet machine — a CPU reading of zero is
                    never invented
+diagnostics/notebook-kernel-memory.json
+                   how much memory the idle kernels are holding, one entry per kernel per sampling round:
+                   the kernel, its pid, and its resident set size (what "ps -o rss=" reports — shared pages
+                   count in every process that maps them, so a sum over kernels is an upper bound, and the
+                   per-kernel number is the primary reading). Memory is a level, not a rate, so rounds are
+                   kept rather than windows; the newest round carries "kernels", "measured" and "unmeasured"
+                   so a partial total can never be read as a whole one. Its status names
+                   "monitor-not-started", "unsupported-platform", "probe-failed" and "parse-failed" instead
+                   of an empty list that would read as an idle machine holding nothing
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -436,6 +456,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/notebook-kernel-cpu.json',
     `${JSON.stringify(input.notebookKernelCpu, null, 2)}\n`
+  )
+  // The other half of the same complaint. Its own file for the same reason the cpu one has one: these are
+  // levels held by processes that are serving nothing, and a section inside `slow-operations.json` would
+  // put them beside calls that were answered.
+  await writeStaged(
+    'diagnostics/notebook-kernel-memory.json',
+    `${JSON.stringify(input.notebookKernelMemory, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again
