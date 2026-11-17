@@ -19863,3 +19863,53 @@ CPU 那一格（空闲内核烧 CPU → 具名日志行 + `diagnostics/notebook-
 - ③ 若那台机器上又有会话起了内核，把本轮这格接到真诊断包上（导出 → 解包 → 读 `notebook-kernel-memory.json`），
   这是本格剩下的那半。
 - ④ i18n 那批在制品仍归别人，继续不动。
+
+## 三百五十二、本轮追加（执行器，2026-11-17 23:3x–）—— 连接器截止时间原来只管握手、不管正文：正文阶段现在也截止，且这一族失败第一次有了日志
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = a73e0647`（会话 23:12 那笔）；**共享工作树带 17 个 i18n / 连接器在制路径 + 4 个未跟踪证据档**
+  —— 全部归并发写入者，**一个字节没碰**（第 364/365 轮同样如此，`round-next` 已连续两轮记「i18n 在制品仍归别人」）。
+- **发版窗口开着**：v2.28.0 的 tag 在 `39d73831`，Release run `44111279568` 正在跑（preflight/Verify/linux/windows 已 success，
+  macos-x64 in_progress、macos-arm64 排队等 runner）⇒ **本轮只本地提交，不推**（推 main 会取消 `a73e0647` 的在飞 Nightly）。
+- 本单元不在「已完成（别再重做）」清单里，也不是会话排期 v2.28 的 1.1–1.8 任何一条：它是 1.5「外链超时」里
+  **我方控制点**的那一半（真机日志里 124 次 `Exit 28` / 91 次 `WebFetch Socket is closed` 都由 agent CLI 产生，不是我们的代码），
+  而我们的连接器出网边界上有一个**读码即证**的缺陷。
+
+### 一 缺陷与修法
+
+见证据档 `docs/evidence/2026-11-17-connector-call-deadline-body.md`。一句话：`doFetch` 的 `clearTimeout` 在 `fetch` 一返回就执行，
+**正文读取没有任何截止时间**（与它自己的注释相反），且一次连接器超时在任何日志里都不留痕（三份真机日志 13,730 条 warn/error 中
+`Request timed out after` 命中 0 条）。
+
+修法：定时器跨过正文读取（与同一 `deadline` 竞速，abort 经 controller 传到 body 流）；每处退出路径显式 `clearTimeout`；
+句子分「等响应头」/「等响应体」两态；命中时打一行 `connector call deadline reached {connector, tool, host, phase, budgetMs}`。
+
+### 二 读数
+
+| 项 | 读数 |
+|---|---|
+| 真网络 · 对照（eutils，真字节） | ok，1,236 B，1,777 ms，sha `sha256:e2cc53384b277…` |
+| 真网络 · 正文滴流（httpbin 10 s 滴流，预算 3 s） | **3,017 ms 结束**，句子点名 `waiting for the response body`；旧代码下按变异形状**不返回** |
+| 真网络 · 慢但活的 4.97 MB（RCSB） | ok，4,973,076 B，7,452 ms，30 s 预算下不误判 |
+| 日志 | 同次运行 `connector call deadline reached` **恰好 1 行**，字段齐全 |
+| 变异证明 | 改回旧形状 ⇒ **2 failed**（用例自身 60,026 / 60,012 ms 超时，即「挂住」的实证） |
+
+### 三 门禁
+
+`npx vitest run src/main/connectors` = **91 passed / 1 skipped（92 文件）、1,025 passed / 55 skipped（1,080 例）**，exit 0；
+`npx eslint --no-cache`（本笔两文件）**0 problem**；`typecheck:node` / `typecheck:web` 各 **0 诊断**。
+
+### 四 边界
+
+1. 无窗口读数（主进程出网边界，未新增界面/通道）⇒ 装机版要看到这行日志得等下一次发版（当前装机 2.27.0）。
+2. 正文阶段的非超时失败仍不重试（要不要重试是另一个决定，本片不动），但已带出网原因。
+3. 预算仍是每工具 30 s 默认值：给个别源更大的预算需要「哪个源真的需要」的读数，今天没有。
+4. `httpbin.org` 只是「正文会滴流」的真实现成站点，不构成依赖。
+
+### 五 下一轮第一步
+
+- ① 等 Release `44111279568` 落定 → 按「发布核验」核页面与资产族（`gh release view v2.28.0 --json …` + `RELEASE-CERTIFICATION.json` 的 `sourceSha` 与 `git rev-parse 'v2.28.0^{commit}'` 逐字比）。
+- ② Release 与 `a73e0647` 的 Nightly 都落定后，**只推一次**本笔，然后按完整 40 位 SHA 读双车道。
+- ③ 下一单元候选：v2.29 的 2.1「计算进程监视与终止」（需要界面 + 九语，撞在并发写入者的 i18n 在制品上 ⇒ 开工前先看那批是否已落）；
+  不撞的备选是 2.2 重放的真机读数（重放器已在仓里）。

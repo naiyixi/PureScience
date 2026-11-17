@@ -7,6 +7,9 @@ import {
 } from '../../shared/reading-fingerprint'
 import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
 import { annotateEgressFailure } from '../net/egress-failure'
+import { createLogger } from '../logger'
+
+const log = createLogger('connector-engine')
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -31,6 +34,15 @@ export function ncbiEtiquette(credentials: ConnectorCredentials): string {
   if (credentials.ncbiEmail) parts.push(`email=${encodeURIComponent(credentials.ncbiEmail)}`)
   if (credentials.ncbiApiKey) parts.push(`api_key=${encodeURIComponent(credentials.ncbiApiKey)}`)
   return parts.length ? `&${parts.join('&')}` : ''
+}
+
+// Host as it appears to the reader of a deadline line: only for the log, never for a judgement.
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return ''
+  }
 }
 
 // Strips credential query params (NCBI email/api_key) from a URL before it can land in an error
@@ -148,14 +160,26 @@ export class ParserEngine {
         // fail fast with a clear explanation (timeouts are not retried), never hang until the
         // process-level timeout.
         let timer: ReturnType<typeof setTimeout> | undefined
+        // Which half of the request the budget was spent on. A slow source and a stalled source are
+        // different failures and the agent can only act on the difference if the sentence says which.
+        let phase: 'headers' | 'body' = 'headers'
+        let deadlineFired = false
+        const deadlineMessage = (): string =>
+          `Request timed out after ${this.timeoutMs}ms for ${redactUrl(url).url} (deadline reached while waiting for the ${phase === 'body' ? 'response body' : 'response headers'}; not retried)`
         const deadline = new Promise<never>((_resolve, reject) => {
           timer = setTimeout(() => {
+            deadlineFired = true
+            // Logged because a connector deadline used to leave no trace anywhere: the sentence went
+            // to the agent and vanished with the turn, so no reading could ever count these calls.
+            log.warn('connector call deadline reached', {
+              connector: descriptor.connector,
+              tool: descriptor.id,
+              host: hostOf(url),
+              phase,
+              budgetMs: this.timeoutMs
+            })
             controller.abort()
-            reject(
-              new Error(
-                `Request timed out after ${this.timeoutMs}ms for ${redactUrl(url).url} (deadline reached; not retried)`
-              )
-            )
+            reject(new Error(deadlineMessage()))
           }, this.timeoutMs)
         })
         let res: Response
@@ -169,6 +193,9 @@ export class ParserEngine {
             deadline
           ])
         } catch (err) {
+          // The timer belongs to one request, not to the wait between requests: disarm it before any
+          // backoff sleep, or a pending deadline would reject while nobody is racing it.
+          clearTimeout(timer)
           // A stalled request fails fast (deadline above); transient network errors (connection
           // refused, DNS, etc.) still retry with backoff.
           if (err instanceof Error && /timed out after/.test(err.message)) {
@@ -183,11 +210,26 @@ export class ParserEngine {
           // retry was a guess. The original message is kept verbatim in front (existing matchers and
           // the reading fingerprint path are unaffected).
           throw annotateEgressFailure(err, redactUrl(url).url)
-        } finally {
-          clearTimeout(timer)
         }
+        // The deadline stays armed across this line ON PURPOSE: headers arriving is not the request
+        // finishing. It used to be cleared in a `finally` right here, so a source that sent headers
+        // and then stalled mid-body had no deadline at all — the exact hang the comment above claims
+        // to prevent. The body read is raced against the same promise, and the abort reaches it via
+        // the controller (a real transport errors the body stream on abort; either path lands below).
         if (res.ok) {
-          const body = await readBody(res)
+          let body: ReadBody | undefined
+          phase = 'body'
+          try {
+            body = await Promise.race([readBody(res), deadline])
+          } catch (err) {
+            clearTimeout(timer)
+            // Whichever of the two errors lands first, the reader sees the one named sentence.
+            if (deadlineFired) {
+              throw annotateEgressFailure(new Error(deadlineMessage()), redactUrl(url).url)
+            }
+            throw annotateEgressFailure(err, redactUrl(url).url)
+          }
+          clearTimeout(timer)
           // Recorded only from the received bytes. A transport that handed us no bytes gets no reading:
           // a digest of a re-serialisation would not reproduce against what the service actually sent,
           // and the verifier reports the absence as `not-recorded` rather than as a pass.
@@ -214,6 +256,7 @@ export class ParserEngine {
           return { res, body }
         }
         // Retry only transient source statuses; client errors (4xx except 429) fail fast.
+        clearTimeout(timer)
         if (attempt < this.retries && RETRYABLE_STATUS.has(res.status)) {
           await sleep(nextDelay(attempt, res.headers?.get?.('retry-after') ?? null))
           continue
