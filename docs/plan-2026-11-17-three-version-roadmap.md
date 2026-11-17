@@ -33,7 +33,22 @@
 
 ---
 
-## v2.29.0 —— 能力对齐（把参考实现里已成型的三块做成自己的实现）
+## v2.29.0 —— 能力对齐（**2026-11-17 审计后重定范围**）
+
+审计结论（逐项查仓内实况，不是查参考产品）：原排的五个单元里，**四个已经有实现**，只有超时文案是真缺。
+
+| 单元 | 仓内实况（证据路径） | 结论 |
+|---|---|---|
+| 2.1 计算进程监视与终止 | `notebook_state` 已回 `kernelStatus` + `activeRunId`；`notebook_restart` / `notebook_shutdown` / `remote-job-kill` 均在 | 底座已有；本版只补**超时点名**（`a73e0647`） |
+| 2.2 可复现重放 | `src/main/artifacts/reproducibility-service.ts` + `src/shared/reproducibility-reexecution.ts` | 已有 |
+| 2.3 `.science` + RO-Crate | `src/main/session-package/{service,export}.ts` + `RoCrateExportDialog.tsx` | 已有 |
+| 2.4 PDF 双语翻译 | `src/main/translation/`（2,494 行：engine / provider-translator / checkpoint-store / view-model / window-translation） | 已有，且比排期设想更完整 |
+| 2.5 核心技能进系统提示 | 按回合由模型选技能（`selectBridgeSkills`），不是静态灌索引 | 设计上不照搬；不算缺口 |
+
+因此 v2.29.0 的真实内容是：**超时点名 + 语言指令真机取证 + 本审计**，不再为了凑「对齐」而重写已有模块。
+曾按「2.4 是缺口」写过一版 `shared/pdf-bilingual.ts`，核实后判定与 `translation-view-model.ts` 重复，已 revert（`de8f0c7d`）。
+
+原计划的表格保留在下方，作为「当初为什么以为缺」的记录。
 
 > 纪律：**禁止 cherry-pick / 禁止照搬对方提交信息与 PR 编号**。每个单元按我们的结构重写，自带测试与命名，落地后我们的 git 历史里不出现对方痕迹。
 
