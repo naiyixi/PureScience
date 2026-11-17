@@ -29,6 +29,10 @@ import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 
 const SLOW_IPC_MESSAGE = 'ipc handler was slow'
+// A stall row is not one thing: its `cause.kind` names what held the loop, and `process-frozen` means no thread
+// of this process ran at all (sleep, an external stop, total starvation) — a window that belongs to the machine.
+const STALL_MESSAGE = 'event loop stalled'
+const FROZEN_CAUSE = 'process-frozen'
 const FIXTURE_PREFIX = 'e2e'
 const DEFAULT_TOP = 12
 // 行上可能承载会话身份的字段。取第一个在场的：`sessionId` 是渲染侧与会话本身，`mainSessionId` 是
@@ -231,6 +235,14 @@ export const analyse = (entries) => {
       slowRows: 0,
       slowMs: 0,
       slowProvenance: emptyCounts(),
+      // A slow row's wall time is not app work: `heldMs` is the part of it the loop was not running at all.
+      // Kept apart for the same reason the three-way provenance is — summing both into one number is how
+      // "the app spent an hour in its handlers" gets reported from a log that says the machine was asleep.
+      // `noStall` is the producer's own way of saying "no loop-held window overlapped this call": it then
+      // omits the fields, and the whole duration is the handler's. That is a different fact from a coverage
+      // gap, so it gets its own counter and its own summed time.
+      slowSplit: { splittable: 0, heldMs: 0, ownMs: 0, noStall: 0, noStallMs: 0, dropped: 0 },
+      stalls: { rows: 0, causes: new Map(), frozenLateMs: 0, lateMsTotal: 0 },
       recurrence: new Map(),
       runIds: runIdsFor(name)
     }
@@ -252,8 +264,40 @@ export const analyse = (entries) => {
     if (entry.message === SLOW_IPC_MESSAGE) {
       instance.slowRows += 1
       const duration = entry.data.durationMs
-      instance.slowMs += typeof duration === 'number' && Number.isFinite(duration) ? duration : 0
+      const durationMs = typeof duration === 'number' && Number.isFinite(duration) ? duration : 0
+      instance.slowMs += durationMs
       bump(instance.slowProvenance, provenance)
+      // `heldMs` is measured by the producer against the same windows the stall watchdog reports. Rows that
+      // carry it are the only ones whose wall time can be split into "ours" and "the loop was not running";
+      // A row with neither is counted under its own name rather than credited to either side.
+      const held = entry.data.heldMs
+      if (typeof held === 'number' && Number.isFinite(held)) {
+        const own = entry.data.ownMs
+        instance.slowSplit.splittable += 1
+        instance.slowSplit.heldMs += Math.max(0, held)
+        instance.slowSplit.ownMs +=
+          typeof own === 'number' && Number.isFinite(own)
+            ? Math.max(0, own)
+            : Math.max(0, durationMs - held)
+      } else if (entry.data.heldUnmeasured === 'windows-dropped') {
+        instance.slowSplit.dropped += 1
+      } else {
+        instance.slowSplit.noStall += 1
+        instance.slowSplit.noStallMs += durationMs
+      }
+    }
+    // A stall row already carries its verdict; grouping by it keeps a corpus report from reading as
+    // "the app froze 1,176 times" when most of those windows belonged to the machine.
+    if (entry.message === STALL_MESSAGE) {
+      instance.stalls.rows += 1
+      const cause = entry.data.cause
+      const kind = cause && typeof cause.kind === 'string' ? cause.kind : 'unstated'
+      instance.stalls.causes.set(kind, (instance.stalls.causes.get(kind) ?? 0) + 1)
+      const late = entry.data.lateMs
+      if (typeof late === 'number' && Number.isFinite(late)) {
+        instance.stalls.lateMsTotal += late
+        if (kind === FROZEN_CAUSE) instance.stalls.frozenLateMs += late
+      }
     }
     // 重复尝试：只统计 error/warn，且必须有身份。`attempt` 只在部分族里出现（定稿认领有、修正注入没有），
     // 所以「撞了几次」以行数为准，`attempt` 的范围只作旁证（缺了就不写，不填 0）。
@@ -304,7 +348,22 @@ export const analyse = (entries) => {
       slow: {
         rows: instance.slowRows,
         summedMs: Math.round(instance.slowMs),
+        // Rounded once here so the printed line, the JSON and any reader's arithmetic agree.
+        split: {
+          splittable: instance.slowSplit.splittable,
+          heldMs: Math.round(instance.slowSplit.heldMs),
+          ownMs: Math.round(instance.slowSplit.ownMs),
+          noStall: instance.slowSplit.noStall,
+          noStallMs: Math.round(instance.slowSplit.noStallMs),
+          dropped: instance.slowSplit.dropped
+        },
         ...instance.slowProvenance
+      },
+      stalls: {
+        rows: instance.stalls.rows,
+        causes: [...instance.stalls.causes.entries()].sort((a, b) => b[1] - a[1]),
+        lateMsTotal: Math.round(instance.stalls.lateMsTotal),
+        frozenLateMs: Math.round(instance.stalls.frozenLateMs)
       },
       // 只留「重复」的：撞一次的身份不是重试问题，列出来会把表淹掉。
       repeats: [...instance.recurrence.values()]
@@ -371,6 +430,26 @@ export const formatReport = (report, top, options = {}) => {
         `(real ${instance.slow.real} | fixture ${instance.slow.fixture} | mixed ${instance.slow.mixed} | ` +
         `unattributed ${instance.slow.unattributed})`
     )
+    const split = instance.slow.split
+    lines.push(
+      split.splittable > 0
+        ? `  slow split: ${split.splittable} row(s) split — own ${split.ownMs} ms | held (the loop was not ` +
+            `running) ${split.heldMs} ms` +
+            `; ${split.noStall} row(s) had no stall window over them (${split.noStallMs} ms, the whole ` +
+            `duration is the handler's)${split.dropped > 0 ? ` | ring dropped ${split.dropped}` : ''}`
+        : // Nothing measured is not "the loop was free": say which of the two this instance is.
+          `  slow split: none of ${instance.slow.rows} row(s) carries a held/own split` +
+            `${split.dropped > 0 ? ` (${split.dropped} lost their stall-window coverage)` : ''}`
+    )
+    if (instance.stalls.rows > 0) {
+      const causes = instance.stalls.causes.map(([kind, count]) => `${kind} ${count}`).join(' | ')
+      lines.push(
+        `  stalls: ${instance.stalls.rows} late ${instance.stalls.lateMsTotal} ms — ${causes}` +
+          (instance.stalls.frozenLateMs > 0
+            ? `; ${instance.stalls.frozenLateMs} ms of it in windows where no thread of this process ran`
+            : '')
+      )
+    }
     if (options.recurrence) {
       lines.push(...formatRepeats(instance.repeats, top))
     }
@@ -387,6 +466,21 @@ export const formatReport = (report, top, options = {}) => {
   )
   lines.push(
     '`unattributed` rows carry no session id and no run that does, so they belong to neither side.'
+  )
+  lines.push(
+    'a slow row’s wall time is not app work: `slow split` says how much of it the loop was not running. `own` means'
+  )
+  lines.push(
+    'only that the loop was running — a long turn legitimately has minutes of it, so read the row’s `cpuShare` before'
+  )
+  lines.push(
+    'calling that time ours. A row with no held field had no stall window over it (its duration is the handler’s),'
+  )
+  lines.push(
+    'which is not the same as a lost coverage ring. A stall row’s `cause.kind` names what held the loop;'
+  )
+  lines.push(
+    '`process-frozen` means no thread of this process ran, so that window is the machine’s.'
   )
   return lines.join('\n')
 }
@@ -569,12 +663,61 @@ export const selftest = () => {
   }
   if (identityOf({ host: 'h' }) !== undefined)
     problems.push('a row with no identity key must not claim one')
+  // 慢行的时间归属：能切的切成「我们的 / 循环没在跑」，切不了的自成一态（不许并进任何一边），
+  // 环丢掉的覆盖要有名字；停顿行按判词分组，整进程没在跑的窗口单独累计。
+  const splitEntries = [
+    // 切得开：held 与 own 都由生产者给出
+    {
+      level: 'warn',
+      msg: SLOW_IPC_MESSAGE,
+      data: { channel: 'a', durationMs: 1000, heldMs: 900, ownMs: 100 }
+    },
+    // 切得开但只给了 held：余量按 duration - held 推出
+    { level: 'warn', msg: SLOW_IPC_MESSAGE, data: { channel: 'b', durationMs: 500, heldMs: 200 } },
+    // 切不开：既没有 held 也没有具名缺口
+    { level: 'warn', msg: SLOW_IPC_MESSAGE, data: { channel: 'c', durationMs: 70 } },
+    // 切不开但是具名的：窗口环丢过覆盖
+    {
+      level: 'warn',
+      msg: SLOW_IPC_MESSAGE,
+      data: { channel: 'd', durationMs: 40, heldUnmeasured: 'windows-dropped' }
+    },
+    // 停顿：整进程没在跑的窗口与普通停顿各一行
+    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 2000, cause: { kind: FROZEN_CAUSE } } },
+    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 700, cause: { kind: 'unmeasured' } } },
+    // 判词缺席的停顿行：不许被算成任何已知判词
+    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 300 } }
+  ].map((record) => ({ ...parseLogLine(JSON.stringify(record)), instance: 'PureScience' }))
+  const splitReport = analyse(splitEntries)[0]
+  const split = splitReport.slow.split
+  if (split.splittable !== 2) problems.push(`two rows carry a split, got ${split.splittable}`)
+  if (split.heldMs !== 1100) problems.push(`held must sum to 1100, got ${split.heldMs}`)
+  if (split.ownMs !== 400) problems.push(`own must be 100 + (500 - 200), got ${split.ownMs}`)
+  if (split.noStall !== 1)
+    problems.push(`a row with no stall window over it is noStall, got ${split.noStall}`)
+  if (split.noStallMs !== 70)
+    problems.push(`its duration still counts, expected 70, got ${split.noStallMs}`)
+  if (split.dropped !== 1)
+    problems.push(`a named coverage gap must be counted, got ${split.dropped}`)
+  if (split.heldMs + split.ownMs > splitReport.slow.summedMs)
+    problems.push('the split can never exceed the summed slow time')
+  const stall = splitReport.stalls
+  if (stall.rows !== 3) problems.push(`three stall rows expected, got ${stall.rows}`)
+  if (stall.frozenLateMs !== 2000)
+    problems.push(`frozen late ms must be 2000, got ${stall.frozenLateMs}`)
+  if (stall.lateMsTotal !== 3000) problems.push(`late ms must total 3000, got ${stall.lateMsTotal}`)
+  const frozenRow = stall.causes.find(([kind]) => kind === FROZEN_CAUSE)
+  if (!frozenRow || frozenRow[1] !== 1)
+    problems.push('the frozen window must be counted under its own verdict')
+  const unstated = stall.causes.find(([kind]) => kind === 'unstated')
+  if (!unstated || unstated[1] !== 1)
+    problems.push('a stall row with no verdict is unstated, not a known cause')
   if (problems.length > 0) {
     process.stderr.write(`selftest FAILED:\n  ${problems.join('\n  ')}\n`)
     return 4
   }
   process.stdout.write(
-    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, empty input)\n'
+    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, slow-row held split, stall verdicts, empty input)\n'
   )
   return 0
 }

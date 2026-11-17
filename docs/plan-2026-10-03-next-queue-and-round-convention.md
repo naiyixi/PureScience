@@ -19625,3 +19625,61 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ② 下一单元候选（都不需要发版窗口、都不碰九份 i18n 字典）：issue #20 的第 2 条在「建站侧给出 CDN 基址」
   之后才能派发；可先做的是 **`docs/evidence/` 里三份更早的未跟踪证据档**的归属确认（若属我方则补进台账，
   否则不动），或按 `findTerminalUnharvested` 的选择条件反向扫 `0o` 那条链路上其它未落终态的本地产出路径。
+
+## 三百四十八、本轮追加（执行器，2026-11-17 09:3x–）—— 语料报表先切「谁的时间」：慢行的循环占用与停顿判词
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 上一轮收口后 `origin/main = c79694a8`，本地压着一笔 `97b34007`（清单补 AppImage 键 + 镜像工作流调用方式）。
+  本轮先跑 `scripts/pre-push-checks.sh`（全过）再推：`c79694a8..97b34007 main -> main`，推前 `gh run list`
+  确认**没有在飞车道**（24a20513 双车道已 success）——本次推送没有取消任何人的判决。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；C 段外部阻塞。上一轮已把 issue #20 的第 1 条收口，
+  第 2 条（网站镜像）缺仓库变量与 S3 凭据 ⇒ 派发不出读数，不重做。
+- 工作区仍带别人未提交的在制品（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪 e2e spec、三份更早的未跟踪证据档）⇒ 一个字节没碰。
+
+### 一 交付（证据档 `docs/evidence/2026-11-17-log-corpus-slow-split.md`）
+
+`scripts/log-corpus-attribution.mjs`：旧报表只有一句「slow rows 1780 summed 6271859 ms」，按字面读是
+「应用在 handler 里烧了一小时四十四分」。现在把它切成三态 + 一个分组（字段**早已**由主进程写在日志里）：
+
+| 报表项 | 判据 | 含义 |
+| --- | --- | --- |
+| `slow split` | 行上有有限 `heldMs` | own / held 两半，**永不超过**该实例 summed |
+| `noStall` | 既无 `heldMs` 也无 `heldUnmeasured` | 生产者的缺席即语义：没有停顿窗口压在它上面 ⇒ 整段是 handler 自己的（不是「没测」） |
+| `dropped` | `heldUnmeasured: 'windows-dropped'` | 环丢覆盖 ⇒ 说不出来，不并进任何一边 |
+| `stalls` | 按 `cause.kind` 分组 + `process-frozen` 的 `lateMs` 单列 | 那一窗本进程没有线程在跑 ⇒ 属于机器 |
+
+read-me 同步写明 `own` 只代表「循环在跑」、不代表「在算」（长回合天然有几分钟 own），要判 CPU 看行上的 `cpuShare`。
+自检新增 7 条夹具/断言（含「切不开的时长仍计入 noStallMs」「held+own ≤ summed」「无判词的停顿记 unstated」）。
+
+### 二 读数（真实打包版实例 `~/Library/Logs/PureScience/main.log`，8,092 行）
+
+- `slow rows 1780 / summed 6,271,859 ms`；切开后：**73 行**能切（own 5,133,738 ｜ held 651,749），
+  **1,707 行**没有停顿窗口压在它们上面、合计只有 **486,374 ms**。
+- 那 5.13M ms 的 own 里 **94%** 是 4 条 `acp:send-prompt`（13–27 分钟的回合）——功能的形状，不是缺陷。
+- 通道分布：`sessions:save-session` 30 / `notifications:get-snapshot` 10 / `reviewer:get-for-session` 8 /
+  `cases:marketplace` 4 / `acp:send-prompt` 4 / `preview-resources:acquire` 3。
+- `sessions:save-session` 的 181 s 与 57 s 两条落在同一段 10:30–10:38 UTC 的停摆窗口里，181 s 那条自己写着
+  `no-cpu-in-process`、`cpuMs 13.9 s` ⇒ **后果不是成因**，不按「保存路径慢」立案。
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `node scripts/log-corpus-attribution.mjs --selftest` | `selftest OK`，退出 0 |
+| `npx eslint --no-cache scripts/log-corpus-attribution.mjs` | 0 error / 0 warning |
+| `npx prettier --check`（同文件） | 通过（`--write` 后 diff 145+/2-，只有本单元的 hunk） |
+| `bash scripts/pre-push-checks.sh` | 全过（含脚本入口 `node --check`、新增文件 lint） |
+
+### 四 边界与具名未办
+
+1. 语料来自 **2.26.0** 安装版：`process-frozen` 判词 11-14 才进主干 ⇒ 66 条 >10 分钟的窗口仍记
+   `unmeasured`/`unexplained`、`frozenLateMs` 为 0。要验这一格只能用 2.27.0+ 的语料（下一轮第一步）。
+2. 本单元只动报表工具 ⇒ **无窗口读数**（不改渲染层、不改主进程行为），按纪律具名。
+3. `97b34007` 的双车道判决挂在本轮推送窗口里；本轮代码提交**先落本地**，等它落定后一次推上去（避免顶掉自己的判决）。
+
+### 五 下一轮第一步
+
+- ① 用同一支工具读下一份 2.27.0+ 语料，验证 66 条长窗被归到 `process-frozen`（这是本档唯一的口径承诺）。
+- ② 若新语料里仍有「own 大且 `cpuShare` 高」的行，才按那条通道逐行查同步工作；本轮证据不支持直接改保存路径。
