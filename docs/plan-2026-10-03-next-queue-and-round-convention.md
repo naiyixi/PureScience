@@ -19744,3 +19744,58 @@ frozen mirror: 141 of 1179 — 0 already say so, 141 disagree:
 - ① 按完整 40 位 SHA 读本笔双车道（`ad6f225f` 已在上一次推送窗口里落定，本笔另算）。
 - ② 若真实语料仍无长窗，就按 §四② 走隔离实例的冻结实验（这是唯一能把「真机叫过一次」补上的读数）。
 - ③ i18n 那批在制品（`update.macManualInstallNote` 九语与 `UpdateDialog.tsx` 注释）仍在别人手里，继续不动。
+
+## 三百五十、本轮追加（执行器，2026-11-17 18:1x–）—— 真机第一次自己叫出「整进程没在跑」，以及它旁边那格：唤醒后的更新检查必失败、下次在六小时后
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = ad6f225f`，本地压着上一轮那一笔 `457d5549`（语料报表的 frozen mirror）。先查在飞车道：
+  `ad6f225f` 的 `Nightly` 与 `Windows Full Test` 均已 `completed / success`，`gh run list` 无在跑项 ⇒
+  跑 `scripts/pre-push-checks.sh`（全过）后推 `ad6f225f..457d5549`，**本次推送没有取消任何人的判决**。
+- 工作区仍带别人未提交的在制品（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪 e2e spec、三份未跟踪证据档）⇒ 一个字节没碰。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；C 段外部阻塞。
+- 上一节 §五② 留的下一步是「真实语料里没有长窗就走隔离实例的冻结实验」。**先核了语料，长窗已经有了**：
+  安装版 2.27.0 那一次运行里 28 条停顿有 25 条是整进程冻结（最长 1,071 s）⇒ 冻结实验不必做
+  （本机空闲 ~64 MB / swap 已用 9.8 GB，本来也不该起第三个实例）。
+
+### 一 交付（证据档 `docs/evidence/2026-11-17-wake-up-update-check-and-frozen-verdicts.md`）
+
+1. **读数（不需代码）**：`runId` 切开 + 每轮 `app starting` 行取版本 ⇒ 2.26.0 的 655 条停顿一条 `process-frozen`
+   都没有，**2.27.0 的 28 条里有 25 条**；报表工具的 `frozen mirror` 那行给出 `25 already say so` —— 凡由带该判词的
+   构建写下的窗口，镜像与产出逐条一致，141 条不一致全部来自 11-14 之前的行。上一节立案的「真机叫过一次」因此结案。
+2. **缺陷与修法**：用同一份语料查到唤醒后的第一次 `update-check` 必失败（10 例都在 ≥531 s 冻结结束后 0.13–0.48 s
+   开始，判类 `network-changed` 或旧分类器的 `error`），而 `startUpdateScheduler` 是 `setInterval(6h)` ⇒
+   失败不改变节拍，下次在六小时后；`setInterval` 也不知道上一条检查还在自身 10 s 截止里飞。
+   `src/main/update/scheduler.ts` 改成**链式排程 + 失败退避重试**（60 s → 2 → 4 → 8 → 15 min 封顶，成功即归零），
+   并给检查加 5 分钟守卫（永不返回的检查不会永久静音调度器，迟到的 rejection 被吞掉）。
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/update --maxWorkers=1` | 9 files / **136 passed** |
+| 变异证明（`if (!failed)` → `if (true)`） | **4 例红**，退出 1；还原后全绿 |
+| `npx eslint --no-cache`（两个文件） | 0 error / 0 warning |
+| `npx prettier --check` | 通过 |
+| `npm run typecheck:node` / `npm run typecheck:web` | 0 / 0 |
+
+### 三 读数（真机语料，只读）
+
+见证据档 §二 的十行表与 §一 的按运行分布表。
+
+### 四 边界与具名未办
+
+1. **重试本身没有真机读数**：安装版是 2.27.0（不含本改动），开发实例在改 `src/main` 后没有热重启（日志停在
+   10:10Z），空闲内存 ~64 MB ⇒ 不为这一格再起实例。判据写进证据档：带本改动的构建日志里出现**两条相隔约 60 s 的
+   `update-check` 启动行**、前一条 `operation failed`。
+2. **逐构建对账仍靠时间窗**：版本只写在每轮一行 `app starting` 上，旧轮次那行会被轮转丢掉（`4c440a91…` 就是
+   `version=None`）。要脱开时间窗得让行上带版本 —— 会动日志契约与计数 pin，本轮不碰。
+3. 不改渲染层与文案 ⇒ **无窗口读数**，按纪律具名。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔双车道。
+- ② 若开发实例在下一轮之前重启过（日志出现新的 `app starting`），先在它的语料里核那两条相隔 ~60 s 的检查；
+  没有就继续等机器下一次合盖唤醒 —— 这是本改动唯一的真机判据，不另造实验。
+- ③ i18n 那批在制品仍留在别人手里，继续不动。
