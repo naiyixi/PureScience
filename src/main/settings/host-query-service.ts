@@ -91,12 +91,63 @@ export type HostQueryServiceDeps = {
   getClient: () => Promise<PrismaClient>
 }
 
+// The failure text a model can actually act on.
+//
+// Real field evidence: five `no such column: title` failures in seventeen days, each one a turn that
+// ended with a model-written SELECT that guessed a column the table has never had. The model cannot
+// guess better — it never saw the schema — so the error is where the schema has to arrive. Parsing the
+// engine's own message keeps this honest: only a column/table it named is reported, and the columns are
+// read from the same SQLite file the query just ran against.
+const MISSING_COLUMN = /no such column:\s*([A-Za-z0-9_.]+)/i
+const MISSING_TABLE = /no such table:\s*([A-Za-z0-9_.]+)/i
+// Bounded so a wide table cannot turn one failed read into a wall of text in the next prompt.
+const MAX_COLUMNS_PER_TABLE = 60
+const MAX_HINT_CHARS = 1_200
+
+export type HostQueryFailureHintInput = Readonly<{
+  message: string
+  tables: readonly string[]
+  columnsFor: (table: string) => Promise<readonly string[]>
+}>
+
+/** Returns '' when the failure is not a schema guess, so an unrelated error stays byte-identical. */
+export const buildHostQueryFailureHint = async (
+  input: HostQueryFailureHintInput
+): Promise<string> => {
+  const missingColumn = MISSING_COLUMN.exec(input.message)?.[1]
+  const missingTable = MISSING_TABLE.exec(input.message)?.[1]
+
+  if (missingTable) {
+    return [
+      `The table "${missingTable}" does not exist. Allowlisted tables: ${HOST_QUERY_ALLOWED_TABLES.join(', ')}.`
+    ].join('\n')
+  }
+
+  if (!missingColumn) return ''
+
+  const lines: string[] = [
+    `The column "${missingColumn}" does not exist. Available columns, read from the same database:`
+  ]
+  const tables = input.tables.length > 0 ? input.tables : [...HOST_QUERY_ALLOWED_TABLES]
+  for (const table of tables) {
+    const columns = await input.columnsFor(table).catch(() => [] as readonly string[])
+    if (columns.length === 0) continue
+    const shown = columns.slice(0, MAX_COLUMNS_PER_TABLE)
+    const suffix = columns.length > shown.length ? `, … (${columns.length} total)` : ''
+    lines.push(`- ${table}: ${shown.join(', ')}${suffix}`)
+  }
+  lines.push('Rewrite the SELECT with one of those names; do not guess a different spelling.')
+
+  const hint = lines.join('\n')
+  return hint.length > MAX_HINT_CHARS ? `${hint.slice(0, MAX_HINT_CHARS)}…` : hint
+}
+
 export class HostQueryService {
   constructor(private readonly deps: HostQueryServiceDeps) {}
 
   // Runs a validated read-only query, scopes rows to the project (post-filter), caps at 200.
   async query(sql: string, projectId: string | undefined): Promise<HostQueryResult> {
-    validateHostQuerySql(sql)
+    const tables = validateHostQuerySql(sql)
     const client = await this.deps.getClient()
     const startedAt = performance.now()
 
@@ -104,7 +155,13 @@ export class HostQueryService {
     try {
       rows = (await client.$queryRawUnsafe(sql)) as unknown[]
     } catch (error) {
-      throw new Error(`Query failed: ${error instanceof Error ? error.message : String(error)}`)
+      const message = error instanceof Error ? error.message : String(error)
+      const hint = await buildHostQueryFailureHint({
+        message,
+        tables,
+        columnsFor: (table) => this.columnsFor(client, table)
+      })
+      throw new Error(hint ? `Query failed: ${message}\n\n${hint}` : `Query failed: ${message}`)
     }
     const elapsedMs = Math.round(performance.now() - startedAt)
 
@@ -128,6 +185,19 @@ export class HostQueryService {
       elapsedMs,
       scopedToProject: scoped || typeof projectId === 'string'
     }
+  }
+
+  // Columns of one allowlisted table, read from the database the query just ran against. The name is
+  // checked against the closed allowlist first, so the identifier interpolated into PRAGMA can only be
+  // one of the names this module already validated.
+  private async columnsFor(client: PrismaClient, table: string): Promise<readonly string[]> {
+    if (!(HOST_QUERY_ALLOWED_TABLES as readonly string[]).includes(table)) return []
+    const rows = (await client.$queryRawUnsafe(`PRAGMA table_info("${table}")`)) as Array<{
+      name?: unknown
+    }>
+    return rows
+      .map((row) => (typeof row?.name === 'string' ? row.name : ''))
+      .filter((name) => name.length > 0)
   }
 }
 

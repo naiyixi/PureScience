@@ -103,4 +103,52 @@ describe('HostQueryService', () => {
     const service = new HostQueryService({ getClient: getClient as never })
     await expect(service.query('SELECT * FROM Review', undefined)).rejects.toThrow(/no such table/)
   })
+
+  it('names the columns a guessed column could have been', async () => {
+    // Field shape: a model-written SELECT guessed `title` on a table that has never had one. The answer
+    // has to carry the real columns, or the next turn guesses again.
+    const calls: string[] = []
+    const getClient = vi.fn(async () => ({
+      $queryRawUnsafe: vi.fn(async (sql: string) => {
+        calls.push(sql)
+        if (sql.startsWith('PRAGMA')) {
+          return [{ name: 'id' }, { name: 'name' }, { name: 'archived' }]
+        }
+        throw new Error('no such column: title')
+      })
+    }))
+    const service = new HostQueryService({ getClient: getClient as never })
+
+    const failure = await service.query('SELECT title FROM Project', undefined).catch((e) => e)
+
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toContain('no such column: title')
+    expect((failure as Error).message).toContain('Project: id, name, archived')
+    expect(calls[1]).toBe('PRAGMA table_info("Project")')
+  })
+
+  it('lists the allowlist when the table itself was guessed, and leaves other errors alone', async () => {
+    const guessedTable = new HostQueryService({
+      getClient: (async () => ({
+        $queryRawUnsafe: async () => {
+          throw new Error('no such table: Xyz')
+        }
+      })) as never
+    })
+    await expect(guessedTable.query('SELECT * FROM Review', undefined)).rejects.toThrow(
+      /The table "Xyz" does not exist\. Allowlisted tables:/
+    )
+
+    // An unrelated engine failure must not grow a schema lecture: byte-identical to before this seam.
+    const other = new HostQueryService({
+      getClient: (async () => ({
+        $queryRawUnsafe: async () => {
+          throw new Error('database is locked')
+        }
+      })) as never
+    })
+    await expect(other.query('SELECT * FROM Project', undefined)).rejects.toThrow(
+      /^Query failed: database is locked$/
+    )
+  })
 })
