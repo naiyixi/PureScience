@@ -1,4 +1,5 @@
 import type { AcpPromptRequest } from '../../shared/acp'
+import { answerLanguageDirective } from '../../shared/answer-language'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
 import { touchTurnSilenceWatchdog } from './turn-silence-watchdog'
@@ -235,6 +236,14 @@ const composeAcpRuntimePromptOwners = (
                 session.sessionRegistry.resolveAppSessionId(request.sessionId) ?? request.sessionId,
               referenced: request.forcedSkillIds ?? []
             })
+        }
+      : {}),
+    ...(options.answerLanguage
+      ? {
+          // Read per turn from settings rather than captured once, so a language switch applies to the
+          // next turn of an already-open session. The directive returns null for a tag outside the nine
+          // shipped languages, which leaves that turn byte-identical to the pre-seam behaviour.
+          languageNotice: async () => answerLanguageDirective(await options.answerLanguage!())
         }
       : {}),
     ...(options.capabilityGaps

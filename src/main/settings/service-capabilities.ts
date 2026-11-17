@@ -18,6 +18,9 @@ export type AcpSettingsCapabilities = Pick<
   | 'codexSkillDescriptorsForIds'
   | 'codexSkillCatalog'
   | 'getConversationSkillImportEnabled'
+  // The answer language derives from the reported interface language, so the ACP turn path reads it
+  // here rather than keeping a second copy that can drift from what the renderer shows.
+  | 'getUiLanguage'
   | 'listSpecialistSkillCatalog'
   | 'provisionedConnectorSkillNames'
 >

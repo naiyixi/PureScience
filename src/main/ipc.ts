@@ -2812,6 +2812,9 @@ const createApplicationModules = async (
       authorizeSkillImportReferencedUploads: (projectId, sessionId, paths) =>
         conversationSkillImporter.authorizeReferencedUploads(projectId, sessionId, paths),
       settingsService,
+      // Answer language: read from settings on every turn, so the answer follows the interface language
+      // the reader actually has in front of them instead of drifting into English after a tool output.
+      answerLanguage: () => settingsService.getUiLanguage(),
       // Per-turn capability gaps: the same reading the `capability_preflight` tool gives, prepended to the
       // turn's content.
       //

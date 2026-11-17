@@ -79,6 +79,11 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // callable, a real run called it zero times (2 tool calls total). Asking only works on a model that
   // asks; the gaps have to arrive.
   capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>
+  // The answer-language notice: the interface language the reader is looking at, phrased as a prompt
+  // instruction. Async because it is read from settings on every turn, so switching the interface
+  // language takes effect on the next turn of a session that is already open. Null (an unsupported
+  // language tag) keeps the turn byte-identical to what it was before this seam existed.
+  languageNotice?: (request: AcpPromptRequest) => Promise<string | null>
   // The hard gate (app-side, model-independent): returns a refusal when the turn targets a capability
   // whose contract declares a missing_state policy and whose requirement is absent. Null lets it run.
   capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>
@@ -278,7 +283,13 @@ class AcpPromptPreparationOwner {
       const capabilityNotice = this.options.capabilityNotice
         ? await this.options.capabilityNotice(input.request)
         : null
+      // Read every turn and placed first: the language drifts exactly when a turn carries a lot of
+      // English tool output, so the instruction has to precede it rather than ride behind it.
+      const languageNotice = this.options.languageNotice
+        ? await this.options.languageNotice(input.request)
+        : null
       const notices = [
+        languageNotice,
         this.options.inputNotice?.(input.request),
         capabilityNotice,
         this.options.selectionNotice?.(input.request),

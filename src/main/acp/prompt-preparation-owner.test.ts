@@ -68,7 +68,8 @@ const setup = (
   selectionNotice?: (request: AcpPromptRequest) => string,
   imageInputCompatibility?: ImageRelayDouble,
   capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>,
-  capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>
+  capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>,
+  languageNotice?: (request: AcpPromptRequest) => Promise<string | null>
 ): Fixture => {
   const turn = contextTurn()
   const promptContent = {
@@ -100,6 +101,7 @@ const setup = (
     ...(selectionNotice ? { selectionNotice } : {}),
     ...(imageInputCompatibility ? { imageInputCompatibility } : {}),
     ...(capabilityNotice ? { capabilityNotice } : {}),
+    ...(languageNotice ? { languageNotice } : {}),
     ...(capabilityGate ? { capabilityGate } : {}),
     notebook: {
       peekHandoffContext: vi.fn(() => ({
@@ -248,6 +250,35 @@ describe('AcpPromptPreparationOwner', () => {
     handle.close()
     expect(fixture.releaseGrant).toHaveBeenCalledTimes(1)
     expect(fixture.turn.fail).not.toHaveBeenCalled()
+  })
+
+  it('opens the turn with the answer-language instruction, ahead of every other notice', async () => {
+    const fixture = setup(
+      () => 'INPUT_NOTICE',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      async () => 'LANGUAGE_NOTICE'
+    )
+
+    const handle = await fixture.prepare()
+
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    // First in the content the model reads, and ahead of the input pre-check notice: a turn that
+    // carries a lot of English tool output is exactly where the answer drifts, so the instruction
+    // cannot ride behind it.
+    expect(handle.content).toBe('LANGUAGE_NOTICE\n\nINPUT_NOTICE\n\nprovider-content')
+  })
+
+  it('leaves the turn byte-identical when the language is unsupported', async () => {
+    // An absent fact injects nothing (the directive answers null outside the nine shipped languages).
+    const fixture = setup(undefined, undefined, undefined, undefined, undefined, async () => null)
+
+    const handle = await fixture.prepare()
+
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    expect(handle.content).toBe('provider-content')
   })
 
   it('stops a superseded prompt after stalled content preparation and releases its grant', async () => {

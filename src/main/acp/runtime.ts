@@ -175,6 +175,11 @@ type AcpRuntimeOptions = {
   // establish each missing fact. Injected into the prompt content, not the user's own text — the model
   // gets it whether or not it would have asked `capability_preflight` (measured: it does not ask).
   capabilityGaps?: (sessionId: string) => Promise<string | null>
+  // Answer language for this turn's content: the interface language the reader is looking at. Read per
+  // turn (not once per session) because the setting can change mid-conversation, and injected as prompt
+  // content like `capabilityGaps` — never into the user's own message text. Absent ⇒ no instruction, so
+  // a caller without settings behaves exactly as it did before this seam existed.
+  answerLanguage?: () => Promise<string | undefined>
   // App-side hard gate: refuse a turn whose explicitly chosen capability has an unmet, contract-declared
   // precondition. Independent of the model — the measured failure mode was that the model never asks.
   capabilityGate?: (input: {
