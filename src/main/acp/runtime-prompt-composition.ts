@@ -1,5 +1,6 @@
 import type { AcpPromptRequest } from '../../shared/acp'
 import { answerLanguageDirective } from '../../shared/answer-language'
+import { turnLocationDirective } from '../../shared/turn-location'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
 import { touchTurnSilenceWatchdog } from './turn-silence-watchdog'
@@ -246,6 +247,9 @@ const composeAcpRuntimePromptOwners = (
           languageNotice: async () => answerLanguageDirective(await options.answerLanguage!())
         }
       : {}),
+    // Unconditional: the file-location notice does not depend on any setting, only on where this session
+    // runs. Read per turn, because a session's working directory is what a relative path resolves against.
+    locationNotice: async (request) => turnLocationDirective(sessionCwd(request.sessionId)),
     ...(options.capabilityGaps
       ? {
           // The runtime speaks in ACP session ids; the session store speaks in app session ids. Resolve

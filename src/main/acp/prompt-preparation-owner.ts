@@ -84,6 +84,11 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // language takes effect on the next turn of a session that is already open. Null (an unsupported
   // language tag) keeps the turn byte-identical to what it was before this seam existed.
   languageNotice?: (request: AcpPromptRequest) => Promise<string | null>
+  // The file-location notice: this session's scratch working directory and the project root its files
+  // live in. Field evidence: 27 failed Read/Edit calls plus 28 scope refusals, all from a model looking
+  // for project files in the directory it was standing in. Null (no scratch directory) leaves the turn
+  // byte-identical to what it was before this seam existed.
+  locationNotice?: (request: AcpPromptRequest) => Promise<string | null>
   // The hard gate (app-side, model-independent): returns a refusal when the turn targets a capability
   // whose contract declares a missing_state policy and whose requirement is absent. Null lets it run.
   capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>
@@ -288,8 +293,12 @@ class AcpPromptPreparationOwner {
       const languageNotice = this.options.languageNotice
         ? await this.options.languageNotice(input.request)
         : null
+      const locationNotice = this.options.locationNotice
+        ? await this.options.locationNotice(input.request)
+        : null
       const notices = [
         languageNotice,
+        locationNotice,
         this.options.inputNotice?.(input.request),
         capabilityNotice,
         this.options.selectionNotice?.(input.request),
