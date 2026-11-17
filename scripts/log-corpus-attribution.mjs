@@ -27,12 +27,21 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const SLOW_IPC_MESSAGE = 'ipc handler was slow'
 // A stall row is not one thing: its `cause.kind` names what held the loop, and `process-frozen` means no thread
 // of this process ran at all (sleep, an external stop, total starvation) — a window that belongs to the machine.
 const STALL_MESSAGE = 'event loop stalled'
 const FROZEN_CAUSE = 'process-frozen'
+// 判「整进程没在跑」的那道门住在生产者里（`src/main/diagnostics/stall-cause.ts`，`FROZEN_GAP_SHARE`）。语料里
+// 的判词是**写出它的那个版本**留下的：一条早于该门上线而记录的长窗，只带着旧判词。这里按今天的规则重算一遍，
+// 结论是「今天的代码会怎么说」，**不是任何一次运行说过的话** —— 所以它单列一行、绝不并进上面那行的判词计数。
+// 常量必须与生产者同一个数：自检会去读那个源文件，两边漂开就失败（没有那份文件的场景会具名跳过）。
+const FROZEN_GAP_SHARE = 0.8
+const STALL_CAUSE_SOURCE = join('src', 'main', 'diagnostics', 'stall-cause.ts')
+// 自检要读生产者那份源文件：这里用脚本自己的位置推仓库根，别依赖调用时的工作目录。
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURE_PREFIX = 'e2e'
 const DEFAULT_TOP = 12
 // 行上可能承载会话身份的字段。取第一个在场的：`sessionId` 是渲染侧与会话本身，`mainSessionId` 是
@@ -242,7 +251,15 @@ export const analyse = (entries) => {
       // omits the fields, and the whole duration is the handler's. That is a different fact from a coverage
       // gap, so it gets its own counter and its own summed time.
       slowSplit: { splittable: 0, heldMs: 0, ownMs: 0, noStall: 0, noStallMs: 0, dropped: 0 },
-      stalls: { rows: 0, causes: new Map(), frozenLateMs: 0, lateMsTotal: 0 },
+      stalls: {
+        rows: 0,
+        causes: new Map(),
+        frozenLateMs: 0,
+        lateMsTotal: 0,
+        // 「今天的门会怎么说」这一格：只由**记录下来的** sampler 读数决定，与写下的判词无关。
+        // 读数缺席的行单独计数 —— 它们不可判，既不是 frozen 也不是 not-frozen。
+        frozenMirror: { rows: 0, lateMs: 0, agree: 0, byShippedKind: new Map(), undecidable: 0 }
+      },
       recurrence: new Map(),
       runIds: runIdsFor(name)
     }
@@ -297,6 +314,27 @@ export const analyse = (entries) => {
       if (typeof late === 'number' && Number.isFinite(late)) {
         instance.stalls.lateMsTotal += late
         if (kind === FROZEN_CAUSE) instance.stalls.frozenLateMs += late
+      }
+      // 同一道门的重算：`host` 是本进程自己 sampler 线程的读数，`maxGapMs` 是它错过的最宽一段。
+      // 门要求「洞覆盖了 ≥FROZEN_GAP_SHARE 的窗口」；只在有读数时才能判，缺席的单独计数。
+      const host = entry.data.host
+      const maxGap =
+        host && host.status === 'sampled' && typeof host.maxGapMs === 'number'
+          ? host.maxGapMs
+          : undefined
+      if (typeof late === 'number' && Number.isFinite(late) && late > 0) {
+        if (maxGap === undefined) {
+          instance.stalls.frozenMirror.undecidable += 1
+        } else if (maxGap >= late * FROZEN_GAP_SHARE) {
+          instance.stalls.frozenMirror.rows += 1
+          instance.stalls.frozenMirror.lateMs += late
+          if (kind === FROZEN_CAUSE) instance.stalls.frozenMirror.agree += 1
+          else
+            instance.stalls.frozenMirror.byShippedKind.set(
+              kind,
+              (instance.stalls.frozenMirror.byShippedKind.get(kind) ?? 0) + 1
+            )
+        }
       }
     }
     // 重复尝试：只统计 error/warn，且必须有身份。`attempt` 只在部分族里出现（定稿认领有、修正注入没有），
@@ -363,7 +401,17 @@ export const analyse = (entries) => {
         rows: instance.stalls.rows,
         causes: [...instance.stalls.causes.entries()].sort((a, b) => b[1] - a[1]),
         lateMsTotal: Math.round(instance.stalls.lateMsTotal),
-        frozenLateMs: Math.round(instance.stalls.frozenLateMs)
+        frozenLateMs: Math.round(instance.stalls.frozenLateMs),
+        // 重算（mirror）而不是判词：读的人要能看出这是今天的规则算出来的，并且有不可判的行。
+        frozenMirror: {
+          rows: instance.stalls.frozenMirror.rows,
+          lateMs: Math.round(instance.stalls.frozenMirror.lateMs),
+          agree: instance.stalls.frozenMirror.agree,
+          byShippedKind: [...instance.stalls.frozenMirror.byShippedKind.entries()].sort(
+            (a, b) => b[1] - a[1]
+          ),
+          undecidable: instance.stalls.frozenMirror.undecidable
+        }
       },
       // 只留「重复」的：撞一次的身份不是重试问题，列出来会把表淹掉。
       repeats: [...instance.recurrence.values()]
@@ -449,6 +497,21 @@ export const formatReport = (report, top, options = {}) => {
             ? `; ${instance.stalls.frozenLateMs} ms of it in windows where no thread of this process ran`
             : '')
       )
+      const mirror = instance.stalls.frozenMirror
+      const disagree = mirror.byShippedKind.map(([kind, count]) => `${kind} ${count}`).join(' | ')
+      lines.push(
+        `  frozen mirror: ${mirror.rows} of ${instance.stalls.rows} row(s) carry a sampler gap today's gate calls ` +
+          `process-frozen (${mirror.lateMs} ms late) — ${mirror.agree} already say so` +
+          (disagree ? `, ${mirror.rows - mirror.agree} disagree: ${disagree}` : '') +
+          (mirror.undecidable > 0
+            ? `; ${mirror.undecidable} row(s) carry no sampler reading and are undecidable, not "not frozen"`
+            : '')
+      )
+      if (mirror.rows > 0)
+        lines.push(
+          '  (mirror = the rule in src/main/diagnostics/stall-cause.ts re-applied to the recorded sampler gap; ' +
+            'it is not a verdict any run wrote)'
+        )
     }
     if (options.recurrence) {
       lines.push(...formatRepeats(instance.repeats, top))
@@ -481,6 +544,15 @@ export const formatReport = (report, top, options = {}) => {
   )
   lines.push(
     '`process-frozen` means no thread of this process ran, so that window is the machine’s.'
+  )
+  lines.push(
+    'The `frozen mirror` line applies that same gate to the sampler gap recorded on each row: it says what today’s'
+  )
+  lines.push(
+    'code would call a window, not what the run that wrote the row said — a corpus produced before the gate shipped'
+  )
+  lines.push(
+    'still carries the older label. A row with no sampler reading is undecidable, which is not “not frozen”.'
   )
   return lines.join('\n')
 }
@@ -682,11 +754,43 @@ export const selftest = () => {
       msg: SLOW_IPC_MESSAGE,
       data: { channel: 'd', durationMs: 40, heldUnmeasured: 'windows-dropped' }
     },
-    // 停顿：整进程没在跑的窗口与普通停顿各一行
-    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 2000, cause: { kind: FROZEN_CAUSE } } },
-    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 700, cause: { kind: 'unmeasured' } } },
-    // 判词缺席的停顿行：不许被算成任何已知判词
-    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 300 } }
+    // 停顿：整进程没在跑的窗口与普通停顿各一行；sampler 读数在场的两行都可判
+    {
+      level: 'warn',
+      msg: STALL_MESSAGE,
+      data: {
+        lateMs: 2000,
+        cause: { kind: FROZEN_CAUSE },
+        host: { status: 'sampled', maxGapMs: 1900 }
+      }
+    },
+    {
+      level: 'warn',
+      msg: STALL_MESSAGE,
+      data: {
+        lateMs: 700,
+        cause: { kind: 'unmeasured' },
+        host: { status: 'sampled', maxGapMs: 100 }
+      }
+    },
+    // 判词缺席的停顿行：不许被算成任何已知判词；也没有 sampler 读数 ⇒ 重算不可判（不是「没冻」）
+    { level: 'warn', msg: STALL_MESSAGE, data: { lateMs: 300 } },
+    // 重算：判词写的是 unmeasured，而 sampler 的洞盖住了窗口 ⇒ 今天的门会说 process-frozen
+    {
+      level: 'warn',
+      msg: STALL_MESSAGE,
+      data: {
+        lateMs: 5000,
+        cause: { kind: 'unmeasured' },
+        host: { status: 'sampled', maxGapMs: 4500 }
+      }
+    },
+    // 重算的另一半：sampler 根本没给读数（status 不是 sampled）⇒ 不可判，不许算成 not-frozen
+    {
+      level: 'warn',
+      msg: STALL_MESSAGE,
+      data: { lateMs: 5000, cause: { kind: 'unexplained' }, host: { status: 'unavailable' } }
+    }
   ].map((record) => ({ ...parseLogLine(JSON.stringify(record)), instance: 'PureScience' }))
   const splitReport = analyse(splitEntries)[0]
   const split = splitReport.slow.split
@@ -702,22 +806,57 @@ export const selftest = () => {
   if (split.heldMs + split.ownMs > splitReport.slow.summedMs)
     problems.push('the split can never exceed the summed slow time')
   const stall = splitReport.stalls
-  if (stall.rows !== 3) problems.push(`three stall rows expected, got ${stall.rows}`)
+  if (stall.rows !== 5) problems.push(`five stall rows expected, got ${stall.rows}`)
   if (stall.frozenLateMs !== 2000)
     problems.push(`frozen late ms must be 2000, got ${stall.frozenLateMs}`)
-  if (stall.lateMsTotal !== 3000) problems.push(`late ms must total 3000, got ${stall.lateMsTotal}`)
+  if (stall.lateMsTotal !== 13000)
+    problems.push(`late ms must total 13000, got ${stall.lateMsTotal}`)
   const frozenRow = stall.causes.find(([kind]) => kind === FROZEN_CAUSE)
   if (!frozenRow || frozenRow[1] !== 1)
     problems.push('the frozen window must be counted under its own verdict')
   const unstated = stall.causes.find(([kind]) => kind === 'unstated')
   if (!unstated || unstated[1] !== 1)
     problems.push('a stall row with no verdict is unstated, not a known cause')
+  // 重算：只有「sampler 有读数且洞盖住 ≥80% 窗口」的行才算；写下的判词不参与这个判据，
+  // 而缺席读数的行是**不可判**，不许并进 not-frozen。
+  const mirror = stall.frozenMirror
+  if (mirror.rows !== 2)
+    problems.push(
+      `mirror must call 2 rows frozen (the shipped-verdict one and the re-decided one), got ${mirror.rows}`
+    )
+  if (mirror.lateMs !== 7000) problems.push(`mirror late ms must be 7000, got ${mirror.lateMs}`)
+  if (mirror.agree !== 1)
+    problems.push(`exactly one mirror row already says frozen, got ${mirror.agree}`)
+  const disagree = mirror.byShippedKind.find(([kind]) => kind === 'unmeasured')
+  if (!disagree || disagree[1] !== 1)
+    problems.push(
+      `the re-decided row must be listed under its written verdict (unmeasured), got ${JSON.stringify(mirror.byShippedKind)}`
+    )
+  if (mirror.undecidable !== 2)
+    problems.push(`two rows with no sampler reading must be undecidable, got ${mirror.undecidable}`)
+  // 判据住在生产者里：这里重算用的是它的常量，两边漂开就等于用旧规则读新语料。
+  const causeSource = join(REPO_ROOT, STALL_CAUSE_SOURCE)
+  if (!existsSync(causeSource)) {
+    process.stdout.write(
+      `selftest note: ${STALL_CAUSE_SOURCE} is not on disk here, so the shared gate constant was not cross-checked\n`
+    )
+  } else {
+    const declared = /FROZEN_GAP_SHARE\s*=\s*([0-9.]+)/.exec(readFileSync(causeSource, 'utf8'))
+    if (!declared)
+      problems.push(
+        `${STALL_CAUSE_SOURCE} no longer declares FROZEN_GAP_SHARE — the mirror is stale`
+      )
+    else if (Number(declared[1]) !== FROZEN_GAP_SHARE)
+      problems.push(
+        `mirror gate ${FROZEN_GAP_SHARE} disagrees with ${STALL_CAUSE_SOURCE} (${declared[1]}) — update both`
+      )
+  }
   if (problems.length > 0) {
     process.stderr.write(`selftest FAILED:\n  ${problems.join('\n  ')}\n`)
     return 4
   }
   process.stdout.write(
-    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, slow-row held split, stall verdicts, empty input)\n'
+    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, slow-row held split, stall verdicts, frozen-gate mirror + shared constant, empty input)\n'
   )
   return 0
 }

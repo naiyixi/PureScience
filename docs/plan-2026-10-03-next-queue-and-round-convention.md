@@ -19683,3 +19683,64 @@ read-me 同步写明 `own` 只代表「循环在跑」、不代表「在算」�
 
 - ① 用同一支工具读下一份 2.27.0+ 语料，验证 66 条长窗被归到 `process-frozen`（这是本档唯一的口径承诺）。
 - ② 若新语料里仍有「own 大且 `cpuShare` 高」的行，才按那条通道逐行查同步工作；本轮证据不支持直接改保存路径。
+
+## 三百四十九、本轮追加（执行器，2026-11-17 11:4x–）—— 长窗那一格：今天的判据会怎么叫，与「没有任何一次运行这么叫过」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = 97b34007`，本地压着上一轮那一笔 `ad6f225f`（语料报表三态）。先查在飞车道：
+  `97b34007` 的 `Nightly` 与 `Windows Full Test` 均已 `completed / success`，`gh run list` 无在跑项 ⇒
+  跑 `scripts/pre-push-checks.sh`（全过）后推 `97b34007..ad6f225f`，**本次推送没有取消任何人的判决**。
+- 工作区仍带别人未提交的在制品（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪 e2e spec、四份未跟踪证据档）⇒ 一个字节没碰。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；C 段外部阻塞。本单元取的是上一节 §五① 留下的那一格。
+
+### 一 交付
+
+`scripts/log-corpus-attribution.mjs` 多一行 `frozen mirror`：把生产者 `src/main/diagnostics/stall-cause.ts` 的
+`FROZEN_GAP_SHARE` 那道门对**行上已记录的** sampler 读数重算一遍。三条实现纪律：
+
+1. **mirror 与判词分列**：`stalls:` 那行数「写出这一行的版本说了什么」，`frozen mirror` 数「今天的代码会说什么」；
+   并进一列就是把重算冒充成读数。
+2. **读数缺席 = `undecidable`**（`host` 不在场或 `status` 不是 `sampled`），不并进 `not frozen`。
+3. **判据单一来源**：副本常量由 `--selftest` 去读生产者源文件逐字比对，漂开即失败；文件不在盘上时打印具名 note。
+   已用变异证明（副本 0.8→0.9 ⇒ `selftest FAILED: mirror gate 0.9 disagrees with … (0.8)`，退出 4；改回 ⇒ 退出 0）。
+
+自检新增 6 条断言 + 1 条源读守卫；证据档 `docs/evidence/2026-11-17-frozen-window-mirror.md`。
+
+### 二 读数（真实安装版语料 8,150 行）
+
+```
+stalls: 1179 late 71,461,865 ms — unmeasured 1061 | cpu-in-process 58 | unexplained 57 | garbage-collection 3
+frozen mirror: 141 of 1179 — 0 already say so, 141 disagree:
+               unmeasured 70 | unexplained 57 | cpu-in-process 13 | garbage-collection 1
+```
+
+- **>10 分钟的 66 条长窗 100% 命中**（洞覆盖比例最小 1.00、中位 1.001、最大 6.44）；当时写的是 unmeasured 34 / unexplained 32。
+- **不是「长就算冻」**：非 mirror 行里最长一条晚到 129,438 ms 却未命中 —— 这道门要的是 sampler 自己也没跑。
+- **14 条判词是错的**（13 条 `cpu-in-process`、1 条 `garbage-collection`，而那窗本进程没有线程在跑）。
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `node --check` + `--selftest` | 通过 / `selftest OK`，退出 0 |
+| 变异证明（0.8→0.9） | `selftest FAILED`，退出 4；还原后退出 0 |
+| `npx eslint --no-cache scripts/log-corpus-attribution.mjs` | 0 error / 0 warning（`--write` 前 7 warnings 全是 prettier 折行） |
+| `npx prettier --check`（脚本 + 证据档） | 通过 |
+| `bash scripts/pre-push-checks.sh` | 见 §五（推送时实跑） |
+
+### 四 边界与具名未办
+
+1. **mirror 不是判决**：语料里 `0 already say so` —— 2.27.0 上线后**没有任何一次真机运行写下 `process-frozen`**
+   （该版本期 72 条停顿最长 8,149 ms）。§三百四十八 §五① 的口径承诺因此在「今天的规则会怎么叫」这一半成立，
+   在「真机真的叫过一次」那一半**仍为空**，本档按未取证记。
+2. 补那一半的两条路（留作下一单元）：① 等真实语料自己出现长窗；② 在**隔离根**起实例、做一次可控整进程冻结
+   （`SIGSTOP` ~70 s 后 `SIGCONT`），读它自己写下的判词。本机现况（free ≈ 62 MB、load 4.2）不为它再起一次构建。
+3. 语料跨 2.26.0 / 2.27.0 两段，旧段天然没有该判词；本档所有结论只建立在「行上确实记了 `host.maxGapMs`」之上。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔双车道（`ad6f225f` 已在上一次推送窗口里落定，本笔另算）。
+- ② 若真实语料仍无长窗，就按 §四② 走隔离实例的冻结实验（这是唯一能把「真机叫过一次」补上的读数）。
+- ③ i18n 那批在制品（`update.macManualInstallNote` 九语与 `UpdateDialog.tsx` 注释）仍在别人手里，继续不动。
