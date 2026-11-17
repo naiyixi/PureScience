@@ -527,19 +527,19 @@ describe('AgentRuntimeManager', () => {
 
     const result = await manager.installClaude({ source: 'managed' }, onEvent)
 
-    expect(result).toEqual({
-      installId: 'install-321-1',
-      ok: false,
-      error:
-        'The installed Claude runtime could not report its version. It may be incompatible or incomplete. Delete it and install again.'
-    })
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected a failed install')
+    // The message now names the mechanism: the injected path does not exist, and "there is no file at
+    // the installed path" is a different problem from "the binary will not run".
+    expect(result.error).toMatch(
+      /^The installed Claude runtime could not report its version: the installer reported success but there is no file at the installed path\./
+    )
     expect((await repository.getSettings()).claude).toBeUndefined()
     expect(onEvent).toHaveBeenCalledWith({
       kind: 'log',
       installId: 'install-321-1',
       stream: 'system',
-      chunk:
-        'The installed Claude runtime could not report its version. It may be incompatible or incomplete. Delete it and install again.\n'
+      chunk: `${result.error}\n`
     })
   })
 

@@ -88,6 +88,7 @@ import type { EnvironmentCheckDeps } from './environment-check'
 import { computePreflight } from './preflight'
 import { isEncryptionAvailable } from './crypto'
 import { augmentedPathEnv } from './shell-path'
+import { describeInstalledRuntime, formatRuntimeFailure } from './runtime-failure-diagnosis'
 import { buildProviderEnv, getAppClaudeConfigDir, type ResolvedProvider } from './provider-env'
 import { resolveSystemProxyEnvironment, type SystemProxyEnvironment } from './system-proxy'
 import type { ProviderAccountsModule } from './provider-accounts'
@@ -599,8 +600,13 @@ export class AgentRuntimeManager {
       if (outcome.result.ok && outcome.resolvedPath) {
         const installedVersion = await this.detectDeps.getVersion(outcome.resolvedPath)
         if (!installedVersion) {
-          const error =
-            'The installed Claude runtime could not report its version. It may be incompatible or incomplete. Delete it and install again.'
+          // Say what is actually wrong with the installed file. "It may be incompatible or incomplete"
+          // sent the user back to a reinstall with no new information; the file itself distinguishes an
+          // empty download, a wrong-CPU build and a missing native runtime in one read.
+          const diagnosis = await describeInstalledRuntime(outcome.resolvedPath)
+          const error = diagnosis
+            ? `The installed Claude runtime could not report its version: ${formatRuntimeFailure(diagnosis)}`
+            : 'The installed Claude runtime could not report its version. It may be incompatible or incomplete. Delete it and install again.'
           onEvent({ kind: 'log', installId, stream: 'system', chunk: `${error}\n` })
           return { installId, ok: false, error }
         }

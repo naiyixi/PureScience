@@ -15,6 +15,7 @@ import {
   type FetchTarball,
   type ManagedInstallOutcome
 } from './managed-claude'
+import { describeWindowsExitStatus } from './runtime-failure-diagnosis'
 
 // App-managed OpenCode installer. opencode ships per-platform native packages
 // (`opencode-<os>-<arch>[-musl]`) as optionalDependencies of the `opencode-ai` wrapper, with the binary
@@ -254,12 +255,19 @@ export const classifyVerifyResult = (
       reason: `killed by ${probe.signal}`,
       illegalInstruction: probe.signal === 'SIGILL'
     }
-  if (probe.status !== 0)
+  if (probe.status !== 0) {
+    // Name the mechanism instead of leaving the user with a bare NTSTATUS number: on Windows the same
+    // exit code can mean "incomplete download" or "missing Visual C++ runtime", and those have
+    // different fixes. POSIX statuses stay as they were.
+    const named = platform === 'win32' ? describeWindowsExitStatus(probe.status) : undefined
     return {
       ok: false,
-      reason: `\`--version\` exited with code ${probe.status}`,
+      reason: named
+        ? `\`--version\` exited with code ${probe.status} (${named.hex} ${named.name}: ${named.meaning})`
+        : `\`--version\` exited with code ${probe.status}`,
       illegalInstruction: platform === 'win32' && isIllegalInstructionStatus(probe.status)
     }
+  }
   return { ok: true }
 }
 

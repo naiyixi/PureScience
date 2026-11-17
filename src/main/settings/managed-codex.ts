@@ -33,6 +33,7 @@ import {
   type FetchTarball
 } from './managed-claude'
 import { createLogger } from '../logger'
+import { describeInstalledRuntime, formatRuntimeFailure } from './runtime-failure-diagnosis'
 import { stripCodexCredentialEnv } from './process-tree'
 import { terminateProcessTree } from '../process-tree'
 
@@ -1304,7 +1305,14 @@ export const installManagedCodex = async ({
       const adapterVersion = await verifyAdapter(stagedAdapter)
       if (!adapterVersion) throw new Error('Installed Codex ACP adapter failed its --version check')
       const codexVersion = await verifyCodex(stagedCodex)
-      if (!codexVersion) throw new Error('Installed Codex binary failed its --version check')
+      if (!codexVersion) {
+        const diagnosis = await describeInstalledRuntime(stagedCodex)
+        throw new Error(
+          diagnosis
+            ? `Installed Codex binary failed its --version check: ${formatRuntimeFailure(diagnosis)}`
+            : 'Installed Codex binary failed its --version check'
+        )
+      }
       // Smoke home lives in scratch (auto-removed), NEVER inside stagedRoot: stagedRoot is moved to
       // the final runtime, so anything Codex might write here must not ride along into the install.
       await verifyPair(stagedAdapter, stagedCodex, join(scratch, 'smoke-home'))
