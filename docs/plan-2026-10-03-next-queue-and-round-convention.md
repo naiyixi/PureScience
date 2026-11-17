@@ -19913,3 +19913,67 @@ CPU 那一格（空闲内核烧 CPU → 具名日志行 + `diagnostics/notebook-
 - ② Release 与 `a73e0647` 的 Nightly 都落定后，**只推一次**本笔，然后按完整 40 位 SHA 读双车道。
 - ③ 下一单元候选：v2.29 的 2.1「计算进程监视与终止」（需要界面 + 九语，撞在并发写入者的 i18n 在制品上 ⇒ 开工前先看那批是否已落）；
   不撞的备选是 2.2 重放的真机读数（重放器已在仓里）。
+
+## 三百五十三、本轮追加（执行器，2026-11-18 01:4x–）—— v2.28.0 页第二次没落：真凶是 macOS arm64 runner 拿不到；v2.29.0 就绪件先备好
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = f9e8fb80`（`origin/main..HEAD` 为空）；**共享工作树带 18 个未提交路径**
+  （9 个 i18n 语言文件 + `main-message-catalog` + `ConnectorAddForm/Import/Export` + `background-delivery-labels`
+  + 3 个未跟踪证据档 + `e2e/certification/connector-refusal-language.spec.ts`）—— 全部归并发写入者（会话），
+  **一个字节没碰**，本轮只 `git add` 自己那五个发版文件。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；C 段外部阻塞。v2.29 排期按 2026-11-17 的审计
+  已收缩为「超时点名 + 语言取证 + 审计」三项且全部落地 ⇒ **本轮的动作是版本边界，不是新单元**。
+
+### 一 发版红：`cancelled` 的作业不是我们的代码
+
+上一轮记的是「Release run 在飞」，实际结果是**第二次也没有页**。三次 `Verify` 作业的 annotation 逐字相同：
+
+```
+failure: The job was not acquired by Runner of type hosted even after multiple attempts
+notice:  Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.
+```
+
+- 三条 `build / Verify`（`44111279568` / `44133894242` / `44141152206`）全部 `cancelled`，`steps` 为空、日志为空 ——
+  这不是「跑了一半被打断」，而是**一次都没拿到 runner**。它同时出现在 Release 与 Nightly 两条完全不同的事件上，
+  与被测代码无关；仓库里 `build.yml` 的注释早就记过同族形状（当时是 macOS 14 镜像退役）。
+- 处置：**没有 Release 页 ⇒ 删 tag 重建**（已做一次，run `44141152206`，仍是同一条 annotation）。
+  **不重跑单个 job、不改代码、不改 workflow**（`.github/workflows/*.yml` 受保护，且这是容量问题）。
+  闸门侧唯一正确的动作是等容量回来再造一次全新 tag 事件。
+
+### 二 本轮真实交付：v2.29.0 就绪件（提交 `271a1701`）
+
+| 文件 | 改动 |
+|---|---|
+| `CHANGELOG.md` | 新增 v2.29.0 段：超时点名（本版主线）/ 连接器正文截止 / 语言真机取证 / 范围按审计收缩 / **不在本版**四条 |
+| `README.md` + `README.en.md` | 横幅换 v2.29.0、`Previous:` 指向 v2.28.0；成熟度块的 ✅ 段**前插**本版头条句，并把上一条的 `This version …` 降级为 `The previous version …`（两文件逐字节一致，`check-readme-sync` 绿） |
+| `package.json` + `package-lock.json` | 版本位 2.28.0 → 2.29.0（含 `packages[""].version`） |
+
+**门禁（隔离工作树 `/tmp/ps-release-gate`，被测提交就是这个 `271a1701`）**：
+
+| 环 | 读数 |
+|---|---|
+| `eslint --no-cache .` | **0 error / 94 warning** |
+| `typecheck:node` / `typecheck:web` | 各 **0 诊断** |
+| 全量 vitest `--maxWorkers=4` | **1492 passed \| 31 skipped（1523 文件）**；**18738 passed \| 228 skipped（18966 例）** |
+| `repo-checks`（含 pre-push 词表/README/CHANGELOG 三查） | OK，脚本自己那一环的输出亦为「检查通过」 |
+
+已推 main（`f9e8fb80..271a1701`）。**tag 还没打**：v2.28.0 的页必须先落（否则 `Previous:` 链接 404，
+且晚发的低版本会把 Latest 抢过去）⇒ 顺序是「v2.28.0 页 → 再打 v2.29.0 tag」。
+
+### 三 边界
+
+1. **本版不含并发写入者那 18 个在制路径**（i18n 清扫与连接器拒绝文案）：它们未提交、未测试，本版一个字节没碰。
+2. **v2.29.0 的两个能力都没有窗口读数**：超时点名与正文截止都在主进程侧，装机版要等下一次发版运行新代码才看得到；
+   本仓不把单测当完成证据，这一点在 CHANGELOG 的「不在本版」里已写明。
+3. **本轮没有新单元开工**：树里 18 个在制路径正落在 v2.29 的 2.1（需要界面 + 九语）会碰的文件上，撞车而无产出，
+   不如把版本边界收干净。
+
+### 四 下一轮第一步
+
+- ① 先读**这次**的判决：`gh run list --limit 6` 与 `gh release view v2.28.0`；若 `Verify` 仍是
+  `The job was not acquired by Runner`，就**只等不再造 tag**（容量回来再造一次全新 tag 事件）。
+- ② v2.28.0 页落定并核过资产族与 `sourceSha` 之后：`git tag -a v2.29.0 271a1701` → 推 tag → 盯 Release 页，
+  发布正文用 `npm run release:notes -- v2.29.0 --keep-generated --apply` 生成后回读字节数。
+- ③ 若容量长时间不回来：把 v2.29.0 的 tag 也压住不动（并发两次 Release 只会让排队更长），
+  转而做**不需要 runner 的**单元（2.2 重放的真机读数在本机就能取）。
