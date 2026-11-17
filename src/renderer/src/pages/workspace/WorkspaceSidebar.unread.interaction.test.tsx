@@ -41,6 +41,10 @@ const renderSidebar = (sessions: ChatSession[], activeSessionId?: string): HTMLE
         onNewConversation={() => undefined}
         isFilesOpen={false}
         onOpenFiles={() => undefined}
+        isBookmarksOpen={false}
+        onOpenBookmarks={() => undefined}
+        isLibraryOpen={false}
+        onOpenLibrary={() => undefined}
         onOpenSession={() => undefined}
         onRenameSession={() => undefined}
         canDownloadArtifacts={false}

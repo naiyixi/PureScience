@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import { animate } from 'motion'
-import { Bookmark, Library, MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
+import { MessagesSquare, PanelLeft, PanelRight } from 'lucide-react'
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
@@ -422,7 +422,7 @@ const SideChatToggleButton = ({
     <button
       type="button"
       data-testid="workspace-side-chat-toggle"
-      className={`absolute right-11 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
+      className={`absolute right-11 top-0 z-50 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
         isOpen
           ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
           : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
@@ -433,61 +433,6 @@ const SideChatToggleButton = ({
       onClick={onToggle}
     >
       <MessagesSquare className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
-    </button>
-  )
-}
-
-// Floating toggle that opens the project reference library (v1.51).
-// The bookmark toggle sits beside the reference-library toggle; both open a private surface rather
-// than a workspace panel, so they stay out of the preview workbench's tab list.
-const SessionBookmarksToggleButton = ({
-  isOpen,
-  onToggle
-}: {
-  isOpen: boolean
-  onToggle: () => void
-}): React.JSX.Element => {
-  const { t } = useLanguage()
-  return (
-    <button
-      type="button"
-      data-testid="workspace-bookmarks-toggle"
-      className={`absolute right-28 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
-        isOpen
-          ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
-          : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
-      }`}
-      aria-label={t('ws.sessionBookmark')}
-      title={t('ws.sessionBookmark')}
-      onClick={onToggle}
-    >
-      <Bookmark className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
-    </button>
-  )
-}
-
-const ReferencesLibraryToggleButton = ({
-  isOpen,
-  onToggle
-}: {
-  isOpen: boolean
-  onToggle: () => void
-}): React.JSX.Element => {
-  const { t } = useLanguage()
-  return (
-    <button
-      type="button"
-      data-testid="workspace-references-toggle"
-      className={`absolute right-20 top-0 z-40 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
-        isOpen
-          ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
-          : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
-      }`}
-      aria-label={t('ws.referencesLibrary')}
-      title={t('ws.referencesLibrary')}
-      onClick={onToggle}
-    >
-      <Library className="size-4" strokeWidth={2} fill="none" aria-hidden="true" />
     </button>
   )
 }
@@ -2909,6 +2854,16 @@ const WorkspacePage = ({
               setIsMobileSidebarOpen(false)
               openFilesPreview()
             }}
+            isBookmarksOpen={isBookmarksOpen}
+            onOpenBookmarks={() => {
+              setIsMobileSidebarOpen(false)
+              setIsBookmarksOpen((open) => !open)
+            }}
+            isLibraryOpen={isLibraryOpen}
+            onOpenLibrary={() => {
+              setIsMobileSidebarOpen(false)
+              setIsLibraryOpen((open) => !open)
+            }}
             onOpenSession={(sessionId) => {
               setIsMobileSidebarOpen(false)
               openSessionWithoutExportError(sessionId)
@@ -3000,6 +2955,10 @@ const WorkspacePage = ({
                   onNewConversation={openNewConversation}
                   isFilesOpen={activePreviewItemId === PROJECT_FILES_PREVIEW_ID}
                   onOpenFiles={openFilesPreview}
+                  isBookmarksOpen={isBookmarksOpen}
+                  onOpenBookmarks={() => setIsBookmarksOpen((open) => !open)}
+                  isLibraryOpen={isLibraryOpen}
+                  onOpenLibrary={() => setIsLibraryOpen((open) => !open)}
                   onOpenSession={openSessionWithoutExportError}
                   onRenameSession={openRenameDialog}
                   canDownloadArtifacts={typeof window.api?.saveSessionArtifacts === 'function'}
@@ -3234,18 +3193,6 @@ const WorkspacePage = ({
             isCollapsed={previewPanelState === 'collapsed'}
             onToggle={togglePreviewPanel}
           />
-        ) : null}
-        {!isMobile ? (
-          <>
-            <SessionBookmarksToggleButton
-              isOpen={isBookmarksOpen}
-              onToggle={() => setIsBookmarksOpen((open) => !open)}
-            />
-            <ReferencesLibraryToggleButton
-              isOpen={isLibraryOpen}
-              onToggle={() => setIsLibraryOpen((open) => !open)}
-            />
-          </>
         ) : null}
         {!isMobile ? (
           <SideChatToggleButton

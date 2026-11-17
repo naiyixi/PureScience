@@ -43,6 +43,10 @@ const renderSidebar = (sessions: ChatSession[]): HTMLDivElement => {
         onNewConversation={vi.fn()}
         isFilesOpen={false}
         onOpenFiles={vi.fn()}
+        isBookmarksOpen={false}
+        onOpenBookmarks={vi.fn()}
+        isLibraryOpen={false}
+        onOpenLibrary={vi.fn()}
         onOpenSession={vi.fn()}
         onRenameSession={vi.fn()}
         canDownloadArtifacts

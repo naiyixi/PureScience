@@ -92,6 +92,10 @@ const renderSidebar = async (sessions: ChatSession[]): Promise<string> => {
       onNewConversation={vi.fn()}
       isFilesOpen={false}
       onOpenFiles={vi.fn()}
+      isBookmarksOpen={false}
+      onOpenBookmarks={vi.fn()}
+      isLibraryOpen={false}
+      onOpenLibrary={vi.fn()}
       onOpenSession={vi.fn()}
       onRenameSession={vi.fn()}
       canDownloadArtifacts
@@ -244,6 +248,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession,
       onRenameSession,
       canDownloadArtifacts: true,
@@ -292,6 +300,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: true,
       onOpenFiles,
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -315,6 +327,56 @@ describe('WorkspaceSidebar accessible render', () => {
     expect(onOpenFiles).toHaveBeenCalledTimes(1)
   })
 
+  it('puts Bookmarks and the reference library directly under Files as labelled rows', () => {
+    // These two used to be unlabelled icon buttons floating over the preview workbench, where an opened
+    // page covered them. The requirement is now structural: they are navigation rows, in order, with
+    // visible text — so a reader can tell what they do without hovering for a tooltip.
+    const onOpenBookmarks = vi.fn()
+    const onOpenLibrary = vi.fn()
+    const container = renderSidebarDom({
+      projectName: 'Example project',
+      sessions: [createSession({ id: 'session-a', title: 'Notebook review' })],
+      activeSessionId: 'session-a',
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks,
+      isLibraryOpen: true,
+      onOpenLibrary,
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: true,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onOpenExportDialog: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    const buttons = Array.from(container.querySelectorAll('button'))
+    const filesIndex = buttons.findIndex((button) => button.textContent?.trim() === 'Files')
+    const bookmarks = container.querySelector('[data-testid="workspace-bookmarks-toggle"]')
+    const library = container.querySelector('[data-testid="workspace-references-toggle"]')
+
+    expect(filesIndex).toBeGreaterThanOrEqual(0)
+    expect(bookmarks?.textContent?.trim().length).toBeGreaterThan(0)
+    expect(library?.textContent?.trim().length).toBeGreaterThan(0)
+    expect(buttons[filesIndex + 1]).toBe(bookmarks)
+    expect(buttons[filesIndex + 2]).toBe(library)
+    expect(library?.getAttribute('aria-pressed')).toBe('true')
+
+    clickByText(container, bookmarks?.textContent?.trim() ?? '')
+    expect(onOpenBookmarks).toHaveBeenCalledTimes(1)
+    clickByText(container, library?.textContent?.trim() ?? '')
+    expect(onOpenLibrary).toHaveBeenCalledTimes(1)
+  })
+
   it('wires the View notebook menu item to the matching session', () => {
     const sessions = [
       createSession({ id: 'session-a', title: 'Notebook review' }),
@@ -332,6 +394,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -378,6 +444,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -411,6 +481,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -447,6 +521,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -478,6 +556,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -504,6 +586,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -563,6 +649,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -620,6 +710,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -671,6 +765,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: false,
@@ -703,6 +801,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation,
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -735,6 +837,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -762,6 +868,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,
@@ -798,6 +908,10 @@ describe('WorkspaceSidebar accessible render', () => {
       onNewConversation: vi.fn(),
       isFilesOpen: false,
       onOpenFiles: vi.fn(),
+      isBookmarksOpen: false,
+      onOpenBookmarks: vi.fn(),
+      isLibraryOpen: false,
+      onOpenLibrary: vi.fn(),
       onOpenSession: vi.fn(),
       onRenameSession: vi.fn(),
       canDownloadArtifacts: true,

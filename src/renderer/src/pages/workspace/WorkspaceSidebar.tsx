@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Archive,
+  Bookmark,
   BookOpen,
   Boxes,
   Check,
@@ -8,6 +9,7 @@ import {
   ChevronLeft,
   Download,
   Files,
+  Library,
   MoreVertical,
   Package,
   Pencil,
@@ -55,6 +57,14 @@ type WorkspaceSidebarProps = {
   onNewConversation: () => void
   isFilesOpen: boolean
   onOpenFiles: () => void
+  // Session bookmarks and the project reference library are workspace surfaces, not panels: they open a
+  // private view. They used to be two floating icon buttons pinned over the preview workbench's top
+  // edge, where any opened page covered them and nothing on them said what they do. As labelled rows
+  // under Files they read as navigation, and no page can land on top of them.
+  isBookmarksOpen: boolean
+  onOpenBookmarks: () => void
+  isLibraryOpen: boolean
+  onOpenLibrary: () => void
   onOpenSession: (sessionId: string) => void
   onRenameSession: (session: ChatSession) => void
   canDownloadArtifacts: boolean
@@ -137,6 +147,10 @@ const WorkspaceSidebar = ({
   onNewConversation,
   isFilesOpen,
   onOpenFiles,
+  isBookmarksOpen,
+  onOpenBookmarks,
+  isLibraryOpen,
+  onOpenLibrary,
   onOpenSession,
   onRenameSession,
   canDownloadArtifacts,
@@ -393,6 +407,48 @@ const WorkspaceSidebar = ({
                 <Files className="size-3.5" strokeWidth={2} />
               </span>
               <span>{t('common.files')}</span>
+            </button>
+          </div>
+          <div className="flex h-9 items-center gap-1 px-2">
+            <button
+              type="button"
+              className={cn(
+                'flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-text-000 hover:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-50',
+                isBookmarksOpen && 'bg-bg-300',
+                sidebarInteractiveTransitionClassName
+              )}
+              data-testid="workspace-bookmarks-toggle"
+              aria-pressed={isBookmarksOpen}
+              onClick={onOpenBookmarks}
+            >
+              <span
+                className="flex size-3.5 shrink-0 items-center justify-center"
+                aria-hidden="true"
+              >
+                <Bookmark className="size-3.5" strokeWidth={2} />
+              </span>
+              <span className="truncate">{t('ws.sessionBookmark')}</span>
+            </button>
+          </div>
+          <div className="flex h-9 items-center gap-1 px-2">
+            <button
+              type="button"
+              className={cn(
+                'flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-text-000 hover:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-50',
+                isLibraryOpen && 'bg-bg-300',
+                sidebarInteractiveTransitionClassName
+              )}
+              data-testid="workspace-references-toggle"
+              aria-pressed={isLibraryOpen}
+              onClick={onOpenLibrary}
+            >
+              <span
+                className="flex size-3.5 shrink-0 items-center justify-center"
+                aria-hidden="true"
+              >
+                <Library className="size-3.5" strokeWidth={2} />
+              </span>
+              <span className="truncate">{t('ws.referencesLibrary')}</span>
             </button>
           </div>
 
