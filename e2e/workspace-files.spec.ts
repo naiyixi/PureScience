@@ -14,6 +14,37 @@ const createProject = async (page: Page): Promise<void> => {
   await expect(page.getByRole('heading', { name: 'New conversation' })).toBeVisible()
 }
 
+test('keeps bookmarks and the reference library under Files, with visible labels', async ({
+  app
+}) => {
+  let page = await app.completeOnboarding()
+  page = await app.configureFakeAgent()
+  await createProject(page)
+
+  // The real window, not a render: these two used to be unlabelled icons floating over the preview
+  // workbench, where any opened page covered them. They are navigation rows now — in order under Files,
+  // each carrying its own text — so a reader can tell what they are and no page can land on them.
+  const filesRow = page.getByRole('button', { name: 'Files', exact: true })
+  const bookmarksRow = page.getByTestId('workspace-bookmarks-toggle')
+  const libraryRow = page.getByTestId('workspace-references-toggle')
+
+  await expect(filesRow).toBeVisible()
+  await expect(bookmarksRow).toBeVisible()
+  await expect(libraryRow).toBeVisible()
+  await expect(bookmarksRow).toHaveText(/\S/)
+  await expect(libraryRow).toHaveText(/\S/)
+
+  const filesBox = await filesRow.boundingBox()
+  const bookmarksBox = await bookmarksRow.boundingBox()
+  const libraryBox = await libraryRow.boundingBox()
+  if (!filesBox || !bookmarksBox || !libraryBox) throw new Error('sidebar rows not laid out')
+  expect(bookmarksBox.y).toBeGreaterThan(filesBox.y)
+  expect(libraryBox.y).toBeGreaterThan(bookmarksBox.y)
+
+  await libraryRow.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})
+
 test('uploads an attachment and previews it from Project files', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
