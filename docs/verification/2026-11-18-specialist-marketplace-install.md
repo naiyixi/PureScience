@@ -190,13 +190,31 @@
 
 **真实存在的问题是另一件**：会话反复落进 `error`，文案有两种——
 `Generated file finalization failed: Error invoking remote method …` 与 `This turn was interrupted before it finished.`。
-应用日志给出原因：`finalizationSkips: 'ambiguous-turn-message=1,marker-owned-by-another-session=30,version-context-mismatch=6'`。
+日志里的真因（`/tmp/ps-app16.log:8977` 与 `:9471`，会话 `ff6e5c5b`）：
 
-即：**30 次产物定稿因为「产物标记属于另一个会话」被跳过**，跳过之后整轮被判失败、会话置为 `error`。这在一个工作区里跑过多轮验收（我这台机器就是这样）时必然出现。建议：
+```
+[artifacts:finalization] artifact finalization attempt failed {
+  stage: 'durable-finalization', failureKind: 'invalid-proof',
+  proofCause: 'root-frame-mismatch',
+  rootFrameId: 'root-frame-ff6e5c5b-…', messageBranchId: 'message-branch-ff6e5c5b-…',
+  runtimeSegmentId: 'runtime-segment-ff6e5c5b-…' }
+Error occurred in handler for 'artifacts:finalize-run':
+ArtifactFinalizationProofError: Artifact finalization root Frame does not match the durable Session graph.
+```
 
-1. 定稿被跳过时不要把整轮判失败，回复照常交付，产物缺失单独提示；
-2. 会话 `error` 里带上可读原因（现在只有一句 IPC 错误截断）；
-3. 产物标记按会话隔离或用轮次 id，而不是让「上个会话的标记」把本轮挡掉。
+`artifacts:finalize-run` 抛错 → 渲染层 `recordArtifactError` 之后 **rethrow**（`workspace-events.ts:334`）→ 整轮被判失败、会话置 `error`。
+
+**这条我先写偏过一次，留在这里**：我最初归因到日志里的 `finalizationSkips: 'marker-owned-by-another-session=30, version-context-mismatch=6'`。那是**项目级清扫**的跳过统计，与本轮无关（本轮只有 1 个 Version）。真因是上面这条「根 Frame 与持久会话图不一致」。
+
+最可疑的触发条件：**同一会话中途绑定/切换专才**会做 context reset（`setSessionSpecialist` 返回 `contextReset:true`），而产物的 provenance 仍指向 reset 前的 root Frame；reset 后第一次产物定稿即 proof 失败。今天的验收顺序就是「建会话 → 跑一句 → 绑专才 → 跑任务」，每次都撞。
+
+建议（按优先级）：
+
+1. 定稿 proof 失败不判整轮失败：回复照常交付、产物缺失单独提示、会话回 `idle`；
+2. context reset 时把后续产物的 claim 重挂到新 root Frame；
+3. `error` 文案带可读原因（现在截断成一句 IPC 错误）。
+
+另一个独立的小问题：产物错误一旦记上就不会被下一轮清掉——`projectFinishedRun` 刻意 `keepArtifactError`，而 `clearArtifactError` 只在**同一轮定稿成功**时调用（`workspace-events.ts:330`）。
 
 ## 十四·原始记录：我为什么一度以为 API 坏了（保留）
 
