@@ -20,3 +20,5 @@ export const FIGURE_MCP_SERVER_ARG = '--purescience-figure-mcp'
 export const HOST_QUERY_MCP_SERVER_ARG = '--purescience-host-query-mcp'
 // The one server meant for OUTSIDE clients (Claude Desktop, Cursor, scripts): public indexes only, no app state.
 export const LITERATURE_MCP_SERVER_ARG = '--purescience-literature-mcp'
+// Decks are a pure function of an outline, so this one also runs without the app.
+export const PPTX_MCP_SERVER_ARG = '--purescience-pptx-mcp'

@@ -468,7 +468,41 @@ search_library(删除后)          total 0
 1. **跑的是旧包，把 `sessionId` 那道门当成没用**：改完必填 `sessionId` 后没重新 `electron-vite build`，隔离实例加载的仍是 `out/` 里的旧主进程。现象是明明传了会话仍 2ms 返回 `approval-unavailable`，日志里也没有 `external mcp approval unavailable` 警告——因为 `!input.sessionId` 这一支直接返回，根本没进 try。教训：验收实例必须重新构建，否则验的是上一版。
 2. **`references:add` 返回的是判决不是记录**：真实命令返回 `{ status: 'created' | 'duplicate', reference }`，而写计划把它当记录读，于是 `add_reference` 回了一个**没有 id 的载荷**（`{"projectId":…,"reference":{"authors":[],"hasPdf":false}}`）——记录其实写进去了，客户端却拿不到 id，接着删也删不掉（`referenceId` 是 undefined）。修：读 `status`，`created` 才取 `reference`，`duplicate` 回 `duplicate-reference`；单测的 fake router 也改成照真实形状答 `{ status, reference }`，并新增一例钉住「命令说 duplicate ≠ 写入成功」。这个缺陷只有真跑才暴露——之前 37 例全绿，因为 fake 把返回值编成了裸记录。
 
-## 二十三、仍未做的
+## 二十三、外部客户端生成演示文稿（1.3）
+
+`--purescience-pptx-mcp` 是一个独立 stdio 服务器，不依赖桌面端：写 deck 是纯函数（`src/main/slides/pptx-deck.ts` 早就在，字节只由大纲决定），所以 1.3 做的是把它接到外部客户端手里，而不是重写一个写盘器。
+
+### 交付
+
+| 位置                                                | 改动                                                                                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/slides/mcp-server.ts`                     | `pptx_create`（写）与 `pptx_read`（读回）；绝对路径 / `.pptx` / 上限三种前置校验；拒绝以 `{ ok: false, refusal }` 返回而不是抛异常 |
+| `src/main/mcp-server-args.ts` / `src/main/index.ts` | `PPTX_MCP_SERVER_ARG = '--purescience-pptx-mcp'`，懒加载分支                                                                       |
+| `docs/guides/pptx-mcp.md`                           | 工具表、接入片段、上限、刻意不做的事                                                                                               |
+| `scripts/verify/pptx-mcp-external.mjs`              | 真子进程外部客户端 + 两个第三方阅读器                                                                                              |
+
+### 协议层证据
+
+`src/main/slides` **18 passed**（其中 4 例是新的协议层用例，走 `InMemoryTransport` + 真 MCP `Client`）：中文三页 deck 建到嵌套目录并被读回、`unzip -l` 能看到 `ppt/presentation.xml` 与 `ppt/slides/slide3.xml`、同一大纲两次产出**字节完全相同**而改一条要点就不同、相对路径 / `.key` / 空 sections 三种拒绝、缺文件与非 zip 两种读回拒绝。`typecheck:node` EXIT=0。
+
+### 实机读数（外部客户端，`/tmp/pptx-verify`）
+
+```
+tools/list          ["pptx_create", "pptx_read"]
+pptx_create         ok true  path /tmp/pptx-verify/nested/deepseek-eval-deck.pptx  bytes 8870  slideCount 4
+磁盘比对             8870 字节，与返回值一致（父目录 nested/ 自动创建）
+pptx_read           ok true  slideCount 4；封面标题「国产大模型评测方法论」，副标题一行；三个内容页要点逐条读回
+macOS Quick Look    producedThumbnail true，缩略图 22,444 字节
+app 渲染器 parseZip  slides 4 / layouts 1 / masters 1
+```
+
+Quick Look 的缩略图人工看过：黑色大标题「国产大模型评测方法论」、下方一行「外部MCP客户端生成」，灰底居中，**中文无乱码、无空白页**——这是系统级阅读器，不是我们自己的代码在自证。
+
+### 一处只有真跑才看得见的坑
+
+`qlmanage` 在输出目录不存在时**照样返回成功、什么都不写**，第一次因此把「能预览」误读成「不能预览」；修法是在调用前 `mkdir -p`，并把「产出缩略图」而不是「退出码 0」作为判据。
+
+## 二十四、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
