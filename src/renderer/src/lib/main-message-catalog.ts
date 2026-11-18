@@ -17,6 +17,11 @@ export const MAIN_MESSAGE_KEYS: Record<string, string> = {
   'OAuth and static headers cannot be configured together':
     'mainMessage.connectorOauthHeaderConflict',
   'Invalid custom connector configuration': 'mainMessage.connectorInvalidConfig',
+  'Connector configuration files must be 256 KiB or smaller': 'mainMessage.connectorFileTooLarge',
+  'Connector configuration files are unavailable': 'mainMessage.connectorFilesUnavailable',
+  'Connector configuration is not safe to export': 'mainMessage.connectorExportUnsafe',
+  'Connector configuration changed after preview; review it again':
+    'mainMessage.connectorExportChanged',
   'Expected a JSON object of MCP servers': 'mainMessage.connectorMcpServersNotObject',
   'Expected `mcpServers` to be a JSON object of servers':
     'mainMessage.connectorMcpServersKeyNotObject',
@@ -54,10 +59,11 @@ export const MAIN_MESSAGE_KEYS: Record<string, string> = {
     'mainMessage.signInNoToken'
 }
 
-// Two sentences are composed around a value (the runtime's own detail line, the runtime language), so
-// they cannot be matched verbatim. Each entry names the one placeholder it captures — a loose pattern
-// would rewrite text the reader needed as-is, which is the failure mode this catalog exists to avoid.
-const MAIN_MESSAGE_TEMPLATES: ReadonlyArray<{
+// Some sentences are composed around a value (the runtime's own detail line, the runtime language,
+// the name the reader typed into a connector form), so they cannot be matched verbatim. Each entry
+// names the placeholders it captures and nothing more — a loose pattern would rewrite text the reader
+// needed as-is, which is the failure mode this catalog exists to avoid.
+export const MAIN_MESSAGE_TEMPLATES: ReadonlyArray<{
   pattern: RegExp
   key: string
   fill: readonly string[]
@@ -77,6 +83,39 @@ const MAIN_MESSAGE_TEMPLATES: ReadonlyArray<{
     pattern: /^Installing packages into your own (.+?) environment is not authorized\./,
     key: 'mainMessage.packageInstallNotAuthorized',
     fill: ['{language}']
+  },
+  // Custom-connector name/ID conflicts: main quotes the name the reader typed (or the ID derived from
+  // it), so the sentence cannot be matched verbatim. Each pattern captures exactly that one quoted
+  // value and nothing else — a looser pattern would rewrite the very text the reader needs to fix.
+  {
+    pattern: /^Connector name "(.+)" is reserved by a built-in connector$/,
+    key: 'mainMessage.connectorNameReserved',
+    fill: ['{name}']
+  },
+  {
+    pattern: /^A custom connector named "(.+)" already exists$/,
+    key: 'mainMessage.connectorNameExists',
+    fill: ['{name}']
+  },
+  {
+    pattern: /^Connector name "(.+)" conflicts with an existing Connector identity$/,
+    key: 'mainMessage.connectorNameAliasConflict',
+    fill: ['{name}']
+  },
+  {
+    pattern: /^Connector ID "(.+)" is reserved by a built-in connector$/,
+    key: 'mainMessage.connectorIdReserved',
+    fill: ['{id}']
+  },
+  {
+    pattern: /^A custom connector with ID "(.+)" already exists$/,
+    key: 'mainMessage.connectorIdExists',
+    fill: ['{id}']
+  },
+  {
+    pattern: /^Connector ID "(.+)" conflicts with an existing Connector alias$/,
+    key: 'mainMessage.connectorIdAliasConflict',
+    fill: ['{id}']
   }
 ]
 

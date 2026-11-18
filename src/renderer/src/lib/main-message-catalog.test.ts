@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { en } from '@/i18n/en'
 
-import { MAIN_MESSAGE_KEYS, localizeMainMessage, unwrapIpcEnvelope } from './main-message-catalog'
+import {
+  MAIN_MESSAGE_KEYS,
+  MAIN_MESSAGE_TEMPLATES,
+  localizeMainMessage,
+  unwrapIpcEnvelope
+} from './main-message-catalog'
 
 const translator = (key: string): string => en[key as keyof typeof en] ?? key
 
@@ -20,7 +25,59 @@ describe('main message catalog', () => {
     expect(missing).toEqual([])
   })
 
-  it('fills the two composed sentences from what main sends', () => {
+  it('every composed-sentence key exists in the dictionary too', () => {
+    // A template whose key is misspelled falls through the translator and puts the KEY on screen, which
+    // no other assertion here would catch — the exact-map test above only walks MAIN_MESSAGE_KEYS.
+    const missing = MAIN_MESSAGE_TEMPLATES.filter((template) => !(template.key in en)).map(
+      (template) => template.key
+    )
+    expect(missing).toEqual([])
+  })
+
+  it('fills a connector name/ID conflict from the quoted value main sends', () => {
+    const cases: Array<[string, string]> = [
+      [
+        'Connector name "arxiv" is reserved by a built-in connector',
+        'mainMessage.connectorNameReserved'
+      ],
+      ['A custom connector named "My Tools" already exists', 'mainMessage.connectorNameExists'],
+      [
+        'Connector name "Web" conflicts with an existing Connector identity',
+        'mainMessage.connectorNameAliasConflict'
+      ],
+      [
+        'Connector ID "arxiv" is reserved by a built-in connector',
+        'mainMessage.connectorIdReserved'
+      ],
+      ['A custom connector with ID "my-tools" already exists', 'mainMessage.connectorIdExists'],
+      [
+        'Connector ID "web" conflicts with an existing Connector alias',
+        'mainMessage.connectorIdAliasConflict'
+      ]
+    ]
+    for (const [message, key] of cases) {
+      const quoted = /"([^"]+)"/.exec(message)?.[1] ?? ''
+      // The rendered sentence carries the dictionary text with the captured value in its slot.
+      expect(localizeMainMessage(translator, message), message).toBe(
+        translator(key).replace('{name}', quoted).replace('{id}', quoted)
+      )
+      expect(localizeMainMessage(translator, message), message).toContain(quoted)
+    }
+  })
+
+  it('does not rewrite a near-miss of a connector conflict sentence', () => {
+    // The patterns are anchored and capture one quoted value; a sentence that only starts the same way
+    // must reach the reader untouched rather than be half-translated.
+    for (const nearMiss of [
+      'Connector name "arxiv" is reserved by a built-in connector (retry later)',
+      'connector name "arxiv" is reserved by a built-in connector',
+      'Connector name arxiv is reserved by a built-in connector'
+    ]) {
+      expect(localizeMainMessage(translator, nearMiss), nearMiss).toBe(nearMiss)
+    }
+  })
+
+  it('fills a composed sentence from what main sends', () => {
     expect(
       localizeMainMessage(
         translator,
