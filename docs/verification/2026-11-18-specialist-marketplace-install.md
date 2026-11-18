@@ -290,7 +290,17 @@ send-2 ok → user:17 / agent:139   「无法给出具体例数…」
 
 结论：**这条不能靠重试修**，`correction.ts:49-57` 的单飞设计说明写的就是这个意思（2026-11-09 两条评审道抢同一段纠正，不是瞬时故障）。已 `git checkout` 撤回，测试回到 15 passed。真正要动的是让评审在**主轮确实停止之后**再开始（现在 review 与 stop handler 有竞态），而不是让纠正在 busy 上碰运气。
 
-## 十八、仍未做的
+## 十八、出网代理的端口漂移（`88578d18`）
+
+`egress-proxy` 监听的是**临时端口**，而这个端口会被写进每个子进程的 `HTTP_PROXY`/`HTTPS_PROXY`。原先关闭出网时走 `proxy.stop()` 并把实例丢掉，再开启时 `start()` 绑一个**新端口**；已经在跑的 agent 仍拨旧端口 → 首次 provider 调用就是 `connect ECONNREFUSED 127.0.0.1:<旧端口>`，整轮报废。
+
+改法：关闭出网时不再停监听，改为把允许列表置空（什么都不转发，策略等价），监听保留；进程退出仍走 `stop()`。
+
+用例：关闭后仍能连上该端口、重新开启端口不变。**该用例在旧代码上失败、新代码通过**（`npx vitest run src/main/net/egress.test.ts` → 35 passed；stash 掉修复后 → 1 failed ）。
+
+边界：我没有证据证明今天那几次 `ECONNREFUSED` 就是设置切换触发的，只能说这是端口漂移的一条确定路径，已堵。若还复现，下一步查 agent 进程 spawn 时 `applyEgressToChildEnv` 读到的端口与它实际拨的端口是否一致。
+
+## 十九、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
