@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
 import { isAbsoluteLocalPath } from '../../shared/local-fs'
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, posix, win32 } from 'node:path'
 
 import {
   auditPdfTableCandidateForUse,
@@ -86,7 +86,14 @@ export const resolvePdfSourcePath = (
   path: string,
   storageRoot: string,
   platform: string
-): string => (isAbsoluteLocalPath(path, platform) ? path : join(storageRoot, path))
+): string => {
+  if (isAbsoluteLocalPath(path, platform)) return path
+  // The `platform` argument already decides what counts as absolute; the join must follow that same host,
+  // or the two halves disagree: a POSIX-only join on a Windows host turns `/data` into `\data` and the
+  // simulated-platform cases stop meaning anything. Production always passes `process.platform`, where
+  // the two branches coincide with the host's own `join`.
+  return platform === 'win32' ? win32.join(storageRoot, path) : posix.join(storageRoot, path)
+}
 
 export class PdfValidationError extends Error {
   readonly code: 'not_found' | 'invalid_path' | 'too_large' | 'too_many_pages'

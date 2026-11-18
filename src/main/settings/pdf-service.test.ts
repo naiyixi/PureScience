@@ -750,7 +750,18 @@ describe('resolvePdfSourcePath', () => {
   })
 
   it('resolves anything else against the data root', () => {
+    // The separator follows the *passed* platform, not the host: these literals are asserted on Windows CI
+    // too, where the host's own `join` would produce `\data\.pdfs\a.json`.
     expect(resolvePdfSourcePath('.pdfs/a.json', '/data', 'darwin')).toBe('/data/.pdfs/a.json')
     expect(resolvePdfSourcePath('paper.pdf', '/data', 'linux')).toBe('/data/paper.pdf')
+  })
+
+  it('joins a relative name onto a Windows root with backslashes', () => {
+    expect(resolvePdfSourcePath('.pdfs\\a.json', 'C:\\data', 'win32')).toBe(
+      'C:\\data\\.pdfs\\a.json'
+    )
+    expect(resolvePdfSourcePath('paper.pdf', '\\\\server\\share', 'win32')).toBe(
+      '\\\\server\\share\\paper.pdf'
+    )
   })
 })
