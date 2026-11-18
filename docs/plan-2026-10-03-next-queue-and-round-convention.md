@@ -25,7 +25,7 @@
 
 | 提交 | 内容 | 读数 |
 |---|---|---|
-| `0ff63f0d` | `main-message-catalog`：9 条逐字句子 + 6 条模板（每个只捕获**一个**引号值、首尾锚定）+ 2 条新用例（模板键必须在字典里；三种近失样本一字不改） | 两文件 20 例全绿；typecheck web/node 各 0 错；`eslint --no-cache` 两文件 0 问题 |
+| `0ff63f0d` | `main-message-catalog`：4 条逐字句子 + 6 条模板（每个只捕获**一个**引号值、首尾锚定）+ 2 条新用例（模板键必须在字典里；三种近失样本一字不改） | 两文件 20 例全绿；typecheck web/node 各 0 错；`eslint --no-cache` 两文件 0 问题 |
 | `53a37dc1` | `e2e/certification/connector-refusal-language.spec.ts`：真窗口断言拒绝句是读者语言，且英文原句与 invoke 信封**都不在屏上** | `build:e2e` 后打包态 **1 passed (14.7s)**；alert=`連接器名稱「clinical_genomics」與內建連接器保留的名稱衝突`、`canonicalEnglishOnScreen=false`、`envelopeOnScreen=false` |
 | `d39b8fd2` | 发版四件（CHANGELOG v2.30.2 段 / 双语 README 横幅逐字节一致 / `package.json`+lock 2.30.2） | `check-readme-sync` 通过；`pre-push-checks` EXIT=0 |
 

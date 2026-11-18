@@ -16,7 +16,7 @@ v2.30.1 的 Release 在 `build / Verify` 就失败了，四平台 build、签名
 | `arxiv`（ID 撞车） | `Connector ID "arxiv" is reserved by a built-in connector` | 同上 | 连接器 ID「arxiv」为内置连接器保留，不能使用 |
 | `my-tools` | `A custom connector with ID "my-tools" already exists` | 同上 | 已存在 ID 为「my-tools」的自定义连接器 |
 
-9 条逐字句子按字典键对上；6 条「句子中间夹着读者自己输入的名字 / ID」按模板处理：每个模板只捕获
+4 条逐字句子直接对上字典键；6 条「句子中间夹着读者自己输入的名字 / ID」按模板处理：每个模板只捕获
 **一个**引号值、首尾锚定，所以近失句（多一个括号、首字母小写、没引号）原样留给读者，不被半翻。
 另有两条用例钉住这两件事：模板的字典键必须真的存在于九语字典（键名打错会把键名本身印上屏），
 三种近失样本必须一字不改。
