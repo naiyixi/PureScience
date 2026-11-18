@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConnectorAddForm } from './ConnectorAddForm'
+import { LanguageProvider } from '@/i18n'
 import { createInitialSettingsState, useSettingsStore } from '@/stores/settings-store'
 
 if (!Element.prototype.hasPointerCapture) {
@@ -32,6 +33,8 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  // A case that mounts the provider in another language must not decide the language of the next case.
+  window.localStorage.clear()
 })
 
 // Sets a controlled input/textarea value the way React expects (native setter + input event).
@@ -116,6 +119,50 @@ describe('ConnectorAddForm (local command)', () => {
 
     checkTrust()
     expect(addButton()?.disabled).toBe(false)
+  })
+
+  it('renders a refused save in the interface language, with the name main quoted', async () => {
+    // A custom connector that collides with a built-in id is refused by the MAIN process, so the sentence
+    // arrives wrapped in Electron's invoke envelope. Before this case the banner printed that English
+    // sentence verbatim; the point here is that the reader sees the dictionary sentence with the name they
+    // typed, and NOT the canonical English one (a "some text appeared" assertion would pass either way).
+    const rejection = new Error(
+      'Error invoking remote method \'settings:add-custom-server\': Error: Connector name "arxiv" is reserved by a built-in connector'
+    )
+    useSettingsStore.setState({
+      ...createInitialSettingsState(),
+      addCustomServer: vi.fn().mockRejectedValue(rejection)
+    })
+    window.localStorage.setItem('purescience-language', 'zh')
+    act(() => {
+      root.render(
+        <LanguageProvider>
+          <ConnectorAddForm initialTransport="local" onDone={vi.fn()} onCancel={vi.fn()} />
+        </LanguageProvider>
+      )
+    })
+
+    const nameField = document.body.querySelector<HTMLInputElement>('#connector-name')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    act(() => {
+      setter?.call(nameField, 'arxiv')
+      nameField?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => {
+      document.body.querySelector<HTMLInputElement>('[aria-label="我信任此连接器"]')?.click()
+    })
+
+    await act(async () => {
+      Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+        .find((button) => button.textContent?.trim() === '添加连接器')
+        ?.click()
+    })
+
+    const alert = document.body.querySelector('[role="alert"]')
+    expect(alert?.textContent).toBe('连接器名称「arxiv」与内置连接器保留的名称冲突')
+    expect(document.body.textContent).not.toContain(
+      'Connector name "arxiv" is reserved by a built-in connector'
+    )
   })
 
   it('prefills an imported template and requires local secret values', async () => {

@@ -80,9 +80,6 @@ const AgentPanel = ({
   const opencodeManaged = useSettingsStore((state) => state.opencodeManaged)
   const codebuddyManaged = useSettingsStore((state) => state.codebuddyManaged)
   const codexManaged = useSettingsStore((state) => state.codexManaged)
-  const repairRuntime = useSettingsStore((state) => state.repairRuntime)
-  const repairInstall = useSettingsStore((state) => state.installStates[state.agentFrameworkId])
-  const runtimeRepairPending = repairInstall?.isInstalling === true
   const uninstallClaude = useSettingsStore((state) => state.uninstallClaude)
   const uninstallOpencode = useSettingsStore((state) => state.uninstallOpencode)
   const uninstallCodex = useSettingsStore((state) => state.uninstallCodex)
@@ -633,26 +630,6 @@ const AgentPanel = ({
                     <p className="text-xs leading-5 text-muted-foreground">{failure.summary}</p>
                   </div>
                 ))}
-              </div>
-              {/* The banner above names what is wrong. Until now the remedy — "delete it and reinstall" —
-                  was the reader's own errand, on a machine that had just failed to download. This performs
-                  it: the store calls uninstall then install, and the card's own progress log shows both. */}
-              <div className="flex items-center justify-between gap-2 border-t border-amber-500/30 pt-2">
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {t('settings.repairRuntimeHint')}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={runtimeRepairPending}
-                  onClick={() => {
-                    void repairRuntime(agentFrameworkId)
-                  }}
-                >
-                  {runtimeRepairPending
-                    ? t('settings.repairRuntimeRunning')
-                    : t('settings.repairRuntimeNow')}
-                </Button>
               </div>
             </div>
           ) : null}

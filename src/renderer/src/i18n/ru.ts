@@ -2798,10 +2798,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Восстановить',
   'settings.restoreProject': 'Восстановить проект',
   'settings.restoreProjectFirst': 'Сначала восстановите проект.',
-  'settings.repairRuntimeNow': 'Переустановить этого агента',
-  'settings.repairRuntimeRunning': 'Переустановка…',
-  'settings.repairRuntimeHint':
-    'Удаляет копию, управляемую приложением, и устанавливает её заново.',
   'settings.retryProbe': 'Повторить проверку хоста',
   'settings.retrySetup': 'Повторить настройку',
   'settings.revealInFinder': 'Показать в Finder',

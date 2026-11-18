@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 
 import type { ConnectorTemplateExportPreview } from '../../../../shared/settings'
 import { Button } from '@/components/ui/button'
+import { localizeMainMessage, unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 import { connectorDiagnosticCopy } from './connector-diagnostic-copy'
 
 type ConnectorExportViewProps = {
@@ -30,7 +31,11 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
       })
       .catch((cause) => {
         if (active)
-          setError(cause instanceof Error ? cause.message : t('settings.couldNotPreviewConfig'))
+          setError(
+            cause instanceof Error
+              ? localizeMainMessage(t, unwrapIpcEnvelope(cause.message))
+              : t('settings.couldNotPreviewConfig')
+          )
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -52,7 +57,11 @@ export function ConnectorExportView({ id, onDone }: ConnectorExportViewProps): R
       })
       setSaved(result.saved)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('settings.couldNotSaveConfig'))
+      setError(
+        cause instanceof Error
+          ? localizeMainMessage(t, unwrapIpcEnvelope(cause.message))
+          : t('settings.couldNotSaveConfig')
+      )
     } finally {
       setSaving(false)
     }

@@ -260,10 +260,6 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.installCodex', request),
     installCodebuddy: (request: InstallCodebuddyRequest) =>
       electronRendererContracts.invoke('settings.installCodebuddy', request),
-    // Repairs one managed runtime in place: uninstall, then install again. Offered on a failed
-    // post-install check, whose own text used to ask the user to do this by hand.
-    repairRuntime: (framework: string) =>
-      electronRendererContracts.invoke('settings.repairRuntime', framework),
     uninstallClaude: () => electronRendererContracts.invoke('settings.uninstallClaude'),
     uninstallOpencode: () => electronRendererContracts.invoke('settings.uninstallOpencode'),
     uninstallCodex: () => electronRendererContracts.invoke('settings.uninstallCodex'),

@@ -474,7 +474,6 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['testCredential', 'settings:test-credential', LOCAL],
     ['setVisionModel', 'settings:set-vision-model'],
     ['setScenarioModel', 'settings:set-scenario-model'],
-    ['repairRuntime', 'settings:repair-runtime', LOCAL],
     ['uninstallClaude', 'settings:uninstall-claude', LOCAL], ['uninstallCodex', 'settings:uninstall-codex', LOCAL],
     ['uninstallOpencode', 'settings:uninstall-opencode', LOCAL], ['updateCustomServer', 'settings:update-custom-server'],
     ['updateSkill', 'settings:update-skill'], ['upsertProvider', 'settings:upsert-provider'], ['validateProvider', 'settings:validate-provider'],

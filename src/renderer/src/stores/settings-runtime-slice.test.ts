@@ -21,7 +21,6 @@ import {
 
 type RuntimeCommands = Pick<
   Window['api']['settings'],
-  | 'repairRuntime'
   | 'getSettings'
   | 'getPreflight'
   | 'isNpmAvailable'
@@ -123,7 +122,6 @@ const createCommands = (): RuntimeCommandMocks => ({
   installOpencode: vi.fn().mockResolvedValue({ installId: 'opencode-1', ok: true }),
   installCodex: vi.fn().mockResolvedValue({ installId: 'codex-1', ok: true }),
   installCodebuddy: vi.fn().mockResolvedValue({ installId: 'codebuddy-1', ok: true }),
-  repairRuntime: vi.fn().mockResolvedValue({ ok: true }),
   uninstallClaude: vi.fn().mockResolvedValue(snapshot()),
   uninstallOpencode: vi.fn().mockResolvedValue(snapshot()),
   uninstallCodex: vi.fn().mockResolvedValue(snapshot()),
@@ -574,19 +572,6 @@ describe('runtime setup slice: uninstall lifecycle', () => {
     expect(commands[command]).toHaveBeenCalledOnce()
     expect(reconcileSnapshot).toHaveBeenCalledWith(snapshot())
     expect(refreshPreflight).toHaveBeenCalledOnce()
-  })
-
-  it('repairs the named runtime through the same install pipeline the cards use', async () => {
-    const { commands, reconcileSnapshot, store } = createHarness()
-    const refreshPreflight = vi.fn().mockResolvedValue(preflight())
-    store.setState({ refreshPreflight })
-
-    await store.getState().repairRuntime('codex')
-
-    // The framework is passed through, not assumed: the button sits on the active runtime's banner.
-    expect(commands.repairRuntime).toHaveBeenCalledWith('codex')
-    expect(reconcileSnapshot).toHaveBeenCalled()
-    expect(refreshPreflight).toHaveBeenCalled()
   })
 
   it('propagates an uninstall error without reconciling stale state', async () => {

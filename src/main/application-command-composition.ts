@@ -248,6 +248,8 @@ const INTERNAL_COMMAND_COUNT = 382
 // local Web surface too, and earns the rejecting stub on the remote one.
 // +2 for the package pair above: both are reachable from the local Web profile (the headless CLI lands
 // there), and neither is in the fail-closed set.
+// +1 for the runtime repair (settings:repair-runtime, LOCAL): it rides the same settings channel as the
+// uninstall commands and is not reachable from the remote surface.
 const LOCAL_WEB_COMMAND_COUNT = 380
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.

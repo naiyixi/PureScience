@@ -11,6 +11,7 @@ import {
   type SelectCustomServerTemplateRequest
 } from '../../../../shared/settings'
 import { useLanguage, type TranslationKey } from '@/i18n'
+import { localizeMainMessage, unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 import { FileDropOverlay } from '@/components/FileDropOverlay'
 import { Button } from '@/components/ui/button'
 import { useFileDropZone } from '@/hooks/useFileDropZone'
@@ -49,7 +50,11 @@ export function ConnectorImportView({
       const result = await window.api.settings.selectCustomServerTemplate(request)
       if (!result.cancelled) setSelection(result)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('settings.couldNotValidateConfig'))
+      setError(
+        cause instanceof Error
+          ? localizeMainMessage(t, unwrapIpcEnvelope(cause.message))
+          : t('settings.couldNotValidateConfig')
+      )
     } finally {
       setSelecting(false)
     }

@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettingsStore } from '@/stores/settings-store'
+import { localizeMainMessage, unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 import {
   customConnectorAliasKey,
   customConnectorAliases,
@@ -302,7 +303,11 @@ export function ConnectorAddForm({
       }
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.failedToSaveConnector'))
+      setError(
+        err instanceof Error
+          ? localizeMainMessage(t, unwrapIpcEnvelope(err.message))
+          : t('settings.failedToSaveConnector')
+      )
     } finally {
       setSubmitting(false)
     }

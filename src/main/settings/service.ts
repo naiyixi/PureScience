@@ -1646,18 +1646,6 @@ class SettingsService {
   // OpenCode if that is installed. `activeBackendAffected` is true only when Claude was the active
   // framework, so the IPC layer can reconnect the agent for that case alone — uninstalling the inactive
   // runtime leaves the live agent untouched and needs no reconnect.
-  // Repairs one managed runtime in place (uninstall → install). The post-install check already names
-  // what is wrong; this is the remedy it names, performed for the user instead of described to them.
-  async repairRuntime(
-    framework: AgentFrameworkId,
-    onEvent: (event: ClaudeInstallEvent) => void
-  ): Promise<ClaudeInstallResult> {
-    const result = await this.runtimeManager.repairRuntime(framework, onEvent)
-    // A repair can end with a different runtime active than the one that failed, so the snapshot is read
-    // after it, never before.
-    return result
-  }
-
   async uninstallClaude(): Promise<UninstallResult> {
     const { activeBackendAffected } = await this.runtimeManager.uninstallClaude()
     return { snapshot: await this.getSettingsView(), activeBackendAffected }
