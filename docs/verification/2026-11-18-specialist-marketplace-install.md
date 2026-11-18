@@ -181,7 +181,24 @@
 - 不是网络（本轮无 ECONNRESET）；
 - **怀疑**：`discardStreamedAgentText()` 会清空投递计数器，而视图切到 notebook/产物时会触发 discard；计数器归零后同一事件的后续文本重新拿到 `~0` 编号，与已落库的 `~0` 撞号 → 被判重放丢弃。此项尚未实证。
 
-## 十四、新问题：中断态会话不再接受新 prompt
+## 十四、中断态：先前的判断错了，改口在这里
+
+我先写过「中断态会话不接受新 prompt」「continueInterruptedTurn 报 connected 却不续跑」。**这两条撤回**，它们是我绕过界面直接调 API 得出的：
+
+- `api.acp.continueInterruptedTurn` 要求会话**先 attach**；应用自己的恢复路径（`useWorkspaceAgentRuntime.continueInterruptedSession`）顺序是 `reattachInterruptedWorkspaceSession` → `continueInterruptedTurn({projectId, sessionId, promptMessageId})` → `markResumed`。我漏了 attach，main 找不到会话就只回了 `connected` 而不重启轮次。
+- 走界面的真实路径是好的：同一会话 `n` 由 13 → 17，agent 回复 46 字与 456 字都落库，说明新 prompt 在中断态下能正常开跑。
+
+**真实存在的问题是另一件**：会话反复落进 `error`，文案有两种——
+`Generated file finalization failed: Error invoking remote method …` 与 `This turn was interrupted before it finished.`。
+应用日志给出原因：`finalizationSkips: 'ambiguous-turn-message=1,marker-owned-by-another-session=30,version-context-mismatch=6'`。
+
+即：**30 次产物定稿因为「产物标记属于另一个会话」被跳过**，跳过之后整轮被判失败、会话置为 `error`。这在一个工作区里跑过多轮验收（我这台机器就是这样）时必然出现。建议：
+
+1. 定稿被跳过时不要把整轮判失败，回复照常交付，产物缺失单独提示；
+2. 会话 `error` 里带上可读原因（现在只有一句 IPC 错误截断）；
+3. 产物标记按会话隔离或用轮次 id，而不是让「上个会话的标记」把本轮挡掉。
+
+## 十四·原始记录：我为什么一度以为 API 坏了（保留）
 
 同一台机器上多次出现：一轮被中断后会话进入 `status: error`（文案「This turn was interrupted before it finished.」）。三种尝试都留了读数：
 
