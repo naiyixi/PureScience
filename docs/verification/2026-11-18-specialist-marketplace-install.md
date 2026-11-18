@@ -239,7 +239,7 @@ ArtifactFinalizationProofError: Artifact finalization root Frame does not match 
       [egress-proxy] egress target failed { code: 'ECONNREFUSED', error: 'connect ECONNREFUSED 127.0.0.1:53902' }  ×N
 ```
 
-即：轮次**已经启动**，但 context reset 换掉了 agent 进程，egress 代理的上游端点随之消失，第一次 provider 调用直接 `ECONNREFUSED`，整轮就此结束、回复为空。同一份日志里还有一次 `[reviewer:correction] … failed { reason: 'session-busy', error: 'An ACP prompt is already running for this session' }` —— 自动复盘想注入 [Auditor] 纠正时撞上「会话忙」，这条纠正被丢掉、检查项记为未处理。
+即：轮次**已经启动**，但 context reset 换掉了 agent 进程，egress 代理转发到的端点随之消失，第一次 provider 调用直接 `ECONNREFUSED`，整轮就此结束、回复为空。同一份日志里还有一次 `[reviewer:correction] … failed { reason: 'session-busy', error: 'An ACP prompt is already running for this session' }` —— 自动复盘想注入 [Auditor] 纠正时撞上「会话忙」，这条纠正被丢掉、检查项记为未处理。
 
 建议：
 
