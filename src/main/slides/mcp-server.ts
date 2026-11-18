@@ -13,7 +13,7 @@ import { McpServer as ModelContextProtocolServer } from '@modelcontextprotocol/s
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { unzipSync, strFromU8 } from 'fflate'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { basename, dirname, isAbsolute } from 'node:path'
 import { z } from 'zod'
 
 import {
@@ -123,7 +123,10 @@ const paragraphsOf = (xml: string): string[] => {
 // hand-rolled stub would prove the stub works.
 export const createPptxHandler = (): PptxMcpHandler => ({
   create: async (input) => {
-    if (!input.outputPath.startsWith('/')) {
+    // The host runs on the user's machine, so its own path rules are the ones that matter: a POSIX-only
+    // check (`startsWith('/')`, `split('/')`) refuses every drive-letter path, which is how a Windows
+    // client ends up unable to write a deck at all.
+    if (!isAbsolute(input.outputPath)) {
       return {
         ok: false,
         refusal: 'output-not-absolute',
@@ -131,7 +134,7 @@ export const createPptxHandler = (): PptxMcpHandler => ({
           'Pass an absolute path — a relative one would resolve against the client’s cwd, not the user’s.'
       }
     }
-    const filename = validateDeckFilename(input.outputPath.split('/').pop() ?? '')
+    const filename = validateDeckFilename(basename(input.outputPath))
     if (!filename.ok) {
       return {
         ok: false,

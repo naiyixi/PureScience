@@ -2,7 +2,7 @@
 // thing under test — asserting against the handler would not prove a client can reach it.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { execFileSync } from 'node:child_process'
+import { unzipSync } from 'fflate'
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -66,8 +66,10 @@ describe('deck MCP server', () => {
     // Parent directories were created, and the file is really on disk.
     expect(statSync(path).size).toBe(Number(created.bytes))
 
-    // The package is a zip with the parts PresentationML requires.
-    const listing = execFileSync('unzip', ['-l', path], { encoding: 'utf8' })
+    // The package is a zip with the parts PresentationML requires. Listed through the zip reader the
+    // platform already ships with (fflate) rather than a shelled-out `unzip`: that tool does not exist on
+    // every host, and the property under test is the archive's contents, not the lister.
+    const listing = Object.keys(unzipSync(readFileSync(path))).join('\n')
     expect(listing).toContain('ppt/presentation.xml')
     expect(listing).toContain('ppt/slides/slide3.xml')
 
@@ -80,6 +82,24 @@ describe('deck MCP server', () => {
       bullets: ['深度学习在影像学中的应用', '数据规模决定上限']
     })
     expect(slides[2]?.heading).toBe('方法')
+  })
+
+  // A drive-letter path is absolute on Windows and not on POSIX, so the check has to follow the host's
+  // rules. Pinned where it can actually fail: the check used to be `startsWith('/')`, which refused every
+  // Windows path — the tool could not write a deck on that platform at all.
+  it.runIf(process.platform === 'win32')('accepts a drive-letter output path', async () => {
+    const client = await connect()
+    const path = join(dir, 'drive.pptx')
+
+    const created = textOf(
+      await client.callTool({
+        name: PPTX_CREATE_TOOL,
+        arguments: { title: 'T', sections: [{ heading: 'H' }], outputPath: path }
+      })
+    )
+
+    expect(created).toMatchObject({ ok: true, path })
+    expect(statSync(path).size).toBeGreaterThan(1000)
   })
 
   it('produces the same bytes for the same outline, and different bytes when one bullet changes', async () => {
