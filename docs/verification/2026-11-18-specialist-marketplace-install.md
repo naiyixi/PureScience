@@ -226,7 +226,28 @@ ArtifactFinalizationProofError: Artifact finalization root Frame does not match 
 
 建议：中断态下收到新 prompt 时丢弃旧轮次并重开（`sendPrompt` 不许静默成功），以及 `continueInterruptedTurn` 的 `connected` 必须对应一次真实的续跑，否则返回失败。
 
-## 十五、仍未做的
+## 十五、绑专才后第一轮偶发「任务发出去却零回复」——日志已定位到 egress
+
+现象：会话建好、开场轮结束、绑专才（`contextReset:true`）之后立刻发任务，任务消息落库、`status` 变 `error`，但 **agent 一条回复都没有**。上一台实例同流程出过 1,783 字完整回答，说明是竞态而非必现。
+
+`/tmp/ps-app17.log` 里同一轮（会话 `ac913c29`）：
+
+```
+2287: [acp-prompt-turn-workflow] prompt start { sessionId: 'ac913c29-…', textLength: 135 }
+      [acp] reviewer ACP session closed on the agent { … elapsedMs: 19 }
+      [egress-proxy] egress target failed { code: 'ECONNRESET', error: 'read ECONNRESET' }
+      [egress-proxy] egress target failed { code: 'ECONNREFUSED', error: 'connect ECONNREFUSED 127.0.0.1:53902' }  ×N
+```
+
+即：轮次**已经启动**，但 context reset 换掉了 agent 进程，egress 代理的上游端点随之消失，第一次 provider 调用直接 `ECONNREFUSED`，整轮就此结束、回复为空。同一份日志里还有一次 `[reviewer:correction] … failed { reason: 'session-busy', error: 'An ACP prompt is already running for this session' }` —— 自动复盘想注入 [Auditor] 纠正时撞上「会话忙」，这条纠正被丢掉、检查项记为未处理。
+
+建议：
+
+1. reset 后不要立刻接受新 prompt——等新 runtime 就绪再放行（现在 `prompt start` 与进程替换是并行的）；
+2. 首次 provider 调用遇到 `ECONNREFUSED` / `ECONNRESET` 时自动重连重试，而不是把整轮判失败；
+3. `session-busy` 的复盘纠正应排队重试，不要直接丢弃。
+
+## 十六、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
