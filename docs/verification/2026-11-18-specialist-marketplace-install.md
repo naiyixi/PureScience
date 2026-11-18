@@ -403,7 +403,7 @@ literature_get("2103.14030")
 
 脚本退出码 0。测试：`src/main/literature` **16 passed**（含经 in-memory transport 走真实 MCP 线的 5 例），`typecheck:node` EXIT=0，ESLint 0。
 
-## 二十二、本机文献库对外可用（1.2，实现完成；写路径的实机闭环待一台有会话的实例）
+## 二十二、本机文献库对外可用（1.2，实机闭环已完成）
 
 1.2 不是从零起一个服务器：`purescience mcp` 这条桥早就在，surface 里有 5 个工具（4 读 1 写）。缺的是库。
 
@@ -436,11 +436,37 @@ literature_get("2103.14030")
 
 `typecheck:node` EXIT=0，ESLint 0，`pre-push-checks` 全绿。
 
-### 实机
+### 实机（隔离实例 `/tmp/ps-verify23-config`，不碰真实库）
 
-- `purescience mcp --list-tools` 在隔离实例上列出 **10 个工具**（5 旧 + 5 新），描述逐字可读。
-- 读路径实机通过：`search_library` 空库 → `total 0, truncated false`；不带 `query` 列库同样 0。
-- 写路径实机**目前只验到拒绝侧**：`add_reference` 在无会话时返回 `approval-unavailable`（未改任何数据）。要验「批准后写入成功」，需要一台**有可用会话**的实例；本轮试过两个办法都没走通——隔离根是全新首次设置（无模型提供商，`/api/v1/runs` 报 `No active model provider is configured`），手工塞会话文件不进 catalog。**这一项明确立案，不算完成。**
+外部客户端 `scripts/verify/library-mcp-external.mjs` 走的是 `purescience mcp` 这条真桥，审批由脚本在另一个进程用 `purescience permissions` + `approve` 回答。一次完整闭环：
+
+```
+search_library(空库)            total 0
+add_reference(过卡)             added cmwmee0sp0001jtdi4r9w2d52  citationKey Ref2024
+                                卡面: An outside MCP client asks to add “深度学习在医学影像中的应用与挑战” to project “MCP 验证”
+search_library("医学影像")      total 1  id cmwmee0sp0001jtdi4r9w2d52  作者 [张三, 李四]  hasPdf false
+get_reference(按 DOI)           命中同一条，notes「外部 MCP 客户端写入」
+set_reference_notes(过卡)       notes「方法学参考（已由外部客户端更新）」
+remove_reference(过卡)          removed true
+search_library(删除后)          total 0
+```
+
+守卫实机读数（同一条真桥）：
+
+| 动作                      | 返回                                                                    |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `query: ""`               | `invalid-argument`：`query` must be a non-empty string                  |
+| DOI 传 `88/4/401M [pii]`  | `invalid-argument`：不是 DOI，DOI 以 `10.` 开头                         |
+| 会话 id 不存在 / 属别的根 | `session-not-found`                                                     |
+| 同 DOI 再加一次           | `duplicate-reference`，且**审批队列前后都是 0**——无变化的写不会去打扰人 |
+| 删掉后再查                | `total 0`                                                               |
+
+`session-not-in-project` 只有单测覆盖（隔离根里只有一个项目，造不出跨项目会话），如实标注。
+
+### 实机暴露的两个缺陷（都已修，都有回归）
+
+1. **跑的是旧包，把 `sessionId` 那道门当成没用**：改完必填 `sessionId` 后没重新 `electron-vite build`，隔离实例加载的仍是 `out/` 里的旧主进程。现象是明明传了会话仍 2ms 返回 `approval-unavailable`，日志里也没有 `external mcp approval unavailable` 警告——因为 `!input.sessionId` 这一支直接返回，根本没进 try。教训：验收实例必须重新构建，否则验的是上一版。
+2. **`references:add` 返回的是判决不是记录**：真实命令返回 `{ status: 'created' | 'duplicate', reference }`，而写计划把它当记录读，于是 `add_reference` 回了一个**没有 id 的载荷**（`{"projectId":…,"reference":{"authors":[],"hasPdf":false}}`）——记录其实写进去了，客户端却拿不到 id，接着删也删不掉（`referenceId` 是 undefined）。修：读 `status`，`created` 才取 `reference`，`duplicate` 回 `duplicate-reference`；单测的 fake router 也改成照真实形状答 `{ status, reference }`，并新增一例钉住「命令说 duplicate ≠ 写入成功」。这个缺陷只有真跑才暴露——之前 37 例全绿，因为 fake 把返回值编成了裸记录。
 
 ## 二十三、仍未做的
 

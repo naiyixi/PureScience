@@ -139,9 +139,13 @@ const freshReferences = (): FakeReference[] => [
   }
 ]
 const references: FakeReference[] = freshReferences()
+// Lets one case make the command answer `duplicate`, which is the service's own verdict and must reach the
+// client as a refusal rather than as a write that appears to have happened.
+let commandSaysDuplicate = false
 // A write test mutates this array, so every case starts from the same library.
 beforeEach(() => {
   references.splice(0, references.length, ...freshReferences())
+  commandSaysDuplicate = false
 })
 
 const fakeInvoke = (): ExternalMcpInvoke & {
@@ -175,17 +179,20 @@ const fakeInvoke = (): ExternalMcpInvoke & {
         id: 'r-new',
         projectId: String(request.projectId),
         title: String(request.title),
-        authors: Array.isArray(request.authors) ? request.authors : [],
-        venue: request.venue,
-        year: request.year,
-        doi: request.doi,
-        pmid: request.pmid,
-        url: request.url,
-        notes: request.notes,
+        authors: Array.isArray(request.authors) ? (request.authors as { name: string }[]) : [],
+        venue: request.venue as string | undefined,
+        year: request.year as number | undefined,
+        doi: request.doi as string | undefined,
+        pmid: request.pmid as string | undefined,
+        url: request.url as string | undefined,
+        notes: request.notes as string | undefined,
         citationKey: 'New2024'
       }
-      references.push(created as (typeof references)[number])
-      return created
+      if (commandSaysDuplicate) return { status: 'duplicate', duplicateOf: [{ id: 'r1' }] }
+      references.push(created)
+      // The real command answers `{ status, reference }` — a duplicate is a result, not an error, and it
+      // writes nothing. The router must answer the same shape or the plan's unwrapping goes untested.
+      return { status: 'created', reference: created }
     }
     if (input.commandName === 'references:set-notes') {
       const [referenceId, notes] = input.args as [string, string]
@@ -808,6 +815,27 @@ describe('external MCP logging', () => {
         'duplicate-reference'
       )
       expect(approvalTitles).toHaveLength(1)
+    })
+
+    it('reports the command saying duplicate as a refusal, not as a write', async () => {
+      const { endpoint, token } = await startServer(fakeInvoke(), async () => 'approved')
+      const client = await connect(endpoint, token)
+      commandSaysDuplicate = true
+
+      const result = await client.callTool({
+        name: 'add_reference',
+        arguments: {
+          project: 'p1',
+          sessionId: 's1',
+          title: 'The service thinks this is already here'
+        }
+      })
+      const payload = textOf(result) as { error?: { code: string }; added?: string }
+      expect(payload.error?.code).toBe('duplicate-reference')
+      // No half-filled row: the first version read the command's `{ status, reference }` wrapper as a record
+      // and returned `{ projectId, reference: { authors: [], hasPdf: false } }` — a payload with no id.
+      expect(payload.added).toBeUndefined()
+      expect(references.map((reference) => reference.id)).toEqual(['r1', 'r2'])
     })
 
     it('refuses an identifier that only looks like a DOI', async () => {

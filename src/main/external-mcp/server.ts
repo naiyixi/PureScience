@@ -497,6 +497,9 @@ const createWritePlans = (invoke: ExternalMcpInvoke): Record<WriteToolId, WriteP
           : { notes: optionalString(args, 'notes') })
       },
       act: async () => {
+        // `references:add` answers with a discriminated result, not a row: `status: 'duplicate'` means the
+        // service's own identity/title check found the work already there and wrote nothing. Reading that
+        // wrapper as a record is how the first version returned a payload with no id at all.
         const created = (await invoke({
           clientId,
           commandName: 'references:add',
@@ -524,8 +527,14 @@ const createWritePlans = (invoke: ExternalMcpInvoke): Record<WriteToolId, WriteP
               sourceConnector: 'manual'
             }
           ]
-        })) as Parameters<typeof referenceRow>[0]
-        const row = referenceRow(created)
+        })) as { status?: string; reference?: Parameters<typeof referenceRow>[0] }
+        if (created.status !== 'created' || created.reference === undefined) {
+          throw new ExternalMcpRefusal(
+            'duplicate-reference',
+            'The library already holds a work with this identity or title; nothing was added.'
+          )
+        }
+        const row = referenceRow(created.reference)
         return {
           projectId: project.id,
           added: row.id,
