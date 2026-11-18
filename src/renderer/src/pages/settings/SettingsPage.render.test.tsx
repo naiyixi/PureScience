@@ -622,6 +622,57 @@ describe('SettingsPage layout', () => {
     expect(document.body.querySelector('[aria-label="Agent runtime repair issues"]')).toBeNull()
   })
 
+  it('offers the one-click reinstall on the failed-runtime banner, and calls it for the active runtime', async () => {
+    const repairRuntime = vi.fn().mockResolvedValue({ installId: 'repair-1', ok: true })
+    useSettingsStore.setState({
+      agentFrameworkId: 'claude-code',
+      environmentCheck: {
+        checkedAt: 1,
+        platform: 'darwin',
+        architecture: 'arm64',
+        ready: false,
+        canAutoInstall: false,
+        agentFrameworkId: 'claude-code',
+        runtime: { found: false },
+        checks: [
+          {
+            id: 'agent',
+            label: 'Claude runtime',
+            status: 'failed',
+            summary: 'Claude cannot report its version.',
+            detail: 'The installed copy did not answer --version.'
+          }
+        ]
+      }
+    })
+    const settingsApi = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+      .settings
+    settingsApi.repairRuntime = repairRuntime
+    settingsApi.onInstallLog = vi.fn().mockReturnValue(vi.fn())
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const label = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Reinstall this agent'
+    )
+    expect(label).toBeTruthy()
+    // The banner states what the button does, next to the button itself.
+    expect(document.body.textContent).toContain(
+      'Uninstalls the app-managed copy, then installs it again.'
+    )
+
+    await act(async () => {
+      label?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(repairRuntime).toHaveBeenCalledWith('claude-code')
+  })
+
   it('shows every failed Codex component in the Agent repair notice', async () => {
     const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
     api.settings.getSettings = vi.fn().mockResolvedValue({
