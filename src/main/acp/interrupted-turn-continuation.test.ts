@@ -66,6 +66,39 @@ const runContinuation = async (session: PersistedChatSession): Promise<AcpPrompt
   return started[0]
 }
 
+// A session the projection still calls "in flight", with a live prompt on record: the only shape in
+// which this workflow is allowed to answer without starting anything.
+const runWithPublishedInFlight = async (
+  ownsInFlightPrompt: (() => boolean) | undefined
+): Promise<number> => {
+  const started: AcpPromptRequest[] = []
+  const snapshot = {
+    promptInFlightSessionIds: [SESSION_ID],
+    pendingPermissions: [],
+    sessions: []
+  } as unknown as AcpStateSnapshot
+  const livePrompt = { sessionId: SESSION_ID, text: 'run the docking pipeline' } as AcpPromptRequest
+  await continueInterruptedTurn(
+    {
+      runtime: {
+        getSnapshot: () => snapshot,
+        getLatestUserPrompt: () => livePrompt,
+        startContinuation: async (request) => {
+          started.push(request)
+        },
+        ...(ownsInFlightPrompt ? { ownsInFlightPrompt } : {})
+      },
+      loadSession: async () => interruptedSession()
+    },
+    {
+      projectId: PROJECT_ID,
+      sessionId: SESSION_ID,
+      promptMessageId: PROMPT_ID
+    } as Parameters<typeof continueInterruptedTurn>[1]
+  )
+  return started.length
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -123,5 +156,42 @@ describe('interrupted-turn continuation provenance', () => {
     })
     expect(request.provenanceContext?.runtimeSegmentId).toBe(graph.runtimeSegments.at(-1)?.id)
     expect(mocks.warn).not.toHaveBeenCalled()
+  })
+})
+
+describe('interrupted-turn continuation in-flight flag', () => {
+  // The defect this keeps out: `continueInterruptedTurn` answered `{status:'connected'}` and did
+  // nothing, because the published projection still listed the session while no turn owned it.
+  it('starts the continuation when the projection says in flight but Main owns no turn', async () => {
+    const started = await runWithPublishedInFlight(() => false)
+
+    expect(started).toBe(1)
+    expect(mocks.warn).toHaveBeenCalledWith(
+      expect.stringContaining('stale in-flight flag'),
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        promptMessageId: PROMPT_ID,
+        consequence: 'continuation-started-despite-stale-flag'
+      })
+    )
+  })
+
+  it('answers without starting only while Main still owns the turn, and says so', async () => {
+    const started = await runWithPublishedInFlight(() => true)
+
+    expect(started).toBe(0)
+    expect(mocks.info).toHaveBeenCalledWith(
+      expect.stringContaining('Main still owns an in-flight prompt'),
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        consequence: 'continuation-not-started'
+      })
+    )
+  })
+
+  it('keeps the previous answer when the caller cannot report ownership', async () => {
+    const started = await runWithPublishedInFlight(undefined)
+
+    expect(started).toBe(0)
   })
 })

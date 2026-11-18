@@ -36,6 +36,7 @@ type AcpHandlerWorkflowRuntime = {
   sendPrompt(request: AcpPromptRequest): Promise<unknown>
   startContinuation(request: AcpPromptRequest): Promise<void>
   getLatestUserPrompt(sessionId: string, promptMessageId: string): AcpPromptRequest | undefined
+  ownsInFlightPrompt?(sessionId: string): boolean
 }
 
 type PromptNotifications = Pick<TaskNotificationService, 'trackPrompt' | 'untrackPrompt'>

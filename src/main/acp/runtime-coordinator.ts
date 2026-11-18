@@ -575,6 +575,15 @@ class AcpRuntimeCoordinator {
     return prompt?.provenanceContext?.promptMessageId === promptMessageId ? prompt : undefined
   }
 
+  // Whether Main still owns a turn for this session, asked of the ledger that actually registers the
+  // work (pending starts + active prompt counts) rather than of the published projection. A retired or
+  // reconnected generation can leave an entry in `promptInFlightSessionIds` after its turn has already
+  // settled; a caller that treats that projection as ownership proof answers "already running" to a
+  // session nobody is running (2026-11-18: an interrupted session could not be continued at all).
+  ownsInFlightPrompt(sessionId: string): boolean {
+    return this.hasSessionInteraction(sessionId)
+  }
+
   // Captures the app-owned original user request while its provider prompt still owns this session.
   // The framework adapter calls this before requesting cancellation, so the continuation can retain
   // the same text, attachments, and provenance without fabricating another user action.

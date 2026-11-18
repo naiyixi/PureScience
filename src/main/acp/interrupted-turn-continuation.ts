@@ -27,6 +27,18 @@ type InterruptedTurnContinuationRuntime = {
   getSnapshot(): AcpStateSnapshot
   getLatestUserPrompt(sessionId: string, promptMessageId: string): AcpPromptRequest | undefined
   startContinuation(request: AcpPromptRequest): Promise<void>
+  /**
+   * Whether Main still owns an in-flight prompt for this session.
+   *
+   * The snapshot's `promptInFlightSessionIds` is a PROJECTION of every runtime generation's view, and a
+   * generation that was retired, reconnected, or interrupted can leave an entry behind. Reading only
+   * that array made this workflow return a healthy snapshot without starting anything — measured
+   * 2026-11-18 on a real machine: `continueInterruptedTurn` answered `{status:'connected'}`, the session
+   * stayed in `error` and the unanswered user message never got a reply, twice, 6 s and 45 s apart.
+   * A projection cannot prove ownership; the coordinator's own pending/active prompt ledger can. This
+   * member is optional only so a caller without that ledger keeps the previous behaviour explicitly.
+   */
+  ownsInFlightPrompt?(sessionId: string): boolean
 }
 
 type InterruptedTurnContinuationDependencies = {
@@ -218,13 +230,26 @@ export const continueInterruptedTurn = async (
     request.promptMessageId
   )
   const snapshot = dependencies.runtime.getSnapshot()
-  if (
-    livePrompt &&
-    (snapshot.agentPromptInFlightSessionIds ?? snapshot.promptInFlightSessionIds).includes(
-      request.sessionId
-    )
-  ) {
-    return snapshot
+  const publishedInFlight = (
+    snapshot.agentPromptInFlightSessionIds ?? snapshot.promptInFlightSessionIds
+  ).includes(request.sessionId)
+  if (livePrompt && publishedInFlight) {
+    // Two different facts share one flag, and only one of them means "do nothing": Main still owns the
+    // turn, or a retired/reconnected generation left the flag behind. The coordinator's ledger decides.
+    const ownedByMain = dependencies.runtime.ownsInFlightPrompt?.(request.sessionId) ?? true
+    if (ownedByMain) {
+      log.info('interrupted-turn continuation skipped: Main still owns an in-flight prompt', {
+        sessionId: request.sessionId,
+        promptMessageId: request.promptMessageId,
+        consequence: 'continuation-not-started'
+      })
+      return snapshot
+    }
+    log.warn('interrupted-turn continuation ignored a stale in-flight flag', {
+      sessionId: request.sessionId,
+      promptMessageId: request.promptMessageId,
+      consequence: 'continuation-started-despite-stale-flag'
+    })
   }
 
   const tracked = dependencies.notifications?.trackPrompt({

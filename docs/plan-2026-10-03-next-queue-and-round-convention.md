@@ -20060,3 +20060,57 @@ notice:  Due to capacity constraints, jobs targeting macOS arm64 runners may exp
   发布正文用 `npm run release:notes -- v2.29.0 --keep-generated --apply` 生成后回读字节数。
 - ③ 若容量长时间不回来：把 v2.29.0 的 tag 也压住不动（并发两次 Release 只会让排队更长），
   转而做**不需要 runner 的**单元（2.2 重放的真机读数在本机就能取）。
+
+## 三百五十四、本轮追加（执行器，2026-11-18 21:4x–）—— 中断态「继续」报成功却不续跑：投影不是归属证明
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `HEAD = origin/main = 5159317f`（本地不领先）；**共享工作树带 12 个未提交路径 + 6 个未跟踪路径**
+  （`src/main/ro-crate/*`、`src/main/artifacts/mcp-server*`、`src/shared/background-delivery-labels*`、
+  `src/shared/ro-crate*`、`src/main/slides/`、三份更早的证据档）—— 全部归桌面会话（4.3 定型后它已开工），
+  **一个字节没碰**；本轮只 `git add` 自己那五个路径。
+- `hermes cron list` 只有本任务一个执行器（另一个是 no-agent 的公证续跑脚本，不写仓）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；C 段外部阻塞（#19 缺 Developer ID、#20 缺 S3 变量）；
+  4.3 的正主是桌面会话（它正改 `src/shared/ro-crate.ts`）⇒ 本轮取**不撞目录**的缺陷：验证档 §十四 第 3 条。
+- 负载闸现取：空闲页 4,098（page 16 KB ⇒ ≈ 64 MB）、`swap used 7.78 GB / 9.2 GB`；桌面会话的校验实例
+  `/tmp/ps-verify16`（CDP 9333）正在跑 `out/` 产物 ⇒ **本轮不重建、不起实例**（重建会打断它并抢内存）。
+
+### 一 交付（`docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md`）
+
+**缺陷**：中断态会话点「继续」，接口返回 `{"status":"connected"}`，会话仍停在 `error`、最后一条 user 消息永远无回复。
+
+**根因（代码里唯一能「报成功且不做事」的路径）**：`interrupted-turn-continuation.ts` 的早退分支读
+`snapshot.promptInFlightSessionIds` —— 那是**投影**（coordinator 从各 runtime 快照聚合、按归属过滤），
+换代/重连/中断后旧条目可以留下，而主进程那边早已没有任何一轮在跑（`pendingPromptStarts` 与
+`activePromptCounts` 均清零）⇒ 函数把「早结束了」读成「还在跑」，直接 `return snapshot`，无日志、无提示。
+
+**修法**：归属只认登记册本身 —— `runtime-coordinator.ts` 新增 `ownsInFlightPrompt()`（= 私有
+`hasSessionInteraction()`），续跑时投影说「在飞」再问登记册：真在跑 ⇒ 原样返回**并记 info**；
+没人 ⇒ **继续启动**并记 warn。两条日志各带 `consequence` 具名值，下一次同症状可一眼分开两种成因。
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest … interrupted-turn-continuation.test.ts` | **5 passed**（新增 3 例：陈旧标志⇒真启动 / 真归属⇒不启动 / 无登记册⇒旧行为） |
+| `vitest … runtime-coordinator + application-commands + ipc` | **108 passed（3 文件）** |
+| `vitest run src/main/acp`（整个主进程 ACP 目录） | **1512 passed \| 95 文件**，exit 0 |
+| `typecheck:node` / `typecheck:web` | exit 0 / exit 0（0 诊断） |
+| `eslint --no-cache`（4 个改动文件） | exit 0 |
+
+### 三 边界
+
+1. **无真机读数**：修复要看到效果必须重建 `out/` 并起校验实例（本仓不认单测为完成证据）。本轮受负载闸与
+   并发实例两头挤压，**没重建、没起实例** ⇒ 真机复验具名到下一轮，判据写在证据档 §四。
+2. **未修的另一半**：§十四 第 1 条「`api.acp.sendPrompt` 返回成功却不产生新消息」是另一条路径，
+   现有证据分不开三种成因 ⇒ 先立具名日志再谈修，本轮不猜着改。
+3. 本机 dev 实例 401 万行日志里该通道只出现 2 次、两次都真有 `prompt start` ⇒ 这条失败**不是必现**，
+   修复只能靠把判据换成登记册，不能靠「再点一次」。
+
+### 四 下一轮第一步
+
+- ① 本笔先本地提交；**等 `b589c465` 的 Nightly 落定后再推**（它在飞，推了会把它顶掉）。
+- ② 下一轮先看负载闸与 `out/` 占用：桌面会话若已收工，就 `npm run build:e2e` 起隔离实例，
+  按证据档 §四 的判据取「继续」的真机读数（这是本单元唯一缺的那条）。
+- ③ 若仍被占用，转做 §十四 第 1 条：给 `sendPrompt` 入口/收口各补一条具名日志（入口记 textLength、
+  收口记 outcome.kind 与 durationMs），把「没到主进程」与「到了被判 cancelled」分开。
