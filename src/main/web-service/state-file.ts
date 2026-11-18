@@ -74,11 +74,33 @@ const removeWebServiceState = async (configRoot: string): Promise<void> => {
   await rm(statePathFor(configRoot), { force: true })
 }
 
+/**
+ * Removes the record only while it still names `pid`.
+ *
+ * Two generations of the app can overlap for a moment — a dev restart, or an update that starts the new
+ * process before the old one finishes quitting — and the older one shutting down must not delete the
+ * registration the newer one just published. That deletion is invisible while it happens and shows up
+ * later as "the CLI and the SDK cannot find a service that is listening": exactly the symptom of a state
+ * file that is gone while the port still answers. An unreadable record is left alone here (the read path
+ * prunes those), so a failed write can never be mistaken for someone else's record.
+ */
+const removeWebServiceStateIfOwned = async (configRoot: string, pid: number): Promise<void> => {
+  let owner: unknown
+  try {
+    owner = (JSON.parse(await readFile(statePathFor(configRoot), 'utf8')) as { pid?: unknown }).pid
+  } catch {
+    return
+  }
+  if (owner !== pid) return
+  await removeWebServiceState(configRoot)
+}
+
 export {
   WEB_SERVICE_STATE_FILE,
   isProcessAlive,
   readWebServiceState,
   removeWebServiceState,
+  removeWebServiceStateIfOwned,
   statePathFor,
   writeWebServiceState
 }

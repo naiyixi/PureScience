@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   readWebServiceState,
   removeWebServiceState,
+  removeWebServiceStateIfOwned,
   statePathFor,
   writeWebServiceState
 } from './state-file'
@@ -83,5 +84,34 @@ describe('web service state file', () => {
 
     await writeFile(statePathFor(root), '{broken')
     expect(await readWebServiceState(root)).toBeUndefined()
+  })
+
+  it('only removes the record while it still names the calling process', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-state-'))
+    roots.push(root)
+    await writeWebServiceState(root, {
+      pid: process.pid,
+      port: 44100,
+      startedAt: '2026-07-19T00:00:00.000Z',
+      appVersion: '0.4.0',
+      attached: false
+    })
+
+    // A different process shutting down (an older generation, or a second launch) must leave it alone:
+    // deleting someone else's record is what makes a listening service look absent to the CLI.
+    await removeWebServiceStateIfOwned(root, process.pid + 1)
+    expect(JSON.parse(await readFile(statePathFor(root), 'utf8')).pid).toBe(process.pid)
+
+    await removeWebServiceStateIfOwned(root, process.pid)
+    await expect(readFile(statePathFor(root), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('leaves an unreadable record for the read path to prune instead of deleting it by inference', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-state-'))
+    roots.push(root)
+    await writeFile(statePathFor(root), '{broken')
+
+    await removeWebServiceStateIfOwned(root, process.pid)
+    expect(await readFile(statePathFor(root), 'utf8')).toBe('{broken')
   })
 })

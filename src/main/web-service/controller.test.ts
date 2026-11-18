@@ -1,3 +1,7 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import { ApplicationEventHub } from '../application-events'
@@ -5,6 +9,7 @@ import type { ApplicationEventSource } from '../application-events'
 import type { ApplicationCommandComposition } from '../application-command-composition'
 import type { TaskAgentPort } from '../tasks/task-runner'
 import { createWebServiceController, type WebServiceControllerDeps } from './index'
+import { removeWebServiceStateIfOwned, writeWebServiceState } from './state-file'
 
 /**
  * How long a coordination wait may take.
@@ -41,7 +46,7 @@ const makeController = (
   controller: ReturnType<typeof createWebServiceController>
   startServer: ReturnType<typeof vi.fn>
   writeState: ReturnType<typeof vi.fn>
-  removeState: ReturnType<typeof vi.fn>
+  removeStateIfOwned: ReturnType<typeof vi.fn>
   serverClose: ReturnType<typeof vi.fn>
   serverCloseExternalConnections: ReturnType<typeof vi.fn>
   lastOptions: () => StartOptions
@@ -55,7 +60,7 @@ const makeController = (
     return { port: options.port, closeExternalConnections, close: serverClose }
   })
   const writeState = vi.fn().mockResolvedValue(undefined)
-  const removeState = vi.fn().mockResolvedValue(undefined)
+  const removeStateIfOwned = vi.fn().mockResolvedValue(undefined)
 
   const controller = createWebServiceController(
     {
@@ -69,7 +74,7 @@ const makeController = (
       resolveConfigRoot: () => '/fake/root',
       loadWebToken: async () => 'tok-123',
       writeState,
-      removeState,
+      removeStateIfOwned,
       appInfo: () => ({
         appPath: '/fake/app',
         appName: 'PureScience',
@@ -85,7 +90,7 @@ const makeController = (
     controller,
     startServer,
     writeState,
-    removeState,
+    removeStateIfOwned,
     serverClose,
     serverCloseExternalConnections: closeExternalConnections,
     lastOptions: () => seen[seen.length - 1],
@@ -177,7 +182,7 @@ describe('createWebServiceController', () => {
 
     await h.controller.close()
     expect(h.serverClose).toHaveBeenCalledTimes(1)
-    expect(h.removeState).toHaveBeenCalledWith('/fake/root')
+    expect(h.removeStateIfOwned).toHaveBeenCalledWith('/fake/root', 4242)
     expect(h.controller.isRunning()).toBe(false)
     expect(h.controller.runningPort()).toBeUndefined()
 
@@ -284,7 +289,7 @@ describe('createWebServiceController', () => {
     await Promise.all([start, dispose])
 
     expect(serverClose).toHaveBeenCalledOnce()
-    expect(h.removeState).toHaveBeenCalledWith('/fake/root')
+    expect(h.removeStateIfOwned).toHaveBeenCalledWith('/fake/root', 4242)
     expect(h.controller.isRunning()).toBe(false)
   })
 
@@ -321,7 +326,7 @@ describe('createWebServiceController', () => {
 
     await h.controller.ensureStarted(44100, { attached: true })
     await expect(h.controller.dispose()).rejects.toBe(failure)
-    expect(h.removeState).toHaveBeenCalledWith('/fake/root')
+    expect(h.removeStateIfOwned).toHaveBeenCalledWith('/fake/root', 4242)
     expect(unsubscribe).toHaveBeenCalledOnce()
   })
 
@@ -345,7 +350,7 @@ describe('createWebServiceController', () => {
     await Promise.resolve()
 
     expect(h.serverClose).toHaveBeenCalledTimes(1)
-    expect(h.removeState).toHaveBeenCalledWith('/fake/root')
+    expect(h.removeStateIfOwned).toHaveBeenCalledWith('/fake/root', 4242)
     expect(h.requestQuit).not.toHaveBeenCalled()
   })
 
@@ -368,5 +373,48 @@ describe('createWebServiceController', () => {
     h.lastOptions().onShutdownRequest?.()
 
     expect(h.requestQuit).toHaveBeenCalledTimes(1)
+  })
+
+  // Two generations of the app can overlap for a moment (a dev restart; an update whose new process is up
+  // before the old one finishes quitting). The older one closing must not delete the record the newer one
+  // just published — that deletion is what makes `purescience status` and the SDK report "not running"
+  // while the port still answers. The real state-file functions run against a temp root here: the point is
+  // the file that survives, not a spy on a stub.
+  it('a shutting-down older generation leaves the record the newer one published', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-web-state-'))
+    try {
+      const generation = (pid: number): ReturnType<typeof makeController> =>
+        makeController({
+          resolveConfigRoot: () => root,
+          writeState: writeWebServiceState,
+          removeStateIfOwned: removeWebServiceStateIfOwned,
+          appInfo: () => ({
+            appPath: '/fake/app',
+            appName: 'PureScience',
+            appVersion: '9.9.9',
+            versions: { electron: 'e', chrome: 'c', node: 'n' },
+            pid
+          })
+        })
+
+      const older = generation(4242)
+      const newer = generation(7777)
+      await older.controller.ensureStarted(44100, { attached: false })
+      await newer.controller.ensureStarted(44200, { attached: false })
+
+      await older.controller.close()
+
+      const afterOlderClose = JSON.parse(
+        await readFile(join(root, 'web-service.json'), 'utf8')
+      ) as { pid: number; port: number }
+      expect(afterOlderClose).toMatchObject({ pid: 7777, port: 44200 })
+
+      await newer.controller.close()
+      await expect(readFile(join(root, 'web-service.json'), 'utf8')).rejects.toMatchObject({
+        code: 'ENOENT'
+      })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })

@@ -11,7 +11,11 @@ import { loadOrCreateWebToken } from './auth'
 import { startWebHttpServer, type ExternalWebAccess, type RunningWebServer } from './http-server'
 import { projectTaskRuntimeEvent } from './application-event-projections'
 import { HeadlessTaskApi } from './task-api'
-import { removeWebServiceState, writeWebServiceState, type WebServiceState } from './state-file'
+import {
+  removeWebServiceStateIfOwned,
+  writeWebServiceState,
+  type WebServiceState
+} from './state-file'
 
 // A single-instance web service that can be started at launch (--serve) or later, on demand, when a
 // second launch forwards a --serve request to the already-running instance. Starting is idempotent: a
@@ -43,7 +47,8 @@ export type WebServiceControllerDeps = {
   resolveConfigRoot: () => string
   loadWebToken: (configRoot: string) => Promise<string>
   writeState: (configRoot: string, state: Omit<WebServiceState, 'configRoot'>) => Promise<unknown>
-  removeState: (configRoot: string) => Promise<void>
+  // Removes the on-disk record only while it still names the given pid (see state-file.ts).
+  removeStateIfOwned: (configRoot: string, pid: number) => Promise<void>
   appInfo: () => {
     appPath: string
     appName: string
@@ -82,7 +87,7 @@ const createWebServiceController = (
   const getConfigRoot = deps.resolveConfigRoot ?? resolveConfigRoot
   const loadWebToken = deps.loadWebToken ?? loadOrCreateWebToken
   const writeState = deps.writeState ?? writeWebServiceState
-  const removeState = deps.removeState ?? removeWebServiceState
+  const removeStateIfOwned = deps.removeStateIfOwned ?? removeWebServiceStateIfOwned
   const appInfo =
     deps.appInfo ??
     (() => ({
@@ -112,6 +117,7 @@ const createWebServiceController = (
         closeExternalConnections: (sessionId?: string) => void
         port: number
         configRoot: string
+        pid: number
       }
     | undefined
   let starting: Promise<{ port: number; url: string }> | undefined
@@ -180,12 +186,14 @@ const createWebServiceController = (
     running = {
       port: server.port,
       configRoot,
+      pid: info.pid,
       closeExternalConnections: server.closeExternalConnections,
       close: async () => {
         try {
           await server.close()
         } finally {
-          await removeState(configRoot)
+          // Owned removal: a newer generation may already have published its own record.
+          await removeStateIfOwned(configRoot, info.pid)
         }
       }
     }
