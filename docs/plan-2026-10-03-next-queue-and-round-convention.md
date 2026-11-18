@@ -20127,3 +20127,58 @@ attach；界面恢复路径本身是好的：消息数 13 → 17、回复 46/456
 证据档与排期档已就地更正（`docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md` 首节、
 `docs/plan-2026-11-18-capability-gap-roadmap.md` 的 0.4 节）。这条更正本身也验证了一条纪律：
 **绕过界面直接调 API 得到的读数，不能直接判成产品缺陷**。
+
+## 三百五十五、本轮追加（执行器，2026-11-19 05:0x–）—— Windows 车道红的两处真缺陷：绝对路径判定问错了人
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main` 位点 `22e31703`；本地领先一笔 `e19e547d`（1.5 声明面，上一轮交付，未推）。
+- **Windows Full Test 在 `22e31703` 与 `2ec8b9cd` 上都是 failure** ⇒ 主干红，先修红再谈新单元（红在主干挡所有人）。
+- 作业级归因（不是「又抖了」）：`Windows full test (8/8)` 红在 `src/main/slides/mcp-server.test.ts` 三条用例，
+  其余七个分片 success、同提交 Nightly success ⇒ 真缺陷。
+- 共享树里有桌面会话的在制品 12 个路径（ro-crate / external-mcp / background-delivery-labels /
+  application-command-composition）⇒ 本轮只改与之不相交的路径（slides、`shared/local-fs`、`settings/pdf-service`、
+  `ipc.ts` 的装配行），一次 `git add` 只点这五个文件。
+- 负载闸：空闲页 3,929（≈64MB）、swap 6,259/7,168 ⇒ **不 build、不起实例**，本轮不取真机读数。
+
+### 一 缺陷与修法
+
+同一条缺陷族的两个落点：**「这个路径是不是绝对路径」被写成了 POSIX 写法**，而宿主在 Windows 上不这么判。
+
+1. **`src/main/slides/mcp-server.ts`（外部客户端写 deck）**：`startsWith('/')` 判绝对路径、`split('/')` 取文件名
+   ⇒ 盘符路径一律被判 `output-not-absolute`，外部客户端在 Windows 上**一条 deck 也写不出来**。
+   改为 `node:path` 的 `isAbsolute` / `basename`（语义由宿主决定，POSIX 上逐字不变）；
+   用例里 shell 出去的 `unzip -l` 换成 fflate 的 `unzipSync`（被测的是压缩包内容，而 `unzip` 不是每台机器都有，
+   Windows runner 上就缺），清单断言原样保留；另加一条 **win32 专跑**用例钉住「盘符路径必须被接受」。
+2. **`src/main/settings/pdf-service.ts` + `src/main/ipc.ts`（PDF 打开）**：装配点 `resolvePath` 与服务的兜底
+   都写 `startsWith('/')` ⇒ Windows 上用户刚选中的 PDF 被 `join(数据根, path)` 拼成一个不存在的文件。
+   收成一份实现：`src/shared/local-fs.ts` 导出 `isAbsoluteLocalPath(path, platform)`（与既有 `validateLocalPath`
+   共用同一套判定，后者本来就把 platform 作为参数注入），`pdf-service` 导出 `resolvePdfSourcePath`，
+   服务兜底与装配点都调它 —— **两处各写一份正是这次分叉的成因**。
+
+### 二 读数（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/main/slides` | **18 passed \| 1 skipped**（跳过的是 win32 专跑那条） |
+| `vitest run src/main/settings src/shared src/main/slides` | **263 文件 / 3,278 passed \| 4 skipped**，exit 0 |
+| `typecheck:node` / `typecheck:web` | exit 0 / exit 0（0 诊断） |
+| `eslint --no-cache`（两批共 7 个改动文件） | 0 error / 0 warning |
+
+### 三 边界
+
+1. **无真机读数**：两条修复的效果都在 Windows 上才看得见，本机是 darwin-arm64，且负载闸下不起实例 ⇒
+   该平台的实际效果只能由 **Windows Full Test 车道**证明，两笔提交信息里都不写「Windows 已验」。
+2. 同族另一批 `startsWith('/')` 逐个读过：`compute/**`、`remote-fs`、`session-package/import`（压缩包成员路径）、
+   `migration-marker`（安全拒绝绝对路径）都是**有意**的 POSIX/安全判定，不动；
+   `path-guard-hook`、`connector-template`、`annotation-repository` 早已两种形态都认。
+3. 推送纪律：`e9270c3b` 的双车道还在飞，**本地提交不推**（推了会取消在飞车道，而「取消 ≠ 绿」）；
+   等它落定再推 `8260d494`，那时两笔一起走同一次推送。
+
+### 四 下一轮第一步
+
+- ① 读 `e9270c3b` 的 Windows Full Test 判决：绿 ⇒ 推 `8260d494` 并按 40 位 SHA 重读双车道；
+  红 ⇒ 逐作业读日志，按「失败文件是否本批碰过」定性，不重跑 job。
+- ② 负载闸解除且桌面会话收工后：`npm run build:e2e` + 隔离实例补「中断态继续」的真机读数（上一轮唯一缺的那条）。
+- ③ 路线图 1.4（MCP `activity`/`routine` 两个工具）仍未开工，是 v3.1 里唯一的空位；下一轮可先在
+  隔离工作树里读 `src/main/literature/mcp-server.ts` 与 `settings.routine` 的既有面再定形状。

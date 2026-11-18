@@ -106,3 +106,12 @@
 `hasSessionInteraction()`），两条分支各留一条带 `consequence` 的具名日志。
 门禁与边界见 `docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md`
 （`src/main/acp` 1512 passed / 双 typecheck 0 / eslint 0 / Windows Full Test success）。
+
+## 1.3 / PDF 打开：Windows 上的绝对路径判定（2026-11-19 执行器修，`e9270c3b` + `8260d494`）
+
+车道读数驱动的修复，不是新单元：`Windows Full Test` 在 `22e31703` 上红在 `src/main/slides/mcp-server.test.ts`
+三条用例，作业级日志把根因指到「绝对路径判定写成了 POSIX 形态」——`startsWith('/')` / `split('/')`。
+同一形态在 PDF 打开那条路上还有一处（装配点与服务的兜底各写一份），Windows 上会把用户选中的盘符路径拼到
+数据根下。两处都改成由宿主决定语义（`node:path` 的 `isAbsolute`/`basename` 与 `shared/local-fs` 的
+`isAbsoluteLocalPath`），PDF 那条收成单一实现 `resolvePdfSourcePath`，两处调用同一份。
+1.3 的其余读数与判据不变；**没有** Windows 真机 ⇒ 该平台上的实际效果只由 Windows 车道证明。
