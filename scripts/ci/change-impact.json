@@ -191,6 +191,7 @@
         "src/main/settings/npm-executable.ts",
         "src/main/settings/opencode-detect.ts",
         "src/main/settings/opencode-install.ts",
+        "src/main/settings/pdf-service.ts",
         "src/main/settings/preferences.ts",
         "src/main/settings/process-tree.ts",
         "src/main/settings/runtime-failure-diagnosis.ts",
