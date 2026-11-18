@@ -40,8 +40,35 @@
 
 - `33a30fdb`：旧库 56 行 `caseTitle` 为 NULL，导致首页 `projects:list` 整表读取失败；建表步骤加幂等回填，真应用重启后 NULL 56 → 0，项目列表恢复。
 
-## 六、仍未做的
+## 六、缺口修复与复验（同日）
 
-- 其余 11 位专家未逐个跑任务（同一代码路径，装了但未逐个验收）。
-- 安装成功后**没有提示「去启用」**，用户必须自己发现「继续设置」；本轮就是踩了这个坑才找到流程。
-- 「Session was interrupted before the app closed.」这句在应用未关闭时也出现（由切换专才的 contextReset 触发），文案误导。
+两条缺口已改（`3f2bcbdc`）：
+
+1. **装完直接进编辑器**：新增 `postInstallView({setupPending, specialistId})`（`specialist-marketplace-install-outcome.ts`，2 例单测），安装返回后按 `setupPending` 决定落点——未完成设置就进编辑器，那里既有说明也有「保存更改」。原先一律回列表，只有一行小徽标提示。
+2. **编辑器说明本地化**：原来硬编码英文（中文界面夹英文），改用 `settings.setupPendingHint`，九语补齐。
+3. **中断提示不再谎称关闭**：`INTERRUPTED_SESSION_ERROR` 由 `before the app closed` 改为 `This turn was interrupted before it finished.`，九语 `ui.sessionInterrupted` 同步。原因是同一恢复路径也被 contextReset（切换专才）触发，应用没关却提示关闭前中断。
+
+复验（同一台机器，构建后实机点击）：
+
+- 在市场里装 `radiology-imaging-expert`（36.4 KB，技能 7/7、连接器 3/3），点「安装专才」后**直接落在编辑器**，页面出现中文提示「这个专才已装好但还没启用；点下方「保存更改」完成设置并启用。」，没有回到列表。
+- 点「保存更改」→ `enabled: true, setupPending: false`（API 读回，不再需要人工去找徽标）。
+- 证据截图 `/tmp/purescience-install-lands-editor.png`。
+
+## 七、第二位专才的实机任务（radiology-imaging-expert）
+
+绑定 `resolveSessionSpecialist` → `bound:radiology-imaging-expert`；任务为评价「AI 低剂量 CT 肺结节检出、AUC 0.94、同院同期、无外部验证」。
+
+它没有硬凑那个虚构设计，而是写明「未指定检查与疾病」后选取可核验的真实证据体（PROMIS mpMRI 分诊研究）按同一流程评价，并交付：
+
+- `PROMIS_mpMRI_影像诊断方法学评价报告.md`（18 KB，QUADAS-2 / STARD 2015 / GRADE / DCA）
+- `fig1_promis_accuracy.png`、`fig2_promis_ppv_npv.png`、`fig3_promis_dca.png`
+- `promis_analysis.py`（11 KB）+ `promis_metrics.csv`、`promis_ppv_npv_by_prevalence.csv`、`promis_dca.csv`
+
+落盘位置：`~/PureScience-DEV/artifacts/<project>/<session>/message-*/`（已实查文件存在、体积相符）。
+结论边界给得准：「可写 mpMRI 适合作穿刺前分诊/排除试验；不可写诊断准确率 93%、阴性即可不穿刺、可替代活检」，并做了患病率重标定（患病率 20% 时 PPV 由 51% 降到 28.1%）。
+
+## 八、仍未做的
+
+- **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
+- 专才绑定走的是 `setSessionSpecialist` API；界面下拉的实际点击路径仍未在本轮完整走一遍（早前那次是因为运行中不可切换才改用 API）。
+- 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）。
