@@ -20114,3 +20114,16 @@ notice:  Due to capacity constraints, jobs targeting macOS arm64 runners may exp
   按证据档 §四 的判据取「继续」的真机读数（这是本单元唯一缺的那条）。
 - ③ 若仍被占用，转做 §十四 第 1 条：给 `sendPrompt` 入口/收口各补一条具名日志（入口记 textLength、
   收口记 outcome.kind 与 durationMs），把「没到主进程」与「到了被判 cancelled」分开。
+
+### 五 具名更正（同轮，22:2x，另一执行体 `d02c888c`）
+
+本节的归因**撤回**：`continueInterruptedTurn` 返回 `connected` 却不续跑，真因不是那个早退分支 ——
+另一个执行体用**界面路径**复验后撤回了同一批 API 读数（`api.acp.continueInterruptedTurn` 要求会话先
+attach；界面恢复路径本身是好的：消息数 13 → 17、回复 46/456 字都落库），并把真因定到**产物定稿被跳过**
+（`finalizationSkips: marker-owned-by-another-session=30 / version-context-mismatch=6`，根因 `root-frame-mismatch`），
+修法在 `6a766d02`（新 prompt 起始时清掉上一轮的定稿错误，会话不再永久停在 `error`）。
+
+因此本轮交付降级为它实际做到的那一层：**消掉一条可能静默早退的路径**（投影 → 登记册）+ **两条具名日志**。
+证据档与排期档已就地更正（`docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md` 首节、
+`docs/plan-2026-11-18-capability-gap-roadmap.md` 的 0.4 节）。这条更正本身也验证了一条纪律：
+**绕过界面直接调 API 得到的读数，不能直接判成产品缺陷**。

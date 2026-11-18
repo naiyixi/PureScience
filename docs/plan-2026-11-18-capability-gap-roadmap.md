@@ -92,12 +92,17 @@
 缺口只在导出处理器 `src/main/ro-crate/ipc.ts:196-209` 与设置面）。开工前置：`src/shared/ro-crate.ts`、
 `SettingsPage.tsx`、`i18n/*` 三条不干净就不开工。
 
-## 0.4 中断态续跑：早退分支的归属判据（2026-11-18 执行器交付，`57e9e34f`）
+## 0.4 中断态续跑：早退分支的归属判据（2026-11-18 执行器交付，`46dff33c`；归因已更正）
 
-上表 0.4 行记的「`continueInterruptedTurn` 报 connected 却不续跑」已定位到唯一可产生该症状的代码路径：
-`src/main/acp/interrupted-turn-continuation.ts` 的早退分支读聚合投影 `promptInFlightSessionIds`，
-换代/中断后旧条目残留 ⇒ 把「这一轮早结束」读成「还在跑」，直接返回快照且无日志。
-修法：归属改问 coordinator 自己的登记册（`ownsInFlightPrompt()` = `hasSessionInteraction()`），
-两条分支各留一条具名日志。**无真机读数**（负载闸 + 并发会话占用 `out/`），复验判据与步骤见
-`docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md` §四；同节 §十四 第 1 条（`sendPrompt`
-静默成功）仍是另一条路径，按「先立具名日志再谈修」处理。
+> **更正（同日晚，`d02c888c`）**：下面这段最初的归因（「`continueInterruptedTurn` 报 connected 却不续跑」由
+> 早退分支造成）**撤回**。真实原因链是：只调 API 不 attach ⇒ 主进程拿不到会话；界面路径本身是好的
+> （13→17、46/456 字落库）；会话反复 `error` 的真因是**产物定稿被跳过**
+> （`marker-owned-by-another-session=30` / `root-frame-mismatch`），已在 `6a766d02` 让新 prompt 起始时
+> 清掉上一轮定稿错误。本轮代码改动因此只保留「消掉一条可能静默早退的路径 + 留具名日志」这一层价值。
+
+上表 0.4 行记的那条读数，代码里存在一条**可能**产生同形结果的早退分支：
+`src/main/acp/interrupted-turn-continuation.ts` 读聚合投影 `promptInFlightSessionIds`（换代/中断后旧条目可残留），
+命中即直接返回快照且无日志。修法：归属改问 coordinator 自己的登记册（`ownsInFlightPrompt()` =
+`hasSessionInteraction()`），两条分支各留一条带 `consequence` 的具名日志。
+门禁与边界见 `docs/evidence/2026-11-18-interrupted-turn-stale-in-flight.md`
+（`src/main/acp` 1512 passed / 双 typecheck 0 / eslint 0 / Windows Full Test success）。
