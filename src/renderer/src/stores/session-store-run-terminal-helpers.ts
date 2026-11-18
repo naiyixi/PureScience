@@ -119,9 +119,12 @@ export const projectAgentPromptInFlight = (
   inFlight: boolean
 ): ChatSession => {
   const agentPromptInFlight = inFlight ? true : undefined
-  return session.agentPromptInFlight === agentPromptInFlight
-    ? session
-    : { ...session, agentPromptInFlight }
+  if (session.agentPromptInFlight === agentPromptInFlight) return session
+  // A new prompt retires the previous turn's artifact error: the failure belonged to artifacts the user has
+  // already moved past, and keeping it meant the session showed `error` for the rest of its life — nothing
+  // cleared it, because `clearArtifactError` only runs when a finalization succeeds in the same turn.
+  const current = inFlight ? projectArtifactErrorCleared(session) : session
+  return { ...current, agentPromptInFlight }
 }
 
 export const projectArtifactError = (session: ChatSession, error: string): ChatSession => ({
