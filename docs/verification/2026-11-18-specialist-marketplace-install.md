@@ -275,7 +275,22 @@ send-2 ok → user:17 / agent:139   「无法给出具体例数…」
 
 **同一条曾经必死的路径（绑专才后连发两次）现在两次都跑出回复。**
 
-## 十七、仍未做的
+## 十七、`[Auditor]` 撞 session-busy 丢纠正：试过重试，撤回
+
+现场的失败长这样（`/tmp/ps-app17.log`）：
+
+```
+[reviewer:correction] injecting [Auditor] message into main session { sessionId: 'ac913c29-…' }
+[reviewer:correction] [Auditor] correction sendPrompt failed {
+  reason: 'session-busy', error: 'An ACP prompt is already running for this session' }
+[reviewer:orchestrator] correction failed in fix loop — marking remaining checks unaddressed
+```
+
+我按「等一会儿再发一次」改了一版：`session-busy` 且有余额时等 5s 重试一次，并加了两个用例（busy 一次后成功、始终 busy 则不循环）。**改完 `correction.test.ts` 立刻翻红**——既有用例 `takes the slot when the running turn failed, so the session still gets a correction` 断言的是另一条语义：某条纠正道发送失败后应当**让出槽位**，让另一条道接管并发出去，最终只有一条纠正落库（`sent` 长度 1、接管那条的文本）。我的重试在等待期间仍握着单飞槽位，接管道只能一直 defer，于是「另一条道应发出」变成「被挡下」。
+
+结论：**这条不能靠重试修**，`correction.ts:49-57` 的单飞设计说明写的就是这个意思（2026-11-09 两条评审道抢同一段纠正，不是瞬时故障）。已 `git checkout` 撤回，测试回到 15 passed。真正要动的是让评审在**主轮确实停止之后**再开始（现在 review 与 stop handler 有竞态），而不是让纠正在 busy 上碰运气。
+
+## 十八、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
