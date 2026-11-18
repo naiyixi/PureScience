@@ -527,6 +527,7 @@ const readKnowledgeSearchRequest = (value: unknown): { text: string; limit?: num
 
 const permissionGrantsLog = createLogger('permission-grants')
 const knowledgeLog = createLogger('knowledge')
+const specialistBindingLog = createLogger('specialist.binding')
 const screeningLog = createLogger('references:screening')
 // How long a delivery turn waits for a session that is already running a turn, and how often it looks.
 const BACKGROUND_DELIVERY_TURN_WAIT_MS = 15 * 60 * 1000
@@ -1233,6 +1234,22 @@ const createApplicationModules = async (
   // Per-session specialist binding store. Shared between the SET_SESSION_SPECIALIST barrier
   // (validate + record) and the runtime switch so a hot-switch lands on the same source of truth.
   const sessionBindingService = new SessionBindingService(profileService)
+  // Restore the bindings the session records already hold. The service keeps them in memory and the
+  // session file is the durable copy, but nothing read that copy back — so after a restart a session
+  // still rendered its Specialist while resolve() answered 'main' and the next turn ran under the main
+  // agent. The catalog tier is the cheap read (no messages/conversation graph), and it runs here so the
+  // map is populated before the first window's session is attached.
+  void sessionPersistenceBackend
+    .loadCatalog()
+    .then((catalog) => {
+      sessionBindingService.seed(catalog.sessions)
+    })
+    .catch((error) => {
+      specialistBindingLog.warn(
+        'session specialist binding restore failed',
+        diagnosticErrorFields(error)
+      )
+    })
   // Compose the interceptor before ACP because Notebook construction precedes runtime construction.
   // Startup registers the complete production adapter below before any IPC surface becomes callable.
   const completionGateRuntimeRegistry = new CompletionGateRuntimeRegistry()

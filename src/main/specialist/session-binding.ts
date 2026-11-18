@@ -42,6 +42,28 @@ export class SessionBindingService {
     return this.bindings.get(sessionId)
   }
 
+  // Restores bindings from the durable session records.
+  //
+  // The map above is memory-only and the session file is the authoritative record, but nothing used to
+  // read that record back into the map. Measured 2026-11-18: after a restart the session still showed its
+  // Specialist in the UI (the renderer reads specialistId from the file) while resolve() answered 'main'
+  // and the next turn ran under the main agent — a silent downgrade with no error anywhere.
+  //
+  // Seeds only sessions with no entry in memory, so a live switch made after startup is never reverted by
+  // a slower restore.
+  seed(sessions: readonly { id: string; specialistId?: string }[]): number {
+    let seeded = 0
+    for (const session of sessions) {
+      const specialistId = session.specialistId
+      if (!specialistId || this.bindings.has(session.id)) continue
+      this.bindings.set(session.id, specialistId)
+      seeded += 1
+    }
+    if (seeded > 0)
+      log.info('session specialist bindings restored from session records', { seeded })
+    return seeded
+  }
+
   // Resolves the current binding against the live catalog.
   // - 'main'        — no UUID binding present.
   // - 'bound'       — UUID found, profile enabled.
