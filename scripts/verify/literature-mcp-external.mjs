@@ -1,3 +1,6 @@
+// A verification script, not product code: the arrow helpers below are one-liners whose return type adds
+// nothing a reader cannot see, and this file is deliberately plain .mjs so it runs without a build step.
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 // Verifies the literature MCP server the way an external client uses it: spawn the child over stdio, list its
 // tools, and call all three against the live indexes. Nothing in-process — if this prints records, a Claude
 // Desktop / Cursor / script client would get the same.
@@ -35,30 +38,30 @@ const report = (label, payload) => {
 
 try {
   const { tools } = await client.listTools()
-  report('tools/list', tools.map((tool) => ({ name: tool.name, title: tool.title })))
+  report(
+    'tools/list',
+    tools.map((tool) => ({ name: tool.name, title: tool.title }))
+  )
 
   const search = await client.callTool({
     name: 'literature_search',
     arguments: { query: 'semaglutide obesity', limit: 3 }
   })
   const payload = JSON.parse(text(search))
-  report(
-    'literature_search: semaglutide obesity',
-    {
-      errors: payload.errors,
-      count: payload.records.length,
-      records: payload.records.map((record) => ({
-        source: record.source,
-        title: record.title.slice(0, 70),
-        year: record.year,
-        venue: record.venue,
-        doi: record.doi,
-        pmid: record.pmid,
-        read: record.read,
-        abstractChars: (record.abstract ?? '').length
-      }))
-    }
-  )
+  report('literature_search: semaglutide obesity', {
+    errors: payload.errors,
+    count: payload.records.length,
+    records: payload.records.map((record) => ({
+      source: record.source,
+      title: record.title.slice(0, 70),
+      year: record.year,
+      venue: record.venue,
+      doi: record.doi,
+      pmid: record.pmid,
+      read: record.read,
+      abstractChars: (record.abstract ?? '').length
+    }))
+  })
 
   const cite = await client.callTool({
     name: 'literature_cite',
@@ -66,7 +69,10 @@ try {
   })
   report('literature_cite: 10.1056/NEJMoa2034577', JSON.parse(text(cite)))
 
-  const one = await client.callTool({ name: 'literature_get', arguments: { identifier: '2103.14030' } })
+  const one = await client.callTool({
+    name: 'literature_get',
+    arguments: { identifier: '2103.14030' }
+  })
   const record = JSON.parse(text(one))
   report('literature_get: arXiv 2103.14030', {
     title: record.title,
