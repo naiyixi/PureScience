@@ -749,7 +749,25 @@ class AcpRuntime {
   // transcript starts clean. Returns contextReset so the caller replays a bounded transcript into the
   // next prompt (the app-level equivalent of compaction, which — unlike the backend's — drops all media).
   async resetSessionContext(request: AcpResumeSessionRequest): Promise<AcpCreateSessionResponse> {
-    return this.withOperationLease(() => this.sessionReplacement.reset(request))
+    return this.withOperationLease(async () => {
+      const replaced = await this.sessionReplacement.reset(request)
+      this.releaseInteractionsLeftBehindByReplacedSession(request.sessionId)
+      return replaced
+    })
+  }
+
+  // A replacement disposes the agent process that owned any live prompt interaction. When that process died
+  // mid-turn the interaction is never settled, and `assertSessionIdle` then refuses every later prompt for the
+  // rest of the session's life with "An ACP prompt is already running for this session" — the session looks
+  // dead while nothing runs (reproduced: two refused sends, then `cancel` + send produced a 123-character
+  // reply). An interaction cannot outlive its process, so it is released here.
+  private releaseInteractionsLeftBehindByReplacedSession(sessionId: string): void {
+    const scope = this.sessionInteractions.current(sessionId)
+    if (!scope) return
+    log.warn('releasing a prompt interaction left behind by a replaced agent session', {
+      sessionId
+    })
+    this.sessionInteractions.release(scope)
   }
 
   // Hot-switches the specialist bound to a live session. Updates the per-session skills and identity
@@ -762,9 +780,11 @@ class AcpRuntime {
     sessionId: string,
     specialistId: string | undefined
   ): Promise<{ contextReset: boolean }> {
-    return this.withOperationLease(() =>
-      this.sessionReplacement.switchSpecialist(sessionId, specialistId)
-    )
+    return this.withOperationLease(async () => {
+      const switched = await this.sessionReplacement.switchSpecialist(sessionId, specialistId)
+      if (switched.contextReset) this.releaseInteractionsLeftBehindByReplacedSession(sessionId)
+      return switched
+    })
   }
 
   // The completion-gate adapter uses this public runtime fact to claim only the framework it owns.
