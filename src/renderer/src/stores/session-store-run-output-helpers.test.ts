@@ -120,29 +120,52 @@ describe('agent message chunk projection', () => {
   // One ACP event can stream for longer than a coalescing window, so the same event id arrives again with
   // new text. Deduplicating on ids alone dropped that continuation: a 1166-character reply persisted as
   // 617 characters, with six missing spans at window boundaries, while the agent's own transcript was whole.
-  it('keeps a continuation of an event that spans more than one flush window', () => {
+  it('keeps a second delivery of the same event when the producer numbered it', () => {
+    // The producer turns each delivery into `<eventId>~<occurrence>`; without that numbering this batch was
+    // judged a replay of the first and dropped (a 1166-character reply persisted as 617).
     const session = createSession({
-      messages: [createMessage({ streamId: 'stream-1', content: '第一段', eventIds: ['event-1'] })]
+      messages: [
+        createMessage({ streamId: 'stream-1', content: '第一段', eventIds: ['event-1~0'] })
+      ]
     })
 
     const { session: next } = projectAgentMessageChunk(session, {
       sessionId: 'session-1',
       streamId: 'stream-1',
-      eventId: 'event-1',
+      eventId: 'event-1~1',
       content: '，第二段'
     })
 
     expect(next.messages[0]!.content).toBe('第一段，第二段')
-    expect(next.messages[0]!.eventIds).toEqual(['event-1', 'event-1'])
+    expect(next.messages[0]!.eventIds).toEqual(['event-1~0', 'event-1~1'])
   })
 
-  it('still drops a replay whose ids and text both landed already', () => {
+  // Identical text is ordinary in a reply (table separators, repeated headers). It has to be written every
+  // time it arrives under a fresh delivery id — treating it as a replay deleted 63 fragments of one answer.
+  it('writes identical text again when it arrives under a different delivery id', () => {
+    const session = createSession({
+      messages: [
+        createMessage({ streamId: 'stream-1', content: '| a | b |\n', eventIds: ['event-1~0'] })
+      ]
+    })
+
+    const { session: next } = projectAgentMessageChunk(session, {
+      sessionId: 'session-1',
+      streamId: 'stream-1',
+      eventId: 'event-2~0',
+      content: '| a | b |\n'
+    })
+
+    expect(next.messages[0]!.content).toBe('| a | b |\n| a | b |\n')
+  })
+
+  it('still drops a redelivery of a batch that already landed', () => {
     const session = createSession({
       messages: [
         createMessage({
           streamId: 'stream-1',
           content: '第一段，第二段',
-          eventIds: ['event-1', 'event-1']
+          eventIds: ['event-1~0', 'event-1~1']
         })
       ]
     })
@@ -150,8 +173,8 @@ describe('agent message chunk projection', () => {
     const { session: next } = projectAgentMessageChunk(session, {
       sessionId: 'session-1',
       streamId: 'stream-1',
-      eventId: 'event-1',
-      content: '第一段'
+      eventId: 'event-1~1',
+      content: '，第二段'
     })
 
     expect(next.messages[0]!.content).toBe('第一段，第二段')

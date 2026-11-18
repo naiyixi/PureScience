@@ -145,19 +145,13 @@ const appendUniqueStrings = (
 
 // Whether this batch has already been written into `content`.
 //
-// The event ids alone are not enough. One ACP event can stream for longer than a coalescing window, and
-// every flush of that event carries the same id — so `every(id => eventIds.includes(id))` was true for the
-// continuation of an event already being written, and the continuation was dropped. Measured 2026-11-18: a
-// 1166-character reply persisted as 617 characters with six missing spans, all at window boundaries, while
-// the agent's own transcript held the full text. A real replay re-sends both the ids and the text, so
-// requiring the text as well keeps replays idempotent without discarding streamed continuations.
-const batchAlreadyApplied = (
-  text: string,
-  eventIds: string[],
-  message: { eventIds: string[]; content: string }
-): boolean =>
-  eventIds.every((eventId) => message.eventIds.includes(eventId)) &&
-  (text.length === 0 || message.content.includes(text))
+// The producer gives every delivery a distinct id (`<eventId>~<occurrence>`), so ids alone identify a
+// delivery here. Comparing the text as well is wrong in this direction: a reply's markdown repeats
+// `|---|---|` and other identical fragments, and skipping a batch because its text appears somewhere in the
+// message deleted those repeats — measured 2026-11-18, a 6681-character reply persisted as 5681 with 63
+// dropped fragments. Uniqueness belongs in the id; see eventOccurrences in streamed-agent-text.ts.
+const batchAlreadyApplied = (eventIds: string[], message: { eventIds: string[] }): boolean =>
+  eventIds.every((eventId) => message.eventIds.includes(eventId))
 
 export const projectAgentMessageChunk = (
   session: ChatSession,
@@ -174,7 +168,7 @@ export const projectAgentMessageChunk = (
     (message) =>
       message.role === 'agent' &&
       message.responseToMessageId === responseToMessageId &&
-      batchAlreadyApplied(content, chunkEventIds, message)
+      batchAlreadyApplied(chunkEventIds, message)
   )
   if (replayedGraphMessage) {
     return { session, result: { sessionId: input.sessionId, messageId: replayedGraphMessage.id } }
@@ -206,7 +200,7 @@ export const projectAgentMessageChunk = (
   const now = Date.now()
 
   if (existingMessage) {
-    if (batchAlreadyApplied(content, chunkEventIds, existingMessage)) {
+    if (batchAlreadyApplied(chunkEventIds, existingMessage)) {
       return { session, result, shouldCommit: true }
     }
     return {

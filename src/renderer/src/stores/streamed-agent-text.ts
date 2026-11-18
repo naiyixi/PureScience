@@ -57,6 +57,27 @@ const bufferedChunkIds = new Map<
   { sessionId: string; streamId: string; promptMessageId?: string; eventIds: string[] }
 >()
 
+// How many times each delivered event has already contributed text to this stream.
+//
+// One ACP event can stream for longer than a coalescing window, so the same event id arrives again with
+// more text. Writing bare ids made the second delivery indistinguishable from a replay of the first, and
+// the session store dropped it (measured 2026-11-18: a 1166-character reply persisted as 617 characters,
+// six missing spans at window boundaries, while the agent's own transcript was whole). Pairing the id with
+// its occurrence makes every delivery unique while staying reproducible: a replay re-delivers the same
+// events in the same order, so it produces the same ids and is still deduplicated.
+const eventOccurrences = new Map<string, Map<string, number>>()
+
+const nextEventKey = (streamId: string, eventId: string): string => {
+  let perStream = eventOccurrences.get(streamId)
+  if (!perStream) {
+    perStream = new Map()
+    eventOccurrences.set(streamId, perStream)
+  }
+  const occurrence = perStream.get(eventId) ?? 0
+  perStream.set(eventId, occurrence + 1)
+  return `${eventId}~${occurrence}`
+}
+
 const batcher = createStreamingTextBatcher({
   flushMs: STREAM_TEXT_FLUSH_MS,
   onFlush: (streamId, text) => {
@@ -75,9 +96,10 @@ const batcher = createStreamingTextBatcher({
 })
 
 export const appendStreamedAgentTextChunk = (chunk: StreamedAgentTextChunk): void => {
+  const eventKey = nextEventKey(chunk.streamId, chunk.eventId)
   const buffered = bufferedChunkIds.get(chunk.streamId)
   if (buffered) {
-    buffered.eventIds.push(chunk.eventId)
+    buffered.eventIds.push(eventKey)
     if (!buffered.promptMessageId && chunk.promptMessageId) {
       buffered.promptMessageId = chunk.promptMessageId
     }
@@ -86,7 +108,7 @@ export const appendStreamedAgentTextChunk = (chunk: StreamedAgentTextChunk): voi
       sessionId: chunk.sessionId,
       streamId: chunk.streamId,
       ...(chunk.promptMessageId ? { promptMessageId: chunk.promptMessageId } : {}),
-      eventIds: [chunk.eventId]
+      eventIds: [eventKey]
     })
   }
   batcher.append(chunk.streamId, chunk.content)
@@ -106,5 +128,11 @@ export const settleAllStreamedAgentText = (): void => {
 // text was never shown, so writing it now would resurrect a message the user just edited off the branch.
 export const discardStreamedAgentText = (streamId: string): void => {
   bufferedChunkIds.delete(streamId)
+  eventOccurrences.delete(streamId)
   batcher.discard(streamId)
+}
+
+// Test-only: forget the per-stream delivery counters so one test's numbering does not leak into the next.
+export const resetDeliveryNumberingForTest = (): void => {
+  eventOccurrences.clear()
 }

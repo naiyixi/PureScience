@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   appendStreamedAgentTextChunk,
   discardStreamedAgentText,
+  resetDeliveryNumberingForTest,
   setStreamedAgentTextSink,
   settleStreamedAgentText,
   STREAM_TEXT_FLUSH_MS
@@ -18,6 +19,7 @@ describe('buffered streamed agent text', () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
+    resetDeliveryNumberingForTest()
     writes.length = 0
     previousSink = setStreamedAgentTextSink((write) => {
       writes.push({ streamId: write.streamId, eventIds: write.eventIds, content: write.content })
@@ -50,7 +52,7 @@ describe('buffered streamed agent text', () => {
     vi.advanceTimersByTime(STREAM_TEXT_FLUSH_MS)
 
     expect(writes.map((write) => write.content)).toEqual(['Hel', 'lo'])
-    expect(writes.map((write) => write.eventIds)).toEqual([['event-1'], ['event-2']])
+    expect(writes.map((write) => write.eventIds)).toEqual([['event-1~0'], ['event-2~0']])
   })
 
   it('keeps every event id of a window so a replay stays idempotent', () => {
@@ -69,7 +71,7 @@ describe('buffered streamed agent text', () => {
     vi.advanceTimersByTime(STREAM_TEXT_FLUSH_MS)
 
     expect(writes).toEqual([
-      { streamId: 'assistant-message-1', eventIds: ['event-1', 'event-2'], content: 'ab' }
+      { streamId: 'assistant-message-1', eventIds: ['event-1~0', 'event-2~0'], content: 'ab' }
     ])
   })
 
@@ -84,5 +86,27 @@ describe('buffered streamed agent text', () => {
     vi.advanceTimersByTime(STREAM_TEXT_FLUSH_MS)
 
     expect(writes).toEqual([])
+  })
+
+  // One ACP event can outlive a flush window. Its second delivery carries the same event id, so the id has
+  // to be numbered — otherwise the session store reads it as a replay and the continuation is lost.
+  it('numbers repeated deliveries of one event so the store cannot read them as replays', () => {
+    appendStreamedAgentTextChunk({
+      sessionId: 'session-1',
+      streamId: 'assistant-message-1',
+      eventId: 'event-1',
+      content: '第一段'
+    })
+    vi.advanceTimersByTime(STREAM_TEXT_FLUSH_MS)
+    appendStreamedAgentTextChunk({
+      sessionId: 'session-1',
+      streamId: 'assistant-message-1',
+      eventId: 'event-1',
+      content: '，第二段'
+    })
+    settleStreamedAgentText('assistant-message-1')
+
+    expect(writes.map((write) => write.content)).toEqual(['第一段', '，第二段'])
+    expect(writes.map((write) => write.eventIds)).toEqual([['event-1~0'], ['event-1~1']])
   })
 })
