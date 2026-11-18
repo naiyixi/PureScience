@@ -1055,6 +1055,11 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
   ...sql(PROJECT_TABLE_DDL),
   column('Project', 'archivedAt', PROJECT_ADD_ARCHIVED_AT_DDL),
   column('Project', 'caseTitle', PROJECT_ADD_CASE_TITLE_DDL),
+  // A build that added this column while it was still nullable left rows with NULL titles; the column is
+  // NOT NULL today, so Prisma refuses to map those rows ("found incompatible value of null") and the home
+  // screen shows "无法加载项目" with no project list at all. Backfill instead of relaxing the schema: an empty
+  // title is a real state (a project saved before titles existed), NULL is not.
+  ...sql(`UPDATE "Project" SET "caseTitle" = '' WHERE "caseTitle" IS NULL`),
   column('Project', 'caseSummary', PROJECT_ADD_CASE_SUMMARY_DDL),
   ...sql(PERMISSION_GRANT_TABLE_DDL, ...PERMISSION_GRANT_INDEX_DDLS),
   ...sql(PREVIEW_STATE_TABLE_DDL),
