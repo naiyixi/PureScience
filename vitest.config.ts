@@ -84,6 +84,9 @@ const DATABASE_TEST_GLOBS = [
   // ungated entry in the unbounded pool is exactly the contention this split exists to remove.
   'scripts/bench/project-db-open.bench.test.ts',
   'src/main/projects/prisma-client-journal-mode.test.ts',
+  // The legacy-null-title suite opens a real project database twice (once with an old row that has no
+  // title) — same file/lock profile as its siblings above, so it belongs out of the unbounded pool.
+  'src/main/projects/prisma-client-legacy-null-title.test.ts',
   'src/main/projects/preview-repository.test.ts',
   'src/main/compute/prisma-client.test.ts',
   'src/main/compute/job-repository.test.ts',
