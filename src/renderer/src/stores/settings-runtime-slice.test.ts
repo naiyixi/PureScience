@@ -576,6 +576,19 @@ describe('runtime setup slice: uninstall lifecycle', () => {
     expect(refreshPreflight).toHaveBeenCalledOnce()
   })
 
+  it('repairs the named runtime through the same install pipeline the cards use', async () => {
+    const { commands, reconcileSnapshot, store } = createHarness()
+    const refreshPreflight = vi.fn().mockResolvedValue(preflight())
+    store.setState({ refreshPreflight })
+
+    await store.getState().repairRuntime('codex')
+
+    // The framework is passed through, not assumed: the button sits on the active runtime's banner.
+    expect(commands.repairRuntime).toHaveBeenCalledWith('codex')
+    expect(reconcileSnapshot).toHaveBeenCalled()
+    expect(refreshPreflight).toHaveBeenCalled()
+  })
+
   it('propagates an uninstall error without reconciling stale state', async () => {
     const { commands, reconcileSnapshot, store } = createHarness()
     const failure = new Error('uninstall rejected')
