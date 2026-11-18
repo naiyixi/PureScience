@@ -75,6 +75,30 @@ describe('buffered streamed agent text', () => {
     ])
   })
 
+  // Discarding the buffer happens when the view leaves the transcript, not only when a message is cut away,
+  // so the delivery numbering must survive it: resetting made the next delivery of the same event reuse
+  // `~0` and the store dropped it as a replay (4147 characters of an answer persisted as 1419).
+  it('keeps counting deliveries after a discard so the next one is not read as a replay', () => {
+    appendStreamedAgentTextChunk({
+      sessionId: 'session-1',
+      streamId: 'assistant-message-1',
+      eventId: 'event-1',
+      content: '第一段'
+    })
+    vi.advanceTimersByTime(STREAM_TEXT_FLUSH_MS)
+    discardStreamedAgentText('assistant-message-1')
+    appendStreamedAgentTextChunk({
+      sessionId: 'session-1',
+      streamId: 'assistant-message-1',
+      eventId: 'event-1',
+      content: '，第二段'
+    })
+    settleStreamedAgentText('assistant-message-1')
+
+    expect(writes.map((write) => write.content)).toEqual(['第一段', '，第二段'])
+    expect(writes.map((write) => write.eventIds)).toEqual([['event-1~0'], ['event-1~1']])
+  })
+
   it('drops the buffer of a stream the transcript cut away', () => {
     appendStreamedAgentTextChunk({
       sessionId: 'session-1',

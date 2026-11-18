@@ -67,7 +67,14 @@ const bufferedChunkIds = new Map<
 // events in the same order, so it produces the same ids and is still deduplicated.
 const eventOccurrences = new Map<string, Map<string, number>>()
 
+const MAX_TRACKED_STREAMS = 200
+
 const nextEventKey = (streamId: string, eventId: string): string => {
+  if (eventOccurrences.size > MAX_TRACKED_STREAMS) {
+    // Insertion-ordered: the oldest stream is the one whose deliveries are long finished.
+    const oldest = eventOccurrences.keys().next().value
+    if (oldest !== undefined && oldest !== streamId) eventOccurrences.delete(oldest)
+  }
   let perStream = eventOccurrences.get(streamId)
   if (!perStream) {
     perStream = new Map()
@@ -128,7 +135,10 @@ export const settleAllStreamedAgentText = (): void => {
 // text was never shown, so writing it now would resurrect a message the user just edited off the branch.
 export const discardStreamedAgentText = (streamId: string): void => {
   bufferedChunkIds.delete(streamId)
-  eventOccurrences.delete(streamId)
+  // The numbering deliberately survives a discard. Discarding happens when the view moves away from the
+  // transcript (an artifact or notebook opens), not only when a message is cut away — resetting here made the
+  // next delivery of the same event take `~0` again, collide with what was already written, and be dropped as
+  // a replay. Stream ids are per turn, so the counters cannot leak into another reply.
   batcher.discard(streamId)
 }
 
