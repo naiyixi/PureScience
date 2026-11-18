@@ -523,7 +523,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'boot.retrying': '再試行中…',
   'boot.retry': '再試行',
   'boot.loadingSaved': '保存済みの会話を読み込み中…',
-  'ui.sessionInterrupted': 'アプリが閉じる前にセッションが中断されました。',
+  'ui.sessionInterrupted': 'このターンは完了前に中断されました。',
   'toolActivity.turnTokens': '{count} トークン',
   'toolActivity.turnTokensUnavailable': '使用量の記録なし',
   'toolActivity.webSearch': 'ウェブ検索',
@@ -2880,6 +2880,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': 'セッションワークスペース',
   'settings.sessions': 'セッション',
   'settings.setupIncomplete': 'セットアップ未完了',
+  'settings.setupPendingHint':
+    'このスペシャリストはインストール済みですが無効です。下の「変更を保存」で設定を完了すると有効になります。',
   'settings.setupIncompleteContinueSetup': 'セットアップ未完了 · セットアップを続行',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

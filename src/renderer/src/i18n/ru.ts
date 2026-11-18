@@ -524,7 +524,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'boot.retrying': 'Повтор попытки…',
   'boot.retry': 'Повторить',
   'boot.loadingSaved': 'Загрузка сохранённых бесед…',
-  'ui.sessionInterrupted': 'Сеанс был прерван до закрытия приложения.',
+  'ui.sessionInterrupted': 'Этот ход был прерван до завершения.',
   'toolActivity.turnTokens': '{count} токенов',
   'toolActivity.turnTokensUnavailable': 'расход не записан',
   'toolActivity.webSearch': 'Веб-поиск',
@@ -2885,6 +2885,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': 'Рабочие пространства сессий',
   'settings.sessions': 'Сессии',
   'settings.setupIncomplete': 'Настройка не завершена',
+  'settings.setupPendingHint':
+    'Этот специалист установлен, но ещё не включён — сохраните изменения ниже, чтобы завершить настройку.',
   'settings.setupIncompleteContinueSetup': 'Настройка не завершена · Продолжить настройку',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

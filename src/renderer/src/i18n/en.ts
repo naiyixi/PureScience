@@ -3222,7 +3222,7 @@ export const en: Record<ZhKey, string> = {
   'boot.retrying': 'Retrying…',
   'boot.retry': 'Retry',
   'boot.loadingSaved': 'Loading saved conversations…',
-  'ui.sessionInterrupted': 'Session was interrupted before the app closed.',
+  'ui.sessionInterrupted': 'This turn was interrupted before it finished.',
   'toolActivity.turnTokens': '{count} tokens',
   'toolActivity.turnTokensUnavailable': 'usage not recorded',
   'toolActivity.webSearch': 'Web Search',
@@ -3825,6 +3825,8 @@ export const en: Record<ZhKey, string> = {
   'settings.couldNotSaveChanges': 'Could not save changes.',
   'settings.couldNotCreateSpecialist': 'Could not create specialist.',
   'settings.setupIncomplete': 'Setup incomplete',
+  'settings.setupPendingHint':
+    'This Specialist is installed but not enabled yet — save your changes below to finish setup and turn it on.',
   'settings.noDescription': 'No description',
   'settings.modifiedAfterImport': 'Modified after import',
   'settings.unchangedSinceImport': 'Unchanged since import',

@@ -417,7 +417,10 @@ export type SaveSessionOptions = {
 }
 
 // Restored interrupted sessions carry this error verbatim; the renderer keys its resume banner off it.
-export const INTERRUPTED_SESSION_ERROR = 'Session was interrupted before the app closed.'
+// Wording is deliberately cause-neutral: the same restore path runs when a live runtime is torn down for
+// a context reset (switching Specialist is one), not only when the app closes — the old wording ("before
+// the app closed") described an app exit that never happened and read as a crash.
+export const INTERRUPTED_SESSION_ERROR = 'This turn was interrupted before it finished.'
 
 const MESSAGE_ROLES = new Set<PersistedMessageRole>(['user', 'agent'])
 // One source for the admissible ids (shared/settings), not a local subset: the framework id decides which

@@ -451,7 +451,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'boot.retrying': '正在重試…',
   'boot.retry': '重試',
   'boot.loadingSaved': '正在載入已儲存的會話…',
-  'ui.sessionInterrupted': '工作階段在應用程式關閉前被中斷。',
+  'ui.sessionInterrupted': '這一輪在完成前被中斷。',
   'toolActivity.turnTokens': '{count} 詞元',
   'toolActivity.turnTokensUnavailable': '未記錄用量',
   'toolActivity.webSearch': 'Web 搜尋',
@@ -2674,6 +2674,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': '對話工作區',
   'settings.sessions': '對話',
   'settings.setupIncomplete': '設定不完整',
+  'settings.setupPendingHint': '這個專才已裝好但還沒啟用；點下方「儲存變更」完成設定並啟用。',
   'settings.setupIncompleteContinueSetup': '設定不完整 · 繼續設定',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

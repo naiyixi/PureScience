@@ -519,7 +519,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'boot.retrying': '다시 시도하는 중…',
   'boot.retry': '다시 시도',
   'boot.loadingSaved': '저장된 대화를 불러오는 중…',
-  'ui.sessionInterrupted': '앱이 종료되기 전에 세션이 중단되었습니다.',
+  'ui.sessionInterrupted': '이 턴은 완료되기 전에 중단되었습니다.',
   'toolActivity.turnTokens': '{count} 토큰',
   'toolActivity.turnTokensUnavailable': '사용량 기록 없음',
   'toolActivity.webSearch': '웹 검색',
@@ -2834,6 +2834,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': '세션 작업 영역',
   'settings.sessions': '세션',
   'settings.setupIncomplete': '설정 불완전',
+  'settings.setupPendingHint':
+    '이 전문가는 설치되었지만 아직 활성화되지 않았습니다. 아래에서 변경 사항을 저장하면 설정이 완료되고 활성화됩니다.',
   'settings.setupIncompleteContinueSetup': '설정 불완전 · 설정 계속하기',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

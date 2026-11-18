@@ -534,7 +534,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'boot.retrying': 'Nouvelle tentative…',
   'boot.retry': 'Réessayer',
   'boot.loadingSaved': 'Chargement des conversations enregistrées…',
-  'ui.sessionInterrupted': 'La session a été interrompue avant la fermeture de l’application.',
+  'ui.sessionInterrupted': 'Ce tour a été interrompu avant la fin.',
   'toolActivity.turnTokens': '{count} jetons',
   'toolActivity.turnTokensUnavailable': 'usage non enregistré',
   'toolActivity.webSearch': 'Recherche Web',
@@ -2962,6 +2962,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': 'Espaces de travail de session',
   'settings.sessions': 'Sessions',
   'settings.setupIncomplete': 'Configuration incomplète',
+  'settings.setupPendingHint':
+    'Ce spécialiste est installé mais pas encore activé : enregistrez les modifications ci-dessous pour terminer la configuration.',
   'settings.setupIncompleteContinueSetup': 'Configuration incomplète · Continuer la configuration',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

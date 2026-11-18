@@ -536,7 +536,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'boot.retrying': 'Erneut versuchen…',
   'boot.retry': 'Erneut versuchen',
   'boot.loadingSaved': 'Gespeicherte Gespräche werden geladen…',
-  'ui.sessionInterrupted': 'Die Sitzung wurde unterbrochen, bevor die App geschlossen wurde.',
+  'ui.sessionInterrupted': 'Dieser Durchlauf wurde vor dem Abschluss unterbrochen.',
   'toolActivity.turnTokens': '{count} Tokens',
   'toolActivity.turnTokensUnavailable': 'Verbrauch nicht aufgezeichnet',
   'toolActivity.webSearch': 'Websuche',
@@ -2972,6 +2972,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.sessionWorkspaces': 'Sitzungs-Arbeitsbereiche',
   'settings.sessions': 'Sitzungen',
   'settings.setupIncomplete': 'Einrichtung unvollständig',
+  'settings.setupPendingHint':
+    'Dieser Spezialist ist installiert, aber noch nicht aktiviert — Änderungen unten speichern, um die Einrichtung abzuschließen.',
   'settings.setupIncompleteContinueSetup': 'Einrichtung unvollständig · Einrichtung fortsetzen',
   'settings.setupTokenSuffix': '',
   'settings.shareLogHint':

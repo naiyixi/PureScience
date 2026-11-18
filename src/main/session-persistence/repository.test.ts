@@ -11,7 +11,11 @@ vi.mock('electron', () => ({
 
 import { MAX_RETAINED_SESSION_MESSAGES } from '../../shared/session-retention'
 import type { PersistedChatSession } from '../../shared/session-persistence'
-import { SESSION_FILE_VERSION, normalizeSessionFile } from '../../shared/session-persistence'
+import {
+  INTERRUPTED_SESSION_ERROR,
+  SESSION_FILE_VERSION,
+  normalizeSessionFile
+} from '../../shared/session-persistence'
 import {
   DEV_SESSION_DIR_NAME,
   SessionRepository,
@@ -753,7 +757,7 @@ describe('session persistence repository (per-session files)', () => {
 
     expect(sessions[0]).toMatchObject({
       status: 'error',
-      error: 'Session was interrupted before the app closed.'
+      error: INTERRUPTED_SESSION_ERROR
     })
     expect(sessions[0].activeRun).toBeUndefined()
     expect(sessions[0].messages[0].status).toBe('error')

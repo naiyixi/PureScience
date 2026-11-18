@@ -27,6 +27,7 @@ import type {
   MarketplaceSpecialistRelease
 } from '../../../../shared/specialist-marketplace'
 import { ConnectorsNavIcon } from './connector-icons'
+import { postInstallView } from './specialist-marketplace-install-outcome'
 import { sortMarketplaceListings, type MarketplaceSortKind } from './specialist-marketplace-sort'
 import { runMarketplaceBatch, type MarketplaceBatchSummary } from './specialist-marketplace-batch'
 
@@ -527,7 +528,16 @@ const SpecialistMarketplace = ({ view, onNavigate }: Props): React.JSX.Element =
         setInstallError(t('ws.marketplaceRecoveryPending'))
         return
       }
-      onNavigate({ kind: 'list' })
+      // A freshly installed package arrives disabled with setupPending (see specialist/package/
+      // transaction.ts: an imported system prompt is never activated silently). Landing the user on
+      // the list left that invisible — the row only carries a badge. Send them straight to the editor,
+      // where the banner names the state and the save button is the one that enables it.
+      onNavigate(
+        postInstallView({
+          setupPending: result.specialist.setupPending,
+          specialistId: result.specialist.id
+        })
+      )
     } catch {
       setDownloadProgress(undefined)
       setInstallError(t('ws.marketplaceInstallError'))

@@ -529,8 +529,7 @@ const SpecialistEditor = ({
               ) : null}
               {editSpecialist.setupPending ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  This imported Specialist is saved but disabled. Save changes to complete setup and
-                  enable it.
+                  {t('settings.setupPendingHint')}
                 </p>
               ) : null}
             </div>

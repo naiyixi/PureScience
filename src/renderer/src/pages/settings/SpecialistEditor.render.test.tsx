@@ -401,7 +401,7 @@ describe('SpecialistEditor', () => {
     })
 
     expect(document.body.textContent).toContain('Setup incomplete')
-    expect(document.body.textContent).toContain('saved but disabled')
+    expect(document.body.textContent).toContain('installed but not enabled yet')
     await act(async () => {
       Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
         .find((button) => button.textContent === 'Cancel')
