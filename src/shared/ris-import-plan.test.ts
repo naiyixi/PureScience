@@ -94,4 +94,60 @@ describe('planReferenceImport — reading both dialects behind one plan', () => 
   it('refuses text that is neither dialect', () => {
     expect(planReferenceImport('这是一段随便的文字', [])).toEqual({ error: 'not-an-export' })
   })
+
+  // A reader who picks "EndNote" or "PubMed / MEDLINE" in the export menu gets a different dialect than RIS.
+  // Both land in the same plan, with the same duplicate rule and the same library item types.
+  it('reads an EndNote tagged export and names the dialect', () => {
+    const endnote = [
+      '%0 Journal Article',
+      '%A 张三',
+      '%T 深度学习在医学影像中的应用',
+      '%J 中华放射学杂志',
+      '%D 2024',
+      '%V 58',
+      '%P 245-253',
+      '%R 10.3760/cma.j.cn112149-20240101-00001',
+      ''
+    ].join('\n')
+    const plan = planReferenceImport(endnote, [])
+    if ('error' in plan) throw new Error('expected a plan')
+
+    expect(plan.format).toBe('endnote')
+    expect(plan.records).toHaveLength(1)
+    expect(plan.records[0]?.input).toMatchObject({
+      title: '深度学习在医学影像中的应用',
+      venue: '中华放射学杂志',
+      year: 2024,
+      volume: '58',
+      pages: '245-253',
+      itemType: 'journal-article'
+    })
+    expect(plan.records[0]?.input.authors).toEqual([{ name: '张三' }])
+  })
+
+  it('reads a MEDLINE export, keeps the PMID, and refuses a duplicate by DOI', () => {
+    const medline = [
+      'PMID- 38123456',
+      'TI  - Deep learning in medical imaging',
+      'AU  - Zhang, San',
+      'JT  - Zhonghua Fang She Xue Za Zhi',
+      'DP  - 2024 Mar',
+      'LID - 10.3760/cma.j.cn112149-20240101-00001 [doi]',
+      'PT  - Journal Article',
+      ''
+    ].join('\n')
+
+    const fresh = planReferenceImport(medline, [])
+    if ('error' in fresh) throw new Error('expected a plan')
+    expect(fresh.format).toBe('medline')
+    expect(fresh.records[0]?.input.pmid).toBe('38123456')
+    expect(fresh.records[0]?.input.doi).toBe('10.3760/cma.j.cn112149-20240101-00001')
+
+    const duplicate = planReferenceImport(medline, [
+      { title: 'Something else entirely', doi: '10.3760/cma.j.cn112149-20240101-00001' }
+    ])
+    if ('error' in duplicate) throw new Error('expected a plan')
+    expect(duplicate.records).toHaveLength(0)
+    expect(duplicate.skipped[0]?.reason).toBe('duplicate')
+  })
 })

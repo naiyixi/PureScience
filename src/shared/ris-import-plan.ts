@@ -6,7 +6,13 @@
 // its "what was refused, and why" reporting in one place instead of two.
 
 import { normalizeTitleForDedupe } from './references'
-import { parseRis } from './citation/ris-import'
+import { parseRis, type RisImportResult } from './citation/ris-import'
+import {
+  looksLikeEndNote,
+  looksLikeMedline,
+  parseEndNoteTagged,
+  parseMedline
+} from './citation/tagged-import'
 import {
   planZoteroImport,
   type ZoteroImportPlan,
@@ -15,7 +21,7 @@ import {
 } from './zotero-import'
 import type { Reference, ReferenceItemType } from './references'
 
-export type ReferenceImportFormat = 'zotero-json' | 'ris'
+export type ReferenceImportFormat = 'zotero-json' | 'ris' | 'endnote' | 'medline'
 
 export type ReferenceImportPlan = ZoteroImportPlan & {
   /** Which dialect the text was read as — the dialog says so rather than guessing silently. */
@@ -51,8 +57,19 @@ export const planReferenceImport = (
     return { ...plan, format: 'zotero-json', refused: [] }
   }
 
-  if (!TY_LINE.test(trimmed)) return { error: 'not-an-export' }
-  return { ...planRisImport(trimmed, existing), format: 'ris' as const }
+  // RIS first: it is the dialect every Chinese database offers, and its `TY  -` opener cannot occur in the
+  // other two. EndNote (`%0`) and MEDLINE (`PMID- `) follow by content, never by extension.
+  if (TY_LINE.test(trimmed)) return { ...planRisImport(trimmed, existing), format: 'ris' as const }
+  if (looksLikeEndNote(trimmed)) {
+    return {
+      ...planParsedImport(parseEndNoteTagged(trimmed), existing),
+      format: 'endnote' as const
+    }
+  }
+  if (looksLikeMedline(trimmed)) {
+    return { ...planParsedImport(parseMedline(trimmed), existing), format: 'medline' as const }
+  }
+  return { error: 'not-an-export' }
 }
 
 const RIS_TO_REFERENCE_TYPE: Record<string, ReferenceItemType> = {
@@ -95,8 +112,18 @@ const dedupeKeysOf = (existing: readonly ExistingReference[]): Set<string> => {
 export const planRisImport = (
   text: string,
   existing: readonly ExistingReference[]
+): ZoteroImportPlan & { refused: ReferenceImportPlan['refused'] } =>
+  planParsedImport(parseRis(text), existing)
+
+/**
+ * One plan builder for every tagged dialect. RIS, EndNote and MEDLINE all parse down to the same records, so
+ * the duplicate rule, the limit and the refusal reporting are written once — a second copy is a second place
+ * for the duplicate rule to drift.
+ */
+export const planParsedImport = (
+  parsed: RisImportResult,
+  existing: readonly ExistingReference[]
 ): ZoteroImportPlan & { refused: ReferenceImportPlan['refused'] } => {
-  const parsed = parseRis(text)
   const keys = dedupeKeysOf(existing)
 
   const records: ZoteroImportRecord[] = []
@@ -137,7 +164,7 @@ export const planRisImport = (
         publisher: item.publisher,
         itemType: item.itemType === undefined ? undefined : RIS_TO_REFERENCE_TYPE[item.itemType],
         doi: item.doi,
-        pmid: undefined,
+        pmid: item.pmid,
         url: item.url,
         abstractSnippet: record.abstract.length === 0 ? undefined : record.abstract.slice(0, 400)
       }

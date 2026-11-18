@@ -1597,7 +1597,7 @@ export function ReferencesLibraryDialog({
                 <input
                   ref={zoteroFileInputRef}
                   type="file"
-                  accept=".json,.ris,.txt,application/json,text/plain"
+                  accept=".json,.ris,.enw,.nbib,.txt,application/json,text/plain"
                   className="hidden"
                   aria-label={t('references.zotero.import')}
                   onChange={(event) => {

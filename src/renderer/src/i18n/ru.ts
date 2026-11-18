@@ -3675,9 +3675,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Происхождение',
   'reviewer.label': 'Рецензент',
   'reviewer.fixLimitReached': 'достигнут предел исправлений',
-  'references.import.button': 'Импорт литературы (Zotero JSON / RIS)',
+  'references.import.button': 'Импорт литературы (Zotero JSON / RIS / EndNote / MEDLINE)',
   'references.import.notAnExport':
-    'Этот файл не является ни экспортом Zotero в JSON, ни RIS — экспорт RIS из CNKI, Wanfang, VIP, NoteExpress или EndNote импортируется как есть.',
+    'Этот файл — не экспорт Zotero JSON и не RIS. RIS из CNKI, Wanfang, VIP, NoteExpress и EndNote импортируется напрямую, как и экспорты EndNote (.enw) и MEDLINE (.nbib).',
   'references.zotero.import': 'Импорт из Zotero',
   'references.zotero.notAnExport':
     'Этот файл — не экспорт Zotero в JSON. Экспортируйте библиотеку в JSON и повторите.',
