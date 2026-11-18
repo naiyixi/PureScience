@@ -415,8 +415,14 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': 'バージョンを読み取れませんでした。',
   'ws.replay.stopped.notConfigured': 'このマシンでは再実行が設定されていません。',
   'ws.replay.stopped.unknown': '比較の前に再実行が止まりました。',
-  'ws.replay.environment.applied': '環境ロックを適用しました。',
-  'ws.replay.environment.notApplied': '環境ロックは適用されていません。',
+  'ws.replay.environment.drifted':
+    '再実行はこのバージョンが記録した環境とは異なる環境で行われました。',
+  'ws.replay.environment.matched':
+    '再実行はこのバージョンが記録した環境で行われました（環境ダイジェストが一致）。',
+  'ws.replay.environment.notRecorded':
+    'このバージョンには環境ダイジェストの記録がないため、環境を照合できません。',
+  'ws.replay.environment.notReported':
+    '再実行が環境ダイジェストを返さなかったため、環境を照合できません。',
   'ws.replay.manifestChecksum': 'マニフェスト {checksum}',
   'ws.replay.execution.skipped': '未実行：レシピは再構成されたものです。',
   'ws.replay.execution.summary': '{via} 経由 · 終了 {exitCode} · {durationMs} ms',

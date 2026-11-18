@@ -647,7 +647,7 @@ const describeReplayResult = (result) => {
     `verdict:    ${report.verdict}`,
     `mode:       ${report.mode}`,
     `origin:     ${report.origin}`,
-    `env lock:   ${result.environmentLock ?? 'unknown'}`
+    `environment: ${result.environment ?? 'unknown'}`
   ]
   if (result.stopped) lines.push(`stopped:    ${result.stopped}`)
   if (result.execution && 'via' in result.execution) {

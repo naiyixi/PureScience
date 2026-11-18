@@ -1,5 +1,7 @@
 import {
   REPLAY_RECIPE_FORMAT_VERSION,
+  compareReplayEnvironment,
+  type ReplayEnvironmentComparison,
   type ReplayReport,
   type SealedFileDigest,
   type SealedRecipe
@@ -17,8 +19,10 @@ import {
 // inputs (with their digests and storage keys) and the environment manifest checksum. What was missing
 // was the bench. Two bounds are stated rather than implied:
 //
-//   * the environment lock is only reported as applied when the re-run produced a manifest checksum AND
-//     it equals the recorded one. Anything else is `not-applied`, including "we could not tell";
+//   * the environment claim is a digest comparison and nothing else: `matched` needs a digest on BOTH sides
+//     and needs them to be equal. A missing digest on either side is its own named outcome
+//     (`not-recorded` / `not-reported`) — "we could not compare" is never dressed up as "they differed" —
+//     and a replay that never executed (`not-run`) makes no environment claim at all;
 //   * a version that carries no recorded code cannot be re-run at all, and says so instead of running
 //     something else and calling it reproduction.
 /** One recorded input, addressed the way the app already addresses stored content. */
@@ -56,6 +60,8 @@ export type ReplayableVersion = {
 }
 
 export type ReplayVersionOutcome = ReplayRunOutcome & {
+  /** Five named environment outcomes (see compareReplayEnvironment); never a boolean. */
+  environment: ReplayEnvironmentComparison
   /** Named so the caller never has to guess why nothing was compared. */
   stopped?: 'no-recorded-code' | 'version-unreadable'
   environmentManifestChecksum?: string
@@ -133,7 +139,7 @@ export const createArtifactReplayOwner = (
           files: [],
           reasons: ['Not verifiable: this version could not be read']
         },
-        environmentLock: 'not-applied',
+        environment: 'not-run',
         execution: { skipped: 'reconstructed-recipe' },
         stopped: 'version-unreadable'
       }
@@ -152,7 +158,7 @@ export const createArtifactReplayOwner = (
             'Not verifiable: this version recorded no code, so there is nothing to run again'
           ]
         },
-        environmentLock: 'not-applied',
+        environment: 'not-run',
         execution: { skipped: 'reconstructed-recipe' },
         stopped: 'no-recorded-code'
       }
@@ -240,22 +246,25 @@ export const createArtifactReplayOwner = (
       code: version.reproductionCode,
       language: version.language,
       outputPath: version.filename,
-      // Decided after the run, not before: the caller cannot know whether the environment came back until
-      // the kernel reports its manifest, so the runner is told the result rather than a hope.
-      environmentLockApplied: false,
+      // The environment claim is decided after the run, not before: the kernel reports which environment it
+      // actually used, and only then can it be compared with the one the Version recorded.
       timeoutMs: request.timeoutMs
     })
 
-    // Both sides must actually HAVE an environment digest, and it has to be the same digest: an absent one
-    // is "we could not compare", which is not the same claim as "the environments matched".
-    const lockMatched =
-      version.environmentFingerprint !== undefined &&
-      environmentFingerprint !== undefined &&
-      version.environmentFingerprint === environmentFingerprint
+    // The comparison itself lives in shared/replay-verification so the window, the CLI and this caller all
+    // read the same five named outcomes. "Could not compare" and "the environments differ" are different
+    // facts to a reader, and a replay that never ran claims nothing about the environment.
+    const environment = compareReplayEnvironment({
+      executed: !('skipped' in outcome.execution),
+      ...(version.environmentFingerprint !== undefined
+        ? { recordedFingerprint: version.environmentFingerprint }
+        : {}),
+      ...(environmentFingerprint !== undefined ? { replayFingerprint: environmentFingerprint } : {})
+    })
 
     return {
       ...outcome,
-      environmentLock: lockMatched ? 'applied' : 'not-applied',
+      environment,
       environmentManifestChecksum
     }
   }

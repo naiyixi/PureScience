@@ -99,14 +99,14 @@ describe('artifact replay owner', () => {
     )
   })
 
-  // The environment claim is the one most easily overstated: it is only "applied" when the re-run's own
-  // manifest matches the recorded one, and never when either side is missing or different.
-  // The lock is a claim about the ENVIRONMENT, so it is decided on the environment digest — the recorded
-  // manifest checksum addresses a stored document and carries its capture timestamps, which is why it can
-  // never match between two runs and why this check used to be unable to succeed at all.
-  it('reports the environment lock only when the two environments digest alike', async () => {
+  // The environment claim is the one most easily overstated, so it is five named outcomes rather than a
+  // boolean: `matched` needs a digest on BOTH sides and needs them equal; a digest on one side only is
+  // "could not compare" and names which side; a version that recorded none never reads as drift.
+  // It is decided on the environment digest — the recorded manifest checksum addresses a stored document
+  // and carries its capture timestamps, so it can never match between two runs and is deliberately unused.
+  it('claims a matching environment only when both sides digest alike', async () => {
     const matching = await harness().owner.replayVersion(request)
-    expect(matching.environmentLock).toBe('applied')
+    expect(matching.environment).toBe('matched')
 
     const differing = await harness({
       executeNotebook: vi.fn().mockResolvedValue({
@@ -117,7 +117,9 @@ describe('artifact replay owner', () => {
         environmentFingerprint: 'fingerprint-other'
       })
     }).owner.replayVersion(request)
-    expect(differing.environmentLock).toBe('not-applied')
+    expect(differing.environment).toBe('drifted')
+    // A drifted environment is disclosed, not graded: the bytes still reproduced, and the report keeps the
+    // two claims apart instead of turning one into the other.
     expect(differing.report.verdict).toBe('reproduced')
 
     // A matching stored checksum is not a matching environment, and it must not be read as one.
@@ -129,21 +131,29 @@ describe('artifact replay owner', () => {
         environmentManifestChecksum: 'env-abc'
       })
     }).owner.replayVersion(request)
-    expect(checksumOnly.environmentLock).toBe('not-applied')
+    expect(checksumOnly.environment).toBe('not-reported')
 
     const missing = await harness({
       executeNotebook: vi.fn().mockResolvedValue({ status: 'completed', stdout: '', stderr: '' })
     }).owner.replayVersion(request)
-    expect(missing.environmentLock).toBe('not-applied')
+    expect(missing.environment).toBe('not-reported')
   })
 
-  // An absent digest on either side is "could not compare", kept apart from "the environments differed".
-  it('says it could not compare environments when the record carries no digest', async () => {
-    const { owner } = harness({}, version({ environmentFingerprint: undefined }))
-    const outcome = await owner.replayVersion(request)
+  // An absent digest on either side is "could not compare", kept apart from "the environments differed",
+  // and the outcome says which side was missing so a reader is never told more than was checked.
+  it('names which side made the environment comparison impossible', async () => {
+    const recordedMissing = await harness(
+      {},
+      version({ environmentFingerprint: undefined })
+    ).owner.replayVersion(request)
 
-    expect(outcome.environmentLock).toBe('not-applied')
-    expect(outcome.report.verdict).toBe('reproduced')
+    expect(recordedMissing.environment).toBe('not-recorded')
+    expect(recordedMissing.report.verdict).toBe('reproduced')
+
+    const replayMissing = await harness({
+      executeNotebook: vi.fn().mockResolvedValue({ status: 'completed', stdout: '', stderr: '' })
+    }).owner.replayVersion(request)
+    expect(replayMissing.environment).toBe('not-reported')
   })
 
   // No recorded code is not "reproduction failed": it is "there is nothing to run", and it is said so.
@@ -155,6 +165,8 @@ describe('artifact replay owner', () => {
     expect(outcome.stopped).toBe('no-recorded-code')
     expect(outcome.report.verdict).toBe('unverifiable')
     expect(outcome.report.reasons[0]).toContain('recorded no code')
+    // Nothing ran, so nothing is claimed about the environment — not even "it could not be compared".
+    expect(outcome.environment).toBe('not-run')
   })
 
   it('never executes a version whose steps were inferred rather than recorded', async () => {
@@ -164,6 +176,7 @@ describe('artifact replay owner', () => {
     expect(executeNotebook).not.toHaveBeenCalled()
     expect(outcome.report.verdict).toBe('unverifiable')
     expect(outcome.report.reasons.join(' ')).toContain('model reconstruction')
+    expect(outcome.environment).toBe('not-run')
   })
 
   it('reports an unreadable version as unverifiable rather than as a failed reproduction', async () => {

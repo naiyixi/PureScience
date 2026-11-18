@@ -411,8 +411,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': '버전을 읽지 못했습니다.',
   'ws.replay.stopped.notConfigured': '이 컴퓨터에는 재실행이 설정되어 있지 않습니다.',
   'ws.replay.stopped.unknown': '비교하기 전에 재실행이 중단되었습니다.',
-  'ws.replay.environment.applied': '환경 잠금을 적용했습니다.',
-  'ws.replay.environment.notApplied': '환경 잠금을 적용하지 않았습니다.',
+  'ws.replay.environment.drifted': '재실행은 이 버전이 기록한 환경과 다른 환경에서 수행되었습니다.',
+  'ws.replay.environment.matched':
+    '재실행은 이 버전이 기록한 환경에서 수행되었습니다(환경 다이제스트 동일).',
+  'ws.replay.environment.notRecorded':
+    '이 버전에는 환경 다이제스트가 기록되어 있지 않아 환경을 대조할 수 없습니다.',
+  'ws.replay.environment.notReported':
+    '재실행이 환경 다이제스트를 보고하지 않아 환경을 대조할 수 없습니다.',
   'ws.replay.manifestChecksum': '매니페스트 {checksum}',
   'ws.replay.execution.skipped': '실행하지 않음: 레시피를 재구성했습니다.',
   'ws.replay.execution.summary': '{via} 경유 · 종료 {exitCode} · {durationMs} ms',

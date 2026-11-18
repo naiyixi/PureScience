@@ -422,8 +422,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': 'No se pudo leer la versión.',
   'ws.replay.stopped.notConfigured': 'La repetición no está configurada en esta máquina.',
   'ws.replay.stopped.unknown': 'La repetición se detuvo antes de comparar nada.',
-  'ws.replay.environment.applied': 'Se aplicó el bloqueo de entorno.',
-  'ws.replay.environment.notApplied': 'No se aplicó el bloqueo de entorno.',
+  'ws.replay.environment.drifted':
+    'La reejecución se ejecutó en un entorno distinto del que registró esta versión.',
+  'ws.replay.environment.matched':
+    'La reejecución se ejecutó en el entorno que registró esta versión (huella idéntica).',
+  'ws.replay.environment.notRecorded':
+    'Esta versión no registró ninguna huella de entorno, así que no se pudo comparar el entorno.',
+  'ws.replay.environment.notReported':
+    'La reejecución no informó de ninguna huella de entorno, así que no se pudo comparar el entorno.',
   'ws.replay.manifestChecksum': 'manifiesto {checksum}',
   'ws.replay.execution.skipped': 'No ejecutado: la receta se reconstruyó.',
   'ws.replay.execution.summary': 'vía {via} · salida {exitCode} · {durationMs} ms',

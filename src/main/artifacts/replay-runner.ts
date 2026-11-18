@@ -1,7 +1,6 @@
 import {
   compareReplayOutputs,
   type ReplayExecution,
-  type ReplayExecutionEnvironment,
   type ReplayRunOutcome,
   type SealedFileDigest,
   type SealedRecipe
@@ -15,20 +14,17 @@ import { resolve } from 'node:path'
 // The claim is deliberately bounded, and the bounds are in the report rather than in a footnote:
 //
 //   * the working directory is fresh and the recorded inputs are materialised into it, but the package
-//     set is NOT reproduced. `environmentLock` says which of the two happened, and `reproduced` is only
-//     ever reported alongside that fact — byte-identical output under an environment we did not rebuild
-//     is strong evidence, and calling it "the environment was identical" would be a lie;
+//     set is NOT reproduced. The caller states which environment the re-run reported through
+//     `compareReplayEnvironment`, and `reproduced` is only ever reported alongside that fact —
+//     byte-identical output under an environment we did not rebuild is strong evidence, and calling it
+//     "the environment was identical" would be a lie;
 //   * a run that fails, times out or produces nothing is `unverifiable`, not `differs`: learning nothing
 //     about reproduction is not the same as learning that the result does not reproduce;
 //   * a recipe whose steps a model reconstructed is never executed to certify anything. Running inferred
 //     code produces a plausible file, which is exactly the failure mode this must not have.
 // The outcome vocabulary lives in shared/replay-verification: the report crosses the IPC boundary, so
 // its shape cannot belong to one side of it.
-export type {
-  ReplayExecution,
-  ReplayExecutionEnvironment,
-  ReplayRunOutcome
-} from '../../shared/replay-verification'
+export type { ReplayExecution, ReplayRunOutcome } from '../../shared/replay-verification'
 
 /** What the execution port can report. Named outcomes, not a sentinel exit code. */
 export type ReplayExecuteOutcome =
@@ -79,7 +75,6 @@ export type ReplayRunner = {
     language: string
     /** Workspace-relative path of the output the recipe records. */
     outputPath: string
-    environmentLockApplied: boolean
     timeoutMs?: number
   }) => Promise<ReplayRunOutcome>
 }
@@ -111,9 +106,6 @@ export const describeReplayExecution = (outcome: ReplayRunOutcome): string => {
 export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunner => ({
   replay: async (input) => {
     const { recipe } = input
-    const environmentLock: ReplayExecutionEnvironment = input.environmentLockApplied
-      ? 'applied'
-      : 'not-applied'
 
     // Inferred steps are not a recipe: executing them would produce a file that looks like evidence and
     // is not, so the run does not happen and the report says why.
@@ -128,7 +120,6 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
             'Not verifiable: the recorded steps came from a model reconstruction, not from an execution record'
           ]
         },
-        environmentLock,
         execution: { skipped: 'reconstructed-recipe' }
       }
     }
@@ -160,7 +151,6 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
             files: [],
             reasons: [`Not verifiable: ${reason}`]
           },
-          environmentLock,
           execution: {
             via: `notebook:${input.language}`,
             exitCode: null,
@@ -191,7 +181,6 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
             files: [],
             reasons: [`Not verifiable: ${describeStoppedExecution(execution)}`]
           },
-          environmentLock,
           execution
         }
       }
@@ -220,7 +209,6 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
             files: [],
             reasons: [reason]
           },
-          environmentLock,
           execution
         }
       }
@@ -236,7 +224,6 @@ export const createArtifactReplayRunner = (ports: ReplayRunnerPorts): ReplayRunn
 
       return {
         report: compareReplayOutputs(recipe, { appVersion: ports.appVersion(), outputs }, 're-run'),
-        environmentLock,
         execution
       }
     } finally {

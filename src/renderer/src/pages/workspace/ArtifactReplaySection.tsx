@@ -8,6 +8,7 @@ import type { ReplayVersionResult } from '../../../../shared/artifact-replay'
 import type {
   FileVerdict,
   NotComparableReason,
+  ReplayEnvironmentComparison,
   ReplayMode,
   ReplayOrigin,
   ReplayVerdict
@@ -46,6 +47,15 @@ const STOPPED_KEYS: Record<string, string> = {
   'no-recorded-code': 'ws.replay.stopped.noRecordedCode',
   'version-unreadable': 'ws.replay.stopped.versionUnreadable',
   'not-configured': 'ws.replay.stopped.notConfigured'
+}
+
+// Every environment outcome gets its OWN sentence: "could not compare" (either digest absent) is not the
+// same claim as "the environments differ", and a replay that never ran says nothing about the environment.
+const ENVIRONMENT_KEYS: Record<Exclude<ReplayEnvironmentComparison, 'not-run'>, string> = {
+  matched: 'ws.replay.environment.matched',
+  drifted: 'ws.replay.environment.drifted',
+  'not-recorded': 'ws.replay.environment.notRecorded',
+  'not-reported': 'ws.replay.environment.notReported'
 }
 
 const NOT_COMPARABLE_KEYS: Record<NotComparableReason, string> = {
@@ -162,17 +172,17 @@ const ArtifactReplaySection = ({
             </span>
           </div>
 
-          <p data-testid="artifact-replay-environment" className="text-muted-foreground">
-            {result.environmentLock === 'applied'
-              ? t('ws.replay.environment.applied')
-              : t('ws.replay.environment.notApplied')}
-            {result.environmentManifestChecksum !== undefined
-              ? ` · ${t('ws.replay.manifestChecksum').replace(
-                  '{checksum}',
-                  result.environmentManifestChecksum
-                )}`
-              : ''}
-          </p>
+          {result.environment !== 'not-run' ? (
+            <p data-testid="artifact-replay-environment" className="text-muted-foreground">
+              {t(ENVIRONMENT_KEYS[result.environment] as Parameters<Translate>[0])}
+              {result.environmentManifestChecksum !== undefined
+                ? ` · ${t('ws.replay.manifestChecksum').replace(
+                    '{checksum}',
+                    result.environmentManifestChecksum
+                  )}`
+                : ''}
+            </p>
+          ) : null}
 
           <p data-testid="artifact-replay-execution" className="text-muted-foreground">
             {'skipped' in result.execution

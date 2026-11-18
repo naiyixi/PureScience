@@ -20,7 +20,7 @@ type ReplayResult = {
     reasons: string[]
     files: Array<Record<string, unknown>>
   }
-  environmentLock?: string
+  environment?: string
   execution?: Record<string, unknown>
   environmentManifestChecksum?: string
 }
@@ -31,6 +31,17 @@ const VERDICT_SENTENCES: Record<string, string> = {
   differs: 'Differs: the re-run does not match the record.',
   changed: 'Changed: the bytes on disk no longer match the record.',
   unverifiable: 'Unverifiable: this could not be checked.'
+}
+
+// The environment outcome is five named states, so the window's sentence is checked against the state the
+// command returned — a boolean could not tell "could not compare" from "the environments differ".
+const ENVIRONMENT_SENTENCES: Record<string, string> = {
+  matched: 'The re-run used the environment this Version recorded (identical digest).',
+  drifted: 'The re-run used a different environment than this Version recorded.',
+  'not-recorded':
+    'This Version recorded no environment digest, so the environment could not be compared.',
+  'not-reported':
+    'The re-run reported no environment digest, so the environment could not be compared.'
 }
 
 const NOT_COMPARABLE_SENTENCES: Record<string, string> = {
@@ -150,11 +161,21 @@ test('the window replays a version with the fields the remote command returns', 
   // Mode and origin travel with the verdict, so a re-run can never be read as an integrity check.
   const summary = panel.getByTestId('artifact-replay-verdict')
   await expect(summary).not.toContainText('Intact:')
-  await expect(panel.getByTestId('artifact-replay-environment')).toBeVisible()
-  if (expected.environmentManifestChecksum !== undefined) {
-    await expect(panel.getByTestId('artifact-replay-environment')).toContainText(
-      expected.environmentManifestChecksum
-    )
+  if (expected.environment === 'not-run') {
+    // Nothing executed, so the window says nothing about the environment instead of guessing.
+    await expect(panel.getByTestId('artifact-replay-environment')).toHaveCount(0)
+  } else {
+    await expect(panel.getByTestId('artifact-replay-environment')).toBeVisible()
+    if (expected.environment !== undefined) {
+      await expect(panel.getByTestId('artifact-replay-environment')).toContainText(
+        ENVIRONMENT_SENTENCES[expected.environment]!
+      )
+    }
+    if (expected.environmentManifestChecksum !== undefined) {
+      await expect(panel.getByTestId('artifact-replay-environment')).toContainText(
+        expected.environmentManifestChecksum
+      )
+    }
   }
   await expect(panel.getByTestId('artifact-replay-execution')).toBeVisible()
 

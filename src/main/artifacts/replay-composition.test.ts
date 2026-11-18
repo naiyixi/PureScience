@@ -177,8 +177,9 @@ describe('artifact replay composition', () => {
 
     expect(bindNotebookRuntime).not.toHaveBeenCalled()
     expect(executeNotebook).toHaveBeenCalledTimes(1)
-    // And the verdict must not claim an environment it never pinned.
-    expect(outcome.environmentLock).toBe('not-applied')
+    // And the verdict must not claim an environment it never pinned: this version recorded no environment
+    // digest, so the report says the comparison could not be made — never that the environments differed.
+    expect(outcome.environment).toBe('not-recorded')
   })
 
   it('carries the directory the run happened in through to the verdict', async () => {

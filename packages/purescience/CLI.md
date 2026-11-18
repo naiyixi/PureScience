@@ -369,9 +369,11 @@ The output keeps three facts apart, and they must stay apart:
 - **origin** — `executed` when the recorded steps come from a real run, `reconstructed` when they were
   inferred by a model. A reconstructed recipe is never executed: running inferred code produces a file
   that looks like evidence and is not;
-- **env lock** — `applied` only when the re-run's own environment manifest came back and matches the
-  recorded one. `not-applied` means the same code ran without rebuilding the packages: strong evidence,
-  and not the same claim.
+- **environment** — five named outcomes, never a boolean. `matched` only when the re-run reported an
+  environment digest and it equals the one the version recorded; `drifted` when both digests exist and
+  differ; `not-recorded` when the version recorded no digest; `not-reported` when the re-run reported
+  none; `not-run` when nothing executed. The last three mean the comparison could not be made, which is
+  a different statement from `drifted` — and `not-run` makes no claim about the environment at all.
 
 A version with no recorded code is refused with that reason instead of being re-run from something else.
 

@@ -85,8 +85,34 @@ export type ReplayReport = {
   reasons: readonly string[]
 }
 
-/** Whether the re-run rebuilt the recorded environment (`applied`) or only ran the same code. */
-export type ReplayExecutionEnvironment = 'applied' | 'not-applied'
+/**
+ * Whether the re-run happened in the environment the Version recorded.
+ *
+ * Five named outcomes, because a two-state `applied | not-applied` collapses three different truths into
+ * one word: an environment that no longer matches the record (`drifted`), a Version that never recorded an
+ * environment digest (`not-recorded`), and a re-run that reported none (`not-reported`). Only the first two
+ * are claims about the environments; the last two are "could not compare", and a replay that never executed
+ * (`not-run`) makes no environment claim at all.
+ */
+export type ReplayEnvironmentComparison =
+  'matched' | 'drifted' | 'not-recorded' | 'not-reported' | 'not-run'
+
+/**
+ * The digest comparison both sides share: the runner knows which environment it actually ran in, the
+ * caller knows which one the Version recorded, and neither may guess the other's half.
+ */
+export const compareReplayEnvironment = (input: {
+  /** False when nothing was executed — the claim then is `not-run`, not "the environments differ". */
+  executed: boolean
+  recordedFingerprint?: string
+  replayFingerprint?: string
+}): ReplayEnvironmentComparison => {
+  if (!input.executed) return 'not-run'
+  // An absent digest on either side is "we could not compare", which is not the same claim as a difference.
+  if (input.recordedFingerprint === undefined) return 'not-recorded'
+  if (input.replayFingerprint === undefined) return 'not-reported'
+  return input.recordedFingerprint === input.replayFingerprint ? 'matched' : 'drifted'
+}
 
 export type ReplayExecution = {
   /** How the code was run — `notebook:python` is the app's own execution path. */
@@ -100,7 +126,6 @@ export type ReplayExecution = {
 
 export type ReplayRunOutcome = {
   report: ReplayReport
-  environmentLock: ReplayExecutionEnvironment
   execution: ReplayExecution | { skipped: 'reconstructed-recipe' }
   /** The re-run's own environment manifest checksum, when the kernel reported one. */
   environmentManifestChecksum?: string

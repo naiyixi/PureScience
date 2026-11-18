@@ -51,7 +51,7 @@ const result: ReplayVersionResult = {
       { path: 'out/gamma.h5', status: 'not-comparable', reason: 'size-beyond-comparison-bound' }
     ]
   },
-  environmentLock: 'applied',
+  environment: 'matched',
   execution: { via: 'micromamba', exitCode: 0, timedOut: false, durationMs: 1234, stderrTail: '' },
   environmentManifestChecksum: 'abc123'
 }
@@ -88,9 +88,11 @@ describe('ArtifactReplaySection', () => {
     ).toContain('Differs: the re-run does not match the record.')
     expect(text).toContain('Re-run: a fresh execution')
     expect(text).toContain('recorded from an execution')
-    // The environment lock and the manifest it produced are their own line, not folded into the verdict.
+    // The environment comparison and the manifest it produced are their own line, not folded into the verdict.
     const environment = container.querySelector('[data-testid="artifact-replay-environment"]')
-    expect(environment?.textContent).toContain('The environment lock was applied.')
+    expect(environment?.textContent).toContain(
+      'The re-run used the environment this Version recorded (identical digest).'
+    )
     expect(environment?.textContent).toContain('manifest abc123')
     expect(
       container.querySelector('[data-testid="artifact-replay-execution"]')?.textContent
@@ -105,6 +107,45 @@ describe('ArtifactReplaySection', () => {
     expect(
       container.querySelector('[data-testid="artifact-replay-reasons"]')?.textContent
     ).toContain('app-version-mismatch:recorded-1.2.3')
+  })
+
+  // Three different truths, three different sentences. "Could not compare" must never read as
+  // "the environments differ", and a replay that never ran must not make an environment claim at all.
+  it('gives each environment outcome its own sentence', async () => {
+    replayVersion.mockResolvedValue({ ...result, environment: 'drifted' })
+    await render()
+    await run()
+    expect(
+      container.querySelector('[data-testid="artifact-replay-environment"]')?.textContent
+    ).toContain('The re-run used a different environment than this Version recorded.')
+
+    replayVersion.mockResolvedValue({ ...result, environment: 'not-recorded' })
+    await run()
+    expect(
+      container.querySelector('[data-testid="artifact-replay-environment"]')?.textContent
+    ).toContain(
+      'This Version recorded no environment digest, so the environment could not be compared.'
+    )
+
+    replayVersion.mockResolvedValue({
+      ...result,
+      environment: 'not-reported',
+      environmentManifestChecksum: undefined
+    })
+    await run()
+    expect(
+      container.querySelector('[data-testid="artifact-replay-environment"]')?.textContent
+    ).toContain(
+      'The re-run reported no environment digest, so the environment could not be compared.'
+    )
+  })
+
+  it('claims nothing about the environment when nothing was executed', async () => {
+    replayVersion.mockResolvedValue({ ...result, environment: 'not-run' })
+    await render()
+    await run()
+
+    expect(container.querySelector('[data-testid="artifact-replay-environment"]')).toBeNull()
   })
 
   it('names why a replay stopped instead of dressing it up as a verdict', async () => {

@@ -427,8 +427,14 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': 'Die Version konnte nicht gelesen werden.',
   'ws.replay.stopped.notConfigured': 'Replay ist auf dieser Maschine nicht eingerichtet.',
   'ws.replay.stopped.unknown': 'Der Replay endete, bevor etwas verglichen wurde.',
-  'ws.replay.environment.applied': 'Die Umgebungssperre wurde angewendet.',
-  'ws.replay.environment.notApplied': 'Die Umgebungssperre wurde nicht angewendet.',
+  'ws.replay.environment.drifted':
+    'Die Wiederholung lief in einer anderen Umgebung als der, die diese Version festgehalten hat.',
+  'ws.replay.environment.matched':
+    'Die Wiederholung lief in der Umgebung, die diese Version festgehalten hat (gleicher Umgebungs-Digest).',
+  'ws.replay.environment.notRecorded':
+    'Diese Version hat keinen Umgebungs-Digest festgehalten; die Umgebung liess sich daher nicht vergleichen.',
+  'ws.replay.environment.notReported':
+    'Die Wiederholung hat keinen Umgebungs-Digest gemeldet; die Umgebung liess sich daher nicht vergleichen.',
   'ws.replay.manifestChecksum': 'Manifest {checksum}',
   'ws.replay.execution.skipped': 'Nicht ausgeführt: Das Rezept wurde rekonstruiert.',
   'ws.replay.execution.summary': 'über {via} · Exit {exitCode} · {durationMs} ms',

@@ -425,8 +425,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': 'La version n’a pas pu être lue.',
   'ws.replay.stopped.notConfigured': 'Le rejeu n’est pas configuré sur cette machine.',
   'ws.replay.stopped.unknown': 'Le rejeu s’est arrêté avant toute comparaison.',
-  'ws.replay.environment.applied': 'Le verrou d’environnement a été appliqué.',
-  'ws.replay.environment.notApplied': 'Le verrou d’environnement n’a pas été appliqué.',
+  'ws.replay.environment.drifted':
+    'La réexécution a eu lieu dans un environnement différent de celui enregistré par cette version.',
+  'ws.replay.environment.matched':
+    'La réexécution a eu lieu dans l’environnement enregistré par cette version (empreinte identique).',
+  'ws.replay.environment.notRecorded':
+    'Cette version n’a enregistré aucune empreinte d’environnement : la comparaison était impossible.',
+  'ws.replay.environment.notReported':
+    'La réexécution n’a signalé aucune empreinte d’environnement : la comparaison était impossible.',
   'ws.replay.manifestChecksum': 'manifeste {checksum}',
   'ws.replay.execution.skipped': 'Non exécuté : la recette a été reconstruite.',
   'ws.replay.execution.summary': 'via {via} · sortie {exitCode} · {durationMs} ms',

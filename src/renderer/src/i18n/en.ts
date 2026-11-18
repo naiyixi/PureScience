@@ -100,8 +100,14 @@ export const en: Record<ZhKey, string> = {
   'ws.replay.stopped.versionUnreadable': 'The version could not be read.',
   'ws.replay.stopped.notConfigured': 'Replay is not configured on this machine.',
   'ws.replay.stopped.unknown': 'The replay stopped before comparing anything.',
-  'ws.replay.environment.applied': 'The environment lock was applied.',
-  'ws.replay.environment.notApplied': 'The environment lock was not applied.',
+  'ws.replay.environment.drifted':
+    'The re-run used a different environment than this Version recorded.',
+  'ws.replay.environment.matched':
+    'The re-run used the environment this Version recorded (identical digest).',
+  'ws.replay.environment.notRecorded':
+    'This Version recorded no environment digest, so the environment could not be compared.',
+  'ws.replay.environment.notReported':
+    'The re-run reported no environment digest, so the environment could not be compared.',
   'ws.replay.manifestChecksum': 'manifest {checksum}',
   'ws.replay.execution.skipped': 'Not executed: the recipe was reconstructed.',
   'ws.replay.execution.summary': 'via {via} · exit {exitCode} · {durationMs} ms',

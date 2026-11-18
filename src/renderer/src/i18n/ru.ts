@@ -416,8 +416,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.replay.stopped.versionUnreadable': 'Не удалось прочитать версию.',
   'ws.replay.stopped.notConfigured': 'Повтор не настроен на этой машине.',
   'ws.replay.stopped.unknown': 'Повтор остановился до сравнения.',
-  'ws.replay.environment.applied': 'Слепок окружения применён.',
-  'ws.replay.environment.notApplied': 'Слепок окружения не применён.',
+  'ws.replay.environment.drifted':
+    'Повторный запуск прошёл в окружении, отличном от записанного этой версией.',
+  'ws.replay.environment.matched':
+    'Повторный запуск прошёл в окружении, которое записала эта версия (отпечаток совпадает).',
+  'ws.replay.environment.notRecorded':
+    'Эта версия не записала отпечаток окружения, поэтому сравнить окружения не удалось.',
+  'ws.replay.environment.notReported':
+    'Повторный запуск не сообщил отпечаток окружения, поэтому сравнить окружения не удалось.',
   'ws.replay.manifestChecksum': 'манифест {checksum}',
   'ws.replay.execution.skipped': 'Не выполнено: рецепт восстановлен.',
   'ws.replay.execution.summary': 'через {via} · код {exitCode} · {durationMs} мс',

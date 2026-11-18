@@ -71,7 +71,6 @@ const run = (
     code: 'print(1)',
     language: 'python',
     outputPath: 'results/out.tsv',
-    environmentLockApplied: false,
     ...overrides
   })
 
@@ -82,8 +81,10 @@ describe('artifact replay runner', () => {
 
     expect(outcome.report.verdict).toBe('reproduced')
     expect(outcome.report.mode).toBe('re-run')
-    // The package set was not reproduced; saying otherwise is the lie this field exists to prevent.
-    expect(outcome.environmentLock).toBe('not-applied')
+    // The environment claim is not the runner's to make: it knows which environment it ran in, and the
+    // caller compares that with the recorded one. Nothing here may re-introduce a second vocabulary.
+    expect('environment' in outcome).toBe(false)
+    expect('environmentLock' in outcome).toBe(false)
     expect(outcome.execution).toMatchObject({ exitCode: 0, durationMs: 42, via: 'notebook:python' })
   })
 

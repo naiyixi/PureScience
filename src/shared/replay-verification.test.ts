@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_BYTE_COMPARISON_BYTES,
   REPLAY_RECIPE_FORMAT_VERSION,
+  compareReplayEnvironment,
   compareReplayOutputs,
   describeReplayVerdict,
   type SealedFileDigest,
@@ -188,5 +189,39 @@ describe('replay verification', () => {
     expect(report.verdict).toBe('reproduced')
     // Nothing to compare is not the same as everything matching; the report says how many were checked.
     expect(describeReplayVerdict(report)).toBe('Reproduced: all 0 output(s) matched')
+  })
+})
+
+// The environment claim has to be able to say "we could not compare" without it reading as "they differed",
+// and a replay that never ran has nothing to say about the environment at all.
+describe('compareReplayEnvironment', () => {
+  it('claims a match only when both digests exist and are equal', () => {
+    expect(
+      compareReplayEnvironment({ executed: true, recordedFingerprint: 'a', replayFingerprint: 'a' })
+    ).toBe('matched')
+    expect(
+      compareReplayEnvironment({ executed: true, recordedFingerprint: 'a', replayFingerprint: 'b' })
+    ).toBe('drifted')
+  })
+
+  it('names which side was missing instead of calling it drift', () => {
+    expect(compareReplayEnvironment({ executed: true, replayFingerprint: 'a' })).toBe(
+      'not-recorded'
+    )
+    expect(compareReplayEnvironment({ executed: true, recordedFingerprint: 'a' })).toBe(
+      'not-reported'
+    )
+    expect(compareReplayEnvironment({ executed: true })).toBe('not-recorded')
+  })
+
+  it('makes no environment claim when nothing executed', () => {
+    expect(
+      compareReplayEnvironment({
+        executed: false,
+        recordedFingerprint: 'a',
+        replayFingerprint: 'a'
+      })
+    ).toBe('not-run')
+    expect(compareReplayEnvironment({ executed: false })).toBe('not-run')
   })
 })
