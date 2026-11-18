@@ -80,6 +80,9 @@ const AgentPanel = ({
   const opencodeManaged = useSettingsStore((state) => state.opencodeManaged)
   const codebuddyManaged = useSettingsStore((state) => state.codebuddyManaged)
   const codexManaged = useSettingsStore((state) => state.codexManaged)
+  const repairRuntime = useSettingsStore((state) => state.repairRuntime)
+  const repairInstall = useSettingsStore((state) => state.installStates[state.agentFrameworkId])
+  const runtimeRepairPending = repairInstall?.isInstalling === true
   const uninstallClaude = useSettingsStore((state) => state.uninstallClaude)
   const uninstallOpencode = useSettingsStore((state) => state.uninstallOpencode)
   const uninstallCodex = useSettingsStore((state) => state.uninstallCodex)
@@ -630,6 +633,25 @@ const AgentPanel = ({
                     <p className="text-xs leading-5 text-muted-foreground">{failure.summary}</p>
                   </div>
                 ))}
+              </div>
+              {/* The banner above names what is wrong. The remedy used to be two clicks away, behind a
+                  dialog that only described an install — it never said the broken copy has to go first. */}
+              <div className="flex items-center justify-between gap-2 border-t border-amber-500/30 pt-2">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {t('settings.repairRuntimeHint')}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={runtimeRepairPending}
+                  onClick={() => {
+                    void repairRuntime(agentFrameworkId)
+                  }}
+                >
+                  {runtimeRepairPending
+                    ? t('settings.repairRuntimeRunning')
+                    : t('settings.repairRuntimeNow')}
+                </Button>
               </div>
             </div>
           ) : null}

@@ -2857,6 +2857,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Restaurar',
   'settings.restoreProject': 'Restaurar proyecto',
   'settings.restoreProjectFirst': 'Restaura primero el proyecto.',
+  'settings.repairRuntimeNow': 'Reinstalar este agente',
+  'settings.repairRuntimeRunning': 'Reinstalando…',
+  'settings.repairRuntimeHint':
+    'Desinstala la copia gestionada por la aplicación y la instala de nuevo.',
   'settings.retryProbe': 'Reintentar detección',
   'settings.retrySetup': 'Reintentar configuración',
   'settings.revealInFinder': 'Mostrar en Finder',

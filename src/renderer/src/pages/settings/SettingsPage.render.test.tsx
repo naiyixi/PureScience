@@ -622,6 +622,67 @@ describe('SettingsPage layout', () => {
     expect(document.body.querySelector('[aria-label="Agent runtime repair issues"]')).toBeNull()
   })
 
+  it('offers a one-click reinstall on the failed-runtime banner and repairs the active runtime', async () => {
+    // A real snapshot shape: the store reconciles from it, so a hand-rolled stub hides refusals it would
+    // otherwise read (the first attempt failed on a missing `version`, which is exactly that).
+    const uninstallClaude = vi.fn().mockResolvedValue(await window.api.settings.getSettings())
+    const installClaude = vi.fn().mockResolvedValue({ installId: 'repair-1', ok: true })
+    useSettingsStore.setState({
+      agentFrameworkId: 'claude-code',
+      environmentCheck: {
+        checkedAt: 1,
+        platform: 'darwin',
+        architecture: 'arm64',
+        ready: false,
+        canAutoInstall: false,
+        agentFrameworkId: 'claude-code',
+        runtime: { found: false },
+        checks: [
+          {
+            id: 'agent',
+            label: 'Claude runtime',
+            status: 'failed',
+            summary: 'Claude cannot report its version.',
+            detail: 'The installed copy did not answer --version.'
+          }
+        ]
+      }
+    })
+    const settingsApi = (window as unknown as { api: { settings: Record<string, unknown> } }).api
+      .settings
+    settingsApi.uninstallClaude = uninstallClaude
+    settingsApi.installClaude = installClaude
+    settingsApi.onInstallLog = vi.fn().mockReturnValue(vi.fn())
+
+    await act(async () => {
+      root.render(<SettingsPage open onClose={vi.fn()} />)
+    })
+    await openAgentPanel()
+
+    const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) => candidate.textContent?.trim() === 'Reinstall this agent'
+    )
+    expect(button).toBeTruthy()
+    // The banner says, next to the button, that the app-managed copy goes first — the part the old repair
+    // dialog never said.
+    expect(document.body.textContent).toContain(
+      'Uninstalls the app-managed copy, then installs it again.'
+    )
+
+    await act(async () => {
+      button?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // A repair is an uninstall before an install, through the same two calls the cards use.
+    expect(uninstallClaude).toHaveBeenCalledOnce()
+    expect(installClaude).toHaveBeenCalledWith({ source: 'managed' })
+    expect(uninstallClaude.mock.invocationCallOrder[0]).toBeLessThan(
+      installClaude.mock.invocationCallOrder[0] ?? 0
+    )
+  })
+
   it('shows every failed Codex component in the Agent repair notice', async () => {
     const api = (window as unknown as { api: { settings: Record<string, unknown> } }).api
     api.settings.getSettings = vi.fn().mockResolvedValue({

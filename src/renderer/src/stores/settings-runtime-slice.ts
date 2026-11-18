@@ -52,6 +52,14 @@ export type RuntimeSetupActions = {
   uninstallClaude: () => Promise<void>
   uninstallOpencode: () => Promise<void>
   uninstallCodex: () => Promise<void>
+  /**
+   * Repairs one managed runtime: uninstall the app-managed copy, then install it again.
+   *
+   * Composed from the calls the cards already make rather than added as a new main-process channel. The
+   * application command inventory certifies every channel at startup, and a repair needs no authority the
+   * uninstall and install commands do not already have.
+   */
+  repairRuntime: (framework: AgentFrameworkId) => Promise<ClaudeInstallResult | void>
   clearInstallLogs: (runtime?: AgentFrameworkId) => void
 }
 
@@ -371,6 +379,33 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
     runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codebuddy', (commands) =>
       commands.installCodebuddy({ source: 'npm' })
     ),
+
+  repairRuntime: async (framework) => {
+    const commands = getCommands()
+    switch (framework) {
+      case 'claude-code':
+        reconcileSnapshot(await commands.uninstallClaude())
+        return runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'claude-code', (port) =>
+          port.installClaude({ source: 'managed' })
+        )
+      case 'opencode':
+        reconcileSnapshot(await commands.uninstallOpencode())
+        return runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'opencode', (port) =>
+          port.installOpencode({ source: 'managed' })
+        )
+      case 'codex':
+        reconcileSnapshot(await commands.uninstallCodex())
+        return runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codex', (port) =>
+          port.installCodex({ source: 'managed' })
+        )
+      // CodeBuddy installs from npm and has no managed uninstall here, so a repair cannot honestly promise
+      // a clean slate: say so instead of reinstalling on top of whatever is on disk.
+      case 'codebuddy':
+        throw new Error(
+          'CodeBuddy installs from npm and has no managed uninstall; reinstall it from its own card.'
+        )
+    }
+  },
 
   uninstallClaude: async () => {
     reconcileSnapshot(await getCommands().uninstallClaude())

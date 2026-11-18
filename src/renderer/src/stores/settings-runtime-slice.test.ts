@@ -574,6 +574,34 @@ describe('runtime setup slice: uninstall lifecycle', () => {
     expect(refreshPreflight).toHaveBeenCalledOnce()
   })
 
+  it('repairs a runtime by uninstalling the managed copy and installing it again, in that order', async () => {
+    const { commands, store } = createHarness()
+    const order: string[] = []
+    commands.uninstallCodex.mockImplementation(async () => {
+      order.push('uninstall')
+      return snapshot()
+    })
+    commands.installCodex.mockImplementation(async () => {
+      order.push('install')
+      return { installId: 'codex-repair', ok: true }
+    })
+
+    await store.getState().repairRuntime('codex')
+
+    // Order is the whole point of a repair: installing first would leave the broken copy in place.
+    expect(order).toEqual(['uninstall', 'install'])
+    expect(commands.installCodex).toHaveBeenCalledWith({ source: 'managed' })
+  })
+
+  it('refuses to repair CodeBuddy, which has no managed uninstall to clear first', async () => {
+    const { commands, store } = createHarness()
+
+    await expect(store.getState().repairRuntime('codebuddy')).rejects.toThrow(
+      /no managed uninstall/
+    )
+    expect(commands.installCodebuddy).not.toHaveBeenCalled()
+  })
+
   it('propagates an uninstall error without reconciling stale state', async () => {
     const { commands, reconcileSnapshot, store } = createHarness()
     const failure = new Error('uninstall rejected')
