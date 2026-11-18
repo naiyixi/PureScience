@@ -114,10 +114,13 @@ export const applyEgressSettings = async (
 
   if (!currentEnabled) {
     if (proxy) {
-      proxy.setAllowlist(undefined)
+      // The listener stays up. Its ephemeral port is baked into the HTTP_PROXY env of every child already
+      // running, and stopping it here made the next `start()` bind a NEW port while those children kept
+      // dialling the old one — the first provider call then died with `connect ECONNREFUSED
+      // 127.0.0.1:<old port>` and the whole turn failed. Denying every host keeps the policy identical
+      // (nothing is forwarded) without stranding a running agent. Teardown still calls stop().
+      proxy.setAllowlist([])
       proxy.setApprovalHandler(undefined)
-      await proxy.stop()
-      proxy = undefined
     }
     return undefined
   }

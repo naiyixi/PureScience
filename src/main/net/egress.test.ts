@@ -1006,5 +1006,32 @@ describe('EgressProxy', () => {
       release()
       expect(implicitEgressHostsForTest()).toEqual([])
     })
+
+    // A child that is already running keeps the HTTP_PROXY it was spawned with. Stopping the listener on
+    // disable moved the next start onto a new ephemeral port, and that child's first provider call then died
+    // with `connect ECONNREFUSED 127.0.0.1:<old port>` — the whole turn failed. The port has to survive a
+    // disable, so the policy changes without stranding anything already dialling it.
+    it('keeps the listener port across a disable, so a running child is not stranded', async () => {
+      const enabled = await applyEgressSettings({ enabled: true, groups: {}, customDomains: [] })
+      const proxyUrl = enabled?.HTTP_PROXY
+      expect(proxyUrl).toBeDefined()
+      const port = Number(new URL(proxyUrl as string).port)
+
+      expect(await applyEgressSettings(undefined)).toBeUndefined()
+
+      // Still listening while disabled: a child spawned earlier dials this port, and a refused connection is
+      // what failed its turn. The listener must answer, whatever it answers with.
+      const dialled = await new Promise<string>((resolve) => {
+        const socket = tcpConnect({ host: '127.0.0.1', port }, () => {
+          socket.destroy()
+          resolve('connected')
+        })
+        socket.on('error', (error: NodeJS.ErrnoException) => resolve(error.code ?? 'error'))
+      })
+      expect(dialled).toBe('connected')
+
+      const again = await applyEgressSettings({ enabled: true, groups: {}, customDomains: [] })
+      expect(again?.HTTP_PROXY).toBe(proxyUrl)
+    })
   })
 })
