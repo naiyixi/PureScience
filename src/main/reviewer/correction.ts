@@ -46,6 +46,47 @@ const SESSION_BUSY_ERROR = 'already running for this session'
 export const classifyCorrectionFailure = (message: string): CorrectionFailureReason =>
   message.includes(SESSION_BUSY_ERROR) ? 'session-busy' : 'send-failed'
 
+// The review starts when the turn's text is persisted, which can be before that turn has left the wire. A
+// correction sent in that window answers `An ACP prompt is already running for this session`, and its checks
+// are then marked unaddressed for a reason that has nothing to do with the answer: the review simply arrived
+// early. Waiting for the interaction to be released makes the injection land.
+//
+// Why a wait rather than a retry: the caller that failed still owns the single-flight slot while it works, so
+// a retry keeps the takeover lane blocked — the two-lane test below pins that behaviour down, and a retry
+// variant of this fix made it fail. Ordering the send after the turn is over is the fix; guessing with
+// back-off is not.
+const CORRECTION_IDLE_POLL_MS = 200
+const CORRECTION_IDLE_POLL_ATTEMPTS = 40
+
+export const mainSessionIsOnTheWire = (
+  runtime: { getActivePromptSessions?: () => { sessionId: string }[] },
+  mainSessionId: string
+): boolean => (runtime.getActivePromptSessions?.() ?? []).some((s) => s.sessionId === mainSessionId)
+
+// Waits (bounded) for the main session's own turn to leave the wire, so the correction is not refused by the
+// interaction it still holds. Polling is what the runtime offers: `getActivePromptSessions` is the same state
+// `sendPrompt` reads when it answers `already running`, so a session absent from it is one the send can enter.
+const waitForMainSessionIdle = async (
+  runtime: { getActivePromptSessions?: () => { sessionId: string }[] },
+  mainSessionId: string,
+  waitForIdle: (() => Promise<void>) | undefined
+): Promise<void> => {
+  log.info('[Auditor] correction waiting for the turn in front to leave the wire', {
+    mainSessionId
+  })
+  const poll =
+    waitForIdle ??
+    (() => new Promise<void>((resolve) => setTimeout(resolve, CORRECTION_IDLE_POLL_MS)))
+  for (let attempt = 0; attempt < CORRECTION_IDLE_POLL_ATTEMPTS; attempt += 1) {
+    await poll()
+    if (!mainSessionIsOnTheWire(runtime, mainSessionId)) return
+  }
+  log.warn('[Auditor] the turn in front is still on the wire after waiting; injecting anyway', {
+    mainSessionId,
+    attempts: CORRECTION_IDLE_POLL_ATTEMPTS
+  })
+}
+
 // Whether this call put a correction turn on the wire, or stepped aside for one that was already
 // running in the same main session.
 //
@@ -93,6 +134,8 @@ export const injectAuditorMessage = async (options: {
   // Called if the correction sendPrompt fails, so the caller can undo pre-emptive suppression and say
   // WHY in the persisted disposition.
   onCorrectionFailed?: (reason: CorrectionFailureReason) => void
+  // Replaces the poll between idle checks; tests use it instead of sleeping.
+  waitForIdle?: () => Promise<void>
 }): Promise<CorrectionInjectionResult> => {
   const {
     sessionId,
@@ -154,6 +197,11 @@ export const injectAuditorMessage = async (options: {
 
   const turn: InFlightCorrection = (async () => {
     try {
+      // Checked synchronously: when nothing is on the wire the send must go out in the same tick, or a caller
+      // that registers its slot and looks at the wire next statement would see an empty one.
+      if (mainSessionIsOnTheWire(acpRuntime, mainSessionId)) {
+        await waitForMainSessionIdle(acpRuntime, mainSessionId, options.waitForIdle)
+      }
       // Inject through the main-session sendPrompt path (design.md cross-cutting requirement).
       // This is a normal prompt turn that the user sees in the conversation.
       await acpRuntime.sendPrompt({ sessionId: mainSessionId, text: message, provenanceContext })

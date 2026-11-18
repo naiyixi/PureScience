@@ -11,7 +11,13 @@ export type ReviewerAcpRuntime = Pick<
   AcpRuntime,
   'buildReviewerSession' | 'disposeReviewerSession' | 'sendPrompt'
 > &
-  Partial<AcpRuntimeActivityOwner>
+  Partial<AcpRuntimeActivityOwner> & {
+    // Sessions that still hold a prompt interaction. The review starts as soon as the turn's text is
+    // persisted, which can be before that turn has left the wire — injecting then answers
+    // `An ACP prompt is already running for this session` and the correction is lost. Absent in tests
+    // that never model this race.
+    getActivePromptSessions?: () => { projectName: string; sessionId: string }[]
+  }
 
 export const withReviewerRuntimeActivity = <T>(
   runtime: ReviewerAcpRuntime,

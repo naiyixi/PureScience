@@ -974,4 +974,60 @@ describe('one correction turn per main session', () => {
     ).resolves.toEqual({ kind: 'injected' })
     expect(sent).toHaveLength(2)
   })
+
+  // The review begins as soon as the turn's text is persisted, which can be before that turn has left the
+  // wire. Injecting then answers `already running` and the correction is lost, so the send has to wait.
+  it('waits for the turn in front to leave the wire before injecting', async () => {
+    let onTheWire = true
+    const order: string[] = []
+    const acpRuntime = {
+      sendPrompt: async (request: { text: string }) => {
+        order.push('sent')
+        expect(request.text).toContain('The late claim')
+      },
+      getActivePromptSessions: () =>
+        onTheWire ? [{ projectName: 'p', sessionId: 'main-late' }] : []
+    } as unknown as import('./acp-runtime').ReviewerAcpRuntime
+
+    await expect(
+      injectAuditorMessage({
+        sessionId: 'session-late',
+        mainSessionId: 'main-late',
+        findings: [warnFinding('The late claim')],
+        acpRuntime,
+        provenanceContext: {} as never,
+        waitForIdle: async () => {
+          order.push('waited')
+          onTheWire = false
+        }
+      })
+    ).resolves.toEqual({ kind: 'injected' })
+
+    expect(order).toEqual(['waited', 'sent'])
+  })
+
+  it('injects without waiting when nothing is on the wire', async () => {
+    const order: string[] = []
+    const acpRuntime = {
+      sendPrompt: async () => {
+        order.push('sent')
+      },
+      getActivePromptSessions: () => [] as { projectName: string; sessionId: string }[]
+    } as unknown as import('./acp-runtime').ReviewerAcpRuntime
+
+    await expect(
+      injectAuditorMessage({
+        sessionId: 'session-idle',
+        mainSessionId: 'main-idle',
+        findings: [warnFinding('The idle claim')],
+        acpRuntime,
+        provenanceContext: {} as never,
+        waitForIdle: async () => {
+          order.push('waited')
+        }
+      })
+    ).resolves.toEqual({ kind: 'injected' })
+
+    expect(order).toEqual(['sent'])
+  })
 })
