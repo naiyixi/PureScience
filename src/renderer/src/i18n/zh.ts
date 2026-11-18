@@ -550,6 +550,9 @@ export const zh = {
   'preview.provenance': '溯源',
   'reviewer.label': '复核员',
   'reviewer.fixLimitReached': '已达修复次数上限',
+  'references.import.button': '导入文献（Zotero JSON / RIS）',
+  'references.import.notAnExport':
+    '这个文件既不是 Zotero 的 JSON 导出，也不是 RIS —— 知网、万方、维普、NoteExpress、EndNote 的 RIS 导出可以直接导入。',
   'references.zotero.import': '从 Zotero 导入',
   'references.zotero.notAnExport':
     '这个文件不是 Zotero 的 JSON 导出 —— 请把文献库导出为 JSON 再试。',

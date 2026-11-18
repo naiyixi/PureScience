@@ -3741,6 +3741,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Procedencia',
   'reviewer.label': 'Revisor',
   'reviewer.fixLimitReached': 'límite de correcciones alcanzado',
+  'references.import.button': 'Importar referencias (Zotero JSON / RIS)',
+  'references.import.notAnExport':
+    'Este archivo no es una exportación JSON de Zotero ni RIS: la exportación RIS de CNKI, Wanfang, VIP, NoteExpress o EndNote se importa tal cual.',
   'references.zotero.import': 'Importar desde Zotero',
   'references.zotero.notAnExport':
     'Ese archivo no es una exportación JSON de Zotero: exporte la biblioteca como JSON e inténtelo de nuevo.',

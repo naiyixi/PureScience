@@ -72,6 +72,9 @@ vi.mock('@/i18n', () => ({
       'references.integrity.checkDone':
         'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
       'references.integrity.retractedBadge': 'Retracted',
+      'references.import.button': 'Import references (Zotero JSON / RIS)',
+      'references.import.notAnExport':
+        'This file is neither a Zotero JSON export nor RIS — the RIS export from CNKI, Wanfang, VIP, NoteExpress or EndNote imports as it is.',
       'references.zotero.import': 'Import from Zotero',
       'references.zotero.notAnExport': 'That file is not a Zotero JSON export.',
       'references.zotero.nothingToImport': 'Nothing to import: {skipped} refused.',
@@ -1062,7 +1065,7 @@ describe('ReferencesLibraryDialog collections', () => {
   it('imports a Zotero JSON export and reports the records it refused', async () => {
     await render()
 
-    const input = document.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')
+    const input = document.querySelector<HTMLInputElement>('input[accept*=".ris"]')
     expect(input).not.toBeNull()
 
     const payload = JSON.stringify([
@@ -1102,7 +1105,7 @@ describe('ReferencesLibraryDialog collections', () => {
   it('refuses a file that is not a Zotero export instead of importing nothing quietly', async () => {
     await render()
 
-    const input = document.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')
+    const input = document.querySelector<HTMLInputElement>('input[accept*=".ris"]')
     const file = new File(['{"nope":true}'], 'other.json', { type: 'application/json' })
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
 
@@ -1113,6 +1116,37 @@ describe('ReferencesLibraryDialog collections', () => {
     await flush()
 
     expect(addReference).not.toHaveBeenCalled()
-    expect(document.body.textContent).toContain('That file is not a Zotero JSON export')
+    expect(document.body.textContent).toContain('neither a Zotero JSON export nor RIS')
+  })
+
+  it('imports a RIS file from a Chinese database through the same control', async () => {
+    await render()
+
+    const input = document.querySelector<HTMLInputElement>('input[accept*=".ris"]')
+    const ris = [
+      'TY  - JOUR',
+      'TI  - 深度学习在肺结节检出中的价值',
+      'AU  - 张三',
+      'JO  - 中华放射学杂志',
+      'PY  - 2023',
+      'DO  - 10.3760/cma.j.2023.001',
+      'ER  - '
+    ].join('\n')
+    const file = new File([ris], 'cnki.ris', { type: 'text/plain' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+
+    await act(async () => {
+      input?.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(addReference).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'project-1',
+        title: '深度学习在肺结节检出中的价值',
+        doi: '10.3760/cma.j.2023.001'
+      })
+    )
   })
 })

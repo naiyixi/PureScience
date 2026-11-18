@@ -582,6 +582,9 @@ export const en: Record<ZhKey, string> = {
   'preview.provenance': 'Provenance',
   'reviewer.label': 'Reviewer',
   'reviewer.fixLimitReached': 'fix limit reached',
+  'references.import.button': 'Import references (Zotero JSON / RIS)',
+  'references.import.notAnExport':
+    'This file is neither a Zotero JSON export nor RIS — the RIS export from CNKI, Wanfang, VIP, NoteExpress or EndNote imports as it is.',
   'references.zotero.import': 'Import from Zotero',
   'references.zotero.notAnExport':
     'That file is not a Zotero JSON export — export the library as JSON and try again.',

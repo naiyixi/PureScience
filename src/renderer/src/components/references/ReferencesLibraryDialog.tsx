@@ -11,7 +11,7 @@ import type {
   ReferenceCollection
 } from '../../../../shared/references'
 import { normalizeTitleForDedupe } from '../../../../shared/references'
-import { planZoteroImport } from '../../../../shared/zotero-import'
+import { planReferenceImport } from '../../../../shared/ris-import-plan'
 import { searchReferences, type ReferenceSearchField } from '../../../../shared/reference-search'
 import type {
   ReferenceIntegrityEvidence,
@@ -647,15 +647,16 @@ export function ReferencesLibraryDialog({
     }
   }
 
-  // Import a Zotero JSON export: plan first (what would be written, what is refused and why), then write one
-  // record at a time so a failure halfway leaves the records already written in place and reports the error.
+  // Import a reference export — Zotero JSON, or the RIS that the Chinese databases write: plan first (what
+  // would be written, what is refused and why), then write one record at a time so a failure halfway leaves
+  // the records already written in place and reports the error.
   const handleZoteroImport = async (file: File): Promise<void> => {
     setZoteroBusy(true)
     setError(undefined)
     try {
-      const plan = planZoteroImport(await file.text(), references)
+      const plan = planReferenceImport(await file.text(), references)
       if ('error' in plan) {
-        setError(t('references.zotero.notAnExport'))
+        setError(t('references.import.notAnExport'))
         return
       }
       if (plan.records.length === 0) {
@@ -1591,12 +1592,12 @@ export function ReferencesLibraryDialog({
                   onClick={() => zoteroFileInputRef.current?.click()}
                   data-slot="references-zotero-import"
                 >
-                  <Plus className="size-3" aria-hidden="true" /> {t('references.zotero.import')}
+                  <Plus className="size-3" aria-hidden="true" /> {t('references.import.button')}
                 </button>
                 <input
                   ref={zoteroFileInputRef}
                   type="file"
-                  accept=".json,application/json"
+                  accept=".json,.ris,.txt,application/json,text/plain"
                   className="hidden"
                   aria-label={t('references.zotero.import')}
                   onChange={(event) => {
