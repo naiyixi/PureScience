@@ -32,12 +32,16 @@ import { listenForLocalRpc, localRpcServerLogFields } from '../local-rpc-transpo
 import {
   EXTERNAL_MCP_TOOLS,
   externalMcpToolById,
+  filterReferenceRows,
   projectRow,
+  referenceRow,
   sessionExcerpt,
   sessionRow,
+  type ExternalMcpReferenceRow,
   type ExternalMcpToolId
 } from './surface'
 import { removeExternalMcpState, writeExternalMcpState } from './state-file'
+import { asDoi } from '../literature/search'
 
 const log = createLogger('external-mcp')
 
@@ -89,7 +93,16 @@ type ToolHandler = (input: ToolCallInput) => Promise<unknown>
 // in the suite) is what turns "this tool needs the gate" into a compile-time fact: the read handlers are a
 // total record over the remaining ids, so a new read tool without an implementation does not compile, and a
 // write tool that is not listed here has no planner and is refused at runtime.
-export const EXTERNAL_MCP_WRITE_TOOL_IDS = Object.freeze(['archive_session'] as const)
+export const EXTERNAL_MCP_WRITE_TOOL_IDS = Object.freeze([
+  'archive_session',
+  // Library writes. Each one changes stored records, so each one crosses the approval card — the same card,
+  // not a second consent mechanism. `add_reference` is the one an assistant will reach for most, which is
+  // exactly why it is gated: an outside client filing records on the user's behalf changes what the library
+  // means.
+  'add_reference',
+  'set_reference_notes',
+  'remove_reference'
+] as const)
 type WriteToolId = (typeof EXTERNAL_MCP_WRITE_TOOL_IDS)[number]
 type ReadToolId = Exclude<ExternalMcpToolId, WriteToolId>
 
@@ -149,27 +162,85 @@ type SessionCatalogResult = {
   })[]
 }
 
+// A project may be named by id or by exact name. The resolution is against the app's own list, and an
+// unknown value is a named refusal: answering with every project's data for a typo is a wrong answer
+// that looks right. Every tool that takes a project — read or write — goes through here so they cannot
+// disagree about what a name means.
+const resolveProjectRow = async (
+  invoke: ExternalMcpInvoke,
+  clientId: string,
+  requested: string
+): Promise<ProjectRow> => {
+  const projects = (await invoke({
+    clientId,
+    commandName: 'projects:list',
+    args: []
+  })) as ProjectRow[]
+  const match = projects.find((project) => project.id === requested || project.name === requested)
+  if (!match) {
+    throw new ExternalMcpRefusal(
+      'project-not-found',
+      `No project matches "${requested}". Call list_projects for the ids and exact names.`
+    )
+  }
+  return match
+}
+
+// Where a library write parks its approval card. The card is shown in a conversation, so a write that names
+// none could never be approved — the broker answers `unavailable` and the tool becomes a stub. Resolving it
+// against the project's own session list means a typo or a session from another project is named before
+// anybody is asked to approve anything.
+const resolveWriteSession = async (
+  invoke: ExternalMcpInvoke,
+  clientId: string,
+  projectId: string,
+  projectName: string,
+  requested: string
+): Promise<string> => {
+  const catalog = (await invoke({
+    clientId,
+    commandName: 'sessions:list-catalog',
+    args: []
+  })) as SessionCatalogResult
+  const entry = (catalog.sessions ?? []).find((session) => session.id === requested)
+  if (entry === undefined) {
+    throw new ExternalMcpRefusal(
+      'session-not-found',
+      `No conversation has id "${requested}". Call list_sessions for the ids this machine holds.`
+    )
+  }
+  if (entry.projectId !== projectId) {
+    throw new ExternalMcpRefusal(
+      'session-not-in-project',
+      `Conversation "${requested}" belongs to another project; the card has to be shown in a conversation of "${projectName}".`
+    )
+  }
+  return entry.id
+}
+
+const DEFAULT_REFERENCE_LIMIT = 25
+
+// Reads the project's library through the one command that exists for it and projects each row. The command
+// returns the whole library, so `search_library` and `get_reference` share this instead of each inventing a
+// filter — and `get_reference` can then say "no such record" from the same rows the search showed.
+const loadReferenceRows = async (
+  invoke: ExternalMcpInvoke,
+  clientId: string,
+  projectId: string
+): Promise<readonly ExternalMcpReferenceRow[]> => {
+  const rows = (await invoke({
+    clientId,
+    commandName: 'references:list',
+    args: [projectId]
+  })) as Parameters<typeof referenceRow>[0][]
+  return rows.map(referenceRow)
+}
+
 // Handlers are a total record over the declared read ids: adding a read tool to the surface without
 // writing its handler is a type error, and the paired suite asserts the same thing at runtime.
 const createReadHandlers = (invoke: ExternalMcpInvoke): Record<ReadToolId, ToolHandler> => {
-  // A project may be named by id or by exact name. The resolution is against the app's own list, and an
-  // unknown value is a named refusal: answering with every project's data for a typo is a wrong answer
-  // that looks right. Both tools that take a project go through here so they cannot disagree.
-  const resolveProject = async (clientId: string, requested: string): Promise<ProjectRow> => {
-    const projects = (await invoke({
-      clientId,
-      commandName: 'projects:list',
-      args: []
-    })) as ProjectRow[]
-    const match = projects.find((project) => project.id === requested || project.name === requested)
-    if (!match) {
-      throw new ExternalMcpRefusal(
-        'project-not-found',
-        `No project matches "${requested}". Call list_projects for the ids and exact names.`
-      )
-    }
-    return match
-  }
+  const resolveProject = async (clientId: string, requested: string): Promise<ProjectRow> =>
+    resolveProjectRow(invoke, clientId, requested)
 
   return {
     list_projects: async ({ clientId }) => {
@@ -238,6 +309,51 @@ const createReadHandlers = (invoke: ExternalMcpInvoke): Record<ReadToolId, ToolH
         args: [{ projectName: project.id }]
       })) as readonly Record<string, unknown>[]
       return { projectId: project.id, count: files.length, files }
+    },
+
+    // One command serves both library reads: `references:list` returns the project's rows, and the filtering
+    // happens here. Splitting it into two commands would mean two places that decide what a match is.
+    search_library: async ({ clientId, args }) => {
+      const project = await resolveProject(clientId, requiredString(args, 'project'))
+      const limit = optionalPositiveInteger(args, 'limit') ?? DEFAULT_REFERENCE_LIMIT
+      const rows = await loadReferenceRows(invoke, clientId, project.id)
+      const matched = filterReferenceRows(rows, optionalString(args, 'query'))
+      return {
+        projectId: project.id,
+        query: optionalString(args, 'query') ?? null,
+        total: matched.length,
+        returned: Math.min(matched.length, limit),
+        // Said out loud when the limit bit: a client that receives 25 rows and assumes it has the library
+        // would answer "not in your library" for a record that is.
+        truncated: matched.length > limit,
+        references: matched.slice(0, limit)
+      }
+    },
+
+    get_reference: async ({ clientId, args }) => {
+      const project = await resolveProject(clientId, requiredString(args, 'project'))
+      const referenceId = optionalString(args, 'referenceId')
+      const doi = optionalString(args, 'doi')
+      if (referenceId === undefined && doi === undefined) {
+        throw new ExternalMcpRefusal(
+          'missing-argument',
+          'Pass `referenceId` (from search_library) or `doi`.'
+        )
+      }
+      const rows = await loadReferenceRows(invoke, clientId, project.id)
+      const wantedDoi = doi?.trim().toLowerCase()
+      const match = rows.find(
+        (row) =>
+          (referenceId !== undefined && row.id === referenceId) ||
+          (wantedDoi !== undefined && (row.doi ?? '').toLowerCase() === wantedDoi)
+      )
+      if (match === undefined) {
+        throw new ExternalMcpRefusal(
+          'reference-not-found',
+          `No record in this project matches ${referenceId !== undefined ? `id "${referenceId}"` : `DOI "${doi ?? ''}"`}. Call search_library to see what the library holds.`
+        )
+      }
+      return { projectId: project.id, reference: match }
     }
   }
 }
@@ -303,6 +419,197 @@ const createWritePlans = (invoke: ExternalMcpInvoke): Record<WriteToolId, WriteP
           archived: true,
           ...(typeof updated.archivedAt === 'number' ? { archivedAt: updated.archivedAt } : {})
         }
+      }
+    }
+  },
+
+  // Filing a record is the write an assistant reaches for most, and it is also the one that quietly changes
+  // what a library means — so it crosses the same card. The plan does all the reading first: the project is
+  // resolved, the DOI/type argument is checked, and a record that already exists is refused before anybody is
+  // asked to approve a change that would change nothing.
+  add_reference: async ({ clientId, args }) => {
+    const project = await resolveProjectRow(invoke, clientId, requiredString(args, 'project'))
+    const sessionId = await resolveWriteSession(
+      invoke,
+      clientId,
+      project.id,
+      project.name,
+      requiredString(args, 'sessionId')
+    )
+    const title = requiredString(args, 'title').trim()
+    if (title === '') throw new ExternalMcpRefusal('invalid-argument', '`title` must not be empty.')
+
+    const rawDoi = optionalString(args, 'doi')
+    // A DOI is stored only when it is one: the same rule the importers use, because a `[pii]`-shaped value
+    // filed as a DOI makes every later "open the DOI" click 404.
+    const doi = rawDoi === undefined ? undefined : asDoi(rawDoi)
+    if (rawDoi !== undefined && doi === undefined) {
+      throw new ExternalMcpRefusal(
+        'invalid-argument',
+        `"${rawDoi}" is not a DOI: a DOI starts with "10." (e.g. 10.1056/NEJMoa2034577).`
+      )
+    }
+
+    const existing = await loadReferenceRows(invoke, clientId, project.id)
+    const duplicate =
+      doi === undefined
+        ? existing.find((row) => row.title.trim().toLowerCase() === title.toLowerCase())
+        : existing.find((row) => (row.doi ?? '').toLowerCase() === doi.toLowerCase())
+    if (duplicate !== undefined) {
+      throw new ExternalMcpRefusal(
+        'duplicate-reference',
+        `This project already holds it as "${duplicate.citationKey}" (${duplicate.id}); nothing was added.`
+      )
+    }
+
+    const authors = Array.isArray(args.authors)
+      ? (args.authors as unknown[])
+          .map((name) => (typeof name === 'string' ? name.trim() : ''))
+          .filter((name) => name !== '')
+          .map((name) => ({ name }))
+      : []
+    const yearValue = args.year
+    const year =
+      typeof yearValue === 'number' && Number.isFinite(yearValue) && yearValue > 0
+        ? Math.floor(yearValue)
+        : undefined
+
+    return {
+      title: `An outside MCP client asks to add “${title}” to project “${project.name}”`,
+      sessionId,
+      // The card shows the record as it will be stored, not the raw input: a reader approving a write should
+      // see what the library will say afterwards.
+      rawInput: {
+        projectId: project.id,
+        title,
+        ...(authors.length === 0 ? {} : { authors: authors.map((author) => author.name) }),
+        ...(year === undefined ? {} : { year }),
+        ...(optionalString(args, 'venue') === undefined
+          ? {}
+          : { venue: optionalString(args, 'venue') }),
+        ...(doi === undefined ? {} : { doi }),
+        ...(optionalString(args, 'pmid') === undefined
+          ? {}
+          : { pmid: optionalString(args, 'pmid') }),
+        ...(optionalString(args, 'url') === undefined ? {} : { url: optionalString(args, 'url') }),
+        ...(optionalString(args, 'notes') === undefined
+          ? {}
+          : { notes: optionalString(args, 'notes') })
+      },
+      act: async () => {
+        const created = (await invoke({
+          clientId,
+          commandName: 'references:add',
+          args: [
+            {
+              projectId: project.id,
+              title,
+              ...(authors.length === 0 ? {} : { authors }),
+              ...(year === undefined ? {} : { year }),
+              ...(optionalString(args, 'venue') === undefined
+                ? {}
+                : { venue: optionalString(args, 'venue') }),
+              ...(doi === undefined ? {} : { doi }),
+              ...(optionalString(args, 'pmid') === undefined
+                ? {}
+                : { pmid: optionalString(args, 'pmid') }),
+              ...(optionalString(args, 'url') === undefined
+                ? {}
+                : { url: optionalString(args, 'url') }),
+              ...(optionalString(args, 'notes') === undefined
+                ? {}
+                : { notes: optionalString(args, 'notes') }),
+              // Filed by an outside client: the record says so, so a reader looking at provenance later can
+              // tell where it came from instead of finding "manual" and assuming a person typed it.
+              sourceConnector: 'manual'
+            }
+          ]
+        })) as Parameters<typeof referenceRow>[0]
+        const row = referenceRow(created)
+        return {
+          projectId: project.id,
+          added: row.id,
+          citationKey: row.citationKey,
+          reference: row
+        }
+      }
+    }
+  },
+
+  set_reference_notes: async ({ clientId, args }) => {
+    const project = await resolveProjectRow(invoke, clientId, requiredString(args, 'project'))
+    const sessionId = await resolveWriteSession(
+      invoke,
+      clientId,
+      project.id,
+      project.name,
+      requiredString(args, 'sessionId')
+    )
+    const referenceId = requiredString(args, 'referenceId')
+    const notes = typeof args.notes === 'string' ? args.notes : requiredString(args, 'notes')
+    const rows = await loadReferenceRows(invoke, clientId, project.id)
+    const existing = rows.find((row) => row.id === referenceId)
+    if (existing === undefined) {
+      throw new ExternalMcpRefusal(
+        'reference-not-found',
+        `No record in project "${project.name}" has id "${referenceId}".`
+      )
+    }
+    if ((existing.notes ?? '') === notes) {
+      throw new ExternalMcpRefusal(
+        'no-change',
+        'The record already carries exactly these notes; nothing was sent.'
+      )
+    }
+    return {
+      title: `An outside MCP client asks to rewrite the notes on “${existing.title}”`,
+      sessionId,
+      rawInput: { projectId: project.id, referenceId, notes },
+      act: async () => {
+        const updated = (await invoke({
+          clientId,
+          commandName: 'references:set-notes',
+          args: [referenceId, notes]
+        })) as Parameters<typeof referenceRow>[0]
+        const row = referenceRow(updated)
+        return { projectId: project.id, referenceId, notes: row.notes ?? '' }
+      }
+    }
+  },
+
+  remove_reference: async ({ clientId, args }) => {
+    const project = await resolveProjectRow(invoke, clientId, requiredString(args, 'project'))
+    const sessionId = await resolveWriteSession(
+      invoke,
+      clientId,
+      project.id,
+      project.name,
+      requiredString(args, 'sessionId')
+    )
+    const referenceId = requiredString(args, 'referenceId')
+    const rows = await loadReferenceRows(invoke, clientId, project.id)
+    const existing = rows.find((row) => row.id === referenceId)
+    if (existing === undefined) {
+      throw new ExternalMcpRefusal(
+        'reference-not-found',
+        `No record in project "${project.name}" has id "${referenceId}".`
+      )
+    }
+    return {
+      // The card names the work: approving a deletion by id alone is approving something the reader cannot
+      // recognise.
+      title: `An outside MCP client asks to remove “${existing.title}” from the library`,
+      sessionId,
+      rawInput: {
+        projectId: project.id,
+        referenceId,
+        title: existing.title,
+        citationKey: existing.citationKey,
+        hasPdf: existing.hasPdf
+      },
+      act: async () => {
+        await invoke({ clientId, commandName: 'references:remove', args: [referenceId] })
+        return { projectId: project.id, referenceId, removed: true }
       }
     }
   }

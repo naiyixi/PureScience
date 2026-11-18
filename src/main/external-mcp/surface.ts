@@ -19,7 +19,19 @@
 import type { PersistedChatSession } from '../../shared/session-persistence'
 
 export type ExternalMcpToolId =
-  'list_projects' | 'list_sessions' | 'read_session' | 'list_project_files' | 'archive_session'
+  | 'list_projects'
+  | 'list_sessions'
+  | 'read_session'
+  | 'list_project_files'
+  | 'archive_session'
+  // The library: what an assistant has to reach to answer "what does my library say about X", and — with the
+  // approval card in front of each write — to file what it found. Reads are `references:list`, which returns
+  // the project's rows; the filtering happens in the server so one command serves search and lookup.
+  | 'search_library'
+  | 'get_reference'
+  | 'add_reference'
+  | 'set_reference_notes'
+  | 'remove_reference'
 
 // `read` touches nothing. `write` changes what the app holds, so it must pass the approval card first —
 // the dispatch path branches on this value, and a write slipping into the read branch would perform an
@@ -148,6 +160,166 @@ const EXTERNAL_MCP_TOOLS: readonly ExternalMcpTool[] = Object.freeze([
     }),
     risk: 'write' as const,
     command: 'sessions:update-archive'
+  }),
+  Object.freeze({
+    id: 'search_library' as const,
+    title: 'Search the literature library',
+    description:
+      'Search the references stored in one project: title, authors, venue, year, DOI and notes. Pass `query` ' +
+      'to filter (case-insensitive substring over those fields, Chinese included) or omit it to list the ' +
+      'library. Returns at most `limit` rows (default 25) together with `total` — the match count before the ' +
+      'limit — so a client can tell a short library from a truncated answer.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        query: Object.freeze({
+          type: 'string',
+          description:
+            'Text to look for in title, authors, venue, year, DOI or notes. Omit to list all.'
+        }),
+        limit: Object.freeze({
+          type: 'integer',
+          minimum: 1,
+          maximum: 200,
+          description: 'Maximum rows to return (default 25)'
+        })
+      }),
+      required: Object.freeze(['project']),
+      additionalProperties: false as const
+    }),
+    risk: 'read' as const,
+    command: 'references:list'
+  }),
+  Object.freeze({
+    id: 'get_reference' as const,
+    title: 'Read one reference',
+    description:
+      'Read one library record in full: identifiers, citation key, abstract snippet, notes and reading ' +
+      'state. Pass `referenceId` (from search_library) or `doi`; an id that matches nothing is a named ' +
+      'refusal, never an empty answer.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        referenceId: Object.freeze({
+          type: 'string',
+          description: 'Reference id from search_library'
+        }),
+        doi: Object.freeze({
+          type: 'string',
+          description: 'DOI of the record, as an alternative to referenceId'
+        })
+      }),
+      required: Object.freeze(['project']),
+      additionalProperties: false as const
+    }),
+    risk: 'read' as const,
+    command: 'references:list'
+  }),
+  Object.freeze({
+    id: 'add_reference' as const,
+    title: 'Add a reference to the library',
+    description:
+      'File one new record in a project library. `title` is the only required field; everything else is ' +
+      'stored only when supplied — a missing DOI is left missing rather than derived. A DOI that already ' +
+      'exists in the project is refused before the approval card, because the write would change nothing. ' +
+      'This changes what the app holds, so the app asks its own user to approve each call (same card as ' +
+      'archive_session); when no card can be shown, the call is refused and nothing changes.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        title: Object.freeze({ type: 'string', description: 'Title of the work' }),
+        authors: Object.freeze({
+          type: 'array',
+          items: Object.freeze({ type: 'string' }),
+          description: 'Author names in display order, e.g. ["张三", "J. D. Morrow"]'
+        }),
+        year: Object.freeze({ type: 'integer', description: 'Publication year' }),
+        venue: Object.freeze({ type: 'string', description: 'Journal, book or proceedings title' }),
+        doi: Object.freeze({
+          type: 'string',
+          description: 'DOI (10.x/…). Stored only if it starts with 10.'
+        }),
+        pmid: Object.freeze({ type: 'string', description: 'PubMed id' }),
+        url: Object.freeze({ type: 'string', description: 'Link a reader can open' }),
+        notes: Object.freeze({ type: 'string', description: 'Why this work is in the library' }),
+        sessionId: Object.freeze({
+          type: 'string',
+          description:
+            'A conversation in that project (id from list_sessions) where the app parks the approval card. ' +
+            'Required for a write: the card is shown in a conversation, so a call that names none cannot be ' +
+            'approved.'
+        })
+      }),
+      required: Object.freeze(['project', 'title', 'sessionId']),
+      additionalProperties: false as const
+    }),
+    risk: 'write' as const,
+    command: 'references:add'
+  }),
+  Object.freeze({
+    id: 'set_reference_notes' as const,
+    title: 'Write notes on a reference',
+    description:
+      'Replace the notes on one record. Pass an empty string to clear them. Like every write here, the app ' +
+      'asks its own user to approve the call first.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        referenceId: Object.freeze({
+          type: 'string',
+          description: 'Reference id from search_library'
+        }),
+        notes: Object.freeze({
+          type: 'string',
+          description: 'The new note text; empty string clears it'
+        })
+      }),
+      required: Object.freeze(['project', 'referenceId', 'notes', 'sessionId']),
+      additionalProperties: false as const
+    }),
+    risk: 'write' as const,
+    command: 'references:set-notes'
+  }),
+  Object.freeze({
+    id: 'remove_reference' as const,
+    title: 'Remove a reference from the library',
+    description:
+      'Delete one record from a project library. The record and its notes go; an attached PDF file stays in ' +
+      'the project. The app asks its own user to approve each call, and the card names the work being ' +
+      'removed so the answer is not given to an id alone.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        referenceId: Object.freeze({
+          type: 'string',
+          description: 'Reference id from search_library'
+        })
+      }),
+      required: Object.freeze(['project', 'referenceId', 'sessionId']),
+      additionalProperties: false as const
+    }),
+    risk: 'write' as const,
+    command: 'references:remove'
   })
 ])
 
@@ -189,6 +361,23 @@ export type ExternalMcpSessionRow = Readonly<{
   messageCount: number
 }>
 
+export type ExternalMcpReferenceRow = Readonly<{
+  id: string
+  title: string
+  authors: readonly string[]
+  venue?: string
+  year?: number
+  doi?: string
+  pmid?: string
+  arxivId?: string
+  url?: string
+  itemType?: string
+  citationKey: string
+  notes?: string
+  abstractSnippet?: string
+  hasPdf: boolean
+}>
+
 export type ExternalMcpMessageRow = Readonly<{
   id: string
   role: string
@@ -208,6 +397,78 @@ export type ExternalMcpSessionExcerpt = Readonly<{
   truncated: boolean
   messages: readonly ExternalMcpMessageRow[]
 }>
+
+// A library row carries only what the record has: an absent DOI stays absent rather than being rendered as
+// "unknown", and `hasPdf` is a boolean instead of a path — an outside client has no business knowing where the
+// file lives, but it does need to know a PDF is attached.
+export const referenceRow = (reference: {
+  id: string
+  title: string
+  authors?: readonly { name?: string }[]
+  venue?: string | undefined
+  year?: number | undefined
+  doi?: string | undefined
+  pmid?: string | undefined
+  arxivId?: string | undefined
+  url?: string | undefined
+  itemType?: string | undefined
+  citationKey: string
+  notes?: string | undefined
+  abstractSnippet?: string | undefined
+  pdfManagedFileId?: string | undefined
+}): ExternalMcpReferenceRow => {
+  const authors = (reference.authors ?? [])
+    .map((author) => (author.name ?? '').trim())
+    .filter((name) => name !== '')
+  const hasPdf = (reference.pdfManagedFileId ?? '') !== ''
+  return {
+    id: reference.id,
+    title: reference.title,
+    authors,
+    citationKey: reference.citationKey,
+    hasPdf,
+    ...(reference.venue === undefined ? {} : { venue: reference.venue }),
+    ...(reference.year === undefined ? {} : { year: reference.year }),
+    ...(reference.doi === undefined ? {} : { doi: reference.doi }),
+    ...(reference.pmid === undefined ? {} : { pmid: reference.pmid }),
+    ...(reference.arxivId === undefined ? {} : { arxivId: reference.arxivId }),
+    ...(reference.url === undefined ? {} : { url: reference.url }),
+    ...(reference.itemType === undefined ? {} : { itemType: reference.itemType }),
+    ...(reference.notes === undefined || reference.notes.trim() === ''
+      ? {}
+      : { notes: reference.notes }),
+    ...(reference.abstractSnippet === undefined || reference.abstractSnippet.trim() === ''
+      ? {}
+      : { abstractSnippet: reference.abstractSnippet })
+  }
+}
+
+/**
+ * The rows a `query` keeps, matched the way a Chinese reader expects: case-insensitive substring, no word
+ * boundaries, over the fields a person would scan. `toLowerCase` folds Latin case; CJK has no case, so a
+ * two-character Chinese term matches anywhere in the title, which is what "search my library" means here.
+ */
+export const filterReferenceRows = (
+  rows: readonly ExternalMcpReferenceRow[],
+  query: string | undefined
+): readonly ExternalMcpReferenceRow[] => {
+  const needle = (query ?? '').trim().toLowerCase()
+  if (needle === '') return rows
+  return rows.filter((row) =>
+    [
+      row.title,
+      row.authors.join(' '),
+      row.venue ?? '',
+      row.year === undefined ? '' : String(row.year),
+      row.doi ?? '',
+      row.notes ?? '',
+      row.abstractSnippet ?? ''
+    ]
+      .join('\n')
+      .toLowerCase()
+      .includes(needle)
+  )
+}
 
 const DEFAULT_MESSAGE_LIMIT = 40
 const MAX_MESSAGE_LIMIT = 200

@@ -50,9 +50,12 @@ describe('external MCP surface', () => {
   it('keeps the write set explicit, so a write cannot appear by adding a table row', () => {
     // Widening this set is meant to be a decision that also wires a planner and an approval argument; the
     // suite fails here first if a row is marked `write` without that decision.
+    // The library writes joined deliberately: each has a planner in `server.ts` and each argues for itself in
+    // the surface (the argument being that filing/rewriting/removing a record changes what the library means,
+    // so it crosses the same card). A new write appearing without that decision fails here.
     expect(
       EXTERNAL_MCP_TOOLS.filter((tool) => tool.risk === 'write').map((tool) => tool.id)
-    ).toEqual(['archive_session'])
+    ).toEqual(['archive_session', 'add_reference', 'set_reference_notes', 'remove_reference'])
   })
 
   it('keeps the tool ids and the reachable command list unique and derived from the table', () => {

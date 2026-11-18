@@ -403,7 +403,46 @@ literature_get("2103.14030")
 
 脚本退出码 0。测试：`src/main/literature` **16 passed**（含经 in-memory transport 走真实 MCP 线的 5 例），`typecheck:node` EXIT=0，ESLint 0。
 
-## 二十二、仍未做的
+## 二十二、本机文献库对外可用（1.2，实现完成；写路径的实机闭环待一台有会话的实例）
+
+1.2 不是从零起一个服务器：`purescience mcp` 这条桥早就在，surface 里有 5 个工具（4 读 1 写）。缺的是库。
+
+### 交付
+
+| 位置                                          | 改动                                                                                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/external-mcp/surface.ts`            | 5 个工具：`search_library` / `get_reference`（读），`add_reference` / `set_reference_notes` / `remove_reference`（写）；`referenceRow` 与 `filterReferenceRows` 投影 |
+| `src/main/external-mcp/server.ts`             | 读处理器与三个写计划；写集合由 1 个变 4 个；`resolveProjectRow` 读写共用；`resolveWriteSession` 校验会话属于该项目                                                   |
+| `src/main/application-command-composition.ts` | `EXTERNAL_MCP_COMMAND_COUNT` 5 → 9（`references:list / add / set-notes / remove`）                                                                                   |
+| `docs/guides/library-mcp.md`                  | 工具表、`sessionId` 的理由、行为约定、无窗口审批方式                                                                                                                 |
+| `scripts/verify/library-mcp-external.mjs`     | 外部客户端闭环脚本                                                                                                                                                   |
+
+### 设计上被实机逼出来的一件事：写工具必须带 `sessionId`
+
+第一版把库写入的会话设为 `undefined`，实机调用直接返回 `approval-unavailable`——**审批卡只能停在会话里**，没有会话就无处显示，工具等于空壳。改成必填 `sessionId` 并在上卡之前校验（`session-not-found` / `session-not-in-project`），拒绝发生在人被打扰之前。这条是「禁空壳」的直接体现：宁可要求参数，也不留一个永远批不下来的写接口。
+
+### 协议层证据（真 MCP 线，不是直接调函数）
+
+`src/main/external-mcp` **37 passed**，新增库用例覆盖：
+
+- 中文未分词子串检索（「医学影像」命中标题）；
+- `limit` 命中上限时 `total` / `returned` / `truncated` 三者自洽；
+- 空 `query` 被拒（不当「查全部」）；
+- 按 id 与按 DOI 各读一次，缺失字段不臆造（无 DOI 的记录 `doi` 为 `undefined`）；
+- 加记录：审批通过后才写、卡上显示解析后的记录、卡停在该会话、重复 DOI 在上卡前拒；
+- `[pii]` 冒充 DOI → `invalid-argument`；
+- `no-change` 拒、删除卡上写标题、无会话/跨项目会话/不存在会话三种拒绝且什么都没写；
+- 卡不可用 → `approval-unavailable` 且库不变。
+
+`typecheck:node` EXIT=0，ESLint 0，`pre-push-checks` 全绿。
+
+### 实机
+
+- `purescience mcp --list-tools` 在隔离实例上列出 **10 个工具**（5 旧 + 5 新），描述逐字可读。
+- 读路径实机通过：`search_library` 空库 → `total 0, truncated false`；不带 `query` 列库同样 0。
+- 写路径实机**目前只验到拒绝侧**：`add_reference` 在无会话时返回 `approval-unavailable`（未改任何数据）。要验「批准后写入成功」，需要一台**有可用会话**的实例；本轮试过两个办法都没走通——隔离根是全新首次设置（无模型提供商，`/api/v1/runs` 报 `No active model provider is configured`），手工塞会话文件不进 catalog。**这一项明确立案，不算完成。**
+
+## 二十三、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

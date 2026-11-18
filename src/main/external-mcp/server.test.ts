@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EXTERNAL_MCP_STATE_FILE } from './state-file'
 import { EXTERNAL_MCP_TOOLS } from './surface'
@@ -98,6 +98,52 @@ const documents: Record<string, unknown> = {
 
 // A stand-in for the application command router: it answers only the commands the surface declares, so a
 // handler reaching for anything else fails the test rather than silently returning undefined.
+// One project's library, in the shape `references:list` returns. Two records: one with a DOI and notes, one
+// without either — so a projection that invents a missing field fails here rather than in a client.
+type FakeReference = {
+  id: string
+  projectId: string
+  title: string
+  authors: { name: string }[]
+  venue?: string
+  year?: number
+  doi?: string
+  pmid?: string
+  url?: string
+  notes?: string
+  abstractSnippet?: string
+  citationKey: string
+  pdfManagedFileId?: string
+}
+const freshReferences = (): FakeReference[] => [
+  {
+    id: 'r1',
+    projectId: 'p1',
+    title: '深度学习在医学影像中的应用与挑战',
+    authors: [{ name: '张三' }, { name: '李四' }],
+    venue: '中华放射学杂志',
+    year: 2024,
+    doi: '10.3760/cma.j.cn112149-20240101-00001',
+    notes: '方法学参考',
+    citationKey: 'Zhang2024',
+    pdfManagedFileId: 'mf1'
+  },
+  {
+    id: 'r2',
+    projectId: 'p1',
+    title: 'Once-Weekly Semaglutide in Adults with Overweight or Obesity',
+    authors: [{ name: 'Wilding JPH' }],
+    venue: 'The New England journal of medicine',
+    year: 2021,
+    citationKey: 'Wilding2021'
+  }
+]
+const references: FakeReference[] = freshReferences()
+// A write test mutates this array, so every case starts from the same library.
+beforeEach(() => {
+  references.splice(0, references.length, ...freshReferences())
+})
+
 const fakeInvoke = (): ExternalMcpInvoke & {
   calls: { commandName: string; args: readonly unknown[] }[]
 } => {
@@ -118,6 +164,42 @@ const fakeInvoke = (): ExternalMcpInvoke & {
     }
     if (input.commandName === 'artifacts:list-project-files') {
       return [{ id: 'f1', kind: 'file', name: 'notes.md', path: '/tmp/a/notes.md' }]
+    }
+    if (input.commandName === 'references:list') {
+      const projectId = String(input.args[0] ?? '')
+      return references.filter((reference) => reference.projectId === projectId)
+    }
+    if (input.commandName === 'references:add') {
+      const request = input.args[0] as Record<string, unknown>
+      const created = {
+        id: 'r-new',
+        projectId: String(request.projectId),
+        title: String(request.title),
+        authors: Array.isArray(request.authors) ? request.authors : [],
+        venue: request.venue,
+        year: request.year,
+        doi: request.doi,
+        pmid: request.pmid,
+        url: request.url,
+        notes: request.notes,
+        citationKey: 'New2024'
+      }
+      references.push(created as (typeof references)[number])
+      return created
+    }
+    if (input.commandName === 'references:set-notes') {
+      const [referenceId, notes] = input.args as [string, string]
+      const target = references.find((reference) => reference.id === referenceId)
+      if (!target) throw new Error(`Reference not found: ${referenceId}`)
+      target.notes = notes
+      return target
+    }
+    if (input.commandName === 'references:remove') {
+      const [referenceId] = input.args as [string]
+      const index = references.findIndex((reference) => reference.id === referenceId)
+      if (index === -1) throw new Error(`Reference not found: ${referenceId}`)
+      references.splice(index, 1)
+      return { id: referenceId }
     }
     if (input.commandName === 'sessions:update-archive') {
       const request = input.args[0] as {
@@ -593,5 +675,237 @@ describe('external MCP logging', () => {
     }
     // The token is a secret: it must never appear in a log payload.
     expect(JSON.stringify(calls)).not.toContain(token)
+  })
+
+  describe('library', () => {
+    const connectTo = async (
+      requestApproval?: ExternalMcpRequestApproval
+    ): Promise<Awaited<ReturnType<typeof connect>>> => {
+      const { endpoint, token } = await startServer(fakeInvoke(), requestApproval)
+      return connect(endpoint, token)
+    }
+
+    it('searches the library of the named project and says when the limit bit', async () => {
+      const client = await connectTo()
+      const all = await client.callTool({ name: 'search_library', arguments: { project: 'Alpha' } })
+      const everything = textOf(all) as {
+        total: number
+        returned: number
+        truncated: boolean
+        references: unknown[]
+      }
+      expect(everything.total).toBe(2)
+      expect(everything.truncated).toBe(false)
+      expect(everything.references).toHaveLength(2)
+
+      // A Chinese query, unsegmented, over the title — the case a word-boundary search would miss.
+      const chinese = await client.callTool({
+        name: 'search_library',
+        arguments: { project: 'p1', query: '医学影像' }
+      })
+      const hit = textOf(chinese) as { total: number; references: { id: string; notes?: string }[] }
+      expect(hit.total).toBe(1)
+      expect(hit.references[0]?.id).toBe('r1')
+      expect(hit.references[0]?.notes).toBe('方法学参考')
+
+      const limited = await client.callTool({
+        name: 'search_library',
+        arguments: { project: 'p1', limit: 1 }
+      })
+      const capped = textOf(limited) as { total: number; returned: number; truncated: boolean }
+      expect(capped.total).toBe(2)
+      expect(capped.returned).toBe(1)
+      expect(capped.truncated).toBe(true)
+
+      // An empty `query` is refused rather than read as "everything": a model that sends "" thinking it is a
+      // filter would otherwise receive the whole library and cite from it.
+      const empty = await client.callTool({
+        name: 'search_library',
+        arguments: { project: 'p1', query: '' }
+      })
+      expect((textOf(empty) as { error: { code: string } }).error.code).toBe('invalid-argument')
+    })
+
+    it('reads one record by id or by DOI, and refuses an unknown one by name', async () => {
+      const client = await connectTo()
+      const byId = await client.callTool({
+        name: 'get_reference',
+        arguments: { project: 'p1', referenceId: 'r2' }
+      })
+      const byIdPayload = textOf(byId) as {
+        reference: { title: string; doi?: string; hasPdf: boolean }
+      }
+      expect(byIdPayload.reference.title).toContain('Semaglutide')
+      // An absent DOI is absent, not "unknown" and not an empty string.
+      expect(byIdPayload.reference.doi).toBeUndefined()
+      expect(byIdPayload.reference.hasPdf).toBe(false)
+
+      const byDoi = await client.callTool({
+        name: 'get_reference',
+        arguments: { project: 'p1', doi: '10.3760/CMA.J.CN112149-20240101-00001' }
+      })
+      expect((textOf(byDoi) as { reference: { id: string } }).reference.id).toBe('r1')
+
+      const missing = await client.callTool({
+        name: 'get_reference',
+        arguments: { project: 'p1', referenceId: 'nope' }
+      })
+      const refused = textOf(missing) as { error: { code: string } }
+      expect(refused.error.code).toBe('reference-not-found')
+    })
+
+    it('adds a record only after the card approves, and refuses a duplicate before asking', async () => {
+      const approvalTitles: string[] = []
+      const approvalSessions: (string | undefined)[] = []
+      const invoke = fakeInvoke()
+      const { endpoint, token } = await startServer(invoke, async (input) => {
+        approvalTitles.push(input.title)
+        approvalSessions.push(input.sessionId)
+        return 'approved'
+      })
+      const client = await connect(endpoint, token)
+
+      const added = await client.callTool({
+        name: 'add_reference',
+        arguments: {
+          project: 'Alpha',
+          sessionId: 's1',
+          title: 'A new work',
+          authors: ['Wang, Wei'],
+          year: 2023,
+          doi: '10.1000/xyz'
+        }
+      })
+      expect(textOf(added)).toMatchObject({ added: 'r-new', citationKey: 'New2024' })
+      expect(approvalTitles).toHaveLength(1)
+      // The card names the work and the project, so the reader approves something recognisable.
+      expect(approvalTitles[0]).toContain('A new work')
+      expect(approvalTitles[0]).toContain('Alpha')
+      // …and it is parked in the conversation the client named, which is the only place a reader will see it.
+      expect(approvalSessions).toEqual(['s1'])
+
+      // The record reached the command with what the plan resolved, including the author shape the library uses.
+      const addCall = invoke.calls.find((call) => call.commandName === 'references:add')
+      expect(addCall?.args[0]).toMatchObject({
+        projectId: 'p1',
+        title: 'A new work',
+        authors: [{ name: 'Wang, Wei' }],
+        year: 2023,
+        doi: '10.1000/xyz'
+      })
+
+      // Filing the same DOI again is refused before the card: a second approval for a no-op write is noise.
+      const duplicate = await client.callTool({
+        name: 'add_reference',
+        arguments: {
+          project: 'p1',
+          sessionId: 's1',
+          title: 'Same work, other title',
+          doi: '10.1000/XYZ'
+        }
+      })
+      expect((textOf(duplicate) as { error: { code: string } }).error.code).toBe(
+        'duplicate-reference'
+      )
+      expect(approvalTitles).toHaveLength(1)
+    })
+
+    it('refuses an identifier that only looks like a DOI', async () => {
+      const client = await connectTo(async () => 'approved')
+      const result = await client.callTool({
+        name: 'add_reference',
+        arguments: {
+          project: 'p1',
+          sessionId: 's1',
+          title: 'Filed from a bad export',
+          doi: '88/4/401M [pii]'
+        }
+      })
+      expect((textOf(result) as { error: { code: string } }).error.code).toBe('invalid-argument')
+    })
+
+    it('rewrites notes, and refuses when the notes are already exactly that', async () => {
+      const client = await connectTo(async () => 'approved')
+      const updated = await client.callTool({
+        name: 'set_reference_notes',
+        arguments: { project: 'p1', sessionId: 's1', referenceId: 'r2', notes: '用于剂量讨论' }
+      })
+      expect(textOf(updated)).toMatchObject({ referenceId: 'r2', notes: '用于剂量讨论' })
+      expect(references.find((reference) => reference.id === 'r2')?.notes).toBe('用于剂量讨论')
+
+      const same = await client.callTool({
+        name: 'set_reference_notes',
+        arguments: { project: 'p1', sessionId: 's1', referenceId: 'r2', notes: '用于剂量讨论' }
+      })
+      expect((textOf(same) as { error: { code: string } }).error.code).toBe('no-change')
+    })
+
+    it('removes a record only after the card names it', async () => {
+      const titles: string[] = []
+      const { endpoint, token } = await startServer(fakeInvoke(), async (input) => {
+        titles.push(input.title)
+        return 'approved'
+      })
+      const client = await connect(endpoint, token)
+
+      const removed = await client.callTool({
+        name: 'remove_reference',
+        arguments: { project: 'p1', sessionId: 's1', referenceId: 'r1' }
+      })
+      expect(textOf(removed)).toMatchObject({ referenceId: 'r1', removed: true })
+      // The card quotes the work being deleted — approving a deletion by id alone approves the unrecognisable.
+      expect(titles[0]).toContain('深度学习在医学影像中的应用与挑战')
+      expect(references.map((reference) => reference.id)).toEqual(['r2'])
+    })
+
+    it('refuses a write whose card has nowhere to be shown', async () => {
+      const titles: string[] = []
+      const { endpoint, token } = await startServer(fakeInvoke(), async (input) => {
+        titles.push(input.title)
+        return 'approved'
+      })
+      const client = await connect(endpoint, token)
+
+      // No conversation named: the card cannot be shown anywhere, so the call is refused up front with the
+      // fix in the message rather than turned into an `unavailable` at the gate.
+      const missing = await client.callTool({
+        name: 'add_reference',
+        arguments: { project: 'p1', title: 'No card, no write' }
+      })
+      const missingError = (textOf(missing) as { error: { code: string } }).error
+      expect(missingError.code).toBe('missing-argument')
+
+      // A conversation from a different project: the card has to be shown where the change lands.
+      const wrongProject = await client.callTool({
+        name: 'add_reference',
+        arguments: { project: 'p1', sessionId: 's2', title: 'Wrong conversation' }
+      })
+      expect((textOf(wrongProject) as { error: { code: string } }).error.code).toBe(
+        'session-not-in-project'
+      )
+
+      // An id that is not a conversation at all.
+      const unknown = await client.callTool({
+        name: 'add_reference',
+        arguments: { project: 'p1', sessionId: 'nope', title: 'Unknown conversation' }
+      })
+      expect((textOf(unknown) as { error: { code: string } }).error.code).toBe('session-not-found')
+
+      // Nothing reached the card, and nothing was written.
+      expect(titles).toEqual([])
+      expect(references.map((reference) => reference.id)).toEqual(['r1', 'r2'])
+    })
+
+    it('changes nothing when the card is unavailable', async () => {
+      const client = await connectTo(async () => 'unavailable')
+      const result = await client.callTool({
+        name: 'add_reference',
+        arguments: { project: 'p1', sessionId: 's1', title: 'Never filed' }
+      })
+      expect((textOf(result) as { error: { code: string } }).error.code).toBe(
+        'approval-unavailable'
+      )
+      expect(references.map((reference) => reference.id)).toEqual(['r1', 'r2'])
+    })
   })
 })
