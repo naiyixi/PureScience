@@ -101,7 +101,7 @@
 
 所以顺序是：第一次尝试在流式过程中被打断，**半截文本以 complete 状态落库**，随后它作为历史被回放，模型看到残缺上下文才道歉重答。用户视角是「专才突然胡言乱语一次」。
 
-**根因未定，不做无证据的判断。** 当轮主进程日志（`/tmp/ps-app9.log`）显示同一时间窗内有 `repeated-tool-failure@turn:13` 与多次 `[egress-proxy] egress target failed … ECONNRESET`（网络访问被重置）。因此至少有两种可能，现在的证据区分不了：
+**根因已定位并修复（`d1bb2839`），见下一节；上面这段保留为最初的观察。** 当轮主进程日志（`/tmp/ps-app9.log`）显示同一时间窗内有 `repeated-tool-failure@turn:13` 与多次 `[egress-proxy] egress target failed … ECONNRESET`（网络访问被重置）。因此至少有两种可能，现在的证据区分不了：
 
 1. 流式/落库把半截文本标成了 `complete`；
 2. 模型在连续工具失败后自己输出了拼接错乱的内容，本来就被正常完成。
@@ -110,7 +110,30 @@
 
 复现条件：稳定网络下重跑同一任务，若再出现拼接错乱才可归因到落库/流式层。本轮不修，记档待复现。
 
-## 十一、仍未做的
+## 十一、拼接错乱的根因（同日定案）与第二个缺陷
+
+### 1. 不是模型，是我们的流式写库丢了字
+
+拿 agent 自己的对话记录（`~/.purescience-project/claude/projects/<workspace>/<acp-session>.jsonl`）与落库内容逐字比对：
+
+- agent 记录：**1166 字**，表格完整；
+- 落库：**617 字**，并且是原文删掉了 6 段（262 / 67 / 91 / 80 / 19 / 30 字），其余全部保序。
+
+删掉的位置全在 50ms 合并窗口的边界上。原因在 `projectAgentMessageChunk` 的去重规则：流式文本按 `eventId` 去重，但**一个 ACP 事件可以跨多个合并窗口**，续写的批次带着同一个 id，于是 `chunkEventIds.every(id => message.eventIds.includes(id))` 为真，整批被当成重放丢掉。
+
+改法：id 与文本同时命中才算重放（真实重放会连同文本一起重发，所以幂等性不丢）。回归测试两例：同一 id 的续写必须接上；id 与文本都到过的重放仍要丢掉。
+
+实机复验（新会话 `eddd8fae`，同一病理任务）：落库 **2746 字**，与 agent 记录的 2746 字完全一致，正文没有缺口。
+
+### 2. 输入预检把单位和基因名当成了文件
+
+专才上一轮开头写「系统提示缺失的 `mut/Mb` 与 `HER2/RET/MET`」——那句话不是它编的，是应用写进提示里的。`extractInputPathCandidates` 把「词/词」形状的片段都当路径，`mut/Mb`（TMB 单位）、`HER2/RET/MET`（基因组合）都命中，于是模型收到「这些输入不存在」，第一次回答只能先否认。
+
+改法：必须以扩展名或结尾斜杠收尾才算文件/目录。代价是无扩展名的 `data/2024` 不再被预检——比给模型塞一个假前提要好。
+
+实机复验：同一任务，开头变成「模式：需澄清 + 可先行的方法学判读」，不再出现「缺失」字样。
+
+## 十二、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
