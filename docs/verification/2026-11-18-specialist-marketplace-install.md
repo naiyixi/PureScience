@@ -304,7 +304,30 @@ send-2 ok → user:17 / agent:139   「无法给出具体例数…」
 
 边界：我没有证据证明今天那几次 `ECONNREFUSED` 就是设置切换触发的，只能说这是端口漂移的一条确定路径，已堵。若还复现，下一步查 agent 进程 spawn 时 `applyEgressToChildEnv` 读到的端口与它实际拨的端口是否一致。
 
-## 十九、仍未做的
+## 十九、评审与 stop 的竞态：纠正等主轮离开链路（`26fbc316`）
+
+十七节里那条「不能靠重试修」的问题，正解就是排顺序：
+
+- 评审在**轮次文本落库**时启动（`auto-review-trigger.ts` 找 `status === 'complete'` 的 agent 消息），而这一轮可能**还没离开链路**（定稿/产物仍在收尾）。此时注入纠正 → `An ACP prompt is already running for this session` → 检查项被标未处理。
+- 修法：注入前先看 `getActivePromptSessions()`（与 `sendPrompt` 判忙读的是同一份 `sessionInteractions.snapshot()`），在链路上就每 200ms 轮询、上限 8s，离开后再发。轮询函数可注入。
+- **为什么不是重试**：失败方在等待期间仍持有单飞槽位，重试会把接管道挡死——既有用例 `takes the slot when the running turn failed` 正是钉这个的，我上一版重试就栽在这。
+- 一个细节：判断必须是**同步**的（`if (mainSessionIsOnTheWire(...)) await wait(...)` 而不是无条件 `await wait(...)`），否则即使无需等待也会让出发送时机，破坏「同一 tick 内发出去」的既有约定——这条也是被既有用例逼出来的。
+
+用例：链路上先等待后发送（顺序 `['waited','sent']`）、空闲时不等待（`['sent']`）。reviewer **321 passed**、`typecheck:node` EXIT=0。
+
+### 实机（会话 `b3039620`，构建含全部修复）
+
+```
+bind → {"contextReset":true}
+send-1 ok → n=8  roles=uaaaaaua   agent 766 字
+send-2 ok → n=12 roles=uaaaaauauaua  agent 364/165/413 字
+[reviewer:correction] [Auditor] correction turn complete
+status=idle，无 already-running、无 correction sendPrompt failed、无 releasing a prompt interaction
+```
+
+纠正这一轮正常落库，没有再撞忙；这次也没触发等待（纠正本来就在主轮结束后才到）。
+
+## 二十、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
