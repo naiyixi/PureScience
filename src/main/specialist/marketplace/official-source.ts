@@ -13,6 +13,9 @@ export const OFFICIAL_MARKETPLACE_SOURCE: OfficialMarketplaceSourceConfig = {
   // China where raw.githubusercontent.com times out. statics.zerolink.com is the reserved
   // future self-hosted CDN slot (currently unresolvable, kept last as a pure fallback).
   metadataBaseUrls: [
+    // Self-hosted first: our own server answers in ~50ms inside China, where raw.githubusercontent.com
+    // times out entirely and jsDelivr's zip redirects land on a CDN that often does not resolve.
+    'https://purescience.work/download/marketplace/v1/',
     'https://cdn.jsdelivr.net/gh/naiyixi/purescience-specialist-marketplace@published/',
     'https://raw.githubusercontent.com/naiyixi/purescience-specialist-marketplace/published/',
     'https://statics.zerolink.com/purescience/specialist-marketplace/v1/'
@@ -20,6 +23,7 @@ export const OFFICIAL_MARKETPLACE_SOURCE: OfficialMarketplaceSourceConfig = {
   // Artifacts are committed to the published branch too, so jsDelivr serves installer zips as
   // well (githubAssetUrl remains the final fallback).
   artifactBaseUrls: [
+    'https://purescience.work/download/marketplace/v1/',
     'https://cdn.jsdelivr.net/gh/naiyixi/purescience-specialist-marketplace@published/',
     'https://statics.zerolink.com/purescience/specialist-marketplace/v1/'
   ],
