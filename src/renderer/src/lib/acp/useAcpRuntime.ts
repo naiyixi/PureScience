@@ -9,6 +9,8 @@ import type {
 } from '../../../../shared/acp'
 import type { PermissionProfileId } from '../../../../shared/permission-profiles'
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useSessionStore } from '../../stores/session-store'
+import { sendPromptWithStaleTurnRecovery } from './stale-turn-recovery'
 
 import {
   turnStructureMeasurement,
@@ -317,32 +319,50 @@ const useAcpRuntime = (): {
       const currentStructureMeasurement = turnStructureMeasurement(sessionId)
 
       return runSendPromptAction(() =>
-        window.api.acp.sendPrompt({
-          sessionId,
-          text,
-          attachments,
-          // Omit the field entirely when no skills were picked so the request stays minimal.
-          ...(forcedSkillIds && forcedSkillIds.length > 0 ? { forcedSkillIds } : {}),
-          // Same minimal-request rule for `@`-mentioned artifacts.
-          ...(referencedArtifacts && referencedArtifacts.length > 0 ? { referencedArtifacts } : {}),
-          // Only present right after a context reset, when a transcript is replayed for continuity.
-          ...(historyPreamble ? { historyPreamble } : {}),
-          ...(historyAttachments && historyAttachments.length > 0 ? { historyAttachments } : {}),
-          ...(historyImages && historyImages.length > 0 ? { historyImages } : {}),
-          ...(resumeFallback ? { resumeFallback } : {}),
-          ...(provenanceContext ? { provenanceContext } : {}),
-          ...(contextReset ? { contextReset: true } : {}),
-          ...(planContinuation ? { planContinuation } : {}),
-          ...(turnIntent ? { turnIntent } : {}),
-          ...(annotations && annotations.length > 0 ? { annotations } : {}),
-          // D2: the region the user has selected in the structure viewer rides with the turn as
-          // application context. Read at send time from the tab that is in front — the model is told what
-          // the user is looking at *now*, and an ordinary turn (no structure tab open) sends nothing.
-          ...(currentStructureSelection ? { structureSelection: currentStructureSelection } : {}),
-          ...(currentStructureLabel ? { structureSelectionLabel: currentStructureLabel } : {}),
-          ...(currentStructureMeasurement
-            ? { structureMeasurement: currentStructureMeasurement }
-            : {})
+        // A turn that died early can leave its interaction behind and then refuse every later send; the
+        // recovery below clears it only when the store shows no live run, so a double-send still fails.
+        sendPromptWithStaleTurnRecovery({
+          send: () =>
+            window.api.acp.sendPrompt({
+              sessionId,
+              text,
+              attachments,
+              // Omit the field entirely when no skills were picked so the request stays minimal.
+              ...(forcedSkillIds && forcedSkillIds.length > 0 ? { forcedSkillIds } : {}),
+              // Same minimal-request rule for `@`-mentioned artifacts.
+              ...(referencedArtifacts && referencedArtifacts.length > 0
+                ? { referencedArtifacts }
+                : {}),
+              // Only present right after a context reset, when a transcript is replayed for continuity.
+              ...(historyPreamble ? { historyPreamble } : {}),
+              ...(historyAttachments && historyAttachments.length > 0
+                ? { historyAttachments }
+                : {}),
+              ...(historyImages && historyImages.length > 0 ? { historyImages } : {}),
+              ...(resumeFallback ? { resumeFallback } : {}),
+              ...(provenanceContext ? { provenanceContext } : {}),
+              ...(contextReset ? { contextReset: true } : {}),
+              ...(planContinuation ? { planContinuation } : {}),
+              ...(turnIntent ? { turnIntent } : {}),
+              ...(annotations && annotations.length > 0 ? { annotations } : {}),
+              // D2: the region the user has selected in the structure viewer rides with the turn as
+              // application context. Read at send time from the tab that is in front — the model is told what
+              // the user is looking at *now*, and an ordinary turn (no structure tab open) sends nothing.
+              ...(currentStructureSelection
+                ? { structureSelection: currentStructureSelection }
+                : {}),
+              ...(currentStructureLabel ? { structureSelectionLabel: currentStructureLabel } : {}),
+              ...(currentStructureMeasurement
+                ? { structureMeasurement: currentStructureMeasurement }
+                : {})
+            }),
+          cancel: () => window.api.acp.cancel({ sessionId }),
+          isSessionIdle: () => {
+            const session = useSessionStore
+              .getState()
+              .sessions.find((candidate) => candidate.id === sessionId)
+            return session !== undefined && session.status !== 'running'
+          }
         })
       )
     },
