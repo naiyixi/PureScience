@@ -228,14 +228,39 @@ describe('global search — a Chinese term with no literal occurrence', () => {
   })
 
   it('refuses when only some of the parts are present', () => {
-    // 力机 is missing, so the term is not satisfied by parts — one shared pair of characters is not a match.
+    // 机 and 制 never appear, so neither the parts nor the halves are satisfied: a term is not matched on
+    // a shared prefix alone. (The earlier form of this case — 注意力…机制 with both halves present — is now
+    // a match, by the halves rule below; keeping it here would have tested the old policy, not the risk.)
     expect(
       collectTermMatches({
-        text: '本文讨论注意力与机制的实现',
+        text: '本文讨论注意力的实现',
         terms: ['注意力机制'],
         field: 'body'
       })
     ).toEqual([])
+  })
+
+  it('matches a phrase written in another order when both halves are present', () => {
+    // The reader types 深度学习医学影像; the title reads 医学影像中的深度学习. 习医 and 学影 straddle the
+    // join, so parts matching cannot see it — but the two halves both appear.
+    const matches = collectTermMatches({
+      text: '医学影像中的深度学习',
+      terms: ['深度学习医学影像'],
+      field: 'title'
+    })
+
+    expect(matches).toHaveLength(1)
+    expect(matches[0]?.matchKind).toBe('halves')
+    expect(matches[0]?.term).toBe('深度学习医学影像')
+  })
+
+  it('does not use the halves rule for a two-character term', () => {
+    // Splitting a two-character term in two would be matching on single characters — the fuzzy behaviour
+    // this search deliberately does not do.
+    expect(
+      collectTermMatches({ text: '影像 医学 深度', terms: ['影像'], field: 'body' })
+    ).toHaveLength(1)
+    expect(collectTermMatches({ text: '影 像', terms: ['影像'], field: 'body' })).toEqual([])
   })
 
   it('keeps a literal occurrence literal', () => {

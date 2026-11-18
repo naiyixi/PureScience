@@ -158,24 +158,34 @@ const emptyCoverage = (): Record<GlobalSearchScope, GlobalSearchScopeCoverage> =
  */
 const LITERAL_WEIGHT = 1
 const SEGMENTED_WEIGHT = 0.5
+// Both halves of the term are present but its parts are not (a reordered Chinese phrase). Weaker than a
+// segment match, and deliberately below it: a query written in one order must not outrank a document that
+// actually reads that way.
+const HALVES_WEIGHT = 0.25
 
 export const weightedMatchCount = (
-  matches: readonly { term?: string; matchKind?: 'literal' | 'segmented' }[]
+  matches: readonly { term?: string; matchKind?: 'literal' | 'segmented' | 'halves' }[]
 ): number => {
   // One credit per term, at the strength of its best kind. Counting occurrences instead would let a
   // paraphrase win: a term resolved by three parts matches three times, and the phrase it stands in for
   // matches once.
-  const bestKindPerTerm = new Map<string, 'literal' | 'segmented'>()
+  type MatchKind = 'literal' | 'segmented' | 'halves'
+  const KIND_WEIGHT: Record<MatchKind, number> = {
+    literal: LITERAL_WEIGHT,
+    segmented: SEGMENTED_WEIGHT,
+    halves: HALVES_WEIGHT
+  }
+  const KIND_RANK: Record<MatchKind, number> = { literal: 3, segmented: 2, halves: 1 }
+
+  const bestKindPerTerm = new Map<string, MatchKind>()
   matches.forEach((match, index) => {
     const key = match.term ?? `#${index}`
-    const kind = match.matchKind ?? 'literal'
-    if (kind === 'literal' || !bestKindPerTerm.has(key)) bestKindPerTerm.set(key, kind)
+    const kind: MatchKind = match.matchKind ?? 'literal'
+    const held = bestKindPerTerm.get(key)
+    if (held === undefined || KIND_RANK[kind] > KIND_RANK[held]) bestKindPerTerm.set(key, kind)
   })
 
-  return [...bestKindPerTerm.values()].reduce(
-    (total, kind) => total + (kind === 'segmented' ? SEGMENTED_WEIGHT : LITERAL_WEIGHT),
-    0
-  )
+  return [...bestKindPerTerm.values()].reduce((total, kind) => total + KIND_WEIGHT[kind], 0)
 }
 
 const hitFiltersOf = (request: GlobalSearchRequest): GlobalSearchHitFilters | undefined => {

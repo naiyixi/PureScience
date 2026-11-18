@@ -5,6 +5,7 @@ import {
   type GlobalSearchRequest
 } from '../../shared/global-search'
 import {
+  weightedMatchCount,
   createGlobalSearchService,
   type GlobalSearchPorts,
   type SearchIndexPorts,
@@ -146,7 +147,38 @@ describe('global search · incremental index (S3)', () => {
   })
 })
 
-describe('createGlobalSearchService', () => {
+describe('weighted match count', () => {
+  // Ranking has to survive the relaxation: a phrase written in another order must never outrank a
+  // document that reads that way, and the strongest kind per term is the one that counts.
+  it('ranks literal above parts above halves', () => {
+    const one = (matchKind: 'literal' | 'segmented' | 'halves'): number =>
+      weightedMatchCount([{ term: '深度学习医学影像', matchKind }])
+
+    expect(one('literal')).toBeGreaterThan(one('segmented'))
+    expect(one('segmented')).toBeGreaterThan(one('halves'))
+  })
+
+  it('counts a term once, at the strongest kind it matched at', () => {
+    const mixed = weightedMatchCount([
+      { term: '注意力', matchKind: 'halves' },
+      { term: '注意力', matchKind: 'literal' }
+    ])
+
+    expect(mixed).toBe(weightedMatchCount([{ term: '注意力', matchKind: 'literal' }]))
+  })
+
+  it('adds terms up, so a two-term query still narrows and scores above one term', () => {
+    const single = weightedMatchCount([{ term: '注意力', matchKind: 'literal' }])
+    const both = weightedMatchCount([
+      { term: '注意力', matchKind: 'literal' },
+      { term: '机制', matchKind: 'literal' }
+    ])
+
+    expect(both).toBeGreaterThan(single)
+  })
+})
+
+describe('global search service', () => {
   // Found by running the search against real Chinese text: a message whose characters merely all appear
   // scored higher than one containing the phrase, because every part counts as a match. The phrase the
   // reader typed must win.

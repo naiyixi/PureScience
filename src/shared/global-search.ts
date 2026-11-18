@@ -129,7 +129,7 @@ export type GlobalSearchMatch = {
   // `literal` when the text contains the term as typed; `segmented` when a CJK term with no literal
   // occurrence was resolved by its parts. The distinction is what keeps "the phrase is in there" and
   // "the pieces are in there" from looking the same.
-  matchKind?: 'literal' | 'segmented'
+  matchKind?: 'literal' | 'segmented' | 'halves'
 }
 
 export type GlobalSearchCitation = {
@@ -283,6 +283,9 @@ export type GlobalSearchNote =
   // A term with no literal occurrence was resolved by its parts (see collectTermMatches), so the hit is
   // real but the reader should know the phrase itself is not in the text.
   | 'matched-by-term-parts'
+  // A Chinese term whose two-character parts do not appear as a run, but whose two halves both do: the
+  // phrase was written in another order, and this note says why the document is in the results.
+  | 'matched-by-halves'
   // The annotation corpus stopped at its own bound: the project holds more annotations than were read,
   // so a miss here does not mean the phrase is absent from the rest of the markup.
   | 'annotations-bounded'
@@ -458,6 +461,17 @@ export const cjkPartsOf = (term: string): string[] => {
   return Array.from({ length: term.length - 1 }, (_, index) => term.slice(index, index + 2))
 }
 
+/**
+ * The two halves of a CJK term, for the case where the phrase was written in another order: 深度学习医学影像
+ * against 医学影像中的深度学习. Only terms of four or more characters have halves worth testing — a
+ * two-character term split in two is just its characters, which is the fuzzy match this deliberately is not.
+ */
+export const cjkHalvesOf = (term: string): string[] => {
+  if (term.length < 4 || !CJK_ONLY.test(term)) return []
+  const midpoint = Math.ceil(term.length / 2)
+  return [term.slice(0, midpoint), term.slice(midpoint)]
+}
+
 export const collectTermMatches = ({
   text,
   terms,
@@ -482,16 +496,35 @@ export const collectTermMatches = ({
     // No literal occurrence: for a Chinese term, accept it when every one of its parts is present. Every
     // part must be there — a single shared two-character overlap is not a match.
     const parts = cjkPartsOf(term)
-    if (parts.length === 0) return []
     const partMatches: GlobalSearchMatch[] = []
-    for (const part of parts) {
-      const matches = collectMatches({ text, query: part, field, maxMatches: 1 })
-      if (matches.length === 0) return []
-      partMatches.push(
-        ...matches.map((match) => ({ ...match, term, matchKind: 'segmented' as const }))
-      )
+    const everyPartPresent =
+      parts.length > 0 &&
+      parts.every((part) => {
+        const matches = collectMatches({ text, query: part, field, maxMatches: 1 })
+        if (matches.length === 0) return false
+        partMatches.push(
+          ...matches.map((match) => ({ ...match, term, matchKind: 'segmented' as const }))
+        )
+        return true
+      })
+    if (everyPartPresent) {
+      collected.push(...partMatches)
+      continue
     }
-    collected.push(...partMatches)
+
+    // A reader writing 深度学习医学影像 against a title that reads 医学影像中的深度学习 defeats the parts
+    // rule: 习医 and 学影 straddle the join and appear nowhere. The two halves are both there, which is
+    // what a reordered phrase looks like — accepting it is worth more than losing the document, but it is
+    // the weakest evidence we take, so it contributes exactly one match and never a pile of overlaps.
+    const halves = cjkHalvesOf(term)
+    if (halves.length !== 2) return []
+    const halfMatches = halves.map(
+      (half) => collectMatches({ text, query: half, field, maxMatches: 1 })[0]
+    )
+    if (halfMatches.some((match) => match === undefined)) return []
+    const [firstHalfMatch] = halfMatches
+    if (firstHalfMatch === undefined) return []
+    collected.push({ ...firstHalfMatch, term, matchKind: 'halves' as const })
   }
 
   return collected.slice(0, GLOBAL_SEARCH_MAX_MATCHES_PER_HIT)
@@ -779,6 +812,9 @@ export const finalizeSearchResponse = ({
   if (moreBeyondPage) nextNotes.push('results-truncated-per-scope')
   if (filtered.some((hit) => hit.matches.some((match) => match.matchKind === 'segmented'))) {
     nextNotes.push('matched-by-term-parts')
+  }
+  if (filtered.some((hit) => hit.matches.some((match) => match.matchKind === 'halves'))) {
+    nextNotes.push('matched-by-halves')
   }
 
   return {
