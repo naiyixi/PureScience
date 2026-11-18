@@ -327,7 +327,43 @@ status=idle，无 already-running、无 correction sendPrompt failed、无 relea
 
 纠正这一轮正常落库，没有再撞忙；这次也没触发等待（纠正本来就在主轮结束后才到）。
 
-## 二十、仍未做的
+## 二十、文献导入补 EndNote / MEDLINE（`c7e2d68c`，已实机）
+
+缺口不是「没有 RIS」——RIS 与 Zotero JSON 早就通了。缺口是**界面允许选 `.enw` / `.nbib`，解析器却只认这两种之外的输入**，选进去只会得到一句「不是导出文件」。
+
+补 `src/shared/citation/tagged-import.ts`：
+
+| 方言            | 形态                               | 处理                                                                                      |
+| --------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| EndNote `.enw`  | `%0 Journal Article` / `%T` / `%A` | 按 `%`+单字符切分；**值折行**要并回上一条（长标题、摘要常见）                             |
+| MEDLINE `.nbib` | `PMID- ` / `TI  - ` / `AU  - `     | 标签 2–4 字符 + `- `；**续行是缩进的**——与 EndNote 相反，所以是两个解析器而不是一张标签表 |
+
+两者输出与 `parseRis` 同构，共用 `planParsedImport`（去重、500 条上限、拒收原因只写一份）。
+
+**标识符卫生**：MEDLINE 把出版商条目号写在同一批标签里（`LID - 88/4/401M [pii]`），早先会原样当 DOI 存进去，点开必然 404。现在只认 `10.` 开头的值，并且在 `LID`/`AID` 之间取第一个**真正是 DOI** 的（Rayyan 的示例里就有 `LID` 是 pii、`AID` 才是 DOI 的记录）。
+
+### 真实文件（不是自造样本）
+
+| 文件          | 来源                                                     | 结果                              |
+| ------------- | -------------------------------------------------------- | --------------------------------- |
+| `real.nbib`   | NCBI efetch `retmode=medline`（PMID 38123456、33567185） | 2 条，0 拒收，DOI/PMID/卷期页全中 |
+| `real.ris`    | Crossref content negotiation（10.1056/NEJMoa2034577）    | 1 条，0 拒收，作者 29 人          |
+| `real.enw`    | Rayyan 官方示例 `endnote-example.enw`                    | 3 条，0 拒收                      |
+| `rayyan.nbib` | Rayyan 官方示例 `new-pubmed-example.nbib`                | 10 条，0 拒收                     |
+
+### 实机（走界面的文件选择，不是直接调函数）
+
+```
+文献库 → 导入文献（Zotero JSON / RIS / EndNote / MEDLINE）
+before: rows 0
+选 real.enw → references.list() = 3 条
+  Identification of Skin as a Major Site on Pr… / ELECTROCARDIOGRAM ABNORMALITY… / Isolation and identification…
+选 real.nbib → references.list() = 5 条，PMID 33567185、38123456 已入库
+```
+
+三次测试用例：`tagged-import` 10 例、`ris-import-plan` 10 例（含 EndNote/MEDLINE 计划级与 DOI 去重）、i18n 62 例、references 组件 78 例；`typecheck:web` EXIT=0。
+
+## 二十一、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
