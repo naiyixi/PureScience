@@ -5,7 +5,7 @@ import {
   sendPromptWithStaleTurnRecovery
 } from './stale-turn-recovery'
 
-const busy = () => new Error(PROMPT_ALREADY_RUNNING_MESSAGE)
+const busy = (): Error => new Error(PROMPT_ALREADY_RUNNING_MESSAGE)
 
 describe('sendPromptWithStaleTurnRecovery', () => {
   it('clears the leftover interaction and sends again when the session is not running', async () => {
