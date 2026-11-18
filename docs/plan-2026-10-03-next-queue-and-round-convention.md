@@ -1,5 +1,49 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十三、本轮追加（执行器，2026-11-18 09:0x–）—— v2.30.2 发版：v2.30.1 的 Verify 红在一条自己提交的用例上，补上它缺的那一半
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮时 `origin/main = 848d5021`（v2.30.1 就绪件，工作树干净、无本地领先）；上一轮 `round-next` 的第①条
+  先读：v2.29.0 那次 `windows-upgrade-smoke` **已 completed/success** ⇒ 「非阻塞」的保留条件消失，该项结案。
+- 但 `848d5021` 上三条主干车道是红的：`Windows Full Test`（8 分片里的 2/8）failure、`Nightly` failure、
+  `Release`(v2.30.1) 的 `build / Verify` failure ⇒ 四平台 build、签名公证、`publish` 全 skipped、**没有发布页**。
+- 工作树里另有一批不是我的未提交路径（`src/shared/background-delivery-labels*`、两份 `docs/evidence/`），
+  一个字节没碰；与本次相关的 `main-message-catalog*` 与那份 e2e spec 按下节处理（停了 15 小时，属半提交事故）。
+
+### 一 定因（不是偶发，也不是平台差异）
+
+| 读数 | 判据原文 | 结论 |
+|---|---|---|
+| Windows 2/8 与 Release Verify 红在同一条 | `AssertionError: expected 'Connector name "arxiv" is reserved by…' to be '连接器名称「arxiv」与内置连接器保留的名称冲突'` | 界面把主进程的英文句子原样印出 |
+| `git show HEAD:src/renderer/src/lib/main-message-catalog.ts \| grep -c connectorNameReserved` | `0` | 映射从未提交 |
+| 九语字典与那条用例 | 六个 `mainMessage.connector*` 键在 9 份语言文件里各 1 处；用例由 `d82e2ecd` 一起提交 | 缺的只有「句子 → 字典键」这一半 |
+
+**形状**：一次把用例提交了、把实现留在工作区的半提交。工作区里那份实现（17:51 写、停到现在）正是缺的那一半。
+
+### 二 交付（三笔，逐笔有读数）
+
+| 提交 | 内容 | 读数 |
+|---|---|---|
+| `0ff63f0d` | `main-message-catalog`：9 条逐字句子 + 6 条模板（每个只捕获**一个**引号值、首尾锚定）+ 2 条新用例（模板键必须在字典里；三种近失样本一字不改） | 两文件 20 例全绿；typecheck web/node 各 0 错；`eslint --no-cache` 两文件 0 问题 |
+| `53a37dc1` | `e2e/certification/connector-refusal-language.spec.ts`：真窗口断言拒绝句是读者语言，且英文原句与 invoke 信封**都不在屏上** | `build:e2e` 后打包态 **1 passed (14.7s)**；alert=`連接器名稱「clinical_genomics」與內建連接器保留的名稱衝突`、`canonicalEnglishOnScreen=false`、`envelopeOnScreen=false` |
+| `d39b8fd2` | 发版四件（CHANGELOG v2.30.2 段 / 双语 README 横幅逐字节一致 / `package.json`+lock 2.30.2） | `check-readme-sync` 通过；`pre-push-checks` EXIT=0 |
+
+**门禁（隔离工作树 `/tmp/ps-release-gate` 跑 `d39b8fd2`）**：`eslint|OK`（0 error / 94 warning，与上一版同值）、
+`typecheck:node|OK`、`typecheck:web|OK`、`vitest|OK`（**1492 files / 18,747 passed / 228 skipped**，734 s）、`repo-checks|OK`；
+`pre-push-checks.sh` 另单跑一次 **EXIT=0**（不信汇总行）。
+
+### 三 发版
+
+- 推前现查在飞车道：**NO_INFLIGHT** ⇒ 本次推送没有取消任何人的判决。推 `848d5021..d39b8fd2`。
+- `v2.30.1` 无发布页（`gh release view v2.30.1` → `release not found`）⇒ 删 tag，在 `d39b8fd2` 打 `v2.30.2`
+  并确认 `merge-base --is-ancestor` 为真（Release 首位作业就是这步）。
+
+### 四 边界
+
+- 本轮的「真机读数」只覆盖**拒绝句的界面语言**这一条；`background-delivery-labels` 那批（别人的在制）不在本版。
+- Windows 真机读数仍缺；国产模型适配矩阵仍只是审计结论 —— 两条都写进了 CHANGELOG 的「不在本版」。
+
 ## 一百八十二、本轮追加（执行器，2026-11-18 05:1x–）—— v2.29.0 发版：v2.28.0 两次没页的真凶分开定因，两批合并发出
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
