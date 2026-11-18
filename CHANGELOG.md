@@ -1,5 +1,35 @@
 # PureScience 更新日记
 
+## v2.30.1 — 2026-11-18
+
+### 修回一个启动即死的构建（v2.30.0 已撤）
+
+v2.30.0 里的「一键重装」新开了 IPC 通道 `settings:repair-runtime`，但**没有登记进应用命令清单**。应用启动时
+的清单认证直接抛错，窗口打不开：
+
+```
+Application command inventory mismatch: local Web commands contains unknown command settings:repair-runtime
+```
+
+`v2.30.0` 的 tag 含这条改动，因此**没有发布页、Release 跑批已取消**，本版取而代之。
+
+### 一键重装：改用现有通道组合，不再新开命令
+
+不新增任何通道，直接用卡片本来就在用的两件事拼出「修复」：先卸载应用托管的那一份，再按托管源安装一次。
+
+- 顺序就是语义：先装后卸会留下坏的副本，单测断言调用顺序（`uninstall` → `install`）；
+- **CodeBuddy 明确拒绝**：它走 npm、没有托管卸载路径，管理器直接说「要在它自己的卡片里重装」，不会在残缺副本上叠装；
+- 面板诊断横幅新增一行：说明「先卸载应用托管的这一份，再重新安装一次」+ 按钮「重新安装该智能体」（九语），
+  安装中显示「正在重新安装…」并禁用。
+
+### 真窗口验证（本版新增）
+
+`e2e/agent-runtime-repair.spec.ts`：真机跑通 —— 界面语言锁在 OpenCode，活动框架切到**未安装的 Codex**，
+打开智能体面板触发环境检查，横幅真实出现；点按钮后进入「正在重新安装…」。**1 passed（36.0s）**。
+
+读数：`SettingsPage.render` 65 例（含新用例：横幅按钮出现、说明在旁、点击后先 `uninstallClaude` 再
+`installClaude({source:'managed'})` 且顺序正确）、runtime-slice 26 例、命令清单认证 7 例；`tsc` web 0 错。
+
 ## v2.30.0 — 2026-11-18
 
 ### 中文检索：不再要求逐字连写（本版主线）
