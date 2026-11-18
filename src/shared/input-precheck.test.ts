@@ -49,6 +49,23 @@ describe('input pre-check', () => {
     ])
   })
 
+  it('does not mistake units, gene panels or prose fragments for inputs', () => {
+    // Measured 2026-11-18: a pathology task ("TMB 8 mut/Mb，未报告 HER2/RET/MET") made the app tell the
+    // agent that `mut/Mb` and `HER2/RET/MET` were missing files, and the first reply opened by denying it.
+    const candidates = extractInputPathCandidates(
+      'TMB 8 mut/Mb，MSI 稳定，未报告 HER2/RET/MET 等；另见 1.5 mg/kg 与 `、`/转录本版本` 片段'
+    )
+
+    expect(candidates).toEqual([])
+  })
+
+  it('still checks a directory the user pointed at', () => {
+    expect(extractInputPathCandidates('原始数据放在 /mnt/raw/ 和 ~/exports/')).toEqual([
+      '/mnt/raw/',
+      '~/exports/'
+    ])
+  })
+
   it('separates the paths that exist from the ones that do not', () => {
     const result = assessInputPaths(
       '分析 sim_a.csv 与 sim_b.csv，用 data/params.json',

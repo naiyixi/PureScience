@@ -116,4 +116,44 @@ describe('agent message chunk projection', () => {
     expect(next.messages[0]!.eventIds).toEqual(['event-1', 'event-2'])
     expect(next.messages[0]!.streamId).toBe('stream-9')
   })
+
+  // One ACP event can stream for longer than a coalescing window, so the same event id arrives again with
+  // new text. Deduplicating on ids alone dropped that continuation: a 1166-character reply persisted as
+  // 617 characters, with six missing spans at window boundaries, while the agent's own transcript was whole.
+  it('keeps a continuation of an event that spans more than one flush window', () => {
+    const session = createSession({
+      messages: [createMessage({ streamId: 'stream-1', content: '第一段', eventIds: ['event-1'] })]
+    })
+
+    const { session: next } = projectAgentMessageChunk(session, {
+      sessionId: 'session-1',
+      streamId: 'stream-1',
+      eventId: 'event-1',
+      content: '，第二段'
+    })
+
+    expect(next.messages[0]!.content).toBe('第一段，第二段')
+    expect(next.messages[0]!.eventIds).toEqual(['event-1', 'event-1'])
+  })
+
+  it('still drops a replay whose ids and text both landed already', () => {
+    const session = createSession({
+      messages: [
+        createMessage({
+          streamId: 'stream-1',
+          content: '第一段，第二段',
+          eventIds: ['event-1', 'event-1']
+        })
+      ]
+    })
+
+    const { session: next } = projectAgentMessageChunk(session, {
+      sessionId: 'session-1',
+      streamId: 'stream-1',
+      eventId: 'event-1',
+      content: '第一段'
+    })
+
+    expect(next.messages[0]!.content).toBe('第一段，第二段')
+  })
 })

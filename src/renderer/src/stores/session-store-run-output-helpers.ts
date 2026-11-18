@@ -143,6 +143,22 @@ const appendUniqueStrings = (
   incomingItems: string[]
 ): string[] => Array.from(new Set([...(existingItems ?? []), ...incomingItems]))
 
+// Whether this batch has already been written into `content`.
+//
+// The event ids alone are not enough. One ACP event can stream for longer than a coalescing window, and
+// every flush of that event carries the same id — so `every(id => eventIds.includes(id))` was true for the
+// continuation of an event already being written, and the continuation was dropped. Measured 2026-11-18: a
+// 1166-character reply persisted as 617 characters with six missing spans, all at window boundaries, while
+// the agent's own transcript held the full text. A real replay re-sends both the ids and the text, so
+// requiring the text as well keeps replays idempotent without discarding streamed continuations.
+const batchAlreadyApplied = (
+  text: string,
+  eventIds: string[],
+  message: { eventIds: string[]; content: string }
+): boolean =>
+  eventIds.every((eventId) => message.eventIds.includes(eventId)) &&
+  (text.length === 0 || message.content.includes(text))
+
 export const projectAgentMessageChunk = (
   session: ChatSession,
   input: AppendAgentMessageChunkInput
@@ -158,7 +174,7 @@ export const projectAgentMessageChunk = (
     (message) =>
       message.role === 'agent' &&
       message.responseToMessageId === responseToMessageId &&
-      chunkEventIds.every((eventId) => message.eventIds.includes(eventId))
+      batchAlreadyApplied(content, chunkEventIds, message)
   )
   if (replayedGraphMessage) {
     return { session, result: { sessionId: input.sessionId, messageId: replayedGraphMessage.id } }
@@ -190,7 +206,7 @@ export const projectAgentMessageChunk = (
   const now = Date.now()
 
   if (existingMessage) {
-    if (chunkEventIds.every((eventId) => existingMessage.eventIds.includes(eventId))) {
+    if (batchAlreadyApplied(content, chunkEventIds, existingMessage)) {
       return { session, result, shouldCommit: true }
     }
     return {

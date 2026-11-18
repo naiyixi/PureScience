@@ -42,12 +42,25 @@ const PATH_LIKE = new RegExp(
 // Trailing punctuation that belongs to the sentence, not to the path.
 const TRAILING = /[.,;:!?，。；：！？、]+$/
 
+// Does this token name a file or a directory the user pointed at?
+//
+// `mut/Mb` (a unit), `HER2/RET/MET` (a gene panel) and `/转录本版本` (a fragment of a markdown sentence) all
+// have a slash, so the shape match above finds them. Reporting them as missing inputs put a false premise
+// into the agent's prompt — measured 2026-11-18, a pathology task whose first reply opened with 「系统提示
+// 缺失的 mut/Mb 与 HER2/RET/MET」 because the app had claimed two units and a gene list were files.
+//
+// So a token has to end like a file (a dotted extension) or like a directory (a trailing slash) to count.
+// The cost of the stricter rule is that an extensionless directory referenced as `data/2024` is no longer
+// checked; the cost of the looser one was a fabricated "these inputs do not exist" on ordinary prose.
+const FILE_OR_DIR_TAIL = /(?:\.[A-Za-z0-9]{1,6}|\/)$/
+
 /** The distinct path-like tokens a task text names, in order of first appearance. */
 export const extractInputPathCandidates = (text: string): string[] => {
   const found: string[] = []
   for (const match of text.replace(URL, ' ').matchAll(PATH_LIKE)) {
     const raw = (match[1] ?? '').replace(TRAILING, '').trim()
     if (raw.length === 0) continue
+    if (!FILE_OR_DIR_TAIL.test(raw)) continue
     if (found.includes(raw)) continue
     found.push(raw)
   }
