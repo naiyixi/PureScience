@@ -2613,6 +2613,7 @@ describe('session store public contract', () => {
       'src/renderer/src/hooks/useLifecycleSync.ts',
       'src/renderer/src/hooks/useUnreadTaskViewSync.ts',
       'src/renderer/src/lib/acp/history-preamble.ts',
+      'src/renderer/src/lib/acp/useAcpRuntime.ts',
       'src/renderer/src/lib/acp/useWorkspaceAgentRuntime.ts',
       'src/renderer/src/lib/acp/workspace-events.ts',
       'src/renderer/src/lib/active-session-display.ts',
