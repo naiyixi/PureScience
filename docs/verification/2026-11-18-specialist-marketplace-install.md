@@ -67,8 +67,19 @@
 落盘位置：`~/PureScience-DEV/artifacts/<project>/<session>/message-*/`（已实查文件存在、体积相符）。
 结论边界给得准：「可写 mpMRI 适合作穿刺前分诊/排除试验；不可写诊断准确率 93%、阴性即可不穿刺、可替代活检」，并做了患病率重标定（患病率 20% 时 PPV 由 51% 降到 28.1%）。
 
-## 八、仍未做的
+## 八、界面下拉绑定 + 重启恢复（同日补验）
+
+**界面路径**（此前只走过 API，没点过界面）：会话输入框「智能体控件」→ 鼠标悬停「专才」展开子菜单（7 项，含 `tcm-evidence-expert`、`radiology-imaging-expert`）→ 点选 → `resolveSessionSpecialist` 返回 `bound: tcm-evidence-expert`，会话文件里 `specialistId` 落地。
+
+**发现并修掉一个真缺陷**（`52061a0c`）：
+
+- `SessionBindingService` 的绑定只存在内存 Map，持久化由调用方写进会话文件——但**没有任何路径把文件读回内存**。
+- 实测：界面绑好 → 冷重启 → 会话文件仍是 `specialistId: tcm-evidence-expert`，`resolve()` 却答 `main`。界面照旧显示该专才，下一轮由主智能体执行，**无声降级、无报错**。
+- 修法：启动时用目录层（不含 messages / conversationGraph）恢复一次；已有内存绑定不覆盖，避免把启动后刚做的切换回退。
+- 复验：同一会话冷重启后 `resolve` 由 `main` 变为 `bound: tcm-evidence-expert`。
+- 测试：`session-binding.seed.test.ts` 4 例（恢复、不回退、幂等、清除后不复活），`src/main/specialist` **303 通过**。
+
+## 九、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
-- 专才绑定走的是 `setSessionSpecialist` API；界面下拉的实际点击路径仍未在本轮完整走一遍（早前那次是因为运行中不可切换才改用 API）。
-- 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）。
+- 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
