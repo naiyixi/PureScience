@@ -1,5 +1,39 @@
 # PureScience 更新日记
 
+## v2.30.2 — 2026-11-18
+
+### 修回一次没发出去的发布（v2.30.1 已撤）
+
+v2.30.1 的 Release 在 `build / Verify` 就失败了，四平台 build、签名公证与 `publish` 全部 `skipped` ⇒ **没有发布页**。
+失败的是一条**它自己提交的用例**：连接器保存被主进程拒绝时，界面应当把这句话翻成读者的语言 ——
+九语字典进了、那条回应用例也进了，**只有「把句子映射回字典键」的那一半留在工作区**。tag 无页，已删，本版取而代之。
+
+### 主进程的拒绝句：读者看到的是自己语言里那句话
+
+| 读者在表单里敲 | 主进程回的话（英文，带引号） | 之前屏幕上 | 现在（简体中文） |
+|---|---|---|---|
+| `arxiv` | `Connector name "arxiv" is reserved by a built-in connector` | 那句英文，连 Electron 的 invoke 信封一起 | 连接器名称「arxiv」与内置连接器保留的名称冲突 |
+| `arxiv`（ID 撞车） | `Connector ID "arxiv" is reserved by a built-in connector` | 同上 | 连接器 ID「arxiv」为内置连接器保留，不能使用 |
+| `my-tools` | `A custom connector with ID "my-tools" already exists` | 同上 | 已存在 ID 为「my-tools」的自定义连接器 |
+
+9 条逐字句子按字典键对上；6 条「句子中间夹着读者自己输入的名字 / ID」按模板处理：每个模板只捕获
+**一个**引号值、首尾锚定，所以近失句（多一个括号、首字母小写、没引号）原样留给读者，不被半翻。
+另有两条用例钉住这两件事：模板的字典键必须真的存在于九语字典（键名打错会把键名本身印上屏），
+三种近失样本必须一字不改。
+
+### 真机读数
+
+`e2e/certification/connector-refusal-language.spec.ts`（`npm run build:e2e` 之后的打包态）：界面语言设为
+**zh-Hant**，新建一个名字派生出的 ID 与内置连接器撞车的连接器（`clinical_genomics` → `clinical-genomics`，
+表单自己的预检因此放它过去，由主进程拒绝），`[role="alert"]` 上是
+**「連接器名稱「clinical_genomics」與內建連接器保留的名稱衝突」**，英文原句与 invoke 信封都不在屏上 ——
+**1 passed (14.7s)**。负向那一半是这条读数的重点：只断言「有文字出现」的话，界面照抄英文时也会过。
+
+### 不在本版
+
+- **Windows 真机读数仍缺**：那条读数只能在 Windows 车道上取，本机没有 Windows 环境，判据已写在排期里。
+- **国产模型适配矩阵**仍是审计结论，本版没有新的供应商适配代码。
+
 ## v2.30.1 — 2026-11-18
 
 ### 修回一个启动即死的构建（v2.30.0 已撤）
