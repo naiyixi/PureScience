@@ -462,14 +462,19 @@ export const cjkPartsOf = (term: string): string[] => {
 }
 
 /**
- * The two halves of a CJK term, for the case where the phrase was written in another order: 深度学习医学影像
- * against 医学影像中的深度学习. Only terms of four or more characters have halves worth testing — a
- * two-character term split in two is just its characters, which is the fuzzy match this deliberately is not.
+ * Splits of a CJK term into two contiguous halves, for the case where the phrase was written in another
+ * order: 深度学习医学影像 against 医学影像中的深度学习. The join is not at the midpoint — the two halves are
+ * usually of different length — so every split of two characters or more is offered and the caller takes
+ * the first one whose parts both appear. Only terms of four or more characters are split: a two-character
+ * term has no halves, only characters, which is the fuzzy match this deliberately is not.
  */
-export const cjkHalvesOf = (term: string): string[] => {
+export const cjkSplitsOf = (term: string): Array<[string, string]> => {
   if (term.length < 4 || !CJK_ONLY.test(term)) return []
-  const midpoint = Math.ceil(term.length / 2)
-  return [term.slice(0, midpoint), term.slice(midpoint)]
+  const splits: Array<[string, string]> = []
+  for (let index = 2; index <= term.length - 2; index += 1) {
+    splits.push([term.slice(0, index), term.slice(index)])
+  }
+  return splits
 }
 
 export const collectTermMatches = ({
@@ -516,15 +521,15 @@ export const collectTermMatches = ({
     // rule: 习医 and 学影 straddle the join and appear nowhere. The two halves are both there, which is
     // what a reordered phrase looks like — accepting it is worth more than losing the document, but it is
     // the weakest evidence we take, so it contributes exactly one match and never a pile of overlaps.
-    const halves = cjkHalvesOf(term)
-    if (halves.length !== 2) return []
-    const halfMatches = halves.map(
-      (half) => collectMatches({ text, query: half, field, maxMatches: 1 })[0]
-    )
-    if (halfMatches.some((match) => match === undefined)) return []
-    const [firstHalfMatch] = halfMatches
-    if (firstHalfMatch === undefined) return []
-    collected.push({ ...firstHalfMatch, term, matchKind: 'halves' as const })
+    const splits = cjkSplitsOf(term)
+    if (splits.length === 0) return []
+    for (const [head, tail] of splits) {
+      const headMatch = collectMatches({ text, query: head, field, maxMatches: 1 })[0]
+      if (headMatch === undefined) continue
+      if (collectMatches({ text, query: tail, field, maxMatches: 1 }).length === 0) continue
+      collected.push({ ...headMatch, term, matchKind: 'halves' as const })
+      break
+    }
   }
 
   return collected.slice(0, GLOBAL_SEARCH_MAX_MATCHES_PER_HIT)
