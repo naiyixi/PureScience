@@ -20182,3 +20182,54 @@ attach；界面恢复路径本身是好的：消息数 13 → 17、回复 46/456
 - ② 负载闸解除且桌面会话收工后：`npm run build:e2e` + 隔离实例补「中断态继续」的真机读数（上一轮唯一缺的那条）。
 - ③ 路线图 1.4（MCP `activity`/`routine` 两个工具）仍未开工，是 v3.1 里唯一的空位；下一轮可先在
   隔离工作树里读 `src/main/literature/mcp-server.ts` 与 `settings.routine` 的既有面再定形状。
+
+## 三百五十六、本轮追加（执行器，2026-11-19 07:2x–）—— 主干 Windows 红先修；SDK「发现不到实例」定到删除不认主
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == d9fb3986`，本地不领先；共享工作树带 12 个未提交路径 + 7 个未跟踪路径
+  （`src/main/ro-crate/*`、`src/main/artifacts/mcp-server*`、`src/main/external-mcp/*`、
+  `src/main/application-command-composition.ts`、`src/shared/{ro-crate,background-delivery-labels}*`、
+  三份更早的证据档）—— 全部归桌面会话，**一个字节没碰**，本轮只 `git add` 自己那两组文件。
+- 桌面会话此刻做的正是排期 **1.4**（`external-mcp/surface.ts` 里已写出 `session_activity` + `list_schedules`
+  两个工具）与 **4.3**（ro-crate 作者/许可）；354 节也记过「4.3 的正主是桌面会话」⇒ 本轮两项都不碰。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；C 段外部阻塞。
+
+### 一 主干红（先修红，再谈新单元）
+
+`d9fb3986` 上 `Windows Full Test` 分片 4/8 failure、`Nightly` success（作业级日志读出来的）：
+
+```
+FAIL src/main/settings/pdf-service.test.ts > resolvePdfSourcePath > resolves anything else against the data root
+AssertionError: expected '\data\.pdfs\a.json' to be '/data/.pdfs/a.json'
+```
+
+是**上一轮自己写的用例**：`resolvePdfSourcePath` 的「算不算绝对」问的是传入的 `platform`，而拼接用的是宿主
+`join` ⇒ 在 Windows runner 上模拟 darwin/linux 的断言被拼成反斜杠。生产一直传 `process.platform`，两支重合，
+行为不变。修法：拼接改成 `platform === 'win32' ? win32.join : posix.join`（注入参数在两半里都权威），
+用例补一条 win32 相对名拼到盘符根/UNC 根的断言。提交 `d8ff474a`，已推。
+
+### 二 本轮交付：状态文件删除要认主（提交 `6c6c5143`）
+
+证据档 `docs/evidence/2026-11-19-web-service-state-ownership.md`。要点：
+
+- **发布路径是好的**（真机读数，没有重启任何实例）：隔离实例 `/tmp/ps-verify23-config` 里登记在
+  （pid 24530 / 44222 / 2.30.2），`node packages/purescience/cli.mjs status` 回 `running (PID 24530, port 44222)`；
+  用户那个根里 `web-token` 在、`web-service.json` 不在 ⇒ 问题不在写侧。
+- **坏在删除**：`removeWebServiceState` 无条件删，唯一调用方是控制器 `close()`。两代进程短暂重叠（dev 重启、
+  更新时新进程先起）时，旧一代收尾会删掉新一代刚写的登记，且全程无日志 ⇒ 事后与「从没写过」同形。
+- 修法：`removeWebServiceStateIfOwned(configRoot, pid)`，不是自己写的就一个字节不动；读不出来的记录交给读路径。
+- 门禁：web-service 10 文件 83 passed；application-command-wiring 5 passed；双 typecheck 0 错；eslint 四文件 0。
+  变异：认主判据改恒真 ⇒ 新增两条用例 2 failed，恢复后全绿。
+
+### 三 边界
+
+1. 「44100 那次就是这条」仍是**推断**（登记几小时前消失、无收尾日志）；已断言的是这条缺陷真实存在且已修。
+2. 真机复现两代重叠需重启实例，负载闸下（空闲页 ~150 MB、swap 7.5/8.2 GB）没做，判据写在证据档 §五。
+3. 修复要等下一次 dev 重启/发版才生效；当前 44100 实例的登记不会自己回来。
+
+### 四 下一轮第一步
+
+- ① 读 `d8ff474a` 的双车道判决（Windows 分片 4/8 是否转绿）；`6c6c5143` 在它落定后再推，**只推一次**。
+- ② 负载解除后的两条真机读数按优先级：状态文件两代重叠（证据档 §五 判据）→ 中断态「继续」。
+- ③ 排期 1.4 / 4.3 仍归桌面会话；它们提交后本轮不再认领，避免重复交付。
