@@ -743,6 +743,38 @@ export class AgentRuntimeManager {
     return result
   }
 
+  /**
+   * Repairs one managed runtime in place: uninstall, then install again, reporting both halves.
+   *
+   * Every failure the post-install check can now name — a missing file, a partial download, an artifact
+   * built for the other architecture — has the same manual remedy, "delete it and reinstall", and we were
+   * asking the user to perform that by hand on a machine that had just failed to download. This performs
+   * the remedy, reusing the installer's own progress events so the panel shows what happened instead of a
+   * spinner. It deliberately does not decide whether a repair is warranted: the caller has the diagnosis.
+   */
+  async repairRuntime(
+    framework: AgentFrameworkId,
+    onEvent: (event: ClaudeInstallEvent) => void = () => undefined
+  ): Promise<ClaudeInstallResult> {
+    switch (framework) {
+      case 'claude-code':
+        await this.uninstallClaude()
+        return this.installClaude({ source: 'managed' }, onEvent)
+      case 'opencode':
+        await this.uninstallOpencode()
+        return this.installOpencode({ source: 'managed' }, onEvent)
+      case 'codex':
+        await this.uninstallCodex()
+        return this.installCodex({ source: 'managed' }, onEvent)
+      // CodeBuddy installs from npm and has no managed uninstall here, so a repair cannot honestly
+      // promise a clean slate: say so instead of reinstalling on top of whatever is on disk.
+      case 'codebuddy':
+        throw new Error(
+          'CodeBuddy installs from npm and has no managed uninstall; reinstall it from its own card.'
+        )
+    }
+  }
+
   async uninstallClaude(): Promise<RuntimeUninstallResult> {
     const settings = await this.repository.getSettings()
     const resolvedPath = settings.claude?.resolvedPath
