@@ -2886,6 +2886,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Wiederherstellen',
   'settings.restoreProject': 'Projekt wiederherstellen',
   'settings.restoreProjectFirst': 'Stellen Sie zuerst das Projekt wieder her.',
+  'settings.repairRuntimeNow': "Diesen Agenten neu installieren",
+  'settings.repairRuntimeRunning': "Wird neu installiert…",
+  'settings.repairRuntimeHint': "Entfernt die app-verwaltete Kopie und installiert sie erneut.",
   'settings.retryProbe': 'Test erneut versuchen',
   'settings.retrySetup': 'Einrichtung erneut versuchen',
   'settings.revealInFinder': 'Im Finder anzeigen',
@@ -5511,5 +5514,23 @@ export const de: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     'Ein eigener Konnektor mit der ID "{value}" ist bereits installiert.',
   'connectorExport.oauthOnly': 'Nur OAuth-Konfiguration; Tokens sind nicht enthalten.',
-  'connectorExport.namesOnly': 'Nur Namen: {names}'
+  'connectorExport.namesOnly': 'Nur Namen: {names}',
+  'mainMessage.connectorFileTooLarge':
+    'Konfigurationsdateien für Konnektoren dürfen höchstens 256 KiB groß sein',
+  'mainMessage.connectorFilesUnavailable':
+    'Konfigurationsdateien für Konnektoren sind nicht verfügbar',
+  'mainMessage.connectorExportUnsafe':
+    'Die Konnektor-Konfiguration ist nicht sicher zum Exportieren',
+  'mainMessage.connectorExportChanged':
+    'Die Konnektor-Konfiguration wurde nach der Vorschau geändert; bitte erneut prüfen',
+  'mainMessage.connectorNameReserved':
+    'Der Name „{name}“ ist für einen eingebauten Konnektor reserviert',
+  'mainMessage.connectorNameExists':
+    'Ein eigener Konnektor mit dem Namen „{name}“ existiert bereits',
+  'mainMessage.connectorNameAliasConflict':
+    'Der Name „{name}“ kollidiert mit einer bestehenden Konnektor-Identität',
+  'mainMessage.connectorIdReserved': 'Die ID „{id}“ ist für einen eingebauten Konnektor reserviert',
+  'mainMessage.connectorIdExists': 'Ein eigener Konnektor mit der ID „{id}“ existiert bereits',
+  'mainMessage.connectorIdAliasConflict':
+    'Die ID „{id}“ kollidiert mit einem bestehenden Konnektor-Alias'
 }

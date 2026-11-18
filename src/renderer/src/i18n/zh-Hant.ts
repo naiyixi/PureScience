@@ -2591,6 +2591,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.restore': '還原',
   'settings.restoreProject': '還原專案',
   'settings.restoreProjectFirst': '請先還原專案。',
+  'settings.repairRuntimeNow': "重新安裝該智能體",
+  'settings.repairRuntimeRunning': "正在重新安裝…",
+  'settings.repairRuntimeHint': "先解除安裝應用託管的這一份，再重新安裝一次。",
   'settings.retryProbe': '重新探查',
   'settings.retrySetup': '重試設定',
   'settings.revealInFinder': '在 Finder 中顯示',
@@ -4915,5 +4918,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.reservedSlug': '連接器 ID "{value}" 已被內建連接器佔用。',
   'connectorImport.diag.duplicateSlug': '已安裝 ID 為 "{value}" 的自訂連接器。',
   'connectorExport.oauthOnly': '僅匯出 OAuth 設定，不含權杖。',
-  'connectorExport.namesOnly': '僅名稱：{names}'
+  'connectorExport.namesOnly': '僅名稱：{names}',
+  'mainMessage.connectorFileTooLarge': '連接器組態檔不得超過 256 KiB',
+  'mainMessage.connectorFilesUnavailable': '連接器組態檔無法使用',
+  'mainMessage.connectorExportUnsafe': '連接器組態不安全，無法匯出',
+  'mainMessage.connectorExportChanged': '預覽後連接器組態已變更，請重新檢查',
+  'mainMessage.connectorNameReserved': '連接器名稱「{name}」與內建連接器保留的名稱衝突',
+  'mainMessage.connectorNameExists': '已存在名為「{name}」的自訂連接器',
+  'mainMessage.connectorNameAliasConflict': '連接器名稱「{name}」與既有連接器身分衝突',
+  'mainMessage.connectorIdReserved': '連接器 ID「{id}」為內建連接器保留，無法使用',
+  'mainMessage.connectorIdExists': '已存在 ID 為「{id}」的自訂連接器',
+  'mainMessage.connectorIdAliasConflict': '連接器 ID「{id}」與既有連接器別名衝突'
 }

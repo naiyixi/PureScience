@@ -2794,6 +2794,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.restore': '復元',
   'settings.restoreProject': 'プロジェクトを復元',
   'settings.restoreProjectFirst': '先にプロジェクトを復元してください。',
+  'settings.repairRuntimeNow': "このエージェントを再インストール",
+  'settings.repairRuntimeRunning': "再インストール中…",
+  'settings.repairRuntimeHint': "アプリ管理のコピーを削除してから、もう一度インストールします。",
   'settings.retryProbe': 'プローブを再試行',
   'settings.retrySetup': 'セットアップを再試行',
   'settings.revealInFinder': 'Finder で表示',
@@ -5327,5 +5330,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     'ID "{value}" のカスタムコネクタは既にインストールされています。',
   'connectorExport.oauthOnly': 'OAuth 設定のみで、トークンは含みません。',
-  'connectorExport.namesOnly': '名前のみ: {names}'
+  'connectorExport.namesOnly': '名前のみ: {names}',
+  'mainMessage.connectorFileTooLarge': 'コネクタ設定ファイルは 256 KiB 以下である必要があります',
+  'mainMessage.connectorFilesUnavailable': 'コネクタ設定ファイルを利用できません',
+  'mainMessage.connectorExportUnsafe': 'コネクタ設定は安全でないためエクスポートできません',
+  'mainMessage.connectorExportChanged':
+    'プレビュー後にコネクタ設定が変更されました。もう一度確認してください',
+  'mainMessage.connectorNameReserved':
+    'コネクタ名「{name}」は組み込みコネクタが予約している名前です',
+  'mainMessage.connectorNameExists': '「{name}」という名前のカスタムコネクタは既に存在します',
+  'mainMessage.connectorNameAliasConflict':
+    'コネクタ名「{name}」は既存のコネクタ識別子と競合します',
+  'mainMessage.connectorIdReserved': 'コネクタ ID「{id}」は組み込みコネクタが予約しています',
+  'mainMessage.connectorIdExists': 'ID「{id}」のカスタムコネクタは既に存在します',
+  'mainMessage.connectorIdAliasConflict': 'コネクタ ID「{id}」は既存のコネクタ別名と競合します'
 }

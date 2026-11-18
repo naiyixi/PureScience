@@ -1543,6 +1543,9 @@ export const en: Record<ZhKey, string> = {
   'settings.failedToSetScratchRoot': 'Failed to set scratch root.',
   'settings.concurrencyMustBeInteger': 'Must be an integer between 1 and 500.',
   'settings.failedToSetConcurrencyLimit': 'Failed to set concurrency limit.',
+  'settings.repairRuntimeNow': "Reinstall this agent",
+  'settings.repairRuntimeRunning': "Reinstalling…",
+  'settings.repairRuntimeHint': "Uninstalls the app-managed copy, then installs it again.",
   'settings.retryProbe': 'Retry probe',
   'settings.detailsDocument': 'Details document',
   'settings.scratchRootPath': 'Scratch root path',
@@ -5355,5 +5358,19 @@ export const en: Record<ZhKey, string> = {
   'connectorImport.diag.duplicateSlug':
     'A custom Connector with ID "{value}" is already installed.',
   'connectorExport.oauthOnly': 'OAuth configuration only; tokens excluded',
-  'connectorExport.namesOnly': 'Names only: {names}'
+  'connectorExport.namesOnly': 'Names only: {names}',
+  'mainMessage.connectorFileTooLarge': 'Connector configuration files must be 256 KiB or smaller',
+  'mainMessage.connectorFilesUnavailable': 'Connector configuration files are unavailable',
+  'mainMessage.connectorExportUnsafe': 'Connector configuration is not safe to export',
+  'mainMessage.connectorExportChanged':
+    'Connector configuration changed after preview; review it again',
+  'mainMessage.connectorNameReserved':
+    'Connector name "{name}" is reserved by a built-in connector',
+  'mainMessage.connectorNameExists': 'A custom connector named "{name}" already exists',
+  'mainMessage.connectorNameAliasConflict':
+    'Connector name "{name}" conflicts with an existing Connector identity',
+  'mainMessage.connectorIdReserved': 'Connector ID "{id}" is reserved by a built-in connector',
+  'mainMessage.connectorIdExists': 'A custom connector with ID "{id}" already exists',
+  'mainMessage.connectorIdAliasConflict':
+    'Connector ID "{id}" conflicts with an existing Connector alias'
 }

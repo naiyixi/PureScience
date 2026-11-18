@@ -21,6 +21,7 @@ import {
 
 type RuntimeCommands = Pick<
   Window['api']['settings'],
+  | 'repairRuntime'
   | 'getSettings'
   | 'getPreflight'
   | 'isNpmAvailable'
@@ -122,6 +123,7 @@ const createCommands = (): RuntimeCommandMocks => ({
   installOpencode: vi.fn().mockResolvedValue({ installId: 'opencode-1', ok: true }),
   installCodex: vi.fn().mockResolvedValue({ installId: 'codex-1', ok: true }),
   installCodebuddy: vi.fn().mockResolvedValue({ installId: 'codebuddy-1', ok: true }),
+  repairRuntime: vi.fn().mockResolvedValue({ ok: true }),
   uninstallClaude: vi.fn().mockResolvedValue(snapshot()),
   uninstallOpencode: vi.fn().mockResolvedValue(snapshot()),
   uninstallCodex: vi.fn().mockResolvedValue(snapshot()),

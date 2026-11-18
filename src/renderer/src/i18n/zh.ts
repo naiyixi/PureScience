@@ -1454,6 +1454,9 @@ export const zh = {
   'settings.failedToSetScratchRoot': '设置暂存根目录失败。',
   'settings.concurrencyMustBeInteger': '必须是 1 到 500 之间的整数。',
   'settings.failedToSetConcurrencyLimit': '设置并发限制失败。',
+  'settings.repairRuntimeNow': "重新安装该智能体",
+  'settings.repairRuntimeRunning': "正在重新安装…",
+  'settings.repairRuntimeHint': "先卸载应用托管的这一份，再重新安装一次。",
   'settings.retryProbe': '重新探测',
   'settings.detailsDocument': '详细信息文档',
   'settings.scratchRootPath': '暂存根目录路径',
@@ -4970,7 +4973,17 @@ export const zh = {
   'connectorImport.diag.reservedSlug': '连接器 ID "{value}" 已被内置连接器占用。',
   'connectorImport.diag.duplicateSlug': '已安装 ID 为 "{value}" 的自定义连接器。',
   'connectorExport.oauthOnly': '仅导出 OAuth 配置，不含令牌。',
-  'connectorExport.namesOnly': '仅名称：{names}'
+  'connectorExport.namesOnly': '仅名称：{names}',
+  'mainMessage.connectorFileTooLarge': '连接器配置文件必须不超过 256 KiB',
+  'mainMessage.connectorFilesUnavailable': '连接器配置文件不可用',
+  'mainMessage.connectorExportUnsafe': '连接器配置不安全，无法导出',
+  'mainMessage.connectorExportChanged': '预览后连接器配置已改动，请重新检查',
+  'mainMessage.connectorNameReserved': '连接器名称「{name}」与内置连接器保留的名称冲突',
+  'mainMessage.connectorNameExists': '已存在名为「{name}」的自定义连接器',
+  'mainMessage.connectorNameAliasConflict': '连接器名称「{name}」与已有连接器身份冲突',
+  'mainMessage.connectorIdReserved': '连接器 ID「{id}」为内置连接器保留，不能使用',
+  'mainMessage.connectorIdExists': '已存在 ID 为「{id}」的自定义连接器',
+  'mainMessage.connectorIdAliasConflict': '连接器 ID「{id}」与已有连接器别名冲突'
 }
 
 export type ZhKey = keyof typeof zh

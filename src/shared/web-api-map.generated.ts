@@ -310,6 +310,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.previewSkillZip': 'settings:preview-skill-zip',
   'settings.refreshProviderModels': 'settings:refresh-provider-models',
   'settings.removeCustomServer': 'settings:remove-custom-server',
+  'settings.repairRuntime': 'settings:repair-runtime',
   'settings.replayPendingSkillImportApprovals': 'skills:conversation-import-replay-pending',
   'settings.respondConnectorApproval': 'connectors:approval-respond',
   'settings.respondSkillImportApproval': 'skills:conversation-import-respond',

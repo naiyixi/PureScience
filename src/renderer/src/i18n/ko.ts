@@ -2749,6 +2749,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.restore': '복원',
   'settings.restoreProject': '프로젝트 복원',
   'settings.restoreProjectFirst': '먼저 프로젝트를 복원하세요.',
+  'settings.repairRuntimeNow': "이 에이전트 다시 설치",
+  'settings.repairRuntimeRunning': "다시 설치하는 중…",
+  'settings.repairRuntimeHint': "앱이 관리하는 사본을 제거한 뒤 다시 설치합니다.",
   'settings.retryProbe': '프로브 다시 시도',
   'settings.retrySetup': '설정 다시 시도',
   'settings.revealInFinder': 'Finder에 표시',
@@ -5233,5 +5236,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     'ID "{value}"의 사용자 지정 커넥터가 이미 설치되어 있습니다.',
   'connectorExport.oauthOnly': 'OAuth 구성만 포함되며 토큰은 제외됩니다.',
-  'connectorExport.namesOnly': '이름만: {names}'
+  'connectorExport.namesOnly': '이름만: {names}',
+  'mainMessage.connectorFileTooLarge': '커넥터 구성 파일은 256 KiB 이하여야 합니다',
+  'mainMessage.connectorFilesUnavailable': '커넥터 구성 파일을 사용할 수 없습니다',
+  'mainMessage.connectorExportUnsafe': '커넥터 구성이 안전하지 않아 내보낼 수 없습니다',
+  'mainMessage.connectorExportChanged': '미리 본 뒤 커넥터 구성이 변경되었습니다. 다시 확인하세요',
+  'mainMessage.connectorNameReserved':
+    '커넥터 이름 「{name}」은(는) 기본 제공 커넥터가 예약한 이름입니다',
+  'mainMessage.connectorNameExists': '「{name}」 이름의 사용자 지정 커넥터가 이미 있습니다',
+  'mainMessage.connectorNameAliasConflict':
+    '커넥터 이름 「{name}」이(가) 기존 커넥터 식별자와 충돌합니다',
+  'mainMessage.connectorIdReserved': '커넥터 ID 「{id}」은(는) 기본 제공 커넥터가 예약했습니다',
+  'mainMessage.connectorIdExists': 'ID 「{id}」인 사용자 지정 커넥터가 이미 있습니다',
+  'mainMessage.connectorIdAliasConflict': '커넥터 ID 「{id}」이(가) 기존 커넥터 별칭과 충돌합니다'
 }

@@ -1,4 +1,5 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
+import type { AgentFrameworkId } from '../agent-framework'
 import { resolveDataRoot } from '../storage-root'
 import { downloadLocalParsingModel, readLocalParsingModels } from '../engines/local-parsing-models'
 import type { WebContents } from 'electron'
@@ -158,6 +159,10 @@ const registerSettingsIpcHandlers = ({
 
   ipcMainHandle('settings:install-claude', (_event, request: InstallClaudeRequest) =>
     service.installClaude(request, broadcastInstallEvent)
+  )
+
+  ipcMainHandle('settings:repair-runtime', (_event, framework: AgentFrameworkId) =>
+    service.repairRuntime(framework, broadcastInstallEvent)
   )
 
   ipcMainHandle('settings:uninstall-claude', () =>

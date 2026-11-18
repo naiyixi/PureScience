@@ -618,6 +618,10 @@ export interface PureScienceAPI {
     installOpencode(request: InstallOpencodeRequest): Promise<ClaudeInstallResult>
     installCodex(request: InstallCodexRequest): Promise<ClaudeInstallResult>
     installCodebuddy(request: InstallCodebuddyRequest): Promise<ClaudeInstallResult>
+    /** Repairs one managed runtime in place: uninstall, then install again. */
+    repairRuntime(
+      framework: 'claude-code' | 'opencode' | 'codex' | 'codebuddy'
+    ): Promise<ClaudeInstallResult>
     uninstallClaude(): Promise<SettingsSnapshot>
     uninstallOpencode(): Promise<SettingsSnapshot>
     uninstallCodex(): Promise<SettingsSnapshot>

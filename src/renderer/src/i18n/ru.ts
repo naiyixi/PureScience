@@ -2798,6 +2798,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Восстановить',
   'settings.restoreProject': 'Восстановить проект',
   'settings.restoreProjectFirst': 'Сначала восстановите проект.',
+  'settings.repairRuntimeNow': "Переустановить этого агента",
+  'settings.repairRuntimeRunning': "Переустановка…",
+  'settings.repairRuntimeHint': "Удаляет копию, управляемую приложением, и устанавливает её заново.",
   'settings.retryProbe': 'Повторить проверку хоста',
   'settings.retrySetup': 'Повторить настройку',
   'settings.revealInFinder': 'Показать в Finder',
@@ -5349,5 +5352,20 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     'Пользовательский коннектор с идентификатором "{value}" уже установлен.',
   'connectorExport.oauthOnly': 'Только конфигурация OAuth, без токенов.',
-  'connectorExport.namesOnly': 'Только имена: {names}'
+  'connectorExport.namesOnly': 'Только имена: {names}',
+  'mainMessage.connectorFileTooLarge':
+    'Файлы конфигурации коннектора должны быть не больше 256 KiB',
+  'mainMessage.connectorFilesUnavailable': 'Файлы конфигурации коннектора недоступны',
+  'mainMessage.connectorExportUnsafe': 'Конфигурацию коннектора нельзя безопасно экспортировать',
+  'mainMessage.connectorExportChanged':
+    'Конфигурация коннектора изменилась после предпросмотра; проверьте её снова',
+  'mainMessage.connectorNameReserved': 'Имя «{name}» зарезервировано встроенным коннектором',
+  'mainMessage.connectorNameExists': 'Пользовательский коннектор с именем «{name}» уже существует',
+  'mainMessage.connectorNameAliasConflict':
+    'Имя «{name}» конфликтует с существующей идентичностью коннектора',
+  'mainMessage.connectorIdReserved': 'Идентификатор «{id}» зарезервирован встроенным коннектором',
+  'mainMessage.connectorIdExists':
+    'Пользовательский коннектор с идентификатором «{id}» уже существует',
+  'mainMessage.connectorIdAliasConflict':
+    'Идентификатор «{id}» конфликтует с существующим псевдонимом коннектора'
 }

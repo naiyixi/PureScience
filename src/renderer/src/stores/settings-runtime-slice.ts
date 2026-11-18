@@ -49,6 +49,9 @@ export type RuntimeSetupActions = {
   installOpencode: (source?: ClaudeInstallSource) => Promise<ClaudeInstallResult>
   installCodex: (source?: CodexInstallSource) => Promise<ClaudeInstallResult>
   installCodebuddy: () => Promise<ClaudeInstallResult>
+  // Repairs one managed runtime (uninstall → install). Shown on a runtime whose post-install check
+  // failed: the check names the remedy, this performs it.
+  repairRuntime: (framework: AgentFrameworkId) => Promise<void>
   uninstallClaude: () => Promise<void>
   uninstallOpencode: () => Promise<void>
   uninstallCodex: () => Promise<void>
@@ -76,6 +79,7 @@ type RuntimeSetupCommands = Pick<
   | 'installOpencode'
   | 'installCodex'
   | 'installCodebuddy'
+  | 'repairRuntime'
   | 'uninstallClaude'
   | 'uninstallOpencode'
   | 'uninstallCodex'
@@ -371,6 +375,12 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
     runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codebuddy', (commands) =>
       commands.installCodebuddy({ source: 'npm' })
     ),
+
+  repairRuntime: async (framework) => {
+    await runRuntimeInstall(set, get, getCommands, reconcileSnapshot, framework, (commands) =>
+      commands.repairRuntime(framework)
+    )
+  },
 
   uninstallClaude: async () => {
     reconcileSnapshot(await getCommands().uninstallClaude())

@@ -2876,6 +2876,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Restaurer',
   'settings.restoreProject': 'Restaurer le projet',
   'settings.restoreProjectFirst': 'Restaurez d’abord le projet.',
+  'settings.repairRuntimeNow': "Réinstaller cet agent",
+  'settings.repairRuntimeRunning': "Réinstallation…",
+  'settings.repairRuntimeHint': "Désinstalle la copie gérée par l'application, puis la réinstalle.",
   'settings.retryProbe': 'Relancer le sondage',
   'settings.retrySetup': 'Réessayer la configuration',
   'settings.revealInFinder': 'Afficher dans le Finder',
@@ -5479,5 +5482,22 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     "Un connecteur personnalisé avec l'ID « {value} » est déjà installé.",
   'connectorExport.oauthOnly': 'Configuration OAuth uniquement ; jetons exclus.',
-  'connectorExport.namesOnly': 'Noms uniquement : {names}'
+  'connectorExport.namesOnly': 'Noms uniquement : {names}',
+  'mainMessage.connectorFileTooLarge':
+    'Les fichiers de configuration de connecteur doivent faire 256 KiB ou moins',
+  'mainMessage.connectorFilesUnavailable':
+    'Les fichiers de configuration de connecteur sont indisponibles',
+  'mainMessage.connectorExportUnsafe':
+    'La configuration du connecteur ne peut pas être exportée en toute sécurité',
+  'mainMessage.connectorExportChanged':
+    "La configuration du connecteur a changé après l'aperçu ; vérifiez-la à nouveau",
+  'mainMessage.connectorNameReserved': 'Le nom « {name} » est réservé par un connecteur intégré',
+  'mainMessage.connectorNameExists': 'Un connecteur personnalisé nommé « {name} » existe déjà',
+  'mainMessage.connectorNameAliasConflict':
+    'Le nom « {name} » entre en conflit avec une identité de connecteur existante',
+  'mainMessage.connectorIdReserved': "L'identifiant « {id} » est réservé par un connecteur intégré",
+  'mainMessage.connectorIdExists':
+    "Un connecteur personnalisé avec l'identifiant « {id} » existe déjà",
+  'mainMessage.connectorIdAliasConflict':
+    "L'identifiant « {id} » entre en conflit avec un alias de connecteur existant"
 }

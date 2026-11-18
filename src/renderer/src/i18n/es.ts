@@ -2857,6 +2857,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.restore': 'Restaurar',
   'settings.restoreProject': 'Restaurar proyecto',
   'settings.restoreProjectFirst': 'Restaura primero el proyecto.',
+  'settings.repairRuntimeNow': "Reinstalar este agente",
+  'settings.repairRuntimeRunning': "Reinstalando…",
+  'settings.repairRuntimeHint': "Desinstala la copia gestionada por la aplicación y la instala de nuevo.",
   'settings.retryProbe': 'Reintentar detección',
   'settings.retrySetup': 'Reintentar configuración',
   'settings.revealInFinder': 'Mostrar en Finder',
@@ -5445,5 +5448,23 @@ export const es: Partial<Record<ZhKey, string>> = {
   'connectorImport.diag.duplicateSlug':
     'Ya hay instalado un conector personalizado con el ID "{value}".',
   'connectorExport.oauthOnly': 'Solo configuración de OAuth; sin tokens.',
-  'connectorExport.namesOnly': 'Solo nombres: {names}'
+  'connectorExport.namesOnly': 'Solo nombres: {names}',
+  'mainMessage.connectorFileTooLarge':
+    'Los archivos de configuración del conector deben ocupar 256 KiB o menos',
+  'mainMessage.connectorFilesUnavailable':
+    'Los archivos de configuración del conector no están disponibles',
+  'mainMessage.connectorExportUnsafe': 'La configuración del conector no es segura para exportar',
+  'mainMessage.connectorExportChanged':
+    'La configuración del conector cambió después de la vista previa; revísala de nuevo',
+  'mainMessage.connectorNameReserved':
+    'El nombre «{name}» está reservado por un conector integrado',
+  'mainMessage.connectorNameExists': 'Ya existe un conector personalizado llamado «{name}»',
+  'mainMessage.connectorNameAliasConflict':
+    'El nombre «{name}» entra en conflicto con una identidad de conector existente',
+  'mainMessage.connectorIdReserved':
+    'El identificador «{id}» está reservado por un conector integrado',
+  'mainMessage.connectorIdExists':
+    'Ya existe un conector personalizado con el identificador «{id}»',
+  'mainMessage.connectorIdAliasConflict':
+    'El identificador «{id}» entra en conflicto con un alias de conector existente'
 }
