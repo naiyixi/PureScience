@@ -264,7 +264,9 @@ ArtifactFinalizationProofError: Artifact finalization root Frame does not match 
 `src/main/acp/runtime.ts` 新增 `releaseInteractionsLeftBehindByReplacedSession`。
 另在渲染层加了窄口恢复（`lib/acp/stale-turn-recovery.ts`）：仅当错误是「already running」**且** store 显示该会话不在 `running` 时，`cancel` 后重发一次，避免连点两次发送把用户刚起的轮次取消。
 
-### 实机验证（会话 `f1748d0f`，构建含两处修复）
+### 实机验证（两次，构建含三处修复）
+
+**第一次（会话 `f1748d0f`）**
 
 ```
 bind clinical-study-designer → {"contextReset":true}
@@ -273,7 +275,9 @@ send-2 ok → user:17 / agent:139   「无法给出具体例数…」
 会话最终 status=idle，无 already-running、无 error
 ```
 
-**同一条曾经必死的路径（绑专才后连发两次）现在两次都跑出回复。**
+**第二次（会话 `5c0846c2`，含代理端口修复的构建）**：`bind → contextReset:true`；`send-1 ok` → `n=6 roles=uaaaua`；`send-2 ok` → `n=8 roles=uaaauaua`，两次都 `status=idle`、无 `already-running`、无 `error`。回复分别 511 字与 142+144 字，纠正轮 [Auditor] 也正常注入。
+
+**同一条曾经必死的路径（绑专才后连发两次）现在连续两次运行都跑出回复。** 注意：这次日志里仍有 6 条 `ECONNREFUSED`，来自 reviewer MCP server 拆除时 agent 的延迟重拨（`reviewer-session-owner.ts:230` 已记录这一族），**说明该错误行本身不等于会把轮次打死**。
 
 ## 十七、`[Auditor]` 撞 session-busy 丢纠正：试过重试，撤回
 
