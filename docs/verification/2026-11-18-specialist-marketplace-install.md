@@ -247,7 +247,35 @@ ArtifactFinalizationProofError: Artifact finalization root Frame does not match 
 2. 首次 provider 调用遇到 `ECONNREFUSED` / `ECONNRESET` 时自动重连重试，而不是把整轮判失败；
 3. `session-busy` 的复盘纠正应排队重试，不要直接丢弃。
 
-## 十六、仍未做的
+## 十六、会话卡死：根因与修复（已实机验证）
+
+### 症状
+
+死在中途的一轮结束后，该会话**永久拒发**：每次 `sendPrompt` 都回
+`An ACP prompt is already running for this session`，而会话状态是 `error`、一条回复都没有。实测会话 `ac913c29` 连续两次被拒，重启应用前没有任何自救手段。
+
+### 根因
+
+轮次死在 provider 断链（`ECONNREFUSED 127.0.0.1:53902` / `ECONNRESET`）时，它占用的 prompt 交互**没有 settle**；`assertSessionIdle`（`prompt-turn-workflow.ts:464`）只看 `interactions.current(sessionId)` 是否存在，不看那一轮是否还活着，于是把整条会话封死。手动调 `acp.cancel` 后同一句发送立刻成功、回复 123 字——证明是残留而非真在跑。
+
+### 修复
+
+交互不可能比拥有它的进程活得久，所以在会话被替换（`resetSessionContext`、`switchSpecialist` 且 `contextReset:true`）之后立即释放：
+`src/main/acp/runtime.ts` 新增 `releaseInteractionsLeftBehindByReplacedSession`。
+另在渲染层加了窄口恢复（`lib/acp/stale-turn-recovery.ts`）：仅当错误是「already running」**且** store 显示该会话不在 `running` 时，`cancel` 后重发一次，避免连点两次发送把用户刚起的轮次取消。
+
+### 实机验证（会话 `f1748d0f`，构建含两处修复）
+
+```
+bind clinical-study-designer → {"contextReset":true}
+send-1 ok → user:21 / agent:460   「两臂平行对照试验（骨架…）」
+send-2 ok → user:17 / agent:139   「无法给出具体例数…」
+会话最终 status=idle，无 already-running、无 error
+```
+
+**同一条曾经必死的路径（绑专才后连发两次）现在两次都跑出回复。**
+
+## 十七、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
