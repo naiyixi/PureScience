@@ -133,7 +133,48 @@
 
 实机复验：同一任务，开头变成「模式：需澄清 + 可先行的方法学判读」，不再出现「缺失」字样。
 
-## 十二、仍未做的
+## 十二、12 位专才全部跑通（同日完成）
+
+12 位市场专才已全部安装、启用并在同一台机器上跑过真实任务，每次绑定都读回 `bound:<id>`：
+
+| 专才                            | 回答长度 | 交付物                                                          | 关键判断（说明包内规范生效）                                                |
+| ------------------------------- | -------: | --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `tcm-evidence-expert`           |    3,307 | —                                                               | RoB 2 五域逐项；GRADE 由高经偏倚 −1、间接性 −1 到「低（暂定）」；无处方剂量 |
+| `radiology-imaging-expert`      |    1,686 | 报告 + 3 张图 + 脚本 + 3 CSV                                    | 选可核验证据体；患病率 40%→20% 时 PPV 51%→28.1%                             |
+| `trial-statistics-expert`       |      855 | 报告 + 图 + 脚本 + CSV                                          | 精确 t 检验 123/组，10% 脱落 → 137/组；差值 4 mmHg 时把握度仅 ~74%          |
+| `guideline-localization-expert` |    2,219 | 路径方案 + 速查卡 + 2 CSV                                       | 国际 Ⅰ/A 与中国 2024 的 Ⅱb/B 分开处理；1 级低危单药「不算偏离」             |
+| `pathology-molecular-expert`    |    2,746 | 报告                                                            | 未检测≠阴性；四项指标不可互推；不下诊断结论                                 |
+| `pkpd-dose-designer`            |    1,840 | —                                                               | 线性外推 + 三类失效情形 + TDM 时点；结论限定在人群层面                      |
+| `evidence-synthesis-specialist` |    4,925 | —                                                               | 仅规划模式，只给公式与判定规则，拒不给预期效应量                            |
+| `clinical-study-designer`       |    1,383 | —                                                               | 事件驱动平行组；随访「最短 2 年、中位 3–4 年」给出依据                      |
+| `omics-biomarker-specialist`    |    6,118 | —                                                               | 事件数 34 的限制、训练/验证划分、C-index 与决策曲线报告规范                 |
+| `oncology-evidence-expert`      |    2,563 | 报告                                                            | 明确「摘要级效应量」限制，月数换算标注为假设                                |
+| `rwe-research-specialist`       |    1,419 | `二甲双胍vs磺脲类_心血管结局_目标试验模拟方案_v0.2.md`（28 KB） | 新使用者设计、immortal time bias、负对照清单                                |
+| `example-researcher`            |    1,803 | —                                                               | 说明定位与「缺失/未验证」标注规则，不补看似合理的说法                       |
+
+## 十三、仍未解决的：流式文本仍在丢字（部分修复）
+
+`d1bb2839` 与 `de33e997` 两次修复后：`pkpd-dose-designer` 那一轮落库 **1840 字与 agent 记录逐字一致**（零删除），说明按投递顺序编号的方向对。但随后 `rwe-research-specialist` 一轮仍然丢字：
+
+- agent 记录 4,147 字，落库 **1,419 字**（`SequenceMatcher` 比率 0.51，删 16 段共 2,728 字）。
+
+已排除与未排除：
+
+- 不是模型问题（agent 自己的记录完整）；
+- 不是网络（本轮无 ECONNRESET）；
+- **怀疑**：`discardStreamedAgentText()` 会清空投递计数器，而视图切到 notebook/产物时会触发 discard；计数器归零后同一事件的后续文本重新拿到 `~0` 编号，与已落库的 `~0` 撞号 → 被判重放丢弃。此项尚未实证。
+
+## 十四、新问题：中断态会话不再接受新 prompt
+
+同一台机器上多次出现：一轮被中断后会话进入 `status: error`（文案「This turn was interrupted before it finished.」），此时：
+
+- `api.acp.sendPrompt` 返回成功，但**不产生任何新消息**（实测两次 n 不变）；
+- `api.acp.continueInterruptedTurn` 需要精确的 recovery 令牌，程序化恢复失败：`Resume no longer matches the interrupted turn on the active Conversation Branch (recovery=resume-required…)`；
+- 不带 `projectId` 时直接报 `Session does not belong to the requested Project.`。
+
+结论：只有界面横幅能恢复。建议后续把「在中断态会话上发送新 prompt」定义为丢弃旧轮次并重开，而不是静默吞掉。
+
+## 十五、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
