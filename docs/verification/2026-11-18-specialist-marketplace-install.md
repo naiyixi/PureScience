@@ -363,7 +363,47 @@ before: rows 0
 
 三次测试用例：`tagged-import` 10 例、`ris-import-plan` 10 例（含 EndNote/MEDLINE 计划级与 DOI 去重）、i18n 62 例、references 组件 78 例；`typecheck:web` EXIT=0。
 
-## 二十一、仍未做的
+## 二十一、文献检索对外的 MCP 服务器（1.1，已用外部客户端验过）
+
+### 为什么是「重写」而不是「转发」
+
+仓内 `src/main/connectors/descriptors/{pubmed,arxiv,literature-review}.ts` 早就把检索定义成 MCP 工具，但它们跑在 **agent 进程**里，且用 `DOMParser` 解析 XML（`descriptors/pubmed.ts:61`）——主进程 Node 没有这个 API。外部客户端（Claude Desktop、Cursor、脚本）既够不着 agent 进程，也不该要求桌面端开着。于是按「主进程侧 DOM-free 实现」这条路走。
+
+### 交付
+
+| 文件                                         | 作用                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `src/main/literature/xml-fields.ts`          | 无 DOM 的标签读取（命名空间无关、实体解码）                                                                  |
+| `src/main/literature/search.ts`              | PubMed（esearch + esummary + efetch XML）、arXiv（Atom）、Crossref（REST），统一记录与去重，`formatCitation` |
+| `src/main/literature/mcp-server.ts`          | 三个工具 + stdio 传输；`--purescience-literature-mcp` 进入该模式                                             |
+| `scripts/verify/literature-mcp-external.mjs` | 一个真正的外部客户端：spawn → tools/list → 三个工具各调一次                                                  |
+| `docs/guides/literature-mcp.md`              | 启动方式、Claude Desktop 配置、边界                                                                          |
+
+### 两个只有真跑才暴露的缺陷（都已修）
+
+1. **摘要一条都没拿到**：先用 `efetch rettype=abstract&retmode=text`，那是**排版给人看的**——正文前面是引文块，摘要是不带任何标签的段落，没有可依据的字段标记。实测 6 条全部 `Metadata only`。改读 `retmode=xml` 的 `<AbstractText Label="METHODS">`，既找得到，也保留了章节标签。
+2. **arXiv 单篇查询 400**：用 `search_query=all:id:2103.14030` 去查 id 是错的，端点要 `id_list=`。改 `lookupArxivId`。
+
+另外：工具失败的返回从「抛异常」改成 `{error:'call-failed', detail}`，`literature_cite` 也区分「标识符不认识」与「索引挂了」——否则网络故障会被报成「你的标识符有问题」。
+
+### 实机读数（外部客户端，真实接口）
+
+```
+tools/list → literature_search / literature_get / literature_cite
+literature_search("semaglutide obesity", limit 3)
+  → count 6, errors [], 5 条 read=Abstract（摘要 1536/1706/… 字），1 条 Metadata only
+literature_cite("10.1056/NEJMoa2034577")
+  → "Fernando P. Polack, Stephen J. Thomas, Nicholas Kitchin, et al. Safety and Efficacy of the BNT162b2 mRNA
+     Covid-19 Vaccine. New England Journal of Medicine. 2020. 383(27). 2603-2615. doi:10.1056/nejmoa2034577."
+  → location {read: Metadata only, url: https://doi.org/…, source: crossref}
+literature_get("2103.14030")
+  → Swin Transformer: Hierarchical Vision Transformer using Shifted Windows
+    Ze Liu / Yutong Lin / Yue Cao … 2021, arxivId 2103.14030v2, read=Abstract
+```
+
+脚本退出码 0。测试：`src/main/literature` **16 passed**（含经 in-memory transport 走真实 MCP 线的 5 例），`typecheck:node` EXIT=0，ESLint 0。
+
+## 二十二、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

@@ -18,3 +18,5 @@ export const PDF_MCP_SERVER_ARG = '--purescience-pdf-mcp'
 export const KNOWLEDGE_MCP_SERVER_ARG = '--purescience-knowledge-mcp'
 export const FIGURE_MCP_SERVER_ARG = '--purescience-figure-mcp'
 export const HOST_QUERY_MCP_SERVER_ARG = '--purescience-host-query-mcp'
+// The one server meant for OUTSIDE clients (Claude Desktop, Cursor, scripts): public indexes only, no app state.
+export const LITERATURE_MCP_SERVER_ARG = '--purescience-literature-mcp'
