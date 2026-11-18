@@ -152,7 +152,24 @@
 | `rwe-research-specialist`       |    1,419 | `二甲双胍vs磺脲类_心血管结局_目标试验模拟方案_v0.2.md`（28 KB） | 新使用者设计、immortal time bias、负对照清单                                |
 | `example-researcher`            |    1,803 | —                                                               | 说明定位与「缺失/未验证」标注规则，不补看似合理的说法                       |
 
-## 十三、仍未解决的：流式文本仍在丢字（部分修复）
+## 十三、流式丢字：已修复并实测零删除（`b589c465`）
+
+第三次修复后复验，同一台机器、同为「产物型」轮次（会写报告文件的那类，正是之前丢字的场景）：
+
+| 轮次                                 | agent 记录 |  落库 | 删除段 |
+| ------------------------------------ | ---------: | ----: | -----: |
+| `pkpd-dose-designer`（纯文本）       |      1,840 | 1,840 |      0 |
+| `oncology-evidence-expert`（写报告） |      1,783 | 1,783 |      0 |
+
+逐字比对 `SequenceMatcher` 比率 1.0。下面是修复前后的记录，留着说明这条链路上踩过的三个坑：
+
+1. **裸 eventId 去重** → 一个事件跨合并窗口的续写被当重放（1166 → 617）；
+2. **按「id + 文本已出现」判重放** → 回答里重复的 `|---|---|` 被整批删掉（6681 → 5681，63 处）；
+3. **discard 清空投递计数** → 视图切到产物时计数归零，同一事件重新拿 `~0` 撞号（4147 → 1419，删 2728）。
+
+第三条是乘积：`streamId` 每轮唯一，所以计数保留不会串到别的回答，上限 200 条按插入序淘汰最旧。
+
+## 十三·补记：以前的观察（已由上面收口）
 
 `d1bb2839` 与 `de33e997` 两次修复后：`pkpd-dose-designer` 那一轮落库 **1840 字与 agent 记录逐字一致**（零删除），说明按投递顺序编号的方向对。但随后 `rwe-research-specialist` 一轮仍然丢字：
 
@@ -166,13 +183,13 @@
 
 ## 十四、新问题：中断态会话不再接受新 prompt
 
-同一台机器上多次出现：一轮被中断后会话进入 `status: error`（文案「This turn was interrupted before it finished.」），此时：
+同一台机器上多次出现：一轮被中断后会话进入 `status: error`（文案「This turn was interrupted before it finished.」）。三种尝试都留了读数：
 
-- `api.acp.sendPrompt` 返回成功，但**不产生任何新消息**（实测两次 n 不变）；
-- `api.acp.continueInterruptedTurn` 需要精确的 recovery 令牌，程序化恢复失败：`Resume no longer matches the interrupted turn on the active Conversation Branch (recovery=resume-required…)`；
-- 不带 `projectId` 时直接报 `Session does not belong to the requested Project.`。
+1. `api.acp.sendPrompt` → **返回成功，但不产生任何新消息**（两次实测 `n` 不变，界面也无提示）。
+2. `api.acp.continueInterruptedTurn` 不带 `promptMessageId` → 直接报错 `Resume no longer matches the interrupted turn on the active Conversation Branch (recovery=resume-required:prompt-… requested=undefined status=error)`。这是 API 契约，不是缺陷。
+3. 带上正确的 `promptMessageId` → 返回 `{"status":"connected"}`，但**会话仍是 `error`、最后一条仍是无回复的 user 消息**（等 6 秒、再等 45 秒都一样）。这才是缺陷：续跑报成功却不跑。
 
-结论：只有界面横幅能恢复。建议后续把「在中断态会话上发送新 prompt」定义为丢弃旧轮次并重开，而不是静默吞掉。
+建议：中断态下收到新 prompt 时丢弃旧轮次并重开（`sendPrompt` 不许静默成功），以及 `continueInterruptedTurn` 的 `connected` 必须对应一次真实的续跑，否则返回失败。
 
 ## 十五、仍未做的
 
