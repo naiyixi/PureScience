@@ -45,6 +45,14 @@ const isWindowsUncPath = (path: string): boolean => /^[\\/]{2}[^\\/]+[\\/][^\\/]
 const isWindowsLocalPath = (path: string, platform: string): boolean =>
   platform === 'win32' && (isWindowsDrivePath(path) || isWindowsUncPath(path))
 
+/**
+ * Whether a path is absolute on the given host. The host decides the rules: a drive-letter or UNC path is
+ * absolute on Windows and a POSIX-only check (`startsWith('/')`) would instead join it onto a data root and
+ * read a file that is not there — the shape of a Windows-only "cannot open my own file" defect.
+ */
+export const isAbsoluteLocalPath = (path: string, platform: string): boolean =>
+  platform === 'win32' ? isWindowsDrivePath(path) || isWindowsUncPath(path) : path.startsWith('/')
+
 // Validates a local path before touching the filesystem. Returns an error kind or undefined.
 // The security model is "Home start, full-disk navigable": we do NOT restrict to a root, but we
 // reject non-absolute paths and paths containing ASCII control characters (which are never valid
@@ -56,9 +64,7 @@ export const validateLocalPath = (
   if (typeof path !== 'string' || path.length === 0) return 'not_absolute'
   // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1f]/.test(path)) return 'control_chars'
-  const isPosixAbsolute = path.startsWith('/')
-  const isAbsolute = platform === 'win32' ? isWindowsLocalPath(path, platform) : isPosixAbsolute
-  if (!isAbsolute) return 'not_absolute'
+  if (!isAbsoluteLocalPath(path, platform)) return 'not_absolute'
   return undefined
 }
 

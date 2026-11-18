@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   describeLocalListingError,
+  isAbsoluteLocalPath,
   isLocalPathRoot,
   isSensitiveLocalPath,
   parentLocalPath,
@@ -11,6 +12,26 @@ import {
   validateLocalPath,
   type LocalDirEntry
 } from './local-fs'
+
+// The host owns the rules. Anything that resolves a caller-supplied path against a data root has to ask this
+// question instead of `startsWith('/')`: on Windows the answer for a drive-letter path is yes, and a POSIX-only
+// check turns "open the file the user picked" into "read a file under the data root that does not exist".
+describe('isAbsoluteLocalPath', () => {
+  it('accepts drive-letter and UNC paths only on Windows', () => {
+    expect(isAbsoluteLocalPath('C:\\Users\\roxi\\a.pdf', 'win32')).toBe(true)
+    expect(isAbsoluteLocalPath('D:/data/a.pdf', 'win32')).toBe(true)
+    expect(isAbsoluteLocalPath('\\\\server\\share\\a.pdf', 'win32')).toBe(true)
+    expect(isAbsoluteLocalPath('/Users/roxi/a.pdf', 'win32')).toBe(false)
+    expect(isAbsoluteLocalPath('C:\\Users\\roxi\\a.pdf', 'darwin')).toBe(false)
+  })
+
+  it('accepts a leading slash only off Windows', () => {
+    expect(isAbsoluteLocalPath('/Users/roxi/a.pdf', 'darwin')).toBe(true)
+    expect(isAbsoluteLocalPath('/srv/a.pdf', 'linux')).toBe(true)
+    expect(isAbsoluteLocalPath('relative/a.pdf', 'darwin')).toBe(false)
+    expect(isAbsoluteLocalPath('', 'linux')).toBe(false)
+  })
+})
 
 describe('validateLocalPath', () => {
   it('accepts absolute paths', () => {

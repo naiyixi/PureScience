@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto'
 
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
+import { isAbsoluteLocalPath } from '../../shared/local-fs'
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
@@ -73,6 +74,19 @@ import {
 } from '../../shared/pdf'
 
 const PDFS_DIR = '.pdfs'
+
+/**
+ * Turns the `path` a caller handed us into a file on disk: an absolute path (by the **host's** rules) is
+ * taken as-is, anything else is resolved against the data root. Exported because the assembly point that
+ * injects `resolvePath` has to make the same judgement — a POSIX-only `startsWith('/')` there silently
+ * joined every Windows drive-letter path onto the data root, so a PDF picked from the file browser on that
+ * platform opened a file that does not exist.
+ */
+export const resolvePdfSourcePath = (
+  path: string,
+  storageRoot: string,
+  platform: string
+): string => (isAbsoluteLocalPath(path, platform) ? path : join(storageRoot, path))
 
 export class PdfValidationError extends Error {
   readonly code: 'not_found' | 'invalid_path' | 'too_large' | 'too_many_pages'
@@ -588,9 +602,7 @@ export class PdfService {
     if (this.options.resolvePath) {
       return this.options.resolvePath(path)
     }
-    if (path.startsWith('/')) return path
-    // Default: resolve relative paths against the storage root (tests / headless).
-    return join(this.options.storageRoot, path)
+    return resolvePdfSourcePath(path, this.options.storageRoot, process.platform)
   }
 }
 

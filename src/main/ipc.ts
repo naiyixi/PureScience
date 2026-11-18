@@ -258,7 +258,7 @@ import {
 import { publishCaseBundle, readGitHubCredential } from './cases/publish'
 import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
-import { PdfService } from './settings/pdf-service'
+import { PdfService, resolvePdfSourcePath } from './settings/pdf-service'
 import {
   figureDerivationFingerprint,
   recordStructureObservation
@@ -2168,7 +2168,7 @@ const createApplicationModules = async (
       })
       return { outcome: result.outcome, fingerprint: result.fingerprint }
     },
-    resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path)),
+    resolvePath: async (path) => resolvePdfSourcePath(path, resolveDataRoot(), process.platform),
     // A PDF opened from an Artifact card is identified by its Version, not by a path: the same resolver the
     // file surfaces use turns that identity into the file, so the reader can actually read it.
     resolveSessionArtifactPath: (projectId, sessionId, path) =>

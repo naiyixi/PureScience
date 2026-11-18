@@ -10,7 +10,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AxisAlignedRotation } from '../../shared/pdf-page-rotation'
 import type { PdfTextItem } from '../../shared/pdf-table-extraction'
-import { PdfService, PdfValidationError, type PdfServiceOptions } from './pdf-service'
+import {
+  PdfService,
+  PdfValidationError,
+  resolvePdfSourcePath,
+  type PdfServiceOptions
+} from './pdf-service'
 
 let root: string
 let service: PdfService
@@ -722,5 +727,30 @@ describe('PdfService.figures — 化学结构式的识别口', () => {
     expect(derivation?.kind).toBe('refused')
     if (derivation?.kind !== 'refused') throw new Error('unreachable')
     expect(derivation.reason).toBe('recognizer-unavailable')
+  })
+})
+
+// The resolver the assembly point injects and the service's own fallback have to agree, and they have to ask
+// the host what "absolute" means. A POSIX-only `startsWith('/')` sent every Windows drive-letter path through
+// `join(dataRoot, …)`, so opening a PDF the user had just picked read a file under the data root instead.
+describe('resolvePdfSourcePath', () => {
+  it('takes a drive-letter path as-is on Windows', () => {
+    expect(resolvePdfSourcePath('C:\\Users\\roxi\\paper.pdf', 'C:\\data', 'win32')).toBe(
+      'C:\\Users\\roxi\\paper.pdf'
+    )
+    expect(resolvePdfSourcePath('\\\\server\\share\\paper.pdf', 'C:\\data', 'win32')).toBe(
+      '\\\\server\\share\\paper.pdf'
+    )
+  })
+
+  it('takes a POSIX absolute path as-is off Windows', () => {
+    expect(resolvePdfSourcePath('/Users/roxi/paper.pdf', '/data', 'darwin')).toBe(
+      '/Users/roxi/paper.pdf'
+    )
+  })
+
+  it('resolves anything else against the data root', () => {
+    expect(resolvePdfSourcePath('.pdfs/a.json', '/data', 'darwin')).toBe('/data/.pdfs/a.json')
+    expect(resolvePdfSourcePath('paper.pdf', '/data', 'linux')).toBe('/data/paper.pdf')
   })
 })
