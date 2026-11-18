@@ -14,8 +14,9 @@ import { promisify } from 'node:util'
 const run = promisify(execFile)
 const CONFIG_ROOT = process.env.PURESCIENCE_CONFIG_ROOT ?? '/tmp/ps-verify23-config'
 const project = process.argv[2]
-if (!project) {
-  console.error('usage: node scripts/verify/library-mcp-external.mjs <project>')
+const sessionId = process.argv[3]
+if (!project || !sessionId) {
+  console.error('usage: node scripts/verify/library-mcp-external.mjs <project> <sessionId>')
   process.exit(2)
 }
 
@@ -68,6 +69,7 @@ try {
   const approving = approvePending()
   const added = await call('add_reference', {
     project,
+    sessionId,
     title: '深度学习在医学影像中的应用与挑战',
     authors: ['张三', '李四'],
     year: 2024,
@@ -106,6 +108,7 @@ try {
   const notesApproval = approvePending()
   const noted = await call('set_reference_notes', {
     project,
+    sessionId,
     referenceId,
     notes: '方法学参考（已由外部客户端更新）'
   })
@@ -116,7 +119,7 @@ try {
   })
 
   const removeApproval = approvePending()
-  const removed = await call('remove_reference', { project, referenceId })
+  const removed = await call('remove_reference', { project, sessionId, referenceId })
   await removeApproval
   report('remove_reference', {
     isError: removed.isError,
