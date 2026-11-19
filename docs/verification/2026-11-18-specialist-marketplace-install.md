@@ -528,7 +528,34 @@ session_activity 跑中/跑后     status idle → error → idle，messages 11 
 - 工具表追加时 `rindex('])')` 命中了 `reference.authors ?? []` 里的括号，两个新工具被塞进了 `referenceRow` 内部；表现是 `unknown-tool` 和 `TS1005`。教训：往冻结数组里加条目要锚定唯一注释，不能锚定括号。
 - 测试里 catalog fixture 是模块常量，`status: catalogBusy ? …` 在加载时就被烤死，永远看不到 `running`；改为 router 每次调用时套用标志。
 
-## 二十五、仍未做的
+## 二十五、SDK 二十行示例（1.5 的判据取到了）
+
+1.5 的 SDK 本体与声明面在 `b3e60d60` 那轮已补（20 个方法全部被 `index.d.ts` 声明，差额只有两个传输内部方法）。这轮补的是那条一直没取的判据：**20 行示例从零跑完一次分析**。
+
+### 交付
+
+| 位置                        | 内容                                                                                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `examples/sdk-analysis.mjs` | 真正的示例（24 行含注释，15 行代码）：`connectToPureScience()` → `createProject` → `startRun` → `waitForRun` → 打印输出 → `listArtifacts` |
+| `docs/guides/sdk.md`        | 示例全文、方法表、三个注意事项（模型没配好会 failed、`permissionProfile: ask` 会停在审批上、仓内需要 workspace 链接）                     |
+
+### 实机读数（隔离实例 `/tmp/ps-verify23-config`）
+
+```
+$ node examples/sdk-analysis.mjs "用一句话解释什么是双盲实验"
+运行 c286cc91-160f-4038-b30a-f15558276b70 已提交，状态 running
+结束状态：completed
+双盲实验（double-blind experiment）是一种实验设计，指在整个实验过程中，既不让受试者知道自己被分到哪一组（实验组还是对照组），也不让直接与受试者接触的研究人员知道分组情况，从而消除受试者的安慰剂效应和研究人员的观察偏倚，让结果更客观可信。
+```
+
+`getRun` 回读：`status: completed`、`startedAt 1795051369452` → `completedAt 1795051372173`（**2.7 秒**）、`artifacts: []`（这次没产出文件，示例如实不打印任何产物行）。
+
+### 这一轮踩到的两件事
+
+- **示例的第一版连不上**：`import 'purescience'` 在仓内解析不到，因为它是 workspace 包而不是安装依赖。给 `node_modules/purescience` 做本地链接（不进 git）后可以跑；正常用户从 npm 装包不会有这个问题。
+- **曾想用本地 mock 模型证明链路**：写了 loopback 假端点并把隔离实例的活动提供商改过去，结果 run 仍然 2.7 秒完成、mock 一条请求都没收到、答案是真模型的答案——说明 app 走的是它自己的 agent 后端而不是我改的那个 provider 条目。既然 mock 证明不了任何事，就把那个假端点删了，不留没验过的脚手架。**顺带说明：这条 run 用的是本机已配置的后端，会花掉少量真实额度。**
+
+## 二十六、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
