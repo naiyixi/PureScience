@@ -48,6 +48,12 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+    # The drill compares both published bundles' TeamIdentifier against this value and stops by name
+    # when it is unset ("an unattributable signature is not a pass"), so the gate is only passable if
+    # the workflow actually hands it over. One variable for the drill, the notarize job and the release
+    # gate — a rename on either side has to fail loudly, not silently disable the check.
+    env:
+      PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
