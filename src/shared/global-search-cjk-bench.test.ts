@@ -200,8 +200,10 @@ describe('Chinese search benchmark — 1,000 queries, 2,000 documents', () => {
       // here). If this ceiling is ever reached, something is genuinely pathological — read the number
       // before touching it.
       const p95 = percentile(timings, 0.95)
+      // CI's default reporter does not print a PASSING test's stdout, so the reading also rides in the
+      // assertion message: a red line then carries the number that produced it instead of only the limit.
       console.log(`[cjk-bench] p95=${p95.toFixed(1)}ms limit=300ms`)
-      expect(p95).toBeLessThan(300)
+      expect(p95, `[cjk-bench] p95=${p95.toFixed(1)}ms limit=300ms`).toBeLessThan(300)
     })
   })
 })

@@ -27,8 +27,10 @@ AssertionError: expected 62.31595799999923 to be less than 60
    这是「两半都在」规则唯一会膨胀的地方 —— 每个切分是一次全文扫描；切分数量随字长**线性**，
    才保证一条查询是"几次扫描"而不是"组合数"。改成「所有子串对」的写法会通过本文件全部召回用例，
    却把扫描次数变成词长的平方；这条门是本机与 runner 上**同一个数**。
-2. **延迟改为读数 + 天花板**：打印 `[cjk-bench] p95=…ms limit=300ms`，断言 `< 300`
-   （最差观测值 62.3 ms 的约 5 倍）。
+2. **延迟改为读数 + 天花板**：断言 `< 300`（最差观测值 62.3 ms 的约 5 倍）。读数有两条出口：
+   `console.log`（verbose/本机可见）与**断言消息**（`[cjk-bench] p95=…ms limit=300ms`）——
+   CI 的默认报告器**不打印通过用例的 stdout**（实测 118de549 的作业日志里 `stdout |` 0 次），
+   所以红灯那一行必须自带数值，否则读日志的人只看到上限、看不到实测。
 3. **标题与断言对齐**：`stays inside a degraded-box budget over 2,000 documents`。
 
 ## 三、门禁与读数（全部实跑，取最后一次改动之后）
@@ -36,12 +38,12 @@ AssertionError: expected 62.31595799999923 to be less than 60
 在**隔离工作树**（`git worktree add /tmp/ps-gate-cjk 70fe3282`，软链 `node_modules`）里跑，
 只把我改的两个文件拷进去 —— 共享树里当时有别的会话的未提交在制品，不能算进读数：
 
-| 环 | 命令 | 读数 |
-| --- | --- | --- |
-| 用例 | `npx vitest run src/shared/global-search-cjk-bench.test.ts` | **5 passed (5)**，`[cjk-bench] p95=42.1ms limit=300ms` |
-| eslint | `npx eslint --no-cache <该文件>` | exit 0 |
-| 类型（node） | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | exit 0 |
-| 类型（web） | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:web` | exit 0 |
+| 环           | 命令                                                            | 读数                                                   |
+| ------------ | --------------------------------------------------------------- | ------------------------------------------------------ |
+| 用例         | `npx vitest run src/shared/global-search-cjk-bench.test.ts`     | **5 passed (5)**，`[cjk-bench] p95=42.1ms limit=300ms` |
+| eslint       | `npx eslint --no-cache <该文件>`                                | exit 0                                                 |
+| 类型（node） | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | exit 0                                                 |
+| 类型（web）  | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:web`  | exit 0                                                 |
 
 本机三次取样的 P95：21.2 / 22.8 / 42.1 ms（第三次是本机同时在跑别的负载，恰好说明为什么它不能当门禁）。
 
