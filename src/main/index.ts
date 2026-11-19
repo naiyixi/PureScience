@@ -442,6 +442,39 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
 
       startupDiagnostics?.phase('electron-ready')
       await app.whenReady()
+
+      // 3.3 升级回滚：结算上一次更新。同一个新版本连续起不来时，这里会把它退回上一版并重启；
+      // 能正常走到「窗口加载完成」则把这次更新记成功（见下面的 browser-window-created 钩子）。
+      // 一切包在 try 里：回滚是保险，保险自己不能变成新的启动故障源。
+      try {
+        const { settleUpdateOnStartup, packagedRollbackTargets, confirmUpdateHealthy } =
+          await import('./update/rollback-wiring')
+        const targets = packagedRollbackTargets()
+        if (targets) {
+          const outcome = settleUpdateOnStartup({
+            configRoot: resolveConfigRoot(),
+            version: app.getVersion(),
+            installDir: targets.installDir,
+            log: createLogger('update-rollback')
+          })
+          if (outcome === 'roll-back') {
+            app.relaunch()
+            app.exit(0)
+          }
+          // 「可用」的判据是主窗口把页面加载完了，不是进程起来了。
+          app.on('browser-window-created', (_event, window) => {
+            window.webContents.once('did-finish-load', () => {
+              try {
+                confirmUpdateHealthy(resolveConfigRoot(), app.getVersion())
+              } catch (error) {
+                createLogger('update-rollback').warn('failed to confirm update health', error)
+              }
+            })
+          })
+        }
+      } catch (error) {
+        createLogger('update-rollback').warn('update rollback settlement skipped', error)
+      }
       startupDiagnostics?.phase('compose-runtime')
 
       // Replace Electron's default English menu with the locale-following application menu (roles

@@ -66,10 +66,13 @@ extraResources:
     to: node_modules/@prisma/client
   # Ship the `purescience` CLI as plain files (not in the asar) so the installed command-line launcher
   # can run it with the app's own Electron in Node mode. Only the runtime .mjs files; tests are excluded.
+  # rollback-supervisor.cjs 也在这里：它是更新失败时的回滚进程，必须在新版本 asar 已经坏掉时仍然能被
+  # ELECTRON_RUN_AS_NODE 跑起来，所以它不能待在 asar 里，也不能是 .mjs（要在打包树里保持 CommonJS 直观性）。
   - from: cli
     to: cli
     filter:
       - '**/*.mjs'
+      - '**/*.cjs'
   - from: packages/purescience
     to: packages/purescience
     filter:

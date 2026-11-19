@@ -70,6 +70,9 @@ export type ElectronUpdaterDeps = {
   log?: Logger
   // Marks the app lifecycle handoff immediately before quitAndInstall. Injectable for tests.
   markUpdateShutdown?: () => () => void
+  // 3.3：装之前先把退路备好（备份安装目录 + 标记 + 独立监管进程）。返回 false = 备份没做成，
+  // 这次更新**不进行** —— 装一个坏了没退路的版本，比不更新更糟。
+  prepareRollback?: (fromVersion: string, toVersion: string) => boolean
   // Applies the GitHub Releases feed to the updater, used as a one-shot retry when the configured feed
   // cannot be reached. Injectable so tests can drive the retry without electron-updater.
   applyGithubFeed?: () => void | Promise<void>
@@ -213,6 +216,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   // sweep purge the package once the install demonstrably landed.
   private readonly updateCache: InstallMarkerWriter
   private readonly markUpdateShutdown: () => () => void
+  private readonly prepareRollback:
+    ((fromVersion: string, toVersion: string) => boolean) | undefined
   private readonly applyGithubFeed: () => void | Promise<void>
   // Whether a GitHub retry is even possible: the real autoUpdater can switch feeds, while a test double
   // or a stripped-down updater may not expose setFeedURL.
@@ -252,6 +257,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.updateCache = deps.updateCache ?? createUpdateCacheMaintenance({ log: this.log })
     this.markUpdateShutdown =
       deps.markUpdateShutdown ?? (() => markApplicationShutdownTrigger('update'))
+    this.prepareRollback = deps.prepareRollback
     this.applyGithubFeed =
       deps.applyGithubFeed ??
       (() =>
@@ -584,6 +590,22 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     // purged. Best-effort — a marker write must never block an install the user already asked for; a
     // missing marker costs the cleanup, never the install.
     await this.updateCache.markInstallPending(this.status.latest ?? this.currentVersion)
+    // 退路优先于安装：备份失败就不装。这一步不写进 installGate（那是「能不能装」的判定），
+    // 而是「装了能不能退」——两者都不是可选项。
+    const toVersion = this.status.latest ?? this.currentVersion
+    if (this.prepareRollback && !this.prepareRollback(this.currentVersion, toVersion)) {
+      await this.updateCache.clearInstallPending()
+      this.applying = false
+      this.installerStarted = false
+      this.setStatus({
+        ...this.status,
+        state: 'error',
+        error:
+          'Update cancelled: the current installation could not be backed up, so a failed update could not be rolled back.'
+      })
+      return this.status
+    }
+
     const rollbackTrigger = this.markUpdateShutdown()
     this.pendingInstallRollback = rollbackTrigger
     this.installerStarted = true

@@ -33,6 +33,10 @@ export default defineConfig(
       '**/dist-e2e-*',
       // Runtime kernel loop scripts shipped as raw resources (CommonJS, not part of the TS source tree).
       'resources/notebook/*.js',
+      // 更新回滚监管进程：必须在**新版本 asar 已经坏掉**时由 ELECTRON_RUN_AS_NODE 跑起来，所以它故意是
+      // CommonJS、故意不依赖打包树里的任何模块。用我们的 TS 规则（禁止 require、要求返回类型）去改它，等于
+      // 把一个「进程外救生艇」改成只能在主进程内跑的普通脚本 —— 那就失去意义了。
+      'cli/*.cjs',
       // Whole-window find overlay: an ES-module page shipped as a raw resource (not part of the TS source tree).
       'resources/find-overlay/*.js',
       // Git worktrees hold full source copies; don't lint duplicate source from either supported root.

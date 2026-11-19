@@ -151,13 +151,13 @@ function Get-CheckStatuses($readiness) {
 }
 
 try {
-  Write-Host "== 1/5 安装 $OldSetup"
+  Write-Host "== 1/8 安装 $OldSetup"
   Install-Setup $OldSetup
   $exe = Get-AppExe
   $oldVersion = (Get-Item $exe).VersionInfo.ProductVersion
   Add-Step 'installed-launcher-exists' ([bool]$exe) @{ exe = $exe; productVersion = $oldVersion }
 
-  Write-Host "== 2/5 启动并读 readiness / runtimes"
+  Write-Host "== 2/8 启动并读 readiness / runtimes"
   Start-App | Out-Null
   $token = Get-Token
   $readiness = Get-Api '/api/v1/readiness' $token
@@ -170,7 +170,7 @@ try {
     runtimes = $snapBefore.total; runnable = $snapBefore.runnable; readinessChecks = $checksBefore.byId
   }
 
-  Write-Host "== 3/5 装坏一个运行时，看它能不能点名"
+  Write-Host "== 3/8 装坏一个运行时，看它能不能点名"
   if ($snapBefore.total -eq 0) {
     Save-Json 'break-skipped.json' @{ reason = '运行时列表为空，没有可破坏的条目'; note = '未做破坏步骤，未声明通过' }
     Add-Step 'break-a-runtime-skipped' $true @{ skipped = $true }
@@ -208,7 +208,7 @@ try {
     Move-Item -Path $brokenPath -Destination $victim.path -Force
   }
 
-  Write-Host "== 4/5 一键重装（同一版本覆盖安装）"
+  Write-Host "== 4/8 一键重装（同一版本覆盖安装）"
   Stop-App
   Install-Setup $OldSetup
   Start-App | Out-Null
@@ -224,7 +224,7 @@ try {
     readinessAfterRepair = $checksRepair.byId
   }
 
-  Write-Host "== 5/5 升级到 $NewSetup"
+  Write-Host "== 5/8 升级到 $NewSetup"
   Stop-App
   Install-Setup $NewSetup
   $exe = Get-AppExe
@@ -243,7 +243,7 @@ try {
     readinessAfterUpgrade = $checksUpgraded.byId
   }
 
-  Write-Host "== 6/6 在新版本上再装坏一次，这次要求它点名"
+  Write-Host "== 6/8 在新版本上再装坏一次，这次要求它点名"
   # 同一个动作，判据不同：这一步跑在**升级后的二进制**上。老版本会悄悄少一条（判红），带 interpreter-history 的
   # 新版本会让那一行留着并写明原因（判绿）—— 这就是这次修的东西值多少的直接证据。
   $victim2 = ($snapUpgraded.entries | Where-Object { $_.runnable -and $_.exists } | Select-Object -First 1)
@@ -270,6 +270,76 @@ try {
     Move-Item -Path $brokenPath2 -Destination $victim2.path -Force
   }
 }
+  Write-Host "== 7/8 回滚：装坏的新版本起不来时，把安装目录退回上一版"
+  # 直接用应用自己的回滚监管理念验：备份安装目录 → 写 update-pending 标记 → 把 app.asar 删掉（模拟装坏的新版本）
+  # → 跑 cli/rollback-supervisor.cjs（ELECTRON_RUN_AS_NODE=1）→ 断言文件被恢复、标记写成已回滚。
+  $asar = Join-Path $installDir 'resources\app.asar'
+  $supervisor = Join-Path $installDir 'resources\cli\rollback-supervisor.cjs'
+  if (-not (Test-Path $asar) -or -not (Test-Path $supervisor)) {
+    Save-Json 'rollback-skipped.json' @{ asar = (Test-Path $asar); supervisor = (Test-Path $supervisor); note = '缺少 app.asar 或监管脚本，未做回滚步骤，未声明通过' }
+    Add-Step 'rollback-skipped' $false @{ reason = 'missing app.asar or supervisor script in the installed layout' }
+  } else {
+    $backupDir = Join-Path $Work 'rollback-backup'
+    if (Test-Path $backupDir) { Remove-Item -Recurse -Force $backupDir }
+    Copy-Item -Recurse -Force $installDir $backupDir
+    $asarHashBefore = (Get-FileHash $asar -Algorithm SHA256).Hash
+
+    $markerFile = Join-Path $e2eRoot 'runtime\update-pending.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $markerFile) | Out-Null
+    $healthFile = Join-Path $e2eRoot 'runtime\update-healthy'
+    @{
+      fromVersion = (Get-Item (Get-AppExe)).VersionInfo.ProductVersion
+      toVersion   = '99.0.0'
+      installDir  = $installDir
+      backupDir   = $backupDir
+      healthFile  = $healthFile
+      startedAt   = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+      attempts    = 0
+    } | ConvertTo-Json | Set-Content -Path $markerFile -Encoding utf8
+
+    # 装坏：新版本的 asar 不见了（这是「进程内回滚不可能、必须外部监管」的那个场景）。
+    Remove-Item -Force $asar
+    $env:ELECTRON_RUN_AS_NODE = '1'
+    $output = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 5000 --poll-ms 300 2>&1
+    $env:ELECTRON_RUN_AS_NODE = ''
+    $outcome = ($output | Select-Object -Last 1) | ConvertFrom-Json
+    Save-Json 'rollback-run.json' @{ raw = ($output -join "
+"); outcome = $outcome }
+    $asarHashAfter = if (Test-Path $asar) { (Get-FileHash $asar -Algorithm SHA256).Hash } else { $null }
+    Add-Step 'rollback-restores-the-previous-install' (
+      $outcome.outcome -eq 'rolled-back' -and $asarHashAfter -eq $asarHashBefore
+    ) @{
+      outcome = $outcome.outcome
+      asarRestored = (Test-Path $asar)
+      hashMatches = ($asarHashAfter -eq $asarHashBefore)
+      restoredFrom = $outcome.restoredFrom
+    }
+
+    Write-Host "== 8/8 回滚：新版本起来了就不该动它"
+    # 同样的装置，这次健康信号先写好：监管进程必须收工，且不许碰安装目录。
+    $asarHashHealthy = (Get-FileHash $asar -Algorithm SHA256).Hash
+    @{
+      fromVersion = (Get-Item (Get-AppExe)).VersionInfo.ProductVersion
+      toVersion   = (Get-Item (Get-AppExe)).VersionInfo.ProductVersion
+      installDir  = $installDir
+      backupDir   = $backupDir
+      healthFile  = $healthFile
+      startedAt   = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+      attempts    = 0
+    } | ConvertTo-Json | Set-Content -Path $markerFile -Encoding utf8
+    @{ version = 'healthy'; at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } | ConvertTo-Json | Set-Content -Path $healthFile -Encoding utf8
+    $env:ELECTRON_RUN_AS_NODE = '1'
+    $output2 = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 3000 --poll-ms 300 2>&1
+    $env:ELECTRON_RUN_AS_NODE = ''
+    $outcome2 = ($output2 | Select-Object -Last 1) | ConvertFrom-Json
+    Save-Json 'rollback-healthy-run.json' @{ raw = ($output2 -join "
+"); outcome = $outcome2 }
+    $asarHashAfter2 = (Get-FileHash $asar -Algorithm SHA256).Hash
+    Add-Step 'healthy-update-is-left-alone' (
+      $outcome2.outcome -eq 'healthy' -and $asarHashAfter2 -eq $asarHashHealthy
+    ) @{ outcome = $outcome2.outcome; asarUnchanged = ($asarHashAfter2 -eq $asarHashHealthy) }
+  }
+
 catch {
   $script:report.failure = $_.Exception.Message
   Write-Host "FAILED: $($_.Exception.Message)"

@@ -4,6 +4,8 @@ import { dirname, resolve } from 'node:path'
 import { app } from 'electron'
 
 import { createLogger } from '../logger'
+import { resolveConfigRoot } from '../storage-root'
+import { packagedRollbackTargets, prepareRollbackForUpdate } from './rollback-wiring'
 import { ElectronUpdaterStrategy } from './electron-updater-strategy'
 import { UpdateService } from './service'
 import type { InstallGate, UpdateStrategy } from './strategy'
@@ -85,7 +87,22 @@ export const createUpdateStrategy = (
   const createInPlaceStrategy = (): ElectronUpdaterStrategy =>
     new ElectronUpdaterStrategy({
       ...(opts.installGate ? { installGate: opts.installGate } : {}),
-      log
+      log,
+      // 装之前先把「退路」备好：备份当前安装目录、写标记、拉起独立监管进程。
+      // 备份做不成时**不许装** —— 装一个坏了没退路的版本，正是 3.3 要消灭的处境。
+      prepareRollback: (from, to) => {
+        const targets = packagedRollbackTargets()
+        if (!targets) return true // 开发态没有安装目录可备份，也没有更新可言
+        return prepareRollbackForUpdate({
+          configRoot: resolveConfigRoot(),
+          fromVersion: from,
+          toVersion: to,
+          installDir: targets.installDir,
+          exePath: targets.exePath,
+          supervisorScript: targets.supervisorScript,
+          log
+        })
+      }
     })
 
   if (platform === 'win32' || platform === 'linux') return createInPlaceStrategy()
