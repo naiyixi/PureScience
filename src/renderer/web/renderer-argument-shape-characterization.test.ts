@@ -227,7 +227,9 @@ describe('renderer argument-shape characterization', () => {
     // paired remote surface.
     // 415 with the case bundle pair (LOCAL): callable on the local Web profile, refused before dispatch on the
     // paired remote one.
-    expect(actualPaths).toHaveLength(418)
+    // 420 with the export attribution pair (4.3: settings.setExportAuthor / settings.setExportLicense): LOCAL
+    // settings writes, callable here and refused at dispatch on the paired remote surface.
+    expect(actualPaths).toHaveLength(420)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
