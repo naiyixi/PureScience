@@ -1,0 +1,52 @@
+# 4.1 跨机重放：记录在开发机（macOS arm64）上封存，重放与判定在干净的 Linux runner 上做。
+#
+# 这条工作流存在的理由只有一个：判据「同一份记录在干净机器重放成功」需要第二台机器，
+# 本机取不到。它跑的是产品自己的 compareReplayOutputs，不是演练脚本自带的比较逻辑；
+# 同时跑反向对照（改掉一个 digest 必须判 differs），避免「比对恒真」冒充通过。
+name: Replay cross-machine
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/shared/replay-verification.ts'
+      - 'scripts/verify/replay-cross-machine.mjs'
+      - 'scripts/verify/fixtures/replay-drill/**'
+      - 'docs/evidence/replay-recipes/**'
+      - '.github/workflows/replay-cross-machine.yml'
+  pull_request:
+    paths:
+      - 'src/shared/replay-verification.ts'
+      - 'scripts/verify/replay-cross-machine.mjs'
+      - 'scripts/verify/fixtures/replay-drill/**'
+      - 'docs/evidence/replay-recipes/**'
+
+jobs:
+  replay:
+    name: replay on a clean runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Show the machine the replay runs on
+        run: |
+          uname -a
+          node --version
+          python3 --version
+
+      # 一次运行、同时留读数：pipefail 让判定失败照样红（退出码不被 tee 吞掉），
+      # 读数文件只在重放**之前**的输入不成立时才会缺失。
+      - name: Replay the sealed record and judge it
+        run: node --experimental-strip-types scripts/verify/replay-cross-machine.mjs replay | tee replay-reading.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: replay-reading
+          path: replay-reading.json

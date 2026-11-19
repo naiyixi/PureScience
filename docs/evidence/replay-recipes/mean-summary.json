@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "appVersion": "replay-drill@1",
+  "origin": "executed",
+  "inputs": [
+    {
+      "path": "analysis.py",
+      "sha256": "53911760533e68f566f631b3345fb3831b903661e1810ca3a0c752b7e7cb6d2a",
+      "sizeBytes": 1095,
+      "bytes": "IyDot6jmnLrph43mlL7mvJTnu4Pph4zooqvph43ot5HnmoTpgqPmrrXliIbmnpDjgIIKIwojIOimgeaxgu+8muWQjOS4gOS7vei+k+WFpeWcqOS7u+S9leW5s+WPsOmDveW/hemhu+e7meWHuioq6YCQ5a2X6IqC55u45ZCMKirnmoTovpPlh7og4oCU4oCUIOWumumVv+Wwj+aVsOOAgemUruWQjeaOkuW6j+OAgeihjOWwvuWbuuWumiBcbuOAgQojIOS4jeeUqOW5s+WPsOebuOWFs+eahOaNouihjOaIluacrOWcsOWMluagvOW8j+OAguS7u+S9leOAjOW3ruS4jeWkmuS4gOiHtOOAjemDveS8muiuqSA0LjEg55qE5Yik5o2u5Y+Y5oiQ5LiA5Y+l56m66K+d44CCCmltcG9ydCBjc3YKaW1wb3J0IGpzb24KaW1wb3J0IHBhdGhsaWIKCmhlcmUgPSBwYXRobGliLlBhdGgoX19maWxlX18pLnBhcmVudApyb3dzID0gbGlzdChjc3YuRGljdFJlYWRlcigoaGVyZSAvICJtZWFzdXJlbWVudHMuY3N2Iikub3BlbihlbmNvZGluZz0idXRmLTgiLCBuZXdsaW5lPSIiKSkpCgpjb2x1bW5zID0gW25hbWUgZm9yIG5hbWUgaW4gcm93c1swXS5rZXlzKCkgaWYgbmFtZSAhPSAic2FtcGxlIl0KbWVhbnMgPSB7fQpmb3IgY29sdW1uIGluIGNvbHVtbnM6CiAgICB2YWx1ZXMgPSBbZmxvYXQocm93W2NvbHVtbl0pIGZvciByb3cgaW4gcm93c10KICAgIG1lYW5zW2NvbHVtbl0gPSByb3VuZChzdW0odmFsdWVzKSAvIGxlbih2YWx1ZXMpLCA2KQoKd2l0aCAoaGVyZSAvICJzdW1tYXJ5LmNzdiIpLm9wZW4oInciLCBlbmNvZGluZz0idXRmLTgiLCBuZXdsaW5lPSJcbiIpIGFzIGhhbmRsZToKICAgIGhhbmRsZS53cml0ZSgiY29sdW1uLG1lYW5cbiIpCiAgICBmb3IgY29sdW1uIGluIGNvbHVtbnM6CiAgICAgICAgaGFuZGxlLndyaXRlKGYie2NvbHVtbn0se21lYW5zW2NvbHVtbl06LjZmfVxuIikKCndpdGggKGhlcmUgLyAiY291bnRzLmpzb24iKS5vcGVuKCJ3IiwgZW5jb2Rpbmc9InV0Zi04IiwgbmV3bGluZT0iXG4iKSBhcyBoYW5kbGU6CiAgICBqc29uLmR1bXAoeyJyb3dzIjogbGVuKHJvd3MpLCAiY29sdW1ucyI6IGNvbHVtbnN9LCBoYW5kbGUsIHNvcnRfa2V5cz1UcnVlLCBzZXBhcmF0b3JzPSgiLCIsICI6IikpCiAgICBoYW5kbGUud3JpdGUoIlxuIikK"
+    },
+    {
+      "path": "measurements.csv",
+      "sha256": "7893a2a744ef08341c1780e5b599958df1f3eb7c52f3a62d58f5dd1e44a82390",
+      "sizeBytes": 112,
+      "bytes": "c2FtcGxlLHRlbXBlcmF0dXJlLHByZXNzdXJlCjEsMjEuNSwxMDEzLjIKMiwyMi4xLDEwMTIuOAozLDIwLjksMTAxMy42CjQsMjMuNCwxMDExLjkKNSwyMi44LDEwMTIuNAo2LDIxLjIsMTAxMy4xCg=="
+    }
+  ],
+  "outputs": [
+    {
+      "path": "summary.csv",
+      "sha256": "30a0178215820eb305481a6a174391b0645003c7367c307ad6a022d0980eabbe",
+      "sizeBytes": 55
+    },
+    {
+      "path": "counts.json",
+      "sha256": "b4417851332ce10e3e8bf3d80908d0dfcc547ece6f99817690f5ec8a5c9851d5",
+      "sizeBytes": 48
+    }
+  ],
+  "environmentLockRef": "python3 3.9.6"
+}
