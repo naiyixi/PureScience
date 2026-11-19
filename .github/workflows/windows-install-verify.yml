@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       old_version:
-        description: '先装的旧版本（含 v 前缀，例如 v2.30.1）'
+        description: '先装的旧版本（含 v 前缀；必须是真存在的 release）'
         required: true
-        default: 'v2.30.1'
+        default: 'v2.29.0'
       new_version:
         description: '覆盖升级到的新版本（含 v 前缀，例如 v2.30.2）'
         required: true
