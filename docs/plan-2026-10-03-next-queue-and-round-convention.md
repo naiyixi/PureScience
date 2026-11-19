@@ -1,5 +1,58 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十四、本轮追加（执行器，2026-11-19 17:0x–）—— main 上的红是**覆盖率门**：回滚接线只有 11.6% 覆盖，补上它
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `origin/main = d58f07f7`（会话的 3.3 真机证据入档）；工作树里 10 个改动 + 1 个未跟踪**全是会话在制**
+  （`src/main/ro-crate/*`、`src/main/artifacts/mcp-server*`、`src/shared/background-delivery-labels*`、
+  `src/shared/global-search-cjk-bench.test.ts`、两份 `docs/evidence/2026-11-19-*`）⇒ 一个字节没碰。
+- 4.3（crate 作者与许可）的开工前置「`src/shared/ro-crate.ts` 干净」**不成立**（会话正在改它）⇒ 按该档自己的前置条件不动手。
+- 内存（现取）：空闲物理页 4,279（≈67 MB）、swap 8.6 G / 10 G ⇒ 不起 Electron；本轮不需要窗口读数。
+
+### 一 定因：`Nightly` 在 `f4b629ad` 上唯一的红，不是用例红，是**目录覆盖率门**
+
+| 读数（现取）                                                                        | 判据                                                                                                    |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Nightly` `44482614412` → `build / Verify` **failure**，步骤级：`Lint` ✓ `Typecheck` ✓ `Test (with coverage)` ✗ | 作业步骤清单；`Test Files 1507 passed`（**一条用例都没红**）                                            |
+| 日志末行                                                                              | `ERROR: Coverage for lines (87.89%) does not meet "src/main/update/**" threshold (89%)`、statements 85.83 < 87 |
+| 同目录逐文件                                                                          | `rollback-wiring.ts` **11.62 stmts / 13.04 lines / 7.14 funcs / 25 branch**，未覆盖 43–146、153–155       |
+| 同 SHA 的 `Windows Full Test` = **success**、`Windows Install Verify` = success        | 覆盖门只在带覆盖的 `Test (with coverage)` 那一环；**不是两条车道互相矛盾**                                |
+
+⇒ 3.3 的回滚接线（备份 / 标记 / 监管进程 / 启动结算）**只有 `rollback.ts` 那一半有测试**，接线层是全裸的。
+
+### 二 交付（`fe0ba859`，1 文件 / +366，纯测试台）
+
+`src/main/update/rollback-wiring.test.ts`，11 条用例逐分支：备份没做成 ⇒ **拒绝更新**（不装没有退路的版本，且不写标记、不起监管进程）；
+标记写不下 ⇒ 仍放行并告警（备份已在盘上）；监管进程必须从**备份目录里那份可执行文件**起（Windows 不允许改正在运行的映像），
+备份里没有它时回退原位置；`spawn` 抛错 ⇒ 仍放行（标记在 ⇒ 进程内兜底）；启动结算 `none`/`count-attempt`（且**不写健康信号**，
+主进程起来 ≠ 应用能用）/三次后 `roll-back` 并清掉新版多出的文件/备份缺失 ⇒ 只报 `restore failed` 且**不动安装目录**；
+`confirmUpdateHealthy` 清标记；`packagedRollbackTargets` 开发态 `undefined`、打包态三条路径。
+只有「标记写不下来」这一条分支用替身（标记与备份共用同一个 `runtime` 目录，造不可写会先让备份失败）。
+
+**读数**：本文件 **100 / 100 / 92.85 / 100**（stmts/branch/funcs/lines）；`src/main/update/**` 聚合 **90.63 / 82.12 / 87.09 / 93.12**（门 87/76/83/89）；
+`src/main/update` + `scripts/ci/classify-pr-changes.test.ts` **12 文件 / 193 passed**；`typecheck:node` 0、`typecheck:web` 0；
+`eslint --no-cache` 0 problem；`pre-push-checks` 8 段全过（EXIT=0）。
+
+### 三 边界
+
+- 这是**测试台**改动，不改任何产品行为，不占版本号；它修的是「门红」而不是某次功能故障。
+- **推送后自查发现一处跨平台断言坑并当批修掉**：`packagedRollbackTargets` 那条一开始用字面量 POSIX 路径比对，
+  而实现走 `join`（Windows 上给反斜杠）⇒ 会在 `Windows Full Test` 上假红。改成在宿主规则下判
+  （`exePath` 相等、`installDir === dirname(exePath)`、脚本名 `basename` + 路径分段含 `cli`），断言意图不变、只收紧写法。
+  这属于「本机绿 ≠ CI 绿」的同一类：**断言里不许写死平台字面量**。
+- 同一次运行的注解里另有 3 个文件（`packages/purescience/doctor.test.ts`、`e2e/goals-panel.spec.ts`、
+  `e2e/empty-library.spec.ts`）的 prettier 建议 —— 那些是 **warning 级**（`Lint` 步骤 success），不构成本次红，未动。
+- 推送前现查在飞车道：三条全 `completed`（`Nightly` 在 `f4b629ad` 为 failure、`Windows Full Test` 与 `Windows Install Verify` success）
+  ⇒ 第一次推送**没有取消任何人的判决**；第二次推送（跨平台断言修正）取消了 `fe0ba859` 自己那两条 lane ——
+  按规矩记「那一笔无自身判决，改由包含它的后一笔代替」（CI 跑整棵树）。
+
+### 四 下一轮第一步
+
+① 按完整 40 位 SHA（`fe0ba85938573ed7fb4144ad087a9367543b39b8`）读 `Nightly` + `Windows Full Test` 终态；
+② 4.3 的开工前置（`src/shared/ro-crate.ts`、`SettingsPage.tsx`、`i18n/*` 三条干净）现查，成立就按该档施工单开工。
+
+
 ## 一百八十三、本轮追加（执行器，2026-11-18 09:0x–）—— v2.30.2 发版：v2.30.1 的 Verify 红在一条自己提交的用例上，补上它缺的那一半
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
