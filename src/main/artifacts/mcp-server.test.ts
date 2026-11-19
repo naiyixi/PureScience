@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { strFromU8, unzipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
@@ -11,6 +12,7 @@ import { ArtifactRepository } from './repository'
 import {
   createArtifactMcpEnvironmentFromProcess,
   createArtifactMcpServerConfig,
+  createPresentationDeckForCurrentRun,
   toWriteArtifactToolResult,
   verifyArtifactReproductionBatchForCurrentRun,
   verifyArtifactReproductionBatchToolSchema,
@@ -1017,5 +1019,102 @@ describe('artifact MCP server', () => {
     })
     expect(result.scorecard).toContain('## 检查未完成的产物')
     expect(result.scorecard).toContain('cos.png v2：Artifact Version not found.')
+  })
+})
+
+describe('create_presentation', () => {
+  const outline = {
+    filename: 'deck.pptx',
+    title: 'Deck title',
+    author: 'Some Institute',
+    sections: [{ heading: 'Results', bullets: ['first', 'second'] }]
+  }
+
+  it('writes a real package into the notebook data dir and points at write_artifact_file', async () => {
+    const root = await createStorageRoot()
+    const notebookDataDir = join(root, 'notebook-data')
+    const environment = await createEnvironment(root, { runId: 'run-1', notebookDataDir })
+
+    const created = await createPresentationDeckForCurrentRun(environment, outline)
+
+    expect(created).toMatchObject({
+      filename: 'deck.pptx',
+      slideCount: 2,
+      path: join(notebookDataDir, 'deck.pptx')
+    })
+    expect(created.sha256).toMatch(/^sha256:[0-9a-f]{64}$/u)
+    expect(created.nextStep).toContain('write_artifact_file')
+
+    const bytes = await readFile(created.path)
+    expect(bytes.byteLength).toBe(created.bytes)
+
+    // Read the container back independently: the package has to carry the presentation content type and a
+    // part per slide, which is what makes it a deck and not just a zip with a .pptx name.
+    const entries = unzipSync(new Uint8Array(bytes))
+    expect(Object.keys(entries)).toContain('ppt/presentation.xml')
+    expect(Object.keys(entries)).toContain('ppt/slides/slide2.xml')
+    expect(strFromU8(entries['[Content_Types].xml'])).toContain(
+      'presentationml.presentation.main+xml'
+    )
+    expect(strFromU8(entries['docProps/core.xml'])).toContain(
+      '<dc:creator>Some Institute</dc:creator>'
+    )
+  })
+
+  it('falls back to the allowed import root when the turn carries no notebook data dir', async () => {
+    const root = await createStorageRoot()
+    const sessionRoot = join(root, 'session-root')
+    await mkdir(sessionRoot, { recursive: true })
+    const environment = { ...(await createEnvironment(root)), allowedImportRoots: [sessionRoot] }
+
+    const created = await createPresentationDeckForCurrentRun(environment, outline)
+
+    expect(created.path).toBe(join(sessionRoot, 'deck.pptx'))
+  })
+
+  it('refuses to overwrite a file that already exists', async () => {
+    const root = await createStorageRoot()
+    const notebookDataDir = join(root, 'notebook-data')
+    const environment = await createEnvironment(root, { runId: 'run-1', notebookDataDir })
+
+    const first = await createPresentationDeckForCurrentRun(environment, outline)
+    await expect(createPresentationDeckForCurrentRun(environment, outline)).rejects.toThrow(
+      /already exists in this session directory and was not overwritten/u
+    )
+    await expect(readFile(first.path)).resolves.toBeInstanceOf(Buffer)
+  })
+
+  it('refuses a name that carries a path instead of resolving it', async () => {
+    const root = await createStorageRoot()
+    const notebookDataDir = join(root, 'notebook-data')
+    const environment = await createEnvironment(root, { runId: 'run-1', notebookDataDir })
+
+    await expect(
+      createPresentationDeckForCurrentRun(environment, { ...outline, filename: '../escape.pptx' })
+    ).rejects.toThrow(/filename-has-path/u)
+    await expect(
+      createPresentationDeckForCurrentRun(environment, { ...outline, filename: 'deck' })
+    ).rejects.toThrow(/filename-not-pptx/u)
+  })
+
+  it('refuses when the turn has no writable directory at all', async () => {
+    const root = await createStorageRoot()
+    const environment = await createEnvironment(root)
+
+    await expect(createPresentationDeckForCurrentRun(environment, outline)).rejects.toThrow(
+      /needs a writable directory for this turn/u
+    )
+  })
+
+  it('reports the writer refusal for an outline it will not render, and writes nothing', async () => {
+    const root = await createStorageRoot()
+    const notebookDataDir = join(root, 'notebook-data')
+    const environment = await createEnvironment(root, { runId: 'run-1', notebookDataDir })
+
+    await expect(
+      createPresentationDeckForCurrentRun(environment, { ...outline, sections: [] })
+    ).rejects.toThrow(/sections-empty/u)
+
+    await expect(readFile(join(notebookDataDir, 'deck.pptx'))).rejects.toThrow(/ENOENT/u)
   })
 })

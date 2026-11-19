@@ -2,7 +2,8 @@ import type { McpServerStdio } from '@agentclientprotocol/sdk'
 import { McpServer as ModelContextProtocolServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { z } from 'zod'
 
 import type {
@@ -29,6 +30,13 @@ import {
 } from '../../shared/reproducibility-report'
 import { ARTIFACT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc } from '../local-rpc-transport'
+import {
+  buildPptxDeck,
+  PPTX_DECK_MAX_BULLETS_PER_SECTION,
+  PPTX_DECK_MAX_TEXT_CHARS,
+  validateDeckFilename,
+  type PptxDeckSection
+} from '../slides/pptx-deck'
 import { ArtifactRepository } from './repository'
 
 const ARTIFACT_MCP_SERVER_NAME = 'purescience_artifacts'
@@ -144,6 +152,132 @@ const writeArtifactFileToolDefinition = {
   description:
     'Attach a file this turn generated as a downloadable artifact (chart, image, report, CSV, archive, …). The file must ALREADY EXIST on disk before you call this. Simplest use inside a notebook: save with a relative name (e.g. plt.savefig("plot.png") / R png("plot.png")) then call this with just `filename: "plot.png"` — the app resolves it against the notebook session data dir (the kernel cwd) and copies it. You may also pass an explicit `source`: {kind:"localPath", path} where path is a bare filename, a path relative to the notebook data dir or session workspace, the session-relative `data/plot.png` returned by Notebook `workingFiles`, or an absolute path to an already-saved file; or {kind:"inline", content} for small in-memory text. The app assigns session/message ownership; do not call this before the file is written.',
   inputSchema: writeArtifactFileToolSchema
+}
+
+const createPresentationToolSchema = {
+  filename: z
+    .string()
+    .min(1)
+    .max(200)
+    .describe(
+      'File name for the deck, ending in .pptx (e.g. "resistance-analysis.pptx"). A bare name — the app writes it into the current session directory, and a name that already exists there is refused, not overwritten.'
+    ),
+  title: z
+    .string()
+    .min(1)
+    .max(PPTX_DECK_MAX_TEXT_CHARS)
+    .describe('Title of the deck (title slide).'),
+  subtitle: z
+    .string()
+    .max(PPTX_DECK_MAX_TEXT_CHARS)
+    .optional()
+    .describe('Optional subtitle shown under the title on the first slide.'),
+  author: z
+    .string()
+    .max(PPTX_DECK_MAX_TEXT_CHARS)
+    .optional()
+    .describe(
+      'Author or institution, ONLY when the user or the project actually named one. Omit it when nobody did: the deck then records no author instead of a placeholder.'
+    ),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().min(1).max(PPTX_DECK_MAX_TEXT_CHARS).describe('Slide heading.'),
+        bullets: z
+          .array(z.string().max(PPTX_DECK_MAX_TEXT_CHARS))
+          .max(PPTX_DECK_MAX_BULLETS_PER_SECTION)
+          .describe('Body bullets, in reading order. May be empty for a heading-only slide.')
+      })
+    )
+    .min(1)
+    .describe('One section per slide, in order. The first slide is always the title slide.')
+}
+
+const createPresentationToolDefinition = {
+  title: 'Create presentation',
+  description:
+    'Write a real .pptx deck (PresentationML) from an outline: one title slide plus one slide per section. The file lands in the current session directory and is then attached like any other artifact — call `write_artifact_file` with the same filename to register it for the user. Text is written exactly as given (CJK and XML-special characters preserved). This tool writes text only: no images, no charts, no speaker notes, and it does not edit an existing deck. If a file with that name already exists, it is refused rather than overwritten — pick another name. The same outline always produces byte-identical output, so an artifact checksum means something.',
+  inputSchema: createPresentationToolSchema
+}
+
+export type CreatePresentationInput = {
+  filename: string
+  title: string
+  subtitle?: string
+  author?: string
+  sections: Array<{ heading: string; bullets: string[] }>
+}
+
+export type CreatedPresentation = {
+  filename: string
+  path: string
+  bytes: number
+  slideCount: number
+  sha256: string
+  nextStep: string
+}
+
+// Writes the deck into the same directory `write_artifact_file` resolves a bare filename against, so the
+// follow-up call can attach it by name and nothing has to be re-resolved from an env var.
+export const createPresentationDeckForCurrentRun = async (
+  environment: ArtifactMcpEnvironment,
+  input: CreatePresentationInput
+): Promise<CreatedPresentation> => {
+  const context = await readCurrentRunContext(environment.currentRunFile)
+  const directory = context.notebookDataDir ?? environment.allowedImportRoots[0]
+
+  if (!directory) {
+    throw new Error(
+      'create_presentation needs a writable directory for this turn, and the turn carries neither a ' +
+        'notebook data directory nor an allowed import root. Ask the user to retry from a new turn.'
+    )
+  }
+
+  const name = validateDeckFilename(input.filename)
+
+  if (!name.ok) {
+    throw new Error(`The deck was not written (${name.refusal}): ${name.detail}`)
+  }
+
+  const deck = buildPptxDeck({
+    title: input.title,
+    ...(input.subtitle ? { subtitle: input.subtitle } : {}),
+    ...(input.author ? { author: input.author } : {}),
+    sections: input.sections.map((section): PptxDeckSection => ({
+      heading: section.heading,
+      bullets: section.bullets
+    }))
+  })
+
+  if (!deck.ok) {
+    throw new Error(`The deck was not written (${deck.refusal}): ${deck.detail}`)
+  }
+
+  await mkdir(directory, { recursive: true })
+  const path = join(directory, name.filename)
+
+  try {
+    // `wx` is the whole overwrite policy: the app never replaces a file the user may already be using.
+    await writeFile(path, deck.bytes, { flag: 'wx' })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      throw new Error(
+        `"${name.filename}" already exists in this session directory and was not overwritten. ` +
+          'Choose another file name.'
+      )
+    }
+
+    throw error
+  }
+
+  return {
+    filename: name.filename,
+    path,
+    bytes: deck.bytes.length,
+    slideCount: deck.slideCount,
+    sha256: `sha256:${createHash('sha256').update(deck.bytes).digest('hex')}`,
+    nextStep: `Call write_artifact_file with filename "${name.filename}" to attach this deck to the response.`
+  }
 }
 
 // Narrows parsed JSON before reading run context fields from the handoff file.
@@ -772,6 +906,19 @@ const createArtifactMcpServer = (
       }
     }
   )
+
+  server.registerTool('create_presentation', createPresentationToolDefinition, async (input) => {
+    const deck = await createPresentationDeckForCurrentRun(environment, input)
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(deck, null, 2)
+        }
+      ]
+    }
+  })
 
   server.registerTool(
     'verify_artifact_reproduction',
