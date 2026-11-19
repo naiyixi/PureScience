@@ -1,6 +1,7 @@
 ---
 name: scholar-evaluation
 description: Provides qualitative-first, evidence-traceable developmental review of scholarly works and audit low-stakes research-assessment rubrics with optional local quality controls. Never use for ranking people or consequential decisions.
+description-zh: 对学术作品做以定性为主、证据可追溯的发展性评审，并审查低风险的研究评估量表（可选本地质量控制）。**不得用于给人排名或做有后果的决策。**
 license: MIT
 compatibility: Requires Python 3.11+ for optional bundled standard-library CLIs. All tooling is local JSON/CSV processing with no network, credentials, external models, or subprocesses.
 allowed-tools: Read Write Bash Glob Python

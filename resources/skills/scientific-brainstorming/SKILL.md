@@ -1,6 +1,7 @@
 ---
 name: scientific-brainstorming
 description: Facilitates evidence-aware scientific ideation with independent generation, structured discussion, explicit assumptions, transparent evaluation, adversarial review, and decision logs. Use for early-stage research brainstorming or prioritizing candidate directions; hand off empirical validation, study design, ethics or regulatory review, and clinical questions to appropriate experts or skills.
+description-zh: 以证据为前提做科研选题构思：独立生成、结构化讨论、显式假设、透明评估、对抗式评审与决策记录。用于早期研究构思或选题排序。
 license: MIT
 compatibility: Core guidance works in any Agent Skills-compatible host. Optional bundled CLIs require Python 3.11+ and use only the standard library; they make no network or LLM calls and require no credentials.
 metadata:

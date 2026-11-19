@@ -1,6 +1,7 @@
 ---
 name: scientific-slides
 description: Builds slide decks and presentations for research talks. Used for making PowerPoint slides, conference presentations, seminar talks, research presentations, thesis defense slides, or any scientific talk. Provides slide structure, design templates, timing guidance, and visual validation. Works with PowerPoint and LaTeX Beamer.
+description-zh: 为学术报告做幻灯片与演示：会议报告、组会、答辩等科研演讲的结构与设计建议，产出 PowerPoint 幻灯片。
 allowed-tools: Read Write Edit Bash
 license: MIT license
 compatibility: Python 3.12+; requests for OpenRouter generation, Pillow for image PDFs, PyMuPDF for rendering, pypdf and python-pptx for validation and template editing. Generation needs network and OPENROUTER_API_KEY. Beamer needs TeX Live/MiKTeX; programmatic PPTX needs Node.js and PptxGenJS; rendering PPTX for review needs LibreOffice.

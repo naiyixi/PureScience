@@ -1,6 +1,7 @@
 ---
 name: langchain
 description: Framework for building LLM-powered applications with agents, chains, and RAG. Supports multiple providers (OpenAI, Anthropic, Google), 500+ integrations, ReAct agents, tool calling, memory management, and vector store retrieval. Use for building chatbots, question-answering systems, autonomous agents, or RAG applications. Best for rapid prototyping and production deployments.
+description-zh: 构建由大模型驱动的应用框架：agent、链与 RAG，支持多家提供方、500 多个集成、ReAct agent、工具调用、记忆管理与向量库检索。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

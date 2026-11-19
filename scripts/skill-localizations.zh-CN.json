@@ -99,6 +99,26 @@
     "qiskit": "用 Qiskit 与 IBM Quantum Runtime 构建、模拟、转译并执行量子线路：Qiskit 2.x 的线路与算符、V2 Sampler/Estimator 原语、面向目标硬件的转译、本地或含噪模拟。",
     "cirq": "Google 的量子计算框架：面向 Google Quantum AI 硬件、设计感知噪声的线路，或跑量子表征实验；适合 Google 硬件、噪声建模与底层线路设计。",
     "aeon": "时序机器学习任务：分类、回归、聚类、预测、异常检测、分段与相似性检索。适用于时间型数据与序列模式。",
-    "chroma": "面向 AI 应用的开源向量数据库：存嵌入与元数据、做向量与全文检索、按元数据过滤，四个函数的简单接口，从笔记本到生产集群。用于语义检索与 RAG。"
+    "chroma": "面向 AI 应用的开源向量数据库：存嵌入与元数据、做向量与全文检索、按元数据过滤，四个函数的简单接口，从笔记本到生产集群。用于语义检索与 RAG。",
+    "sci-literature-review": "用 PubMed、arXiv、bioRxiv、Semantic Scholar 等合适来源做系统综述、范围综述与叙述性综述：研究综合、可复现的文献检索、筛选、引用核对。",
+    "sci-scientific-visualization": "用 Matplotlib、Seaborn 或 Plotly 制作并审查真实、可读、可发表的科研图件：图件设计、多面板布局、不确定性与缺失数据的呈现、色彩与对比度检查、图像元数据。",
+    "scientific-brainstorming": "以证据为前提做科研选题构思：独立生成、结构化讨论、显式假设、透明评估、对抗式评审与决策记录。用于早期研究构思或选题排序。",
+    "scientific-critical-thinking": "评估科学论断与证据质量：实验设计的有效性、偏倚与混杂、统计解读、证据分级框架（GRADE、Cochrane 偏倚风险），以及批判性分析的教学。",
+    "scientific-schematics": "用 Nano Banana 2 生成科研示意图草稿并做智能迭代：由 Gemini 3.7 Flash 做质量审查，审查要求改进时再细化，最多两轮生成。专长于神经网络类图示。",
+    "scientific-slides": "为学术报告做幻灯片与演示：会议报告、组会、答辩等科研演讲的结构与设计建议，产出 PowerPoint 幻灯片。",
+    "scholar-evaluation": "对学术作品做以定性为主、证据可追溯的发展性评审，并审查低风险的研究评估量表（可选本地质量控制）。**不得用于给人排名或做有后果的决策。**",
+    "citation-management": "面向学术研究的引用管理：在 OpenAlex、PubMed 与 Google Scholar 检索论文、抽取准确的元数据、校验引用、生成格式正确的 BibTeX。",
+    "hypothesis-generation": "在证据边界内提出科学问题、候选假设、竞争解释、因果或关联论断、可区分的预测、测量方案与可预注册的分析计划。用于把观察转成可检验的研究设计。",
+    "research-lookup": "在用户明确要求收集文献、参考文献、背景证据、相互竞争的发现或论文研究包时，为论文或研究简报汇编当前学术证据。使用 Parallel Search 等来源。",
+    "experimental-design": "在采集数据**之前**设计实验与研究：选择设计类型、随机化、区组，安排好处理组合，使结果可解释。凡在规划研究、询问如何分配受试者或处理组时都适用。",
+    "analytical-method-validation": "按适用框架规划、执行并记录分析方法的验证、确认与方法转移：ICH Q2(R2) 与 Q14、USP <1220>/<1225>/<1226>、ICH M10 生物分析、CLSI EP、ISO/IEC 17025。适用于 HPLC 等方法。",
+    "uncertainty-and-units": "用 pint 与 uncertainties 在科学计算中跟踪物理单位并传播测量不确定度：单位换算与量纲检查、GUM 不确定度预算、A 类与 B 类评定、包含因子。",
+    "ontology-term-resolution": "把自由文本的科学标签解析成本体术语 ID，并用 EBI Ontology Lookup Service（OLS4）校验已有 CURIE；还能在 Bioregistry 查前缀、经 Identifiers.org 解析紧凑标识符、映射实验室常用简写。",
+    "dspy": "用 DSPy 构建复杂的 AI 系统：声明式编程、自动优化提示词、构建模块化的 RAG 系统与 agent——这是 Stanford NLP 的系统化语言模型编程框架。",
+    "langchain": "构建由大模型驱动的应用框架：agent、链与 RAG，支持多家提供方、500 多个集成、ReAct agent、工具调用、记忆管理与向量库检索。",
+    "llamaindex": "面向 RAG 的大模型应用数据框架：擅长文档接入（300 多个连接器）、索引与查询，提供向量索引、查询引擎、agent 与多模态支持。适用于文档问答与聊天机器人。",
+    "faiss": "Facebook 的高效稠密向量相似性检索与聚类库：支持数十亿向量、GPU 加速与多种索引类型（Flat、IVF、HNSW）。用于快速 k 近邻检索与大规模向量召回。",
+    "pinecone": "面向生产环境的托管向量数据库：全托管、自动扩缩容，支持稠密与稀疏混合检索、元数据过滤与命名空间，延迟低（p95 < 100 ms）。适用于生产 RAG 与推荐系统。",
+    "qdrant-vector-search": "高性能向量相似性检索引擎，面向 RAG 与语义检索：需要快速最近邻、带过滤的混合检索，或用 Rust 支撑的可扩展向量存储时使用。"
   }
 }

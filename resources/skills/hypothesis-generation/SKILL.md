@@ -1,6 +1,7 @@
 ---
 name: hypothesis-generation
 description: Formulates evidence-bounded scientific questions, candidate hypotheses, rival explanations, causal or associational claims, discriminating predictions, measurements, and preregistration-ready analysis plans. Used when turning observations or preliminary findings into transparent, testable research plans without treating hypotheses as facts.
+description-zh: 在证据边界内提出科学问题、候选假设、竞争解释、因果或关联论断、可区分的预测、测量方案与可预注册的分析计划。用于把观察转成可检验的研究设计。
 license: MIT
 compatibility: Python 3.11+ standard library. Bundled CLIs are deterministic and local-only; they accept bounded JSON, CSV, or Markdown and require no network, credentials, models, image services, or external packages.
 metadata:

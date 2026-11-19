@@ -1,6 +1,7 @@
 ---
 name: citation-management
 description: Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.
+description-zh: 面向学术研究的引用管理：在 OpenAlex、PubMed 与 Google Scholar 检索论文、抽取准确的元数据、校验引用、生成格式正确的 BibTeX。
 allowed-tools: Read Write Edit Bash WebSearch WebFetch
 license: MIT License
 compatibility: Requires Python 3.9+ with requests. Google Scholar search additionally needs scholarly. Needs network access to api.openalex.org, api.crossref.org, eutils.ncbi.nlm.nih.gov, pmc.ncbi.nlm.nih.gov, doi.org, export.arxiv.org, and api.datacite.org.

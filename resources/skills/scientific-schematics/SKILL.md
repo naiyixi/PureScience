@@ -1,6 +1,7 @@
 ---
 name: scientific-schematics
 description: Generates scientific diagram drafts using Nano Banana 2 AI with smart iterative refinement. Uses Gemini 3.7 Flash for quality review. Refines when the review requests improvement, with at most two generations. Specialized in neural network architectures, system diagrams, flowcharts, biological pathways, and complex scientific visualizations.
+description-zh: 用 Nano Banana 2 生成科研示意图草稿并做智能迭代：由 Gemini 3.7 Flash 做质量审查，审查要求改进时再细化，最多两轮生成。专长于神经网络类图示。
 allowed-tools: Read Write Edit Bash
 license: MIT license
 compatibility: Requires Python 3.10+ with requests, network access, and an OpenRouter API key.

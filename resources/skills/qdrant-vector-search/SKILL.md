@@ -1,6 +1,7 @@
 ---
 name: qdrant-vector-search
 description: High-performance vector similarity search engine for RAG and semantic search. Use when building production RAG systems requiring fast nearest neighbor search, hybrid search with filtering, or scalable vector storage with Rust-powered performance.
+description-zh: 高性能向量相似性检索引擎，面向 RAG 与语义检索：需要快速最近邻、带过滤的混合检索，或用 Rust 支撑的可扩展向量存储时使用。
 version: 1.0.0
 author: Orchestra Research
 license: MIT
