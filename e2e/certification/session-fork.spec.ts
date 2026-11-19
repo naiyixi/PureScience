@@ -34,6 +34,17 @@ test('measures a fork before copying it, then creates a session that holds the e
   // One exchange, so the copy has something to hold.
   await page.getByRole('textbox', { name: 'Ask anything' }).fill('Summarise the calibration notes')
   await page.keyboard.press('Enter')
+  // Wait for the exchange to actually land before touching the card. The composer being enabled is true
+  // before the run starts as well, so it answers nothing here — measured on the packaged app: the card
+  // opened while the conversation still carried its placeholder id (`pending-session-…`), a pending
+  // conversation is not persisted at all, and the measure therefore answered "the source session could
+  // not be read" until the durable id arrived a couple of seconds later. Two product-driven readings
+  // instead: the reply is on screen, and the session carries its durable id.
+  await expect(
+    page.getByText('Deterministic reply: Summarize the deterministic fixture.')
+  ).toBeVisible()
+  const conversation = page.locator('section[data-session-id]')
+  await expect(conversation).not.toHaveAttribute('data-session-id', /^pending-session-/)
   await expect(page.getByRole('textbox', { name: 'Ask anything' })).toBeEnabled()
 
   const sessions = page.getByRole('navigation', { name: 'Sessions' })
@@ -67,8 +78,14 @@ test('measures a fork before copying it, then creates a session that holds the e
   // 400ms after a hover that had just succeeded, so the press was never even attempted. So the box is
   // waited for, every wait is said out loud in the log, and a press that still has no box is simply
   // another attempt (the loop below only ever stops on the outcome it is waiting for).
+  // 到手一次的按压之外，还有一条确定性激活路径：让按钮拿到焦点，再按 Enter。键盘激活是真实用户
+  // 路径（Tab 过去按回车），不依赖坐标，也不受视口尺寸与重挂载影响。为什么需要它：在 CI 的
+  // macos-arm64 上这条用例连续两轮都是「悬停成功、box 有值、mousedown/mouseup 都发出去、预览不出现」，
+  // 三次手按全无反应，同一提交在本机 12 秒通过。此时只报「没弹预览」分不清是没按到、还是按到了没生效，
+  // 所以按压前先做一次命中测试，把命中到的东西写进日志；手按落空时不再重复猜，直接换键盘激活。
+  // 断言一条没放宽：仍然是「预览出现 + 计数正确 + 源会话不动」，只是把「怎么按」这件事做实。
   const card = page.locator('[data-slot="session-info-card"]')
-  const press = async (target: typeof forkAction, what: string): Promise<void> => {
+  const pressByHand = async (target: typeof forkAction, what: string): Promise<boolean> => {
     if (!(await card.isVisible().catch(() => false))) {
       console.log(
         `[session-fork] the card was off screen before pressing ${what}; opening it again`
@@ -87,16 +104,48 @@ test('measures a fork before copying it, then creates a session that holds the e
     }
     if (!box) {
       console.log(`[session-fork] the ${what} action still has no box; pressing again`)
-      return
+      return false
     }
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const hit = await page.evaluate(
+      ([x, y]: [number, number]) => {
+        const el = document.elementFromPoint(x, y)
+        if (!el) return 'nothing (point is outside the viewport)'
+        const slot = el.getAttribute('data-slot')
+        const label = (el.textContent ?? '').trim().slice(0, 40)
+        return `${el.tagName.toLowerCase()}${slot ? `[data-slot=${slot}]` : ''} "${label}"`
+      },
+      [cx, cy] as [number, number]
+    )
+    console.log(
+      `[session-fork] pressing ${what} at ${Math.round(cx)},${Math.round(cy)} (box ${Math.round(box.width)}x${Math.round(box.height)}); the point resolves to ${hit}`
+    )
+    if (hit.startsWith('nothing')) {
+      await target.scrollIntoViewIfNeeded()
+      await page.waitForTimeout(200)
+      return false
+    }
+    await page.mouse.move(cx, cy)
     await page.mouse.down()
     await page.waitForTimeout(60)
     await page.mouse.up()
+    return true
+  }
+  // 键盘激活：焦点在按钮上时按 Enter，与用手按回车等价，触发的是同一个 click。
+  const pressByKeyboard = async (target: typeof forkAction, what: string): Promise<void> => {
+    await target.focus()
+    console.log(`[session-fork] pressing ${what} from the keyboard (focus + Enter)`)
+    await page.keyboard.press('Enter')
   }
   const manifest = page.locator('[data-slot="session-fork-manifest"]')
   for (let attempt = 0; attempt < 3 && (await manifest.count()) === 0; attempt += 1) {
-    await press(forkAction, 'fork')
+    if (attempt === 0) {
+      const landed = await pressByHand(forkAction, 'fork')
+      if (!landed) continue
+    } else {
+      await pressByKeyboard(forkAction, 'fork')
+    }
     await page.waitForTimeout(500)
   }
   await expect(page.getByText('The copy will hold')).toBeVisible()
@@ -112,7 +161,12 @@ test('measures a fork before copying it, then creates a session that holds the e
   const created = page.getByText('The copy was created')
   const confirm = page.getByRole('button', { name: 'Create the copy' })
   for (let attempt = 0; attempt < 3 && (await created.count()) === 0; attempt += 1) {
-    await press(confirm, 'create the copy')
+    if (attempt === 0) {
+      const landed = await pressByHand(confirm, 'create the copy')
+      if (!landed) continue
+    } else {
+      await pressByKeyboard(confirm, 'create the copy')
+    }
     await page.waitForTimeout(700)
   }
   await expect(created).toBeVisible()
