@@ -269,7 +269,7 @@ try {
     }
     Move-Item -Path $brokenPath2 -Destination $victim2.path -Force
   }
-}
+
   Write-Host "== 7/8 回滚：装坏的新版本起不来时，把安装目录退回上一版"
   # 直接用应用自己的回滚监管理念验：备份安装目录 → 写 update-pending 标记 → 把 app.asar 删掉（模拟装坏的新版本）
   # → 跑 cli/rollback-supervisor.cjs（ELECTRON_RUN_AS_NODE=1）→ 断言文件被恢复、标记写成已回滚。
@@ -303,8 +303,7 @@ try {
     $output = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 5000 --poll-ms 300 2>&1
     $env:ELECTRON_RUN_AS_NODE = ''
     $outcome = ($output | Select-Object -Last 1) | ConvertFrom-Json
-    Save-Json 'rollback-run.json' @{ raw = ($output -join "
-"); outcome = $outcome }
+    Save-Json 'rollback-run.json' @{ raw = ($output -join ' | '); outcome = $outcome }
     $asarHashAfter = if (Test-Path $asar) { (Get-FileHash $asar -Algorithm SHA256).Hash } else { $null }
     Add-Step 'rollback-restores-the-previous-install' (
       $outcome.outcome -eq 'rolled-back' -and $asarHashAfter -eq $asarHashBefore
@@ -332,14 +331,13 @@ try {
     $output2 = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 3000 --poll-ms 300 2>&1
     $env:ELECTRON_RUN_AS_NODE = ''
     $outcome2 = ($output2 | Select-Object -Last 1) | ConvertFrom-Json
-    Save-Json 'rollback-healthy-run.json' @{ raw = ($output2 -join "
-"); outcome = $outcome2 }
+    Save-Json 'rollback-healthy-run.json' @{ raw = ($output2 -join ' | '); outcome = $outcome2 }
     $asarHashAfter2 = (Get-FileHash $asar -Algorithm SHA256).Hash
     Add-Step 'healthy-update-is-left-alone' (
       $outcome2.outcome -eq 'healthy' -and $asarHashAfter2 -eq $asarHashHealthy
     ) @{ outcome = $outcome2.outcome; asarUnchanged = ($asarHashAfter2 -eq $asarHashHealthy) }
   }
-
+}
 catch {
   $script:report.failure = $_.Exception.Message
   Write-Host "FAILED: $($_.Exception.Message)"
