@@ -103,26 +103,47 @@ function Get-Api([string]$path, [string]$token) {
 }
 
 function Get-RuntimeEntries($runtimes) {
-  # 运行时列表的形状由应用决定，这里不假设字段名：任何带可用路径的对象都算一个可被破坏的条目。
+  # 实际形状（2026-11-19 在 windows-latest 上读到的）：
+  #   { data: { python: [ { language, envId, interpreterPath, runnable, provenance, ... } ], ... } }
+  # 按语言分组、每个条目自带 runnable 判定。这里只认它自己给的字段，不从别处推断「好不好用」。
   $entries = @()
   $payload = if ($runtimes.PSObject.Properties.Name -contains 'data') { $runtimes.data } else { $runtimes }
-  foreach ($item in @($payload)) {
-    if ($null -eq $item) { continue }
-    foreach ($key in @('path', 'dir', 'root', 'location', 'executable')) {
-      $value = $item.$key
-      if ($value -is [string] -and $value -and (Test-Path $value)) {
-        $entries += [pscustomobject]@{ id = ($item.id, $item.name, $key -ne '' | Select-Object -First 1)[0]; path = $value }
-        break
+  foreach ($language in $payload.PSObject.Properties.Name) {
+    foreach ($item in @($payload.$language)) {
+      if ($null -eq $item) { continue }
+      $path = $item.interpreterPath
+      if ($path -is [string] -and $path -and (Test-Path $path)) {
+        $entries += [pscustomobject]@{
+          language = $language
+          id       = $item.envId
+          path     = $path
+          runnable = [bool]$item.runnable
+        }
       }
     }
   }
   return $entries
 }
 
-function Get-OkCount($runtimes) {
-  $json = $runtimes | ConvertTo-Json -Depth 12
-  # 只看应用自己给的判定词，不从别处推断。
-  return ([regex]::Matches($json, '"status"\s*:\s*"(ok|ready|available|installed)"')).Count
+function Get-RuntimeSnapshot($runtimes) {
+  # 快照而不是计数：要对「同一个条目从 runnable 变 false」这件事说话，就必须按 envId 对齐。
+  $entries = Get-RuntimeEntries $runtimes
+  return [pscustomobject]@{
+    total     = $entries.Count
+    runnable  = @($entries | Where-Object { $_.runnable }).Count
+    byId      = @{}
+    entries   = $entries
+  }
+}
+
+function Get-CheckStatuses($readiness) {
+  $payload = if ($readiness.PSObject.Properties.Name -contains 'data') { $readiness.data } else { $readiness }
+  $checks = @($payload.checks)
+  return [pscustomobject]@{
+    total   = $checks.Count
+    failed  = @($checks | Where-Object { $_.status -ne 'passed' }).Count
+    byId    = ($checks | ForEach-Object { "$($_.id)=$($_.status)" }) -join ','
+  }
 }
 
 try {
@@ -139,23 +160,41 @@ try {
   Save-Json 'readiness-installed.json' $readiness
   $runtimes = Get-Api '/api/v1/runtimes' $token
   Save-Json 'runtimes-installed.json' $runtimes
-  $okBefore = Get-OkCount $runtimes
-  Add-Step 'reads-readiness-and-runtimes' ($null -ne $readiness -and $null -ne $runtimes) @{ okRuntimes = $okBefore }
+  $snapBefore = Get-RuntimeSnapshot $runtimes
+  $checksBefore = Get-CheckStatuses $readiness
+  Add-Step 'reads-readiness-and-runtimes' ($snapBefore.total -gt 0 -and $checksBefore.total -gt 0) @{
+    runtimes = $snapBefore.total; runnable = $snapBefore.runnable; readinessChecks = $checksBefore.byId
+  }
 
   Write-Host "== 3/5 装坏一个运行时，看它能不能点名"
-  $entries = Get-RuntimeEntries $runtimes
-  if ($entries.Count -eq 0) {
-    Save-Json 'break-skipped.json' @{ reason = '运行时列表里没有可直接破坏的路径字段'; note = '未做破坏步骤，未声明通过' }
+  if ($snapBefore.total -eq 0) {
+    Save-Json 'break-skipped.json' @{ reason = '运行时列表为空，没有可破坏的条目'; note = '未做破坏步骤，未声明通过' }
     Add-Step 'break-a-runtime-skipped' $true @{ skipped = $true }
   } else {
-    $victim = $entries[0]
+    $victim = ($snapBefore.entries | Where-Object { $_.runnable } | Select-Object -First 1)
+    if ($null -eq $victim) { $victim = $snapBefore.entries[0] }
     $brokenPath = "$($victim.path).broken"
     Move-Item -Path $victim.path -Destination $brokenPath -Force
     $afterBreak = Get-Api '/api/v1/runtimes' $token
     Save-Json 'runtimes-broken.json' $afterBreak
-    $okBroken = Get-OkCount $afterBreak
-    Add-Step 'broken-runtime-is-detected' ($okBroken -lt $okBefore) @{
-      runtime = $victim.id; okBefore = $okBefore; okBroken = $okBroken; brokenPath = $brokenPath
+    $readinessBroken = Get-Api '/api/v1/readiness' $token
+    Save-Json 'readiness-broken.json' $readinessBroken
+    $snapBroken = Get-RuntimeSnapshot $afterBreak
+    $checksBroken = Get-CheckStatuses $readinessBroken
+    # 硬判据：被挪走的那一条必须从 runnable 变 false（按 envId 对齐，不是数总数）。
+    $victimAfter = $snapBroken.entries | Where-Object { $_.id -eq $victim.id } | Select-Object -First 1
+    if ($null -eq $victimAfter) { $victimAfter = $snapBroken.entries | Where-Object { $_.path -eq $victim.path } | Select-Object -First 1 }
+    $namedDetection = ($null -ne $victimAfter) -and (-not $victimAfter.runnable)
+    Add-Step 'broken-runtime-is-detected' $namedDetection @{
+      runtime = $victim.id
+      language = $victim.language
+      brokenPath = $brokenPath
+      runnableBefore = $snapBefore.runnable
+      runnableAfter = $snapBroken.runnable
+      readinessBefore = $checksBefore.byId
+      readinessAfter = $checksBroken.byId
+      readinessFailedBefore = $checksBefore.failed
+      readinessFailedAfter = $checksBroken.failed
     }
     # 还原，供后两步在干净状态上继续。
     Move-Item -Path $brokenPath -Destination $victim.path -Force
@@ -168,8 +207,14 @@ try {
   $token = Get-Token
   $afterRepair = Get-Api '/api/v1/runtimes' $token
   Save-Json 'runtimes-after-repair.json' $afterRepair
-  $okRepaired = Get-OkCount $afterRepair
-  Add-Step 'repair-restores-runtimes' ($okRepaired -ge $okBefore) @{ okBefore = $okBefore; okAfterRepair = $okRepaired }
+  $readinessRepair = Get-Api '/api/v1/readiness' $token
+  Save-Json 'readiness-after-repair.json' $readinessRepair
+  $snapRepair = Get-RuntimeSnapshot $afterRepair
+  $checksRepair = Get-CheckStatuses $readinessRepair
+  Add-Step 'repair-restores-runtimes' ($snapRepair.runnable -ge $snapBefore.runnable) @{
+    runnableBefore = $snapBefore.runnable; runnableAfterRepair = $snapRepair.runnable
+    readinessAfterRepair = $checksRepair.byId
+  }
 
   Write-Host "== 5/5 升级到 $NewSetup"
   Stop-App
@@ -182,9 +227,13 @@ try {
   Save-Json 'runtimes-after-upgrade.json' $afterUpgrade
   $readinessAfter = Get-Api '/api/v1/readiness' $token
   Save-Json 'readiness-after-upgrade.json' $readinessAfter
-  $okUpgraded = Get-OkCount $afterUpgrade
+  $snapUpgraded = Get-RuntimeSnapshot $afterUpgrade
+  $checksUpgraded = Get-CheckStatuses $readinessAfter
   Add-Step 'upgrade-changes-version' ($newVersion -ne $oldVersion) @{ from = $oldVersion; to = $newVersion }
-  Add-Step 'upgrade-keeps-runtimes' ($okUpgraded -ge $okBefore) @{ okBefore = $okBefore; okAfterUpgrade = $okUpgraded }
+  Add-Step 'upgrade-keeps-runtimes' ($snapUpgraded.runnable -ge $snapBefore.runnable) @{
+    runnableBefore = $snapBefore.runnable; runnableAfterUpgrade = $snapUpgraded.runnable
+    readinessAfterUpgrade = $checksUpgraded.byId
+  }
 }
 catch {
   $script:report.failure = $_.Exception.Message
