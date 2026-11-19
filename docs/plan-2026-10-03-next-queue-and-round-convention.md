@@ -1,5 +1,65 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十五、本轮追加（执行器，2026-11-20 02:4x–04:4x）—— v2.31.0 发版：前一晚两次红都不是产品缺陷，重建 tag 后一次发成
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 489feb18`；工作树里 27 个改动 + 1 个未跟踪**全是会话在制**
+  （`src/main/settings/**` 的传输校验、`src/main/ro-crate/ipc*`、九语 i18n、`GeneralPanel.tsx`、
+  `stores/settings-*`、`e2e/visual-regression.spec.ts` 的差异区域打印）⇒ 一个字节没碰。
+- `v2.31.0` tag 已存在但 `gh release view v2.31.0` 返回 `release not found`；tag 已被会话移到 `489feb18`，
+  其 Release run `44572472839` 在我进轮时仍在跑（`build / Build macos-arm64` in_progress）。
+- B 段（A7 / S3 / M2）与 v3.0–v3.4 排期（0.1–0.4 / 1.1–1.5 / 2.1–2.3 / 3.1–3.3 / 4.1–4.3）已全部收口 ⇒ 本轮按
+  「版本发完才算终点」先收发版，不新开单元（工作树被占，新单元无法取得干净窗口）。
+
+### 一 定因：两次红是两件事，且都不是本版代码
+
+| 读数（现取）                                                                                                 | 判据（作业级日志原文/步骤清单）                                                                                                             | 归属                                     |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| run `44532349311` / `44552831562`（均 `f3888f54`）：`build / Build macos-arm64` failure，其余三平台 success   | 首个红是步骤 14 `Run P0 Electron certification`（`continue-on-error` ⇒ 步骤显示 success、`P0_OUTCOME: failure`）：`certification-notebook-run…` 报 `The Electron app never opened a window … Timeout 180000ms`，`certification-references…` 报 `the process exited before it produced a window`，`certification-session-fork…` 报元素找不到 | 会话分叉 spec 的真实红（已被 `489feb18` 修掉） |
+| 同提交 Nightly `44532349712` failure 落在同一步 27                                                                 | 步骤 27 `Enforce platform certification` 读 `P0_OUTCOME`/`VISUAL_OUTCOME` 才判红 ⇒ 下游红是**后果**，不是独立缺陷                                                  | 同上（归因取第一环）                     |
+| run `44572472839`（`489feb18`）：P0 **success**，红在步骤 22 / 27                                              | 步骤 20 `Smoke test macOS packages` 输出 `macOS signature reading not taken: The operation was aborted due to timeout`，栈指向 `macos-package-smoke.mjs:332` 的 `/api/bootstrap` 15 s fetch；步骤 22 的签名门按设计「未观测不算通过」拒绝；步骤 27 读 `MACOS_SMOKE_OUTCOME: failure` | **runner 负载下的探针超时**（见下三条对照） |
+
+对照（判「基础设施/负载」而不是改代码的三条证据）：同提交的 Nightly `44572380017` 同一支 smoke **通过**
+（DMG `endpoint announced after 6052 ms`、`122 passed (49.0m)`）；v2.30.2 的 Release 同一步通过（DMG 8361 ms）；
+同一次 run 的 x64 车道上 DMG 启动耗到 **47,893 ms** 仍通过（负载读数）。arm64 车道的 smoke 紧跟在 37 分钟的
+P0 认证之后、端口已宣布但环回请求 15 s 未回 ⇒ 判负载型抖动，**不改代码、不放宽预算**。
+
+### 二 处置：删 tag 重建（该 tag 无发布页，符合「无页才删」）
+
+`git tag -d v2.31.0` → `git push origin :refs/tags/v2.31.0` → 在新 tag 对象上重建并推（指向 `489feb18`）。
+未重跑单个 job（会产生同名重复产物让 publish 聚合报 missing）。新 run `44595482669` 四平台 build 全 success
+（arm64：P0 `steps 15/16 skipped` 即无失败上下文、视觉回归 `1 passed (18.0s)`、smoke `7123 ms` 通过、
+签名读数 `TeamIdentifier=UGQZPJ74DF` 取到）、两个 notarize success、`publish` success、
+`windows-upgrade-smoke` success。
+
+### 三 发布核验（现取）
+
+| 项             | 读数                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| 页状态         | `PureScience v2.31.0` / tag `v2.31.0` / `draft=false` / `isPrerelease=false` / `gh release list` 判 **Latest** |
+| 资产           | 17 个：四平台 9 个安装件 + `SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest*.yml`、`arm64-mac.yml`、`x64-mac.yml` |
+| 页与提交绑定   | `RELEASE-CERTIFICATION.json` 的 `sourceSha = 489feb184da76a8bfff1a55163da4f0d9ae8991d`，与 `git rev-parse 'v2.31.0^{commit}'` 逐字符一致 |
+| 正文           | 73,763 字符，首段即成熟度块，随后是 `## v2.31.0 — 2026-11-19`（含「不在本版」四条）                        |
+
+### 四 附带修复：成熟度块停在 v2.29.0（`6640b6ec`）
+
+`README.md` / `README.en.md` 的 ✅ 滚动史自 `271a1701`（v2.29.0）起没再前插，v2.30.x 与 v2.31.0 都缺头条句 ⇒
+本版正文里第一句仍是两版前的旧事。按惯例**前插**本版头条（作者/许可两个设置项、读取别人的 crate、
+跨机重放、`create_presentation`、校对轮 prompt 锚点），把原第一条改写成 `The previous version …`；两文件逐字一致，
+`check-readme-sync` 通过、`release-notes.test.ts` 9 例通过、`pre-push-checks` EXIT=0；随后
+`npm run release:notes -- v2.31.0 --keep-generated --apply` 重发正文（72,537 → 73,763 字符），页与资产数未变。
+该提交纯文档、`head_sha` 查回 0 条 run（Nightly / Windows 有 paths 过滤），**不声称它有车道判决**。
+
+### 五 边界与下一轮第一步
+
+- 会话在制的 27 个文件一个字节没碰；`v2.31.0` 之后 main 上只有文档一笔。
+- 本轮的「真机读数」只覆盖发布链路（打包态 smoke 的启动阶段与签名读数、P0/视觉/认证门的步骤级判决）；
+  桌面会话那批（设置传输校验、crate 导出署名细化、视觉差异区域打印）不在本版，等它自己落地。
+- 下一轮：先 `git status --short` 现查工作树是否干净——干净则从 v3.x 之后的新能力面自拟单元（优先「记录类字段
+  先查写入方」「入口可达性」这两类形状）；仍脏则继续只做文档/取证，或按未闭项
+  （1.4 `running` 未实机观察到）在隔离实例上取读数。
+
 ## 一百八十四、本轮追加（执行器，2026-11-19 17:0x–）—— main 上的红是**覆盖率门**：回滚接线只有 11.6% 覆盖，补上它
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
