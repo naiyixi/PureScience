@@ -91,14 +91,47 @@ export const backupInstallDir = (installDir: string, backupDir: string): void =>
 }
 
 /**
- * 用备份盖回去。先删安装目录再复制，而不是「覆盖复制」：新版本可能多出文件，覆盖会留下旧版本没有的残骸。
- * 备份本身保留 —— 万一恢复也失败，用户还能手工把它捞回来。
+ * 用备份盖回去。
+ *
+ * 为什么不是「先删目录再复制」：真正需要回滚时，往安装目录里写文件的进程往往就是**从那个目录启动的**
+ * （Windows 上实测：删自己的安装目录会失败，回滚进程当场报错退出）。所以改成覆盖复制 + 清掉备份里没有的多余条目，
+ * 单个文件被占用就跳过 —— 恢复能跑完比「绝对干净」重要。
+ * 备份本身保留：万一恢复也失败，用户还能手工把它捞回来。
  */
 export const restoreInstallDir = (installDir: string, backupDir: string): void => {
   if (!existsSync(backupDir)) throw new Error(`rollback backup missing: ${backupDir}`)
-  rmSync(installDir, { recursive: true, force: true })
   mkdirSync(installDir, { recursive: true })
-  cpSync(backupDir, installDir, { recursive: true, verbatimSymlinks: true })
+  cpSync(backupDir, installDir, { recursive: true, force: true, verbatimSymlinks: true })
+  // 新版本可能多出旧版没有的文件 —— 递归地删掉备份里不存在的条目，删不掉的（正在被占用）留给下次启动。
+  removeEntriesAbsentFrom(installDir, backupDir)
+}
+
+const removeEntriesAbsentFrom = (dir: string, referenceDir: string): void => {
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    const target = join(dir, entry)
+    const reference = join(referenceDir, entry)
+    if (!existsSync(reference)) {
+      try {
+        rmSync(target, { recursive: true, force: true })
+      } catch {
+        // busy file: not worth failing the whole restore over
+      }
+      continue
+    }
+    try {
+      if (statSync(target).isDirectory() && statSync(reference).isDirectory()) {
+        removeEntriesAbsentFrom(target, reference)
+      }
+    } catch {
+      // unreadable entry: leave it alone
+    }
+  }
 }
 
 export type RollbackDecision = 'none' | 'count-attempt' | 'roll-back'

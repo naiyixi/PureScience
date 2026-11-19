@@ -42,7 +42,7 @@ describe('update rollback', () => {
 
     expect(readFileSync(join(installDir, 'resources', 'app.asar'), 'utf8')).toBe('v1-asar')
     expect(readFileSync(join(installDir, 'purescience.exe'), 'utf8')).toBe('v1-binary')
-    // 「先删再复制」的意义就在这里：覆盖复制会把这个残骸留下来。
+    // 覆盖复制之后必须把备份里没有的条目清掉；否则「恢复」只恢复了改名/改内容的文件，多出来的残骸还在。
     expect(existsSync(join(installDir, 'resources', 'app.asar.broken'))).toBe(false)
   })
 

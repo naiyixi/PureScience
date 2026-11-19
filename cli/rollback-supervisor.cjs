@@ -18,7 +18,19 @@ const arg = (name, fallback) => {
   return at >= 0 && process.argv[at + 1] !== undefined ? process.argv[at + 1] : fallback
 }
 
+// Windows 上 Electron 是 GUI 子系统程序，标准输出不会回到父控制台 —— 结论必须落文件：
+// 与标记同目录的 <marker>.result.json，验收脚本与排障都读这个。
+const resultFile = () => (markerFile ? `${markerFile}.result.json` : undefined)
+
 const emit = (payload) => {
+  const file = resultFile()
+  if (file) {
+    try {
+      fs.writeFileSync(file, `${JSON.stringify({ ...payload, at: Date.now() }, null, 2)}\n`)
+    } catch {
+      // 写不下就只剩退出码
+    }
+  }
   try {
     process.stdout.write(`${JSON.stringify(payload)}\n`)
   } catch {
@@ -43,10 +55,39 @@ const readMarker = () => {
 const restore = (marker) => {
   const { installDir, backupDir } = marker
   if (!fs.existsSync(backupDir)) throw new Error(`backup missing: ${backupDir}`)
-  // 先删再复制：新版本可能多出旧版没有的文件，覆盖复制会留下残骸。
-  fs.rmSync(installDir, { recursive: true, force: true })
+  // 不能「先删目录再复制」：这个进程本身就是从安装目录里的可执行文件拉起来的，Windows 上删自己的安装目录会失败
+  // （实测: 回滚进程当场报错退出，安装目录原地不动）。改成覆盖复制，再清掉备份里没有的多余条目，占用中的跳过。
   fs.mkdirSync(installDir, { recursive: true })
-  fs.cpSync(backupDir, installDir, { recursive: true, verbatimSymlinks: true })
+  fs.cpSync(backupDir, installDir, { recursive: true, force: true, verbatimSymlinks: true })
+  // 递归清掉备份里没有的条目（新版本多出来的残骸可能在子目录里），被占用的跳过。
+  const prune = (dir, referenceDir) => {
+    let entries
+    try {
+      entries = fs.readdirSync(dir)
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const target = path.join(dir, entry)
+      const reference = path.join(referenceDir, entry)
+      if (!fs.existsSync(reference)) {
+        try {
+          fs.rmSync(target, { recursive: true, force: true })
+        } catch {
+          // 被占用就留着，下次启动再说
+        }
+        continue
+      }
+      try {
+        if (fs.statSync(target).isDirectory() && fs.statSync(reference).isDirectory()) {
+          prune(target, reference)
+        }
+      } catch {
+        // 读不动就绕开
+      }
+    }
+  }
+  prune(installDir, backupDir)
 }
 
 const relaunch = (marker) => {

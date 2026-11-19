@@ -307,6 +307,7 @@ try {
       catch { Start-Sleep -Seconds 2 }
     }
     if (Test-Path $asar) { throw 'could not remove app.asar to simulate a broken install (still locked)' }
+    if (Test-Path "$markerFile.result.json") { Remove-Item -Force "$markerFile.result.json" }
     $env:ELECTRON_RUN_AS_NODE = '1'
     $proc = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
       $supervisor, '--marker', $markerFile, '--timeout-ms', '5000', '--poll-ms', '300'
@@ -316,18 +317,28 @@ try {
     # 看退出码、看文件是否被恢复(哈希)、看标记文件里写下的 rolledBackTo。
     $exitCode = $proc.ExitCode
     $markerAfter = Get-Content -Raw -Path $markerFile | ConvertFrom-Json
+    # GUI 子系统程序没有 stdout，监管进程把结论写在 <marker>.result.json
+    $resultFile = "$markerFile.result.json"
+    $supervisorResult = if (Test-Path $resultFile) { Get-Content -Raw -Path $resultFile | ConvertFrom-Json } else { $null }
     $asarHashAfter = if (Test-Path $asar) { (Get-FileHash $asar -Algorithm SHA256).Hash } else { $null }
     Save-Json 'rollback-run.json' @{
       exitCode = $exitCode
+      supervisorOutcome = $supervisorResult.outcome
+      supervisorError = $supervisorResult.error
       asarRestored = (Test-Path $asar)
       hashMatches = ($asarHashAfter -eq $asarHashBefore)
       rolledBackTo = $markerAfter.rolledBackTo
       rolledBackAt = $markerAfter.rolledBackAt
     }
     Add-Step 'rollback-restores-the-previous-install' (
-      $exitCode -eq 0 -and $asarHashAfter -eq $asarHashBefore -and $null -ne $markerAfter.rolledBackTo
+      $exitCode -eq 0 -and
+      $asarHashAfter -eq $asarHashBefore -and
+      $null -ne $markerAfter.rolledBackTo -and
+      $supervisorResult.outcome -eq 'rolled-back'
     ) @{
       exitCode = $exitCode
+      supervisorOutcome = $supervisorResult.outcome
+      supervisorError = $supervisorResult.error
       asarRestored = (Test-Path $asar)
       hashMatches = ($asarHashAfter -eq $asarHashBefore)
       rolledBackTo = $markerAfter.rolledBackTo
@@ -346,6 +357,7 @@ try {
       attempts    = 0
     } | ConvertTo-Json | Set-Content -Path $markerFile -Encoding utf8
     @{ version = 'healthy'; at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } | ConvertTo-Json | Set-Content -Path $healthFile -Encoding utf8
+    if (Test-Path "$markerFile.result.json") { Remove-Item -Force "$markerFile.result.json" }
     $env:ELECTRON_RUN_AS_NODE = '1'
     $proc2 = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
       $supervisor, '--marker', $markerFile, '--timeout-ms', '3000', '--poll-ms', '300'
