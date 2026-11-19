@@ -691,7 +691,39 @@ node scripts/localize-skills.mjs
 - readiness 的 `python` 检查**依旧报 `passed`**，这是设计使然（应用自带托管环境，系统 Python 是可选项，不该因为它的存亡把整体判红）。**点名发生在运行时列表这一层**，也正是用户挑选解释器的地方。
 - 30 天淘汰、每语言 40 条上限是取舍，不是真理：长期不用的解释器会被忘掉，这是有意的（否则列表只会越来越假）。
 
-## 二十九、仍未做的
+## 二十九、升级失败能退回上一版（3.3 升级回滚）
+
+### 机制
+
+- 装之前：把安装目录整份复制成备份（`<configRoot>/runtime/rollback/<fromVersion>`），写 `update-pending.json` 标记（从哪版到哪版、备份在哪、第几次启动），同时拉起**独立**监管进程。
+- 新版本健康起来（主窗口 `did-finish-load`）后写健康信号并清标记 → 监管进程收工。
+- 等不到健康信号 → 监管进程用备份把安装目录盖回去，重新拉起旧版本。
+- **备份做不成就不装**：`prepareRollback` 返回 false 时更新被取消并报 `state: error`，理由写在状态里——装一个坏了没退路的版本，比不更新更糟。
+- 进程内还有一道兜底：同一个新版本连续 3 次启动都没健康起来，`settleUpdateOnStartup` 会自己回滚。
+
+### 真机上撞出来的三个「只有装了才知道」
+
+1. **不能先删安装目录再复制**：回滚进程就是从那个目录里的 exe 起来的，Windows 直接拒绝（`user-mapped section open`）。改成覆盖复制 + 递归清掉备份里没有的条目。
+2. **监管进程必须从备份目录启动**：救生艇不能停在它要替换的那条船上——否则改不动正在运行的 `purescience.exe`。
+3. **GUI 子系统程序没有 stdout**：判据不能靠标准输出，监管进程把结论写 `<marker>.result.json`，验收读文件 + 退出码 + 哈希。
+   这三条在 macOS 单测里全都不可能暴露，因为测试进程不住在安装目录里。
+
+### 实机读数（[run 44482629238](https://github.com/naiyixi/PureScience/actions/runs/44482629238)，Windows 11 x64，新包由当前提交现打）
+
+```
+✓ rollback-restores-the-previous-install  exitCode 0, supervisorOutcome rolled-back,
+                                          asarRestored true, hashMatches true, rolledBackTo 2.30.2.0
+✓ healthy-update-is-left-alone            exitCode 0, asarUnchanged true, untouchedMarker true
+```
+
+连同前六步（装 2.29.0 → 运行时点名 → 覆盖安装 → 升级到当前提交 → 再点名），八步全绿。证据 12 份 JSON 在 `docs/evidence/windows-install-verify/`。
+
+### 诚实边界
+
+- 这次验的是**回滚机制**本身（把装坏的安装目录恢复 + 新版本健康时不动它），不是「真的发一个坏版本」——后者要故意发布一个起不来的构建，代价太大且会污染 Release。
+- 监管进程的超时是 180 秒（生产）/ 5 秒（验收脚本里缩短）。真机上先慢后快的机器可能被误判，属于取舍。
+
+## 三十、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

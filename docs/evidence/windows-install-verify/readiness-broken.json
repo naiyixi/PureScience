@@ -1,6 +1,6 @@
 {
   "data": {
-    "checkedAt": 1795067653453,
+    "checkedAt": 1795075242415,
     "platform": "win32",
     "architecture": "x64",
     "checks": [
@@ -28,8 +28,8 @@
         "id": "install-network",
         "label": "Installation network",
         "status": "passed",
-        "summary": "official npm registry is the fastest reachable source.",
-        "detail": "Measured 78 ms. The other trusted source remains available as an automatic fallback."
+        "summary": "China-friendly npmmirror is the fastest reachable source.",
+        "detail": "Measured 60 ms. The other trusted source remains available as an automatic fallback."
       },
       {
         "id": "python",
@@ -79,7 +79,7 @@
     ],
     "ready": false,
     "canAutoInstall": true,
-    "recommendedRegistry": "npmjs",
+    "recommendedRegistry": "npmmirror",
     "agentFrameworkId": "claude-code",
     "runtime": {
       "found": false

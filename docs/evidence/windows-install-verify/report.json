@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-11-19T05:53:41.1958138+00:00",
+  "startedAt": "2026-11-19T07:59:59.5094643+00:00",
   "oldSetup": "D:\\a\\_temp\\setups\\zerolink-purescience-2.29.0-win-x64-setup.exe",
   "newSetup": "D:\\a\\PureScience\\PureScience\\dist\\zerolink-purescience-2.30.2-win-x64-setup.exe",
   "steps": [
@@ -15,25 +15,25 @@
       "name": "reads-readiness-and-runtimes",
       "ok": true,
       "detail": {
-        "readinessChecks": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
         "runtimes": 6,
-        "runnable": 5
+        "runnable": 5,
+        "readinessChecks": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
       }
     },
     {
       "name": "broken-runtime-is-detected",
       "ok": true,
       "detail": {
-        "runnableAfter": 4,
-        "detail": null,
-        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
-        "readinessAfter": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
         "named": false,
-        "stillListed": false,
-        "language": "python",
-        "readinessBefore": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runnableBefore": 5,
         "runtime": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe",
-        "runnableBefore": 5
+        "detail": null,
+        "language": "python",
+        "readinessAfter": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "stillListed": false,
+        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
+        "runnableAfter": 4,
+        "readinessBefore": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
       }
     },
     {
@@ -57,9 +57,9 @@
       "name": "upgrade-keeps-runtimes",
       "ok": true,
       "detail": {
-        "readinessAfterUpgrade": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
         "runnableBefore": 5,
-        "runnableAfterUpgrade": 5
+        "runnableAfterUpgrade": 5,
+        "readinessAfterUpgrade": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
       }
     },
     {
@@ -70,10 +70,31 @@
         "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
         "stillListed": true,
         "runnableAfterUpgrade": 5,
-        "detail": "Interpreter is no longer at this path (it was available earlier)",
-        "runnableAfterBreak": 4
+        "runnableAfterBreak": 4,
+        "detail": "Interpreter is no longer at this path (it was available earlier)"
+      }
+    },
+    {
+      "name": "rollback-restores-the-previous-install",
+      "ok": true,
+      "detail": {
+        "supervisorError": null,
+        "exitCode": 0,
+        "rolledBackTo": "2.30.2.0",
+        "supervisorOutcome": "rolled-back",
+        "asarRestored": true,
+        "hashMatches": true
+      }
+    },
+    {
+      "name": "healthy-update-is-left-alone",
+      "ok": true,
+      "detail": {
+        "asarUnchanged": true,
+        "untouchedMarker": true,
+        "exitCode": 0
       }
     }
   ],
-  "finishedAt": "2026-11-19T05:55:10.3555672+00:00"
+  "finishedAt": "2026-11-19T08:02:26.0269672+00:00"
 }

@@ -1,0 +1,9 @@
+{
+  "supervisorError": null,
+  "exitCode": 0,
+  "rolledBackAt": 1795075344930,
+  "rolledBackTo": "2.30.2.0",
+  "supervisorOutcome": "rolled-back",
+  "asarRestored": true,
+  "hashMatches": true
+}
