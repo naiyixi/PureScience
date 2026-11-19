@@ -24,7 +24,7 @@
 把输出 digest 交给 `compareReplayOutputs`（`src/shared/replay-verification.ts`，也就是应用内重放用的
 同一个函数、同一个 `SealedRecipe` 形状）。判定词也来自产品：`reproduced` / `differs` / `unverifiable`。
 
-## 读数（run `44523950998`，结论 success）
+## 读数（首次 `44523950998`；加 Windows 侧后 `44524689535`，两次都 success）
 
 | 项           | 读数                                                   |
 | ------------ | ------------------------------------------------------ |
@@ -52,8 +52,9 @@
    notebook 会话在 CI 上重跑。后者需要把 Electron 应用装进 runner、带 kernel 起会话，本轮没做。
 2. 字节一致而解释器从 3.9.6 跨到 3.14.4，说明**这段分析的输出不依赖那次环境**；不能读成
    「环境也一致」。产品的重放报告同样把这两件事分开说（`ReplayEnvironmentComparison` 五态）。
-3. 只跑了 Linux x64 一个重放平台。Windows 侧的同一演练需要把 `python3` 换成 `python`（runner 的
-   命令名不同），未做，是下一步的小活。
+3. 重放平台覆盖 Linux x64（run `44524689535` 的 ubuntu-latest 作业）与 Windows x64（同一 run 的
+   windows-latest 作业，Python 3.12.10），两台都判 `reproduced`；Windows 上解释器命令名是 `python`
+   而不是 `python3`，脚本按平台取，不是把 Windows 当成 POSIX 将就。
 4. 演练脚本是 `.mjs`（`node --experimental-strip-types` 直接吃共享 TS 模块），没进产品打包物。
 
 ## 复现
