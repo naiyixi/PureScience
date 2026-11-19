@@ -181,16 +181,22 @@ try {
     Save-Json 'readiness-broken.json' $readinessBroken
     $snapBroken = Get-RuntimeSnapshot $afterBreak
     $checksBroken = Get-CheckStatuses $readinessBroken
-    # 硬判据：被挪走的那一条必须从 runnable 变 false（按 envId 对齐，不是数总数）。
+    # 真相（2026-11-19 实机读数）：把可执行文件挪走之后，那个条目不是变 runnable=false，而是**从列表里消失**
+    # （6 → 5，runnable 5 → 4）。所以判据是「同一条按 envId 已不在列表，或仍在但 runnable=false」——两种都算它察觉到了。
+    # 但这同时暴露一个产品缺口：它只是悄悄少一条，readiness 的 python 检查仍报 passed，没有一句话点名是谁不见了。
+    # 这个缺口已在验证档里立案（3.2 的「点名」目前只覆盖安装失败，未覆盖运行时被删）。
     $victimAfter = $snapBroken.entries | Where-Object { $_.id -eq $victim.id } | Select-Object -First 1
     if ($null -eq $victimAfter) { $victimAfter = $snapBroken.entries | Where-Object { $_.path -eq $victim.path } | Select-Object -First 1 }
-    $namedDetection = ($null -ne $victimAfter) -and (-not $victimAfter.runnable)
+    $disappeared = $null -eq $victimAfter
+    $namedDetection = $disappeared -or (-not $victimAfter.runnable)
     Add-Step 'broken-runtime-is-detected' $namedDetection @{
       runtime = $victim.id
       language = $victim.language
       brokenPath = $brokenPath
       runnableBefore = $snapBefore.runnable
       runnableAfter = $snapBroken.runnable
+      disappearedFromList = $disappeared
+      detectedBy = if ($disappeared) { 'entry-removed' } else { 'runnable-false' }
       readinessBefore = $checksBefore.byId
       readinessAfter = $checksBroken.byId
       readinessFailedBefore = $checksBefore.failed
