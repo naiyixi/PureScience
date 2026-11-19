@@ -1,6 +1,7 @@
 ---
 name: depmap
 description: Retrieves and analyzes Cancer Dependency Map (DepMap) release data, including CRISPR Chronos gene effects, cancer model annotations, omics biomarkers, and PRISM drug sensitivity. Supports cancer-selective dependency, co-essentiality, and candidate synthetic-lethality analyses with release-aware identifiers and statistical checks.
+description-zh: 获取并分析癌症依赖图谱（DepMap）发布数据：CRISPR Chronos 基因效应、癌细胞模型注释、组学生物标志物与 PRISM 药物敏感性。支持癌种选择性依赖、共必需性与候选合成致死分析。
 license: CC-BY-4.0
 compatibility: Requires Python 3.10+ with numpy, pandas, and scipy>=1.11 for the bundled helpers. Network access is needed for release discovery; downloading current data may require browser verification through the DepMap portal.
 metadata:

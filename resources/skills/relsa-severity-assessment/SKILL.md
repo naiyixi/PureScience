@@ -1,6 +1,7 @@
 ---
 name: relsa-severity-assessment
 description: Supports multivariate severity assessment and exploratory endpoint-time score forecasting for laboratory animal studies using the RELSA (RELative Severity Assessment) score and ARIMA-based foRcast forecasting. Use when combining welfare readouts — body weight or weight loss, body temperature, clinical or nesting scores, biomarkers, activity, heart rate, burrowing, wheel running — into one severity score per animal per day, when asking which animals are at risk of reaching a humane endpoint at a specified future observation time, when defining attention/danger zones or thresholds on a severity scale by kernel density estimation, or when reporting severity for a 3Rs, refinement, animal-welfare, or EU Directive 2010/63/EU severity-assessment context. Covers directionality ("turned" variables), baseline normalization, reference sets, RELSA weights, ARIMA prediction intervals, and RMSE/PICP/MPIW evaluation.
+description-zh: 用 RELSA（相对严重程度评分）与基于 ARIMA 的预测，为实验动物研究做多变量严重程度评估与探索性终点时间评分预测。适合同一体重或体重下降、体温等福利指标组合使用。
 license: MIT
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python >=3.12 with numpy, pandas, scipy, statsmodels and matplotlib. Local analysis needs no network or credentials; installation and upstream review need network access.

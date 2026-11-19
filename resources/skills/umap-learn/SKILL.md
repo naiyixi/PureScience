@@ -1,6 +1,7 @@
 ---
 name: umap-learn
 description: Applies UMAP-learn to nonlinear dimensionality reduction, 2D/3D embeddings, clustering preprocessing, supervised or semi-supervised UMAP, DensMAP, AlignedUMAP, and Parametric UMAP workflows.
+description-zh: 用 UMAP-learn 做非线性降维：2D/3D 嵌入、聚类前处理、有监督或半监督 UMAP、DensMAP、AlignedUMAP 与参数化 UMAP 流程。
 license: BSD-3-Clause license
 compatibility: Requires Python 3.9+ and umap-learn; optional HDBSCAN, Matplotlib, and TensorFlow with Keras 3. Network access is needed for installation, not local fitting.
 metadata:

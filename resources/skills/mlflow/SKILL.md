@@ -1,6 +1,7 @@
 ---
 name: mlflow
 description: Track ML experiments, manage model registry with versioning, deploy models to production, and reproduce experiments with MLflow - framework-agnostic ML lifecycle platform
+description-zh: 用 MLflow 跟踪机器学习实验、管理带版本的模型注册表、把模型部署到生产，并复现实验——这是一套与框架无关的机器学习生命周期平台。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

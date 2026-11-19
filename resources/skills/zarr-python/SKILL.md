@@ -1,6 +1,7 @@
 ---
 name: zarr-python
 description: Stores and queries chunked N-D scientific arrays with Zarr-Python 3, including codecs, sharding, S3/GCS storage, and NumPy/Dask/Xarray integration. Use for array layout, bounded I/O, format migration, or scientific metadata preservation.
+description-zh: 用 Zarr-Python 3 存储与查询分块的 N 维科学数组：编解码器、分片、S3/GCS 存储，以及与 NumPy/Dask/Xarray 的对接。适合数组布局、有界 I/O、格式迁移与科学元数据保留。
 allowed-tools: Read Write Edit Bash
 license: MIT license
 compatibility: Requires Python 3.12+ and zarr 3.4.0 with NumPy 2+. Remote I/O needs network access, zarr[remote] and the protocol backend; private stores need provider credentials. CLI migration needs zarr[cli].

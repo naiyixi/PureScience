@@ -1,6 +1,7 @@
 ---
 name: datamol
 description: Pythonic wrapper around RDKit with simplified interface and sensible defaults. Preferred for standard drug discovery including SMILES parsing, standardization, descriptors, fingerprints, clustering, 3D conformers, parallel processing. Returns native rdkit.Chem.Mol objects. For advanced control or custom parameters, use rdkit directly.
+description-zh: RDKit 的 Python 风格封装，接口更简单、默认值更合理。标准药物发现流程优先用它：SMILES 解析、标准化、描述符、指纹、聚类、3D 构象、并行处理；返回原生 rdkit.Chem.Mol 对象。需要细粒度控制时再用 rdkit。
 license: Apache-2.0 license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.11+ and datamol 0.13.0 with RDKit 2024.09+. Installation needs network access; local molecular workflows need no credentials. Remote I/O needs the selected provider credentials.

@@ -1,6 +1,7 @@
 ---
 name: pathogen-variant-surveillance
 description: Queries public GenSpectrum LAPIS data for pathogen genomic surveillance, current lineage nomenclature, weekly sequence proportions, reporting delays, and descriptive mutation frequencies. Use for variant surveillance, Pango lineage validation, dominant submitted lineages, Nextclade assignment provenance, SARS-CoV-2, influenza/H5N1 clades, RSV, mpox, measles, dengue, or LAPIS queries. Distinguishes sequence prevalence from infection prevalence, clades from genotypes, missing calls from reference matches, and sampling changes from biological growth advantage.
+description-zh: 查询公开的 GenSpectrum LAPIS 数据做病原基因组监测：当前谱系命名、每周序列占比、报告延迟与描述性突变频率。用于变异株监测、Pango 谱系校验、主流提交谱系与 Nextclade 分型。
 license: MIT
 compatibility: Requires Python 3.11+. Scripts use only the standard library. Needs network access to public LAPIS deployments on lapis.cov-spectrum.org, lapis.genspectrum.org, lapis.pathoplexus.org and raw.githubusercontent.com for pango-designation. No credentials for these public queries.
 allowed-tools: Read Write Edit Bash

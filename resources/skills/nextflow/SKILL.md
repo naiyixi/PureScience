@@ -1,6 +1,7 @@
 ---
 name: nextflow
 description: Builds, runs, and debugs Nextflow DSL2 pipelines and nf-core workflows. Use for Nextflow, nf-core, .nf files, nextflow.config, processes/channels/operators, samplesheets, nf-test, modules/subworkflows, container and executor configuration, HPC/SLURM or cloud deployment, and failed or resumed pipeline runs.
+description-zh: 构建、运行与调试 Nextflow DSL2 流水线与 nf-core 工作流：.nf 文件、nextflow.config、process/channel/operator、样本表、nf-test、模块与子工作流、容器与执行器配置、HPC/SLURM 或云部署。
 license: Apache-2.0
 compatibility: Requires Bash 3.2+, Java 17-26 and Nextflow. nf-core tools requires Python 3.10+. Containers, scheduler access and network or service credentials depend on the selected workflow.
 metadata:

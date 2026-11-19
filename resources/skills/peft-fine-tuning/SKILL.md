@@ -1,6 +1,7 @@
 ---
 name: peft-fine-tuning
 description: Parameter-efficient fine-tuning for LLMs using LoRA, QLoRA, and 25+ methods. Use when fine-tuning large models (7B-70B) with limited GPU memory, when you need to train <1% of parameters with minimal accuracy loss, or for multi-adapter serving. HuggingFace's official library integrated with transformers ecosystem.
+description-zh: 用 LoRA、QLoRA 等 25 种以上方法做大模型参数高效微调。适用于显存有限时微调 7B–70B 模型、需要只训练不到 1% 参数而几乎不掉精度，或多适配器同时服务。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

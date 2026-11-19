@@ -1,6 +1,7 @@
 ---
 name: datalad
 description: Retrieves, versions, and publishes scientific datasets with DataLad and git-annex, and captures computational provenance with datalad run, rerun, and containers-run. Use when cloning or fetching data from OpenNeuro, DANDI, datasets.datalad.org, or any DataLad dataset; when a file in a dataset reads as a broken symlink or a small pointer instead of real data; when an analysis needs a machine-readable record of how each output was produced so it can be re-executed; or when publishing a dataset to siblings such as a GitHub repository plus a storage remote. Also use to decide between DataLad and plain Git for a data-carrying repository.
+description-zh: 用 DataLad 与 git-annex 获取、版本化与发布科学数据集，并用 datalad run、rerun 与 containers-run 记录计算来源。适用于从 OpenNeuro、DANDI、datasets.datalad.org 或任意 DataLad 数据集克隆与取数。
 compatibility: Requires Python 3.10+, DataLad 1.6.5, Git, and git-annex 10.x. Tested with git-annex 10.20260901 and datalad-container 1.2.6 on macOS ARM64. Containers additionally require Singularity, Apptainer, or Docker. Remote data access needs network access and may need provider credentials. Local filesystem workflows work offline.
 license: MIT
 allowed-tools: Read Write Edit Bash

@@ -1,6 +1,7 @@
 ---
 name: pkpd-modeling
 description: Pharmacokinetic and pharmacodynamic modelling and simulation - non-compartmental analysis, compartmental and population PK, PK/PD and exposure-response, TMDD, PBPK orientation, bioequivalence, allometric scaling and first-in-human dose, drug interaction prediction, and Bayesian therapeutic drug monitoring. Use when analysing concentration-time data, deriving exposure metrics, fitting PK or PD models, or evaluating dosing regimens. Triggers include "pharmacokinetics", "pharmacodynamics", "PK/PD", "NCA", "non-compartmental", "AUC", "Cmax", "lambda z", "half-life", "clearance", "volume of distribution", "compartmental model", "population PK", "popPK", "NONMEM", "nlmixr2", "Pharmpy", "Monolix", "exposure-response", "Emax", "EC50", "indirect response", "effect compartment", "TMDD", "PBPK", "bioequivalence", "RSABE", "ABEL", "allometric scaling", "first-in-human", "MABEL", "drug-drug interaction", "DDI", "ICH M12", "concentration-QTc", "therapeutic drug monitoring", "MIPD", and "dosing regimen".
+description-zh: 药代与药效建模与仿真：非房室分析、房室与群体 PK、PK/PD 与暴露-反应、TMDD、PBPK 方向性评估、生物等效性、异速生长缩放与首次人体剂量、药物相互作用预测，以及贝叶斯治疗药物监测。
 license: MIT
 compatibility: Requires Python 3.12+ with NumPy 2+ and SciPy. No network access and no proprietary software. The estimation tools this skill orients you towards (NONMEM, Monolix, Phoenix, Simcyp, GastroPlus) are licensed separately and are never invoked by these scripts.
 allowed-tools: Read Write Edit Bash

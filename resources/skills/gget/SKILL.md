@@ -1,6 +1,7 @@
 ---
 name: gget
 description: "Queries 20+ bioinformatics resources through CLI/Python. Supports quick lookups of gene info, BLAST/BLAT, viral sequence downloads, PDB/mmCIF structures, G2P residue annotations, enrichment analysis, OpenTargets, COSMIC, CELLxGENE, and 8cube mouse specificity/expression data. Best for interactive exploration and simple queries. For batch processing or advanced BLAST use biopython; for multi-database Python workflows use bioservices."
+description-zh: 通过命令行或 Python 查询 20 多个生物信息学资源：基因信息速查、BLAST/BLAT、病毒序列下载、PDB/mmCIF 结构、G2P 残基注释、富集分析、OpenTargets、COSMIC、CELLxGENE，以及 8cube 小鼠特异性与表达数据。
 license: BSD-2-Clause license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python >=3.12, gget 0.30.8, and network access for remote queries. Use a separate Python 3.12/3.13 environment for optional Census dependencies. Local MUSCLE/DIAMOND need compatible binaries and OpenMP libraries; COSMIC downloads require an account.

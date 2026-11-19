@@ -1,6 +1,7 @@
 ---
 name: primer-design
 description: Designs and audits PCR and RT-qPCR primers with Primer3, explicit thermodynamic conditions, reference-based off-target amplification searches, and traceable sequence coordinates. Use for designing primer pairs, checking existing primers, exon-junction or isoform-specific assays, variant masking, cloning tails, multiplex compatibility, and interpreting Primer-BLAST results. Includes bounded local in-silico PCR and BLAST screening; distinguishes computational candidates from experimentally validated assays.
+description-zh: 用 Primer3 设计与审查 PCR/RT-qPCR 引物：显式给出热力学条件、基于参考序列的脱靶扩增搜索、可追溯的序列坐标。用于设计引物对、检查既有引物、跨外显子连接或异构体特异检测，以及变异位点引物。
 license: MIT
 compatibility: Requires Python 3.11+ and primer3-py 2.3.1 for design and thermodynamics. Local exhaustive screening uses the standard library; BLAST screening additionally needs blastn and makeblastdb on PATH. Network access is needed only for installation, reference retrieval, or external Primer-BLAST.
 metadata:

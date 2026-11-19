@@ -1,6 +1,7 @@
 ---
 name: peer-review
 description: Prepares evidence-bounded, constructive peer-review drafts and structured manuscript assessments. Supports authorized review of scientific manuscripts, protocols, preprints, or research proposals; reporting-guideline selection; claim–evidence checks; methods, statistics, reproducibility, ethics, figure/table, and citation critique; or revision-response planning.
+description-zh: 准备有证据边界、建设性的同行评审草稿与结构化稿件评估：支持对科研论文、研究方案、预印本或项目书的授权评审；覆盖报告规范选择、论断-证据核对、方法、统计与可复现性。
 license: MIT
 compatibility: Python 3.11+ standard library. Bundled CLIs are deterministic and local-only; they accept bounded JSON, CSV, or Markdown and make no network, model, image, or external-service calls.
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: scvelo
 description: Performs RNA velocity analysis with scVelo from spliced and unspliced single-cell RNA counts. Fits deterministic or dynamical models, examines gene phase portraits, builds velocity graphs, estimates relative latent time, and ranks velocity-associated genes. Use for directional trajectory hypotheses and kinetic-model diagnostics alongside Scanpy; velocity alone does not establish cell fate or causal drivers.
+description-zh: 用 scVelo 从剪接与未剪接的单细胞 RNA 计数做 RNA 速率分析：拟合确定性或动力学模型、检查基因相位图、构建速率图、估计相对潜时间，并排序与速率相关的基因。用于判断分化方向。
 license: BSD-3-Clause
 compatibility: Requires Python 3.13 for the tested stack with scvelo 0.3.4, scanpy 1.12.4, anndata 0.13.4, numpy 2.5.3 and pandas 2.3.3. Loom import requires loompy. Local H5AD analysis needs no network or credentials. The default stochastic solver is incompatible with NumPy 2.
 metadata:

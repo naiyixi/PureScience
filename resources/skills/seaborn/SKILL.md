@@ -1,6 +1,7 @@
 ---
 name: seaborn
 description: Creates Seaborn statistical visualizations with pandas integration for distributions, relationships, categorical comparisons, regression displays, pair plots, and heatmaps. Supports function and objects interfaces with explicit aggregation, uncertainty, and missing-data handling. Best suited to static exploratory plots; plotly covers interactive figures and scientific-visualization covers publication styling.
+description-zh: 用 Seaborn 配合 pandas 做统计可视化：分布、关系、分类比较、回归展示、成对图与热力图。支持函数式与对象式两种接口，并显式处理聚合、不确定性与缺失数据。
 license: BSD-3-Clause license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.8+ with seaborn 0.13.2, NumPy, pandas, and Matplotlib; the tested current dependency stack requires Python 3.12+. Optional scipy/statsmodels for advanced regression or clustering, ipywidgets for notebook controls. Network only for installation or uncached example datasets.

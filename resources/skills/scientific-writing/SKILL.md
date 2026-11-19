@@ -1,6 +1,7 @@
 ---
 name: scientific-writing
 description: Drafts, revises, and audits scientific manuscripts or reports with explicit evidence provenance, reporting-guideline coverage, authorship accountability, confidentiality controls, and local consistency checks. Use for manuscript sections, references, declarations, tables, figures, or submission preparation when scientific accuracy and traceability matter.
+description-zh: 起草、修订与审查科研论文或报告，要求显式给出证据来源、覆盖报告规范条目、明确作者责任、控制保密边界，并做本地一致性检查。适用于论文各章节、参考文献、声明、表格、图注与补充材料。
 license: MIT
 compatibility: Requires Python 3.11+ only for optional dependency-free local CLIs; core guidance is platform-neutral. Bundled tools are offline and require no API keys.
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: dask
 description: Scales pandas, NumPy, and custom Python research workflows beyond memory or across clusters with Dask. Covers DataFrames, Arrays, Bags, Futures, chunking, schedulers, and distributed diagnostics. Use for partitioned file processing, scientific array computation, or parallel tasks whose memory and dependency structure require Dask.
+description-zh: 用 Dask 把 pandas、NumPy 与自定义 Python 研究流程扩展到超出内存或跨集群的规模：DataFrame、数组、Bag、Future、分块、调度器与分布式诊断。适合分片文件处理、科学数组计算与并行任务。
 allowed-tools: Read Write Edit Bash
 license: BSD-3-Clause license
 compatibility: Requires Python 3.10+ and dask 2026.8.0; current Zarr 3.4 needs Python 3.12+. DataFrame workflows need pandas 2+ and PyArrow 16+. Cloud paths (s3://, gcs://) need s3fs or gcsfs. Cluster deployment uses dask.distributed (included with dask[complete]).

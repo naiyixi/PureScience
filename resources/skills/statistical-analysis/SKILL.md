@@ -1,6 +1,7 @@
 ---
 name: statistical-analysis
 description: Guided statistical analysis for research data - test selection, assumption checking, effect sizes, power analysis, Bayesian alternatives, and APA-formatted reporting. Use whenever a user wants to compare groups, test a hypothesis, analyze experimental or survey data, check statistical assumptions, compute required sample sizes, or write up results - even if they never name a specific test. Covers t-tests, ANOVA, chi-square, correlation, regression, non-parametric and Bayesian methods. For low-level model APIs, see the statsmodels and pymc skills.
+description-zh: 面向研究数据的引导式统计分析：检验方法选择、假设条件检查、效应量、功效分析、贝叶斯替代方案，以及 APA 格式的报告。凡需要比较组间差异、检验假设、分析实验或问卷数据、检查统计假设时都适用。
 license: MIT license
 compatibility: Requires Python 3.12+ and the documented isolated scientific Python environment; network access only for installation and documentation.
 metadata:

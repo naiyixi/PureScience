@@ -1,6 +1,7 @@
 ---
 name: pymoo
 description: Solves and validates single-, multi-, and many-objective optimization with pymoo, including NSGA-II, NSGA-III, MOEA/D, constraints, Pareto approximations, reference directions, and ZDT/DTLZ benchmarks for engineering and research problems.
+description-zh: 用 pymoo 求解并验证单目标、多目标与超多目标优化：NSGA-II、NSGA-III、MOEA/D、约束处理、帕累托前沿近似、参考方向，以及 ZDT/DTLZ 基准。
 license: Apache-2.0 license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.10+ and pymoo 0.6.2 with its NumPy, SciPy, matplotlib and autograd dependencies. Optional joblib for parallel runners, optuna for its algorithm wrapper, and dill for checkpoints. Network needed for installation only.

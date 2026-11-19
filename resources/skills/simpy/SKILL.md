@@ -1,6 +1,7 @@
 ---
 name: simpy
 description: Builds, inspects, tests, and analyzes bounded process-based discrete-event simulations with SimPy. Use for event scheduling, resource queues, interrupts, monitoring, independent replications, warm-up, and reproducible output analysis.
+description-zh: 用 SimPy 构建、检查、测试与分析有边界的离散事件流程仿真：事件调度、资源队列、中断、监控、独立重复、预热，以及可复现的输出分析。
 license: MIT
 compatibility: Upstream SimPy 4.1.2 supports Python 3.8+; bundled CLIs require Python 3.10+, uv, and SimPy 4.1.2. They use only SimPy and the standard library, operate on local bounded inputs, and make no network calls.
 allowed-tools: Read Write Edit Bash Glob

@@ -1,6 +1,7 @@
 ---
 name: pydicom
 description: Reads, inspects, writes, transforms, and preflights local DICOM datasets and pixel data. Applies to DICOM metadata, transfer syntaxes, compression plugins, frames, private elements, JSON, and bounded de-identification review.
+description-zh: 读取、检查、写入、变换并预检本地 DICOM 数据集与像素数据：DICOM 元数据、传输语法、压缩插件、帧、私有元素、JSON，以及有边界的去标识审查。
 license: MIT
 compatibility: Python 3.12+ for the tested pixel stack; pydicom 3.0.2 alone needs Python 3.10+; optional pinned NumPy, Pillow, and pixel plugins. Helper CLIs are local-only and require authorized data.
 metadata:

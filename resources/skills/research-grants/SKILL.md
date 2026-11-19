@@ -1,6 +1,7 @@
 ---
 name: research-grants
 description: Supports research proposal preparation and review for NSF, NIH, DOE, DARPA, and Taiwan NSTC, including opportunity-specific requirements, aims, review criteria, budgets, broader impacts, forms, and resubmissions. Use for investigator-authored grant development, compliance matrices, and proposal critiques.
+description-zh: 支持 NSF、NIH、DOE、DARPA 与台湾 NSTC 的科研项目申请书撰写与评审：按机会特异性要求、研究目标、评审标准、预算、广泛影响、表单与重投。用于研究者撰写的申报材料、合规矩阵与评审准备。
 allowed-tools: Read Write Edit Bash
 license: MIT license
 compatibility: Requires network access to verify current opportunities and agency instructions, or supplied dated official documents for a bounded review. Optional figures via scientific-schematics require OPENROUTER_API_KEY and outbound API access.

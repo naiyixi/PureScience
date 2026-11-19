@@ -1,6 +1,7 @@
 ---
 name: transformers
 description: Hugging Face Transformers for loading Hub models, running pipeline inference, text generation, and Trainer fine-tuning on NLP, vision, audio, and multimodal tasks. Applies when working with AutoModel, pipelines, tokenizers, generation configs, or TrainingArguments within Transformers.
+description-zh: 用 Hugging Face Transformers 加载 Hub 模型、跑 pipeline 推理、文本生成，以及在 NLP、视觉、音频与多模态任务上做 Trainer 微调。适用于 AutoModel、pipeline、分词器、生成配置与 TrainingArguments 相关工作。
 allowed-tools: Read Write Edit Bash
 license: Apache-2.0 license
 compatibility: Requires Python 3.10+, PyTorch 2.5+, and transformers 5.18.0; optional librosa 1.0 requires Python 3.12+. Network access for Hub downloads. Gated or private Hub models need an HF token (`hf auth login` or `HF_TOKEN`).

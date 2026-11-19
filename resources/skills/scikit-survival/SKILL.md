@@ -1,6 +1,7 @@
 ---
 name: scikit-survival
 description: Builds, evaluates, and audits right-censored or competing-risk survival workflows with scikit-survival, including leakage-safe preprocessing, model selection, probability prediction, and censoring-aware metrics.
+description-zh: 用 scikit-survival 构建、评估与审查右删失或竞争风险的生存分析流程：防泄漏的预处理、模型选择、概率预测，以及考虑删失的评估指标。
 license: MIT
 compatibility: Requires Python 3.11+, uv, and the pinned scikit-survival 0.28.0 stack for executable examples. Bundled CLIs are local and network-free by default.
 allowed-tools: Read Write Edit Bash
