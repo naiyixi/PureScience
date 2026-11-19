@@ -8,9 +8,11 @@ import {
   BACKGROUND_DELIVERY_LABELS_BY_LOCALE,
   backgroundDeliveryLabelsFor
 } from './background-delivery-labels'
+import { SUPPORTED_LOCALE_CODES } from './locale-codes'
 
-// Mirrors src/renderer/src/i18n/languages.ts: every language the interface ships, and nothing else.
-const SHIPPED_LOCALES = ['en', 'zh', 'zh-Hant', 'ja', 'ko', 'fr', 'de', 'es', 'ru']
+// The shipped set comes from the shared source now — this file used to mirror the renderer's list by
+// hand, which is a second copy of the same fact waiting to drift.
+const SHIPPED_LOCALES = SUPPORTED_LOCALE_CODES
 
 const stateKeys = Object.keys(NEUTRAL_BACKGROUND_DELIVERY_LABELS.stateNames)
 const reasonKeys = Object.keys(NEUTRAL_BACKGROUND_DELIVERY_LABELS.reasonNames)
@@ -66,6 +68,10 @@ describe('background delivery labels', () => {
     is('zh-Hant', byLocale['zh-Hant'])
     is('zh-TW', byLocale['zh-Hant'])
     is('zh-HK', byLocale['zh-Hant'])
+    // Macau writes Traditional Chinese; this used to be a per-file judgement call, and one of the
+    // copies in the tree answered Simplified for the same tag.
+    is('zh-MO', byLocale['zh-Hant'])
+    is('zh_TW', byLocale['zh-Hant'])
     is('ja-JP', byLocale.ja)
     is('ko_KR', byLocale.ko)
     is('de-AT', byLocale.de)

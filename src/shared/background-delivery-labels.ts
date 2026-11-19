@@ -1,4 +1,5 @@
 import type { BackgroundDeliveryLabels } from './background-delivery'
+import { localeCodeFromTag, type SupportedLocaleCode } from './locale-codes'
 
 // The continuation turn and the delivery ledger are read long after they are written — often in a
 // session the reader reopens the next morning — so their wording follows the interface language
@@ -7,7 +8,12 @@ import type { BackgroundDeliveryLabels } from './background-delivery'
 //
 // Kept in shared code because both ends need the same words: the main process writes the continuation
 // turn (which must be right even with no window open), and the renderer renders the ledger panel.
-export const BACKGROUND_DELIVERY_LABELS_BY_LOCALE: Record<string, BackgroundDeliveryLabels> = {
+// Keyed by the shared nine-language set, so this table cannot be short a language while the rest of
+// the product ships it.
+export const BACKGROUND_DELIVERY_LABELS_BY_LOCALE: Record<
+  SupportedLocaleCode,
+  BackgroundDeliveryLabels
+> = {
   en: {
     header: 'Background result delivery',
     state: 'State',
@@ -249,28 +255,8 @@ export const BACKGROUND_DELIVERY_LABELS_BY_LOCALE: Record<string, BackgroundDeli
 }
 
 // 'system' has already been resolved by the renderer before it reports a language, but a stored value
-// can still be a BCP-47 tag: match the whole tag first, then the language subtag, then English.
+// can still be a BCP-47 tag: resolve it through the shared cascade, which matches the whole tag first,
+// then the language subtag, and lands on English for anything this product does not ship.
 export const backgroundDeliveryLabelsFor = (
   locale: string | undefined | null
-): BackgroundDeliveryLabels => {
-  const fallback = BACKGROUND_DELIVERY_LABELS_BY_LOCALE.en
-  const trimmed = locale?.trim()
-  if (!trimmed) return fallback
-  const normalized = trimmed.replace(/_/g, '-')
-  const lower = normalized.toLowerCase()
-  // Traditional Chinese ships as its own dictionary, so it must not fall through to `zh`.
-  if (lower.startsWith('zh')) {
-    return lower.includes('hant') ||
-      lower.includes('-tw') ||
-      lower.includes('-hk') ||
-      lower.includes('-mo')
-      ? BACKGROUND_DELIVERY_LABELS_BY_LOCALE['zh-Hant']
-      : BACKGROUND_DELIVERY_LABELS_BY_LOCALE.zh
-  }
-  const exact = Object.keys(BACKGROUND_DELIVERY_LABELS_BY_LOCALE).find(
-    (key) => key.toLowerCase() === lower
-  )
-  if (exact) return BACKGROUND_DELIVERY_LABELS_BY_LOCALE[exact]
-  const primary = lower.split('-')[0]
-  return BACKGROUND_DELIVERY_LABELS_BY_LOCALE[primary] ?? fallback
-}
+): BackgroundDeliveryLabels => BACKGROUND_DELIVERY_LABELS_BY_LOCALE[localeCodeFromTag(locale ?? '')]
