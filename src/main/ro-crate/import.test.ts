@@ -247,6 +247,104 @@ describe('inspectExternalRoCrate', () => {
     }
   )
 
+  it('reads a payload that lives outside this app’s own payload folder', async () => {
+    // RO-Crate fixes no payload directory. `files/` is only what OUR writer chooses; the common layout other
+    // tools write is `data/`. Until this was fixed, a crate like the one below was reported as "describes no
+    // payload" and its bytes were never hashed — a foreign crate could not be read at all.
+    const cratePath = await createScratch()
+    const body = 'subject,value\na,1\n'
+    await mkdir(join(cratePath, 'data'), { recursive: true })
+    await writeFile(join(cratePath, 'data', 'measurements.csv'), body, 'utf8')
+    const sha = sha256(body)
+    const document = {
+      // A later 1.x profile on purpose: another tool's output, not ours.
+      '@context': 'https://w3id.org/ro/crate/1.3/context',
+      '@graph': [
+        {
+          '@id': './',
+          '@type': 'Dataset',
+          name: 'Foreign crate',
+          description: 'Written by another tool.',
+          datePublished: '2026-11-18T00:00:00Z',
+          hasPart: [{ '@id': 'data/measurements.csv' }]
+        },
+        {
+          '@id': RO_CRATE_METADATA_FILENAME,
+          '@type': 'CreativeWork',
+          about: { '@id': './' },
+          conformsTo: { '@id': 'https://w3id.org/ro/crate/1.3' }
+        },
+        {
+          '@id': 'data/measurements.csv',
+          '@type': 'File',
+          name: 'measurements.csv',
+          contentSize: String(Buffer.byteLength(body)),
+          encodingFormat: 'text/csv',
+          sha256: sha,
+          wasGeneratedBy: { '@id': '#create-measurements' }
+        },
+        {
+          '@id': '#create-measurements',
+          '@type': 'CreateAction',
+          name: 'Wrote the measurements',
+          instrument: { '@id': '#other-tool' },
+          result: { '@id': 'data/measurements.csv' }
+        },
+        {
+          '@id': '#other-tool',
+          '@type': 'SoftwareApplication',
+          name: 'another-tool',
+          version: '1.0'
+        }
+      ]
+    }
+    await writeFile(
+      join(cratePath, RO_CRATE_METADATA_FILENAME),
+      `${JSON.stringify(document, null, 2)}\n`,
+      'utf8'
+    )
+
+    const result = await inspectExternalRoCrate(cratePath)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const failed = failedRoCrateAssertions(result.report)
+    const ids = failed.map((assertion) => assertion.id)
+    // The payload was seen and its bytes were recounted and matched.
+    expect(ids).not.toContain('crate-describes-at-least-one-payload')
+    expect(ids).not.toContain('file-sha256-matches-copied-bytes')
+    expect(ids).not.toContain('every-payload-described')
+    expect(ids).not.toContain('files-linked-from-root')
+    // A newer 1.x profile is a version we do not write, not a defect in their crate.
+    expect(ids).not.toContain('context-references-ro-crate-profile')
+    expect(ids).not.toContain('metadata-descriptor-conforms-to-profile')
+    // What DOES fail is our own export contract: their file names no Artifact Version locator, which only
+    // this app can write (two rules read that locator). Naming exactly those is the honest answer.
+    expect(ids).toEqual(['file-provenance-names-stored-version', 'file-names-stored-version'])
+    expect(namedFailures(failed)).toContain('data/measurements.csv')
+  })
+
+  it('still names a context that is not RO-Crate at all', async () => {
+    const { crateDir } = await writeRealCrate()
+    const document = JSON.parse(
+      await readFile(join(crateDir, RO_CRATE_METADATA_FILENAME), 'utf8')
+    ) as RoCrateMetadataDocument
+    document['@context'] = ['https://example.org/not-a-crate-context']
+    await writeFile(
+      join(crateDir, RO_CRATE_METADATA_FILENAME),
+      `${JSON.stringify(document, null, 2)}\n`,
+      'utf8'
+    )
+
+    const result = await inspectExternalRoCrate(crateDir)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(failedRoCrateAssertions(result.report).map((a) => a.id)).toContain(
+      'context-references-ro-crate-profile'
+    )
+  })
+
   it('names a missing metadata document instead of reporting rules it never read', async () => {
     const cratePath = await crateWith(null)
 

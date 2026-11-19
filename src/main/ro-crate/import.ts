@@ -2,8 +2,8 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 
 import {
-  RO_CRATE_CONTENT_DIRECTORY,
   RO_CRATE_METADATA_FILENAME,
+  RO_CRATE_ROOT_DATASET_ID,
   validateRoCrate,
   type RoCrateMetadataDocument,
   type RoCratePayloadDigest
@@ -24,23 +24,33 @@ import { digestOfFile } from './digest'
 // exactly what the report is for, and collapsing it into a refusal would hide which rules failed.
 //
 // The reader passes the same two payload inputs the writer passes, so it is judged on the SAME assertions:
-// what the crate really holds under its payload folder (`payloadPaths`) and the bytes recounted from disk
-// (`payloadDigests`). Reading a document without them would leave three rules with nothing to judge and let
-// the panel claim "every check passed" over a crate whose payloads it never looked at.
+// what the crate really holds as files (anywhere in the crate — RO-Crate fixes no payload directory, so
+// `files/` cannot be assumed) and the bytes recounted from disk (`payloadDigests`). Reading a document
+// without them would leave three rules with nothing to judge and let the panel claim "every check passed"
+// over a crate whose payloads it never looked at.
 //
 // The codes and the inspection shape live in `shared/ro-crate-inspect.ts` because they cross the process
 // boundary: the window and this reader must be reading one list, not two copies that can drift apart.
 const describe = (error: unknown): string => String((error as Error)?.message ?? error)
 
-const contentRootOf = (cratePath: string): string => join(cratePath, RO_CRATE_CONTENT_DIRECTORY)
+/** The one file name RO-Crate fixes; everything else in the crate is a payload of some kind. */
+const METADATA_ID = RO_CRATE_METADATA_FILENAME
+const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u
 
-/** Crate-relative ids of the files the crate actually holds under its payload folder. */
-const listPayloadPaths = async (contentRoot: string): Promise<string[]> => {
+/**
+ * Crate-relative ids of every file the crate actually holds.
+ *
+ * RO-Crate does NOT fix a payload directory — `files/` is only this app's writer convention, and a crate
+ * another tool wrote keeps its data wherever that tool likes (`data/` is the common one). Reading only
+ * `files/` made every foreign crate look like one that "describes no payload" and left its bytes
+ * unverified, which is the opposite of what an external reader is for.
+ */
+const listPayloadPaths = async (crateRoot: string): Promise<string[]> => {
   const found: string[] = []
   const walk = async (relative: string): Promise<void> => {
-    // An absent or unreadable payload folder is an empty one on purpose: the rules then say what is missing
+    // An absent or unreadable directory is an empty one on purpose: the rules then say what is missing
     // instead of this helper turning a crate into a refusal.
-    const entries = await readdir(join(contentRoot, relative), { withFileTypes: true }).catch(
+    const entries = await readdir(join(crateRoot, relative), { withFileTypes: true }).catch(
       () => []
     )
     for (const entry of entries) {
@@ -48,29 +58,31 @@ const listPayloadPaths = async (contentRoot: string): Promise<string[]> => {
       if (entry.isDirectory()) await walk(next)
       // Files only, and one level of intent: a symlink is neither listed nor followed, because following
       // one would read bytes that do not belong to this crate.
-      else if (entry.isFile()) found.push(`${RO_CRATE_CONTENT_DIRECTORY}/${next}`)
+      else if (entry.isFile() && next !== METADATA_ID) found.push(next)
     }
   }
   await walk('')
   return found.sort()
 }
 
+/**
+ * Whether an entity id can name bytes inside this crate. A document can name any path it likes, and a
+ * reader that followed one would read bytes outside the crate it was pointed at — the opposite of the
+ * read-only promise. Anything with a URI scheme, absolute, or carrying `..` is left to the rules.
+ */
+const isCrateRelativeId = (id: unknown): id is string => {
+  if (typeof id !== 'string' || id.length === 0) return false
+  if (id === METADATA_ID || id === RO_CRATE_ROOT_DATASET_ID) return false
+  if (URI_SCHEME.test(id) || id.startsWith('/') || id.includes('..')) return false
+  return true
+}
+
 /** The payload ids the document claims — the only files worth hashing. */
 const declaredPayloadIds = (document: RoCrateMetadataDocument): string[] =>
-  (document['@graph'] ?? [])
-    .map((entity) => entity['@id'])
-    .filter(
-      (id): id is string =>
-        typeof id === 'string' && id.startsWith(`${RO_CRATE_CONTENT_DIRECTORY}/`)
-    )
+  (document['@graph'] ?? []).map((entity) => entity['@id']).filter(isCrateRelativeId)
 
-/**
- * Whether a declared id stays inside the payload folder. A document can name any path it likes, and a reader
- * that followed one would read bytes outside the crate it was pointed at — the opposite of the read-only
- * promise. Anything that escapes (absolute, `..`, another drive) is left to the rules, which name it.
- */
-const insideContentRoot = (cratePath: string, id: string): boolean =>
-  resolve(cratePath, id).startsWith(`${resolve(contentRootOf(cratePath))}${sep}`)
+const insideCrate = (cratePath: string, id: string): boolean =>
+  resolve(cratePath, id).startsWith(`${resolve(cratePath)}${sep}`)
 
 export const inspectExternalRoCrate = async (
   cratePath: string
@@ -95,14 +107,14 @@ export const inspectExternalRoCrate = async (
     return { ok: false, reason: 'unparseable', detail: `${metadataPath}: ${describe(error)}` }
   }
 
-  const payloadPaths = await listPayloadPaths(contentRootOf(cratePath))
+  const payloadPaths = await listPayloadPaths(cratePath)
 
   // Recounted from the bytes on disk, never from the hash the document claims for itself. A declared payload
   // that is absent, a directory, a symlink, or unreadable simply has no digest here — and every one of those
   // is a failed check the report names, rather than a file quietly left out of the judgement.
   const payloadDigests = new Map<string, RoCratePayloadDigest>()
   for (const id of declaredPayloadIds(document)) {
-    if (!insideContentRoot(cratePath, id)) continue
+    if (!insideCrate(cratePath, id)) continue
     if (!payloadPaths.includes(id)) continue
     const digest = await digestOfFile(join(cratePath, id))
     if (digest !== undefined) payloadDigests.set(id, digest)

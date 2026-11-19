@@ -31,8 +31,16 @@ import type { ProjectFileItem } from './project-files'
 export const RO_CRATE_CONTEXT_URL = 'https://w3id.org/ro/crate/1.1/context'
 /** Versioned permalink of the profile this module writes. */
 export const RO_CRATE_PROFILE_URL = 'https://w3id.org/ro/crate/1.1'
+/**
+ * What we ACCEPT when reading. We write 1.1, but a crate another tool wrote may legitimately declare a
+ * later 1.x profile — the python reference library already writes 1.3 — and reporting a foreign crate as
+ * broken for using a newer 1.x would be our reader's limitation, not a defect in their crate.
+ */
+const RO_CRATE_CONTEXT_PATTERN = /^https:\/\/w3id\.org\/ro\/crate\/1\.[0-9]+\/context$/u
+const RO_CRATE_PROFILE_PATTERN = /^https:\/\/w3id\.org\/ro\/crate\/1\.[0-9]+$/u
 /** The RO-Crate Metadata File, by spec the only file whose name is fixed. */
 export const RO_CRATE_METADATA_FILENAME = 'ro-crate-metadata.json'
+/** The Root Data Entity's mandated `@id`. */
 export const RO_CRATE_ROOT_DATASET_ID = './'
 /** Payload directory inside the crate. Keeps app files from colliding with the metadata file. */
 export const RO_CRATE_CONTENT_DIRECTORY = 'files'
@@ -679,7 +687,9 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
     'context-references-ro-crate-profile',
     'spec-should',
     RO_CRATE_REQUIREMENTS.structure,
-    contextEntries.includes(RO_CRATE_CONTEXT_URL),
+    contextEntries.some(
+      (entry) => typeof entry === 'string' && RO_CRATE_CONTEXT_PATTERN.test(entry)
+    ),
     `@context: ${JSON.stringify(contextEntries)}`
   )
 
@@ -768,7 +778,7 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
     'spec-should',
     RO_CRATE_REQUIREMENTS.descriptor,
     descriptor !== undefined &&
-      referencesOf(descriptor['conformsTo']).some((id) => id === RO_CRATE_PROFILE_URL),
+      referencesOf(descriptor['conformsTo']).some((id) => RO_CRATE_PROFILE_PATTERN.test(id)),
     `conformsTo: ${JSON.stringify(descriptor?.['conformsTo'])}`
   )
 
@@ -944,9 +954,13 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
   )
 
   if (payloadDigests) {
+    // A record that declares no sha256 is named by `file-sha256-recorded`; it must NOT also be reported as a
+    // mismatch here, because nothing was compared. "Not compared" and "does not match" are different answers.
     const mismatchedHash = pathEntities.filter((entity) => {
+      const declared = entity['sha256']
+      if (typeof declared !== 'string' || !SHA256_HEX.test(declared)) return false
       const digest = payloadDigests.get(entity['@id'])
-      return !digest || digest.sha256 !== entity['sha256']
+      return !digest || digest.sha256 !== declared
     })
     assert(
       'file-sha256-matches-copied-bytes',
@@ -957,9 +971,13 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
         ? `crate file differs from its declared sha256: ${mismatchedHash.map((e) => e['@id']).join(', ')}`
         : undefined
     )
+    // Same rule for the size: an absent contentSize is `file-content-size-and-format`'s finding, not evidence
+    // that the bytes disagree with a number nobody wrote down.
     const mismatchedSize = pathEntities.filter((entity) => {
+      const declaredSize = entity['contentSize']
+      if (typeof declaredSize !== 'string') return false
       const digest = payloadDigests.get(entity['@id'])
-      return !digest || String(digest.sizeBytes) !== entity['contentSize']
+      return !digest || String(digest.sizeBytes) !== declaredSize
     })
     assert(
       'file-content-size-matches-copied-bytes',

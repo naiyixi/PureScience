@@ -376,6 +376,56 @@ describe('validateRoCrate', () => {
     expect(failedRoCrateAssertions(report).map((a) => a.id)).toContain('file-sha256-recorded')
   })
 
+  it('accepts a later 1.x profile and still refuses a context that is not RO-Crate', () => {
+    // We write 1.1. A crate another tool wrote may declare 1.2/1.3 — that is a newer version of the same
+    // profile, not a broken crate, and our reader must not call it one.
+    const laterContext: (string | Record<string, string>)[] = [
+      'https://w3id.org/ro/crate/1.3/context',
+      ...document['@context'].slice(1)
+    ]
+    const laterProfile: RoCrateMetadataDocument = {
+      ...document,
+      '@context': laterContext,
+      '@graph': document['@graph'].map((entity) =>
+        entity['@id'] === RO_CRATE_METADATA_FILENAME
+          ? { ...entity, conformsTo: { '@id': 'https://w3id.org/ro/crate/1.3' } }
+          : entity
+      )
+    }
+    const accepted = failedRoCrateAssertions(
+      validateRoCrate({ document: laterProfile, payloadPaths, payloadDigests })
+    ).map((assertion) => assertion.id)
+    expect(accepted).not.toContain('context-references-ro-crate-profile')
+    expect(accepted).not.toContain('metadata-descriptor-conforms-to-profile')
+
+    const notACrate: RoCrateMetadataDocument = {
+      ...document,
+      '@context': ['https://example.org/nope']
+    }
+    const refused = failedRoCrateAssertions(
+      validateRoCrate({ document: notACrate, payloadPaths, payloadDigests })
+    ).map((assertion) => assertion.id)
+    expect(refused).toContain('context-references-ro-crate-profile')
+  })
+
+  it('does not read a record with no sha256 as a mismatch', () => {
+    // "Nothing was compared" and "the bytes disagree" are different answers, and only the first is true
+    // when no checksum was recorded. `file-sha256-recorded` names that absence on its own.
+    const withoutHash: RoCrateMetadataDocument = {
+      ...document,
+      '@graph': document['@graph'].map((entity) => {
+        if (entity['@id'] !== 'files/assay.csv') return entity
+        const { sha256: _sha256, ...rest } = entity
+        return rest
+      })
+    }
+    const failed = failedRoCrateAssertions(
+      validateRoCrate({ document: withoutHash, payloadPaths, payloadDigests })
+    ).map((assertion) => assertion.id)
+    expect(failed).toContain('file-sha256-recorded')
+    expect(failed).not.toContain('file-sha256-matches-copied-bytes')
+  })
+
   it('fails when the copied bytes do not match the declared sha256', () => {
     const tampered = new Map(payloadDigests)
     tampered.set('files/assay.csv', { sizeBytes: 8, sha256: sha256('other bytes') })
