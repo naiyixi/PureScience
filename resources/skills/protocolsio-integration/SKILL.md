@@ -1,6 +1,7 @@
 ---
 name: protocolsio-integration
 description: Reads, validates, and safely exports protocols.io data with current official REST/MCP contracts, or creates non-executing mutation plans. The bundled client makes bounded official-host GET requests only with explicit --execute. Use only for tasks explicitly targeting protocols.io or an exact protocols.io protocol version.
+description-zh: 按官方现行的 REST/MCP 契约读取、校验并安全导出 protocols.io 数据，或生成不执行的变更计划。内置客户端只在显式 --execute 时才向官方主机发有边界的 GET 请求；只用于明确指向 protocols.io 的任务。
 license: MIT
 allowed-tools: Read Write Python
 compatibility: >-

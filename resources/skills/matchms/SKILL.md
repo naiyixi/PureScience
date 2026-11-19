@@ -1,6 +1,7 @@
 ---
 name: matchms
 description: Processes, cleans, compares, and searches tandem mass spectra with matchms. Use for MS/MS file I/O, metadata harmonization, peak filtering, spectral similarity, library matching, score matrices, and molecular-similarity networks. Use pyopenms instead for LC-MS feature detection or proteomics pipelines.
+description-zh: 用 matchms 处理、清洗、比较与检索串联质谱：MS/MS 文件读写、元数据统一、峰过滤、谱相似度、库匹配、评分矩阵与分子相似性网络。LC-MS 特征提取请用 pyopenms。
 allowed-tools: Read Write Edit Bash
 license: Apache-2.0
 compatibility: Requires Python >=3.10,<3.15, uv, and matchms 0.33.1. Local file workflows need no credentials; metabolomics-USI loading requires network access.

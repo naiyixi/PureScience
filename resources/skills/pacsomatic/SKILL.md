@@ -1,6 +1,7 @@
 ---
 name: pacsomatic
 description: Prepares and launches nf-core/pacsomatic matched tumor-normal PacBio HiFi genomics workflows from unaligned BAM inputs. Supports samplesheet generation, pinned Nextflow launch artifacts, local checks, LSF/Slurm/PBS Pro/SGE launcher submission, and startup troubleshooting. Use for pacsomatic run preparation and execution, not general short-read somatic analysis or medical imaging PACS.
+description-zh: 从比对前的 BAM 输入准备并启动 nf-core/pacsomatic 的肿瘤-正常配对 PacBio HiFi 基因组流程：生成样本表、固定版本的 Nextflow 启动物料、本地检查、LSF/Slurm/PBS Pro/SGE 提交与启动排错。
 license: MIT
 compatibility: Requires Python 3.10+ for the standard-library helper. Execution requires Bash, Nextflow >=24.04.2, a compatible Java runtime (current Nextflow supports Java 17-26), the selected container runtime and optionally a scheduler. Network access is needed for uncached pipeline code, plugins, references and containers.
 metadata:

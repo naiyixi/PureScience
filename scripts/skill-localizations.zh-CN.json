@@ -60,6 +60,25 @@
     "tensorboard": "用 TensorBoard 可视化训练指标、用直方图排查模型、对比实验、可视化计算图，并做性能剖析——这是 Google 的机器学习可视化工具包。",
     "simpy": "用 SimPy 构建、检查、测试与分析有边界的离散事件流程仿真：事件调度、资源队列、中断、监控、独立重复、预热，以及可复现的输出分析。",
     "pymoo": "用 pymoo 求解并验证单目标、多目标与超多目标优化：NSGA-II、NSGA-III、MOEA/D、约束处理、帕累托前沿近似、参考方向，以及 ZDT/DTLZ 基准。",
-    "datalad": "用 DataLad 与 git-annex 获取、版本化与发布科学数据集，并用 datalad run、rerun 与 containers-run 记录计算来源。适用于从 OpenNeuro、DANDI、datasets.datalad.org 或任意 DataLad 数据集克隆与取数。"
+    "datalad": "用 DataLad 与 git-annex 获取、版本化与发布科学数据集，并用 datalad run、rerun 与 containers-run 记录计算来源。适用于从 OpenNeuro、DANDI、datasets.datalad.org 或任意 DataLad 数据集克隆与取数。",
+    "qiime2-amplicon": "把双端 16S 扩增子读数处理成 QIIME 2 的 ASV 与物种分类，并保留工件来源：校验双端 FASTQ 清单、引物方向诊断、修剪后预期重叠、样本 ID、运行时版本与读数保留率，并指导后续选择。",
+    "deeptools": "NGS 分析工具集：BAM 转 bigWig、质控（相关性、PCA、指纹图）、热图与剖面图（TSS、峰区），用于 ChIP-seq、RNA-seq、ATAC-seq 的可视化。",
+    "mageck": "用 MAGeCK 分析混合 CRISPR 筛选的 FASTQ 读数与 guide 计数矩阵：校验 guide 文库与对比组、衡量重复与文库质控，产出基因命中排序（含效应量与 FDR）。用于新的敲除、CRISPRi 或 CRISPRa 筛选分析。",
+    "matchms": "用 matchms 处理、清洗、比较与检索串联质谱：MS/MS 文件读写、元数据统一、峰过滤、谱相似度、库匹配、评分矩阵与分子相似性网络。LC-MS 特征提取请用 pyopenms。",
+    "pyopenms": "用 pyOpenMS 处理质谱数据：蛋白组与代谢组流程——特征检测、肽段与蛋白鉴定、非标定量、加合物与精确质量注释，以及复杂的 LC-MS/MS 流水线，支持多种文件格式。",
+    "nmrglue": "用 nmrglue 把已定标的一维复数 NMR 自由感应衰减处理成相位校正谱、候选峰与带符号积分区间：ppm 轴校验、窗函数、傅里叶变换、手动相位校正与基线处理。",
+    "pyzotero": "用 pyzotero 管理 Zotero 文献库：通过 Zotero Web API v3 或本地 API 检索、新建、更新、删除条目、分类、标签与附件。适用于以程序方式操作 Zotero 文献库与书目数据。",
+    "paper-lookup": "检索 18 个学术接口，找论文、预印本、引用、开放获取全文、仓库记录与期刊 OA 状态，并带回可复现的来源信息。覆盖 PubMed、PMC、Europe PMC、bioRxiv、medRxiv、arXiv、OpenAlex、Crossref、Semantic Scholar 等。",
+    "protocolsio-integration": "按官方现行的 REST/MCP 契约读取、校验并安全导出 protocols.io 数据，或生成不执行的变更计划。内置客户端只在显式 --execute 时才向官方主机发有边界的 GET 请求；只用于明确指向 protocols.io 的任务。",
+    "benchling-integration": "Benchling 的 Python SDK 与 REST API 对接：注册表实体、库存、ELN 条目、工作流、Benchling Apps 与数据仓库查询。适用于用 benchling-sdk 或 v2 API 自动化实验室数据。",
+    "opentrons-integration": "编写、审查、迁移、仿真并排查官方 Opentrons Python Protocol API v2 协议（Flex 与 OT-2）：机器人特定移液、台面与耗材配置、移液器、模块、运行时参数与液体类别。",
+    "pylabrobot": "开发与审查 PyLabRobot 的实验室自动化资源、移液计划、离线仿真与受支持设备对接。支持 PyLabRobot 协议与 API 问题；真正的物理执行必须留在显式的操作者安全确认之后。",
+    "omero-integration": "用 omero-py、BlitzGateway、OMERO CLI 及官方 OMERO.web 接口，检查并自动化针对 OMERO.server 的显微影像数据流程：表格、注释、ROI、渲染。适用于有范围的 OMERO 清单、元数据导出与导入导出规划。",
+    "pacsomatic": "从比对前的 BAM 输入准备并启动 nf-core/pacsomatic 的肿瘤-正常配对 PacBio HiFi 基因组流程：生成样本表、固定版本的 Nextflow 启动物料、本地检查、LSF/Slurm/PBS Pro/SGE 提交与启动排错。",
+    "genomic-coordinates": "在坐标约定之间转换基因组区间，统一并比较变异表示，并在坐标跨格式、跨工具或跨装配版本之前发现装配版本或 contig 命名不一致，避免污染后续分析。",
+    "scikit-bio": "生物数据工具包：序列分析、比对、系统发生树、多样性指标（alpha/beta、UniFrac）、排序分析（PCoA）、PERMANOVA、FASTA/Newick 读写，用于微生物组分析。",
+    "geniml": "支持可审计的本地 Geniml 基因组区间流程：校验 BED 与 universe 契约、规划 Region2Vec 或 scEmbed 运行、检查模型与分词器兼容性、评估共识 universe。",
+    "gtars": "支持 Gtars 做本地基因组区间模型与集合运算：重叠与计数、共识与覆盖度、分词、片段处理，以及 Python、Rust 与命令行下的 refget/BEDbase 规划。",
+    "tiledbvcf": "用 TileDB-VCF 存储与检索基因组变异调用：单样本 VCF/BCF 的索引化导入、增量队列、区域与样本查询、流式结果、等位基因统计、质控，以及本地或经 TileDB Cloud 的 VCF/BCF 导出。"
   }
 }

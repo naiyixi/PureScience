@@ -1,6 +1,7 @@
 ---
 name: genomic-coordinates
 description: Converts genomic intervals between coordinate conventions, normalises and compares variant representations, and detects assembly or contig-naming mismatches before they corrupt an analysis. Used whenever coordinates cross a format, tool, or assembly boundary - converting between BED, GFF/GTF, VCF, SAM/BAM, WIG, PSL, genePred, Picard interval_list, or region strings; reconciling 0-based half-open with 1-based inclusive; left-aligning or trimming indels; checking whether two variant records describe the same change; mapping genomic to transcript, CDS, or protein positions; auditing a BED/GTF/VCF for convention violations; or diagnosing GRCh37 vs hg19 vs GRCh38 vs T2T, chr-prefix, and liftover problems. Triggers include "off by one", "0-based", "1-based", "half-open", "coordinate system", "left-align", "normalize variant", "bcftools norm", "chr prefix", "wrong genome build", "liftover", "REF mismatch", and "HGVS".
+description-zh: 在坐标约定之间转换基因组区间，统一并比较变异表示，并在坐标跨格式、跨工具或跨装配版本之前发现装配版本或 contig 命名不一致，避免污染后续分析。
 license: MIT
 compatibility: Requires Python 3.11+. Scripts use only the standard library - no third-party packages and no network access. Variant normalisation needs an uncompressed reference FASTA with exact contig names; .fai enables indexed access. Without .fai the entire FASTA is loaded into memory.
 allowed-tools: Read Write Edit Bash

@@ -1,6 +1,7 @@
 ---
 name: tiledbvcf
 description: Stores and retrieves genomic variant calls with TileDB-VCF. Use for indexed single-sample VCF/BCF ingestion, incremental cohorts, region and sample queries, streaming results, allele statistics, QC, and VCF/BCF export locally or through TileDB Cloud.
+description-zh: 用 TileDB-VCF 存储与检索基因组变异调用：单样本 VCF/BCF 的索引化导入、增量队列、区域与样本查询、流式结果、等位基因统计、质控，以及本地或经 TileDB Cloud 的 VCF/BCF 导出。
 license: MIT license
 compatibility: Requires a native TileDB-VCF installation and Python 3.9-3.12 for the reviewed Conda builds. bcftools compresses/indexes input fixtures. Installation and remote storage need network access; TileDB Cloud needs its Python client, account token, and storage permissions.
 metadata:

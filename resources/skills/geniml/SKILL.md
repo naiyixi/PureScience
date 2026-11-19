@@ -1,6 +1,7 @@
 ---
 name: geniml
 description: "Supports audited local Geniml genomic-interval workflows: validate BED and universe contracts, plan Region2Vec or scEmbed runs, inspect model/tokenizer compatibility, and assess consensus universes."
+description-zh: 支持可审计的本地 Geniml 基因组区间流程：校验 BED 与 universe 契约、规划 Region2Vec 或 scEmbed 运行、检查模型与分词器兼容性、评估共识 universe。
 license: MIT
 compatibility: Requires Python 3.12 and uv for the tested geniml 0.8.4 / gtars 0.10.0 stack; scEmbed needs AnnData 0.12.19 with Zarr 2.18.7 and the listed ML packages. Bundled planners and inspectors are dependency-free, local-only, and make no network requests.
 allowed-tools: Read Write Edit Bash Glob

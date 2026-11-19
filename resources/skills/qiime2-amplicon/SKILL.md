@@ -1,6 +1,7 @@
 ---
 name: qiime2-amplicon
 description: Processes paired-end 16S amplicon reads into QIIME 2 ASVs and taxonomy with retained artifact provenance. Checks paired FASTQ manifests, primer orientation diagnostics, predicted post-trimming overlap, sample IDs, runtime versions and read retention, and guides selection of compatible taxonomic classifiers.
+description-zh: 把双端 16S 扩增子读数处理成 QIIME 2 的 ASV 与物种分类，并保留工件来源：校验双端 FASTQ 清单、引物方向诊断、修剪后预期重叠、样本 ID、运行时版本与读数保留率，并指导后续选择。
 license: MIT
 compatibility: Python 3.10+ for the standard-library validation helper; QIIME 2 2026.7 distribution with cutadapt, dada2, demux, feature-table, feature-classifier, taxa and types plugins for execution. Install through the official conda/container distribution, not PyPI. Requires a compatible trusted classifier and network for installation/reference downloads.
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: benchling-integration
 description: Benchling Python SDK and REST API integration for registry entities, inventory, ELN entries, workflows, Benchling Apps, and Data Warehouse queries. Use when automating lab data with benchling-sdk or the v2 API.
+description-zh: Benchling 的 Python SDK 与 REST API 对接：注册表实体、库存、ELN 条目、工作流、Benchling Apps 与数据仓库查询。适用于用 benchling-sdk 或 v2 API 自动化实验室数据。
 license: MIT
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.9+, benchling-sdk 1.25.0, network access, a Benchling tenant with API access, and API key or OAuth app credentials.

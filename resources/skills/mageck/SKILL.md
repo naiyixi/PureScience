@@ -1,6 +1,7 @@
 ---
 name: mageck
 description: Analyzes pooled CRISPR screen FASTQ reads and guide-count matrices with MAGeCK, validates guide libraries and contrasts, measures replicate and library QC, and produces gene hit rankings with effect sizes and FDR. Use for new knockout, CRISPRi, or CRISPRa screen analysis, enrichment or depletion contrasts, and MAGeCK count/test workflows; existing public dependency-score lookup belongs to DepMap.
+description-zh: 用 MAGeCK 分析混合 CRISPR 筛选的 FASTQ 读数与 guide 计数矩阵：校验 guide 文库与对比组、衡量重复与文库质控，产出基因命中排序（含效应量与 FDR）。用于新的敲除、CRISPRi 或 CRISPRa 筛选分析。
 license: MIT
 compatibility: Requires Python 3.10+ for the helper and MAGeCK 0.5.9.5 with its compiled RRA executable for analysis. Tested runtime uses Python 3.11, NumPy 1.26.4 and SciPy 1.13.1. Source installation needs a C++ compiler; network is needed only for installation. No credentials.
 metadata:

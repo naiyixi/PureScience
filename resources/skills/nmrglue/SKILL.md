@@ -1,6 +1,7 @@
 ---
 name: nmrglue
 description: Processes calibrated one-dimensional complex NMR free-induction decays with nmrglue into phased spectra, peak candidates, and signed integration regions. Use for raw 1D NMR processing, ppm-axis verification, apodization, Fourier transformation, manual phasing, baseline correction, or reproducible spectral integration.
+description-zh: 用 nmrglue 把已定标的一维复数 NMR 自由感应衰减处理成相位校正谱、候选峰与带符号积分区间：ppm 轴校验、窗函数、傅里叶变换、手动相位校正与基线处理。
 license: MIT
 compatibility: Requires Python 3.12+, nmrglue, NumPy 2+, and SciPy. Installation needs network access; processing is local and needs no credentials.
 metadata:

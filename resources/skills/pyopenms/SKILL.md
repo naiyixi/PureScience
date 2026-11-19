@@ -1,6 +1,7 @@
 ---
 name: pyopenms
 description: Processes mass spectrometry data with pyOpenMS. Supports proteomics and metabolomics workflows—feature detection, peptide/protein identification, label-free quantification, adduct/accurate-mass annotation, and complex LC-MS/MS pipelines. Supports extensive file formats and algorithms. For simple spectral comparison and small-molecule library matching use matchms.
+description-zh: 用 pyOpenMS 处理质谱数据：蛋白组与代谢组流程——特征检测、肽段与蛋白鉴定、非标定量、加合物与精确质量注释，以及复杂的 LC-MS/MS 流水线，支持多种文件格式。
 license: 3 clause BSD license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires CPython 3.11+ and pyOpenMS 3.6.0; pandas and NumPy for tables, Matplotlib for plots. Wheels support macOS 15+ arm64, Linux glibc 2.34+ x86-64/arm64, and Windows x86-64. Search-engine executables are separate.

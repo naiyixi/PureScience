@@ -1,6 +1,7 @@
 ---
 name: deeptools
 description: NGS analysis toolkit. BAM to bigWig conversion, QC (correlation, PCA, fingerprints), heatmaps/profiles (TSS, peaks), for ChIP-seq, RNA-seq, ATAC-seq visualization.
+description-zh: NGS 分析工具集：BAM 转 bigWig、质控（相关性、PCA、指纹图）、热图与剖面图（TSS、峰区），用于 ChIP-seq、RNA-seq、ATAC-seq 的可视化。
 license: BSD license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.12+ and deepTools 4.0.0 (including pysam and pyBigWig); samtools for sorting/indexing workflows. Network needed only for installation or retrieving public input data.

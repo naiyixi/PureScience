@@ -1,6 +1,7 @@
 ---
 name: omero-integration
 description: Inspects and automates microscopy data workflows against OMERO.server with omero-py, BlitzGateway, OMERO CLI, tables, annotations, ROIs, rendering, and documented OMERO.web APIs. Use this skill for scoped OMERO inventory, metadata export, import/export planning, or reviewed write workflows.
+description-zh: 用 omero-py、BlitzGateway、OMERO CLI 及官方 OMERO.web 接口，检查并自动化针对 OMERO.server 的显微影像数据流程：表格、注释、ROI、渲染。适用于有范围的 OMERO 清单、元数据导出与导入导出规划。
 license: MIT
 compatibility: >-
   Requires network access to a user-selected OMERO.server for remote operations.
