@@ -14,13 +14,13 @@
 
 ## 2. 数据模型（我方命名）
 
-| 表 | 关键字段 | 不变量 |
-| --- | --- | --- |
-| `ScreeningRuleRevision` | `collectionId` + `revision`（复合主键）、`inclusionJson`、`exclusionJson`、`createdAt`、`contentHash` | **不可变**：同一 `(collectionId, revision)` 写入后不可改；修订即新增 revision |
-| `ScreeningAssessment` | `collectionId` + `referenceId`（复合主键）、`ruleRevision`、`inputDigest`、`policyKey`、`model`、`verdict`、`probabilitiesJson`、`evidenceJson`、`decidedAt` | 唯一键保证**一条文献一个当前判定** |
-| `ScreeningOverride` | `collectionId` + `referenceId`（复合主键）、`decision`(include\|exclude)、`reason`、`actor`、`createdAt` | 与 AI 判定**分层**，绝不回写 `ScreeningAssessment` |
-| `ScreeningRun` | `id`、`collectionId`、`ruleRevision`、`startedAt`、`finishedAt`、`status` | 一次运行绑定一个 revision |
-| `ScreeningRunItem` | `runId` + `referenceId`、`state`、`failureKind`、`deferredReason`、`inputDigest` | 逐项可续跑 |
+| 表                      | 关键字段                                                                                                                                                     | 不变量                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `ScreeningRuleRevision` | `collectionId` + `revision`（复合主键）、`inclusionJson`、`exclusionJson`、`createdAt`、`contentHash`                                                        | **不可变**：同一 `(collectionId, revision)` 写入后不可改；修订即新增 revision |
+| `ScreeningAssessment`   | `collectionId` + `referenceId`（复合主键）、`ruleRevision`、`inputDigest`、`policyKey`、`model`、`verdict`、`probabilitiesJson`、`evidenceJson`、`decidedAt` | 唯一键保证**一条文献一个当前判定**                                            |
+| `ScreeningOverride`     | `collectionId` + `referenceId`（复合主键）、`decision`(include\|exclude)、`reason`、`actor`、`createdAt`                                                     | 与 AI 判定**分层**，绝不回写 `ScreeningAssessment`                            |
+| `ScreeningRun`          | `id`、`collectionId`、`ruleRevision`、`startedAt`、`finishedAt`、`status`                                                                                    | 一次运行绑定一个 revision                                                     |
+| `ScreeningRunItem`      | `runId` + `referenceId`、`state`、`failureKind`、`deferredReason`、`inputDigest`                                                                             | 逐项可续跑                                                                    |
 
 ## 3. 判定语义
 
@@ -38,13 +38,13 @@
 
 ## 4. 切片（每片独立可验收，禁半截）
 
-| 片 | 内容 | 验收 |
-| --- | --- | --- |
-| **S1** | Prisma 模型 + 迁移 + `repository`（revision 不可变、判定 upsert、覆盖分层读写、run/item 生命周期）+ 新鲜度与具名原因纯函数 | 单元测试：不可变被违反即失败；四态与原因矩阵逐条覆盖；`candidateCount ≤ searchedCount` 断言 |
-| **S2** | 评估引擎：`inputDigest` 计算、证据覆盖度判定、四条护栏的提示词装配与解析、并发 4 + 队列、续跑 digest 校验 | 引擎测试（桩模型）：缺全文⇒uncertain；注入样例⇒按数据处理；no-match 无反证⇒uncertain；续跑只重评变化项 |
-| **S3** | IPC + 渲染面（集合视图的分诊列、四态筛选、原因悬停、人工覆盖、批量/单条） | 真机：点得动、状态与原因可见、覆盖后仍能看到 AI 原判 |
-| **S4** | GB/T 7714 导出接线 + 统计面板（AI 判定数 / 人工覆盖数 / 未处理量） | 真机：导出文件只含 included；统计与库内计数逐项一致 |
-| **S5** | 覆盖率清单视图 + 实机验收存档（`docs/evidence/`） | 真机数字 + 截图 + 断言 |
+| 片     | 内容                                                                                                                       | 验收                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **S1** | Prisma 模型 + 迁移 + `repository`（revision 不可变、判定 upsert、覆盖分层读写、run/item 生命周期）+ 新鲜度与具名原因纯函数 | 单元测试：不可变被违反即失败；四态与原因矩阵逐条覆盖；`candidateCount ≤ searchedCount` 断言            |
+| **S2** | 评估引擎：`inputDigest` 计算、证据覆盖度判定、四条护栏的提示词装配与解析、并发 4 + 队列、续跑 digest 校验                  | 引擎测试（桩模型）：缺全文⇒uncertain；注入样例⇒按数据处理；no-match 无反证⇒uncertain；续跑只重评变化项 |
+| **S3** | IPC + 渲染面（集合视图的分诊列、四态筛选、原因悬停、人工覆盖、批量/单条）                                                  | 真机：点得动、状态与原因可见、覆盖后仍能看到 AI 原判                                                   |
+| **S4** | GB/T 7714 导出接线 + 统计面板（AI 判定数 / 人工覆盖数 / 未处理量）                                                         | 真机：导出文件只含 included；统计与库内计数逐项一致                                                    |
+| **S5** | 覆盖率清单视图 + 实机验收存档（`docs/evidence/`）                                                                          | 真机数字 + 截图 + 断言                                                                                 |
 
 ## 5. 与审计排期的关系
 

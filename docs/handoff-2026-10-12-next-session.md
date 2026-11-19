@@ -18,16 +18,16 @@
 
 ## 二、已交付（每条都有真机读数；括号内是读数落点）
 
-| 单元 | 提交 | 真机读数 |
-|---|---|---|
-| P0-8 前半（失败族具名）+ 镜像表实测 | `d4de3915` | 候选端点同一性：`docs/evidence/2026-10-11-mirror-candidate-identity-probe.md` |
-| 镜像回退 + `via` 随产物上行 | `3476e2bd` | 回退那一跳：`2026-10-11-mirror-fallback-live-path.md`（`via=hf-mirror.com`，落地 sha 逐字符相同） |
-| 删项目名副其实（释放 notebook 数据 + 报字节） | `48c290f6` | 单元测试 + 双车道绿（跨平台删除面） |
-| 会话体积可见（`StorageUsage.projects`） | `898c4c5e` + `d7f41641` | 载荷：55 条真项目带中文名（`2026-10-12-per-project-usage-live.md`） |
-| 包缓存回收动作 + 面板显示 | `1382bdd0` / `b5cbedf8` | **读数/动作/磁盘三方逐字节吻合**（`2026-10-12-reclaim-live-chain.md`） |
-| 两处 UI 入口真窗口验收 | `80284536` | `2026-10-12-ui-entry-verification.md`（含安全红线在磁盘上核对） |
-| WAL + busy_timeout（读池第一步） | `860f106d` / `fe0a9b13` | 生产上 `journal_mode=wal` + 伴随文件（`2026-10-12-wal-live-reading.md`） |
-| 自查两处「有值没人读」 | `516e8fe7` | 代码 + 用例 |
+| 单元                                          | 提交                    | 真机读数                                                                                          |
+| --------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| P0-8 前半（失败族具名）+ 镜像表实测           | `d4de3915`              | 候选端点同一性：`docs/evidence/2026-10-11-mirror-candidate-identity-probe.md`                     |
+| 镜像回退 + `via` 随产物上行                   | `3476e2bd`              | 回退那一跳：`2026-10-11-mirror-fallback-live-path.md`（`via=hf-mirror.com`，落地 sha 逐字符相同） |
+| 删项目名副其实（释放 notebook 数据 + 报字节） | `48c290f6`              | 单元测试 + 双车道绿（跨平台删除面）                                                               |
+| 会话体积可见（`StorageUsage.projects`）       | `898c4c5e` + `d7f41641` | 载荷：55 条真项目带中文名（`2026-10-12-per-project-usage-live.md`）                               |
+| 包缓存回收动作 + 面板显示                     | `1382bdd0` / `b5cbedf8` | **读数/动作/磁盘三方逐字节吻合**（`2026-10-12-reclaim-live-chain.md`）                            |
+| 两处 UI 入口真窗口验收                        | `80284536`              | `2026-10-12-ui-entry-verification.md`（含安全红线在磁盘上核对）                                   |
+| WAL + busy_timeout（读池第一步）              | `860f106d` / `fe0a9b13` | 生产上 `journal_mode=wal` + 伴随文件（`2026-10-12-wal-live-reading.md`）                          |
+| 自查两处「有值没人读」                        | `516e8fe7`              | 代码 + 用例                                                                                       |
 
 红历史（点名在案）：`860f106d` 双红（真 SQLite 套件没登记进分区）→ `24d6e979` 修复前进。
 

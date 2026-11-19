@@ -23,12 +23,12 @@ node scripts/audit-third-party-licenses.mjs
 #   n=  371  start=2026-09-18T04:36:05.039Z  span=0.228s  rate=1627/s
 ```
 
-| 读数 | 值 |
-| --- | --- |
-| 采集失败警告条数 | **371** |
-| 突发数 | **1**（间隔全部 < 2 s） |
-| 时间窗 | `2026-09-18T04:36:05.039Z` → `2026-09-18T04:36:05.267Z` |
-| 跨度 | **0.228 s** ⇒ ≈ **1,627 次/秒**（一次打开对话框） |
+| 读数             | 值                                                      |
+| ---------------- | ------------------------------------------------------- |
+| 采集失败警告条数 | **371**                                                 |
+| 突发数           | **1**（间隔全部 < 2 s）                                 |
+| 时间窗           | `2026-09-18T04:36:05.039Z` → `2026-09-18T04:36:05.267Z` |
+| 跨度             | **0.228 s** ⇒ ≈ **1,627 次/秒**（一次打开对话框）       |
 
 ## 二 独立期望 vs 实测（两套互相独立的取数）
 
@@ -42,12 +42,12 @@ node scripts/audit-third-party-licenses.mjs          # 第二节即 asar 侧的�
 # with a LICENSE file inside asar: 20  <-- expected entry count
 ```
 
-| 项 | 值 |
-| --- | --- |
-| 打包清单声明的直接依赖 | **23** |
-| asar 内有 `node_modules/<名>/package.json` | **22**（缺 `@prisma/client`） |
-| asar 内有 LICENSE 文件 | **20**（缺 `@bokuweb/zstd-wasm`、`js-tiktoken`） ⇒ **期望列出 20 条** |
-| 安装包本体 | `app.asar` 264,994,191 字节，mtime `2026-10-10 20:14`（= 已发布 v1.102.0） |
+| 项                                         | 值                                                                         |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| 打包清单声明的直接依赖                     | **23**                                                                     |
+| asar 内有 `node_modules/<名>/package.json` | **22**（缺 `@prisma/client`）                                              |
+| asar 内有 LICENSE 文件                     | **20**（缺 `@bokuweb/zstd-wasm`、`js-tiktoken`） ⇒ **期望列出 20 条**      |
+| 安装包本体                                 | `app.asar` 264,994,191 字节，mtime `2026-10-10 20:14`（= 已发布 v1.102.0） |
 
 **实测**由 Electron 真运行时跑（无窗口、单进程，`cwd = /` 复现 Finder 启动条件；
 把安装包的 asar 作为锚点喂给应用自己的解析与采集函数）。探针是本轮会话的一次性脚本，配方如下
@@ -58,12 +58,12 @@ node scripts/audit-third-party-licenses.mjs          # 第二节即 asar 侧的�
 2. 在 `require('electron')` 的进程里（`cwd` 设成 `/`）跑旧副本（`root = process.cwd()`）与新副本；
 3. 打印各自的 `count` / 前四条名字 / 首条许可证首行 / 是否每条都有正文。
 
-| 场景 | 读数 |
-| --- | --- |
-| 旧代码（root = `process.cwd()` = `/`） | **count 0** + 具名警告 `unable to read package.json…` ⇒ **复现打包态空清单** |
-| 新代码，root = 已安装 `app.asar` | **count 20**，`allHaveLicense: true`，首条样文 `Apache License`，前四条 `@agentclientprotocol/claude-agent-acp@0.60.0` / `@agentclientprotocol/sdk@1.4.0` / `@anthropic-ai/tokenizer@0.0.4` / `@electron-toolkit/preload@3.0.2` |
-| 新的根解析规则 | `resolveDependencyRoot(<asar>/out/main, <asar>)` → `{root: '…/app.asar', source: 'app-path'}`，结果同为 **20** |
-| 旧代码的 cwd 模拟（root = 空目录） | **count 0** ⇒ 「空清单」不是数据问题、是取数位置问题 |
+| 场景                                   | 读数                                                                                                                                                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 旧代码（root = `process.cwd()` = `/`） | **count 0** + 具名警告 `unable to read package.json…` ⇒ **复现打包态空清单**                                                                                                                                                    |
+| 新代码，root = 已安装 `app.asar`       | **count 20**，`allHaveLicense: true`，首条样文 `Apache License`，前四条 `@agentclientprotocol/claude-agent-acp@0.60.0` / `@agentclientprotocol/sdk@1.4.0` / `@anthropic-ai/tokenizer@0.0.4` / `@electron-toolkit/preload@3.0.2` |
+| 新的根解析规则                         | `resolveDependencyRoot(<asar>/out/main, <asar>)` → `{root: '…/app.asar', source: 'app-path'}`，结果同为 **20**                                                                                                                  |
+| 旧代码的 cwd 模拟（root = 空目录）     | **count 0** ⇒ 「空清单」不是数据问题、是取数位置问题                                                                                                                                                                            |
 
 **20 = 20**：应用自己的新日志行与独立解析逐数吻合：
 

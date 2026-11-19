@@ -7,21 +7,21 @@
 
 工具面对模型可见，靠的是一整套契约。以既有的 PDF 工具面为模板，一个 MCP 服务器由这五件事共同成立：
 
-| # | 组成 | 模板位置（照抄） |
-| --- | --- | --- |
-| 1 | 主进程 RPC 通道 | `src/main/notebook/local-rpc-server.ts`：方法白名单（`'pdfFigures'` 在 306 行附近）+ 处理分支（`if (method === 'pdfFigures')` 在 1862 行附近） |
-| 2 | stdio 服务器进程 | `src/main/settings/pdf-mcp-server.ts`：`server.registerTool(name, zodSchema, handler)`；handler 返回 `{ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }`，**不跑业务**，而是 `callXxxRpc(environment, '<channel>', payload)` 回主进程 |
-| 3 | 进程入口分支 | `src/main/mcp-server-args.ts`（常量）+ `src/main/index.ts:67` 的 `process.argv.includes(<ARG>)` 分支；spawn 时注入 `ELECTRON_RUN_AS_NODE=1`、`PURESCIENCE_<X>_RPC_ENDPOINT/TOKEN/SESSION_ID/PROJECT_ID` |
-| 4 | 应用自有服务闭集 | `src/main/agent-framework/app-mcp-names.ts:17` 的 `APP_MCP_SERVERS`（`canonicalName` / `openCodeName` / `tools[]` / `legacyNames?`）—— 名字**只用于身份**，框架会把 `-` 折成 `_`，所以一律用无连字符写法 |
-| 5 | 身份与权限目录 | 与 4 成对的记忆权限目录（`PRE_REGISTERED_PERMISSION_IDENTITIES`），有 `contains the closed N-identity` 用例钉着总数 |
+| #   | 组成             | 模板位置（照抄）                                                                                                                                                                                                                                           |
+| --- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 主进程 RPC 通道  | `src/main/notebook/local-rpc-server.ts`：方法白名单（`'pdfFigures'` 在 306 行附近）+ 处理分支（`if (method === 'pdfFigures')` 在 1862 行附近）                                                                                                             |
+| 2   | stdio 服务器进程 | `src/main/settings/pdf-mcp-server.ts`：`server.registerTool(name, zodSchema, handler)`；handler 返回 `{ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }`，**不跑业务**，而是 `callXxxRpc(environment, '<channel>', payload)` 回主进程 |
+| 3   | 进程入口分支     | `src/main/mcp-server-args.ts`（常量）+ `src/main/index.ts:67` 的 `process.argv.includes(<ARG>)` 分支；spawn 时注入 `ELECTRON_RUN_AS_NODE=1`、`PURESCIENCE_<X>_RPC_ENDPOINT/TOKEN/SESSION_ID/PROJECT_ID`                                                    |
+| 4   | 应用自有服务闭集 | `src/main/agent-framework/app-mcp-names.ts:17` 的 `APP_MCP_SERVERS`（`canonicalName` / `openCodeName` / `tools[]` / `legacyNames?`）—— 名字**只用于身份**，框架会把 `-` 折成 `_`，所以一律用无连字符写法                                                   |
+| 5   | 身份与权限目录   | 与 4 成对的记忆权限目录（`PRE_REGISTERED_PERMISSION_IDENTITIES`），有 `contains the closed N-identity` 用例钉着总数                                                                                                                                        |
 
 ## 三个工具（名字与语义）
 
-| 工具 | 参数 | 返回 |
-| --- | --- | --- |
-| `knowledge_search` | `{ text, limit? }` | 检索响应：`status`、`mode`（`lexical`/`hybrid`）、`degradation`（未配置 / 失败 / 空）、`coverage{indexed,pending}`、`results[]`（每行 `matchedBy`、`score`、`sha256`、`locator`） |
-| `knowledge_register_source` | `{ kind: 'file'\|'folder'\|'url', path?/url? }` | 登记后的源列表（含 `fingerprint{value,bytes}`） |
-| `knowledge_list_sources` | `{}` | `overview{ sources, unreadable }` |
+| 工具                        | 参数                                            | 返回                                                                                                                                                                              |
+| --------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `knowledge_search`          | `{ text, limit? }`                              | 检索响应：`status`、`mode`（`lexical`/`hybrid`）、`degradation`（未配置 / 失败 / 空）、`coverage{indexed,pending}`、`results[]`（每行 `matchedBy`、`score`、`sha256`、`locator`） |
+| `knowledge_register_source` | `{ kind: 'file'\|'folder'\|'url', path?/url? }` | 登记后的源列表（含 `fingerprint{value,bytes}`）                                                                                                                                   |
+| `knowledge_list_sources`    | `{}`                                            | `overview{ sources, unreadable }`                                                                                                                                                 |
 
 工具描述里必须写清两件事，否则模型会误读：**`pending>0` 不等于"知识库里没有"**（那是"没看过"），**`lexical` 不等于"只做了字面匹配就够了"**（它同时说明语义源没接上或失败）。
 

@@ -6,14 +6,14 @@
 
 ## 1. 方法与真实输入
 
-| 项 | 值 |
-|---|---|
-| 真结构文件 | `crambin.pdb`，**49,491 字节**（D1 那次探针从 RCSB 取回的那份，与 `2026-10-12-d1-live-structure-format-reading.md` 的读数一致） |
-| 真实链/残基 | 单链 `A`，编号 1–46；22–26 号实测为 **PRO / GLU / ALA / ILE / CYS**（从文件本体解析，不是手写） |
-| 内容摘要 | `sha256:42199a30a0701864a2a5cc76cd7f35cc544cd0e65fbcf63e03c166543249b811`（sha256(文件字节)） |
-| 选择 | 链 A、残基 22–26、startResidue=PRO、endResidue=CYS、view=cartoon/spectrum |
-| 通道 | Web RPC（`:44100`）：`projects:create` → `acp:create-session{permissionProfile:'auto'}` → `sessions:save-session` → `sessions:read-document`（回读）→ `acp:resume-session` → `acp:send-prompt{structureSelection}` |
-| 读取方式 | 回合的 assistant 文本从运行时快照 `acp:get-state` 的事件流按 `promptMessageId` 聚合（RPC 建的会话不由渲染端落盘，`sessions:read-document` 回读到 0 条 —— 这是已知限制，不是本单元的缺陷） |
+| 项          | 值                                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 真结构文件  | `crambin.pdb`，**49,491 字节**（D1 那次探针从 RCSB 取回的那份，与 `2026-10-12-d1-live-structure-format-reading.md` 的读数一致）                                                                                    |
+| 真实链/残基 | 单链 `A`，编号 1–46；22–26 号实测为 **PRO / GLU / ALA / ILE / CYS**（从文件本体解析，不是手写）                                                                                                                    |
+| 内容摘要    | `sha256:42199a30a0701864a2a5cc76cd7f35cc544cd0e65fbcf63e03c166543249b811`（sha256(文件字节)）                                                                                                                      |
+| 选择        | 链 A、残基 22–26、startResidue=PRO、endResidue=CYS、view=cartoon/spectrum                                                                                                                                          |
+| 通道        | Web RPC（`:44100`）：`projects:create` → `acp:create-session{permissionProfile:'auto'}` → `sessions:save-session` → `sessions:read-document`（回读）→ `acp:resume-session` → `acp:send-prompt{structureSelection}` |
+| 读取方式    | 回合的 assistant 文本从运行时快照 `acp:get-state` 的事件流按 `promptMessageId` 聚合（RPC 建的会话不由渲染端落盘，`sessions:read-document` 回读到 0 条 —— 这是已知限制，不是本单元的缺陷）                          |
 
 **踩过的一个坑（值得记）**：`sessions:save-session` 的载荷里时间戳必须是 **epoch 毫秒整数**；
 发 ISO 字符串时主进程侧以 `Cannot convert undefined to a BigInt` 整条拒收（HTTP 500，日志只写
@@ -63,14 +63,14 @@ Project files are read from the project folder itself (/Users/totota/.purescienc
 **同日日志里同形拒绝共 6 次**，其中 **4 次是用户自己的真实会话**（`750c63b0…`、`980c1262…`，
 即 MSM/GPCR 那个项目 `cmuh0axy50000jt29bqjmk9gm`），被拒的是它自己的 notebook 产物与会话工作区：
 
-| 被拒目标 | 归属 |
-|---|---|
-| `<dataRoot>/notebooks/<projectId>/<sessionId>/data/figC_pmf_hysteresis.png` | 用户真实会话 |
+| 被拒目标                                                                                           | 归属         |
+| -------------------------------------------------------------------------------------------------- | ------------ |
+| `<dataRoot>/notebooks/<projectId>/<sessionId>/data/figC_pmf_hysteresis.png`                        | 用户真实会话 |
 | `<dataRoot>/notebooks/<projectId>/<sessionId>/data/umbrella_sampling_orthogonal_hysteresis_sim.py` | 用户真实会话 |
-| `<dataRoot>/notebooks/<projectId>/<sessionId>/data/gpcr_msm_disconnect_4panel.png` | 用户真实会话 |
-| `<dataRoot>/workspaces/<sessionId>/gpcr_msm_kinetics_disconnect_sim.py` | 用户真实会话 |
-| `<dataRoot>/workspaces/<sessionId>` | 本次探针 |
-| `<dataRoot>/workspaces/<sessionId>/…` | 本次探针 |
+| `<dataRoot>/notebooks/<projectId>/<sessionId>/data/gpcr_msm_disconnect_4panel.png`                 | 用户真实会话 |
+| `<dataRoot>/workspaces/<sessionId>/gpcr_msm_kinetics_disconnect_sim.py`                            | 用户真实会话 |
+| `<dataRoot>/workspaces/<sessionId>`                                                                | 本次探针     |
+| `<dataRoot>/workspaces/<sessionId>/…`                                                              | 本次探针     |
 
 三条**同一个根上互相矛盾的读数**（都取自应用自己）：
 
@@ -89,9 +89,9 @@ Project files are read from the project folder itself (/Users/totota/.purescienc
 
 ### 4b. 定性读数（同日补）：打包版两者一致 ⇒ 影响面收窄到「两套解析不一致的安装」
 
-| 安装 | 闸门权威文件里的根 | 会话工作区实际所在 | 一致？ |
-|---|---|---|---|
-| **打包版**（`~/.purescience`） | `{"roots":["/Users/totota/.purescience"]}` | `~/.purescience/workspaces/`（**76** 项） | ✅ **同根** ⇒ 闸门行为正确 |
+| 安装                                                | 闸门权威文件里的根                                 | 会话工作区实际所在                                                   | 一致？                       |
+| --------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
+| **打包版**（`~/.purescience`）                      | `{"roots":["/Users/totota/.purescience"]}`         | `~/.purescience/workspaces/`（**76** 项）                            | ✅ **同根** ⇒ 闸门行为正确   |
 | **dev 常驻实例**（配置根 `~/.purescience-project`） | `{"roots":["/Users/totota/.purescience-project"]}` | `<dataRoot=/Users/totota/PureScience-DEV>/workspaces/`（**306** 项） | ❌ 不同根 ⇒ 用户真实会话被拒 |
 
 ⇒ **定性**：这不是「闸门策略本身错」，而是**同一个概念（数据根）在两条路径上被解析成了两个值**：

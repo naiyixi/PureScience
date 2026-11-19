@@ -1,6 +1,7 @@
 ---
 name: dnanexus-integration
 description: Builds and operates reproducible genomics workloads on DNAnexus with the dx CLI, dxpy, apps/applets, native workflows, dxCompiler, and Nextflow. Supports DNAnexus data transfers, dxapp.json development, execution monitoring, workflow import, and project automation.
+description-zh: 用 dx 命令行、dxpy、app/applet、原生工作流、dxCompiler 与 Nextflow 在 DNAnexus 上构建并运行可复现的基因组工作负载：数据传输、dxapp.json 开发与执行。
 license: MIT
 compatibility: Requires a DNAnexus account, network access, Python 3.11+, and dx-toolkit/dxpy; some workflow and infrastructure features require organization licenses or policies.
 metadata:

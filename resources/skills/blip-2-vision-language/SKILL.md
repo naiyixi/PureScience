@@ -1,6 +1,7 @@
 ---
 name: blip-2-vision-language
 description: Vision-language pre-training framework bridging frozen image encoders and LLMs. Use when you need image captioning, visual question answering, image-text retrieval, or multimodal chat with state-of-the-art zero-shot performance.
+description-zh: 视觉-语言预训练框架，把冻结的图像编码器与大模型桥接起来。适用于图像描述、视觉问答、图文检索，或多模态对话的零样本能力。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

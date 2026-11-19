@@ -1,6 +1,7 @@
 ---
 name: sentencepiece
 description: Language-independent tokenizer treating text as raw Unicode. Supports BPE and Unigram algorithms. Fast (50k sentences/sec), lightweight (6MB memory), deterministic vocabulary. Used by T5, ALBERT, XLNet, mBART. Train on raw text without pre-tokenization. Use when you need multilingual support, CJK languages, or reproducible tokenization.
+description-zh: 与语言无关的分词器，把文本当作原始 Unicode 处理：支持 BPE 与 Unigram，速度快（约 5 万句/秒）、内存小（6 MB）、词表确定。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

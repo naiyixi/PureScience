@@ -1,6 +1,7 @@
 ---
 name: llamaguard
 description: Meta's 7-8B specialized moderation model for LLM input/output filtering. 6 safety categories - violence/hate, sexual content, weapons, substances, self-harm, criminal planning. 94-95% accuracy. Deploy with vLLM, HuggingFace, Sagemaker. Integrates with NeMo Guardrails.
+description-zh: Meta 的 7–8B 专用审核模型，用于过滤大模型输入输出，覆盖暴力与仇恨、性内容、武器、药物滥用、自我伤害、犯罪策划六类，准确率 94–95%。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

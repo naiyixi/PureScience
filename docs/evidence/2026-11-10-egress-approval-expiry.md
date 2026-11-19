@@ -24,11 +24,11 @@ PY
 
 读数：
 
-| 计数 | 值 |
-| --- | --- |
+| 计数                        | 值     |
+| --------------------------- | ------ |
 | `egress approval requested` | **21** |
 | `egress approval timed out` | **17** |
-| `egress decision applied` | **4** |
+| `egress decision applied`   | **4**  |
 
 两件事在这组数字里同时成立：
 
@@ -43,23 +43,23 @@ PY
 
 ## 二 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/net/egress-proxy.ts` | 新增 `EgressApprovalRefusal = 'denied' \| 'expired' \| 'no-handler'`；`requireApproval` 的拒绝回调带上理由；超时分支调新增的 `onApprovalExpired(request)` 并在日志里写 `outcome: 'expired'`（行名 `egress approval timed out` 保持不变，既有 grep 配方仍能 join）；过期那条 403 的正文改成 `…: approval expired for <host> — no decision arrived within <n> s; ask the user to approve it again`，策略拒绝仍是原来那句（`POLICY_REFUSAL` 提成常量，一处真源） |
-| `src/main/net/egress-runtime.ts` | 接 `onApprovalExpired`：从 `pendingDecisions` 删掉该条并记 `egress approval expired`（带 `released` 与删后 `pending`）；`EgressRuntimeOptions` 增可选 `approvalTimeoutMs`（测试缝，理由与代理里那个同一条：60 秒是**被测行为**，睡真一分钟的用例只会被跳过） |
-| `src/main/net/egress-failure.ts` | `describeEgressFailure` 在家族循环**之前**认出过期句（否则 `allowlist` 那条通用规则先命中，动作句会继续写「去申请权限」）：家族仍是 `blocked`（用户可解），但 reason/action 换成「到点没人答，现在去请用户批准或加白名单」 |
+| 位置                             | 改动                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/net/egress-proxy.ts`   | 新增 `EgressApprovalRefusal = 'denied' \| 'expired' \| 'no-handler'`；`requireApproval` 的拒绝回调带上理由；超时分支调新增的 `onApprovalExpired(request)` 并在日志里写 `outcome: 'expired'`（行名 `egress approval timed out` 保持不变，既有 grep 配方仍能 join）；过期那条 403 的正文改成 `…: approval expired for <host> — no decision arrived within <n> s; ask the user to approve it again`，策略拒绝仍是原来那句（`POLICY_REFUSAL` 提成常量，一处真源） |
+| `src/main/net/egress-runtime.ts` | 接 `onApprovalExpired`：从 `pendingDecisions` 删掉该条并记 `egress approval expired`（带 `released` 与删后 `pending`）；`EgressRuntimeOptions` 增可选 `approvalTimeoutMs`（测试缝，理由与代理里那个同一条：60 秒是**被测行为**，睡真一分钟的用例只会被跳过）                                                                                                                                                                                                  |
+| `src/main/net/egress-failure.ts` | `describeEgressFailure` 在家族循环**之前**认出过期句（否则 `allowlist` 那条通用规则先命中，动作句会继续写「去申请权限」）：家族仍是 `blocked`（用户可解），但 reason/action 换成「到点没人答，现在去请用户批准或加白名单」                                                                                                                                                                                                                                    |
 
 判据：**过期是「有人被问过、没答」，不是「不许」**；两条路给的动作不同，所以句子必须不同。
 时钟仍只有一个（代理的 deadline），运行时只是被通知，不再自己算一份会漂移的期限。
 
 ## 三 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（`egress.test.ts` + `egress-failure.test.ts`） | **2 files / 46 passed** |
-| 受影响簇（`src/main/net` + `src/main/settings`） | **105 files / 1589 passed**（3 skipped），exit 0 |
-| 双 typecheck（`--composite false`，堆 4096） | node **0**；web **0** |
-| `eslint --no-cache`（本笔 5 文件） | **0 error**（1 条 prettier 换行警告，已 `prettier --write` 收掉） |
+| 环                                                         | 读数                                                              |
+| ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| 定向 vitest（`egress.test.ts` + `egress-failure.test.ts`） | **2 files / 46 passed**                                           |
+| 受影响簇（`src/main/net` + `src/main/settings`）           | **105 files / 1589 passed**（3 skipped），exit 0                  |
+| 双 typecheck（`--composite false`，堆 4096）               | node **0**；web **0**                                             |
+| `eslint --no-cache`（本笔 5 文件）                         | **0 error**（1 条 prettier 换行警告，已 `prettier --write` 收掉） |
 
 **变异自证**（两处一起变异）：把 `this.onApprovalExpired?.({ requestId, host })` 注释掉、并把
 `refusalMessage` 短路成永远返回 `POLICY_REFUSAL` ⇒ 两条用例当场红

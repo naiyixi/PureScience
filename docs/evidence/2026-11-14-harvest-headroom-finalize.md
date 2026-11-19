@@ -45,14 +45,14 @@ if (available < computeHarvestDiskHeadroomBytes) { … finalizeAndReturn(…, '[
 
 ## 四 门禁（本机实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/compute/harvest-engine.test.ts --maxWorkers=1` | **19 passed** |
-| `npx vitest run src/main/compute --maxWorkers=2` | **28 files / 577 passed \| 5 skipped（582）**，exit 0 |
-| `npx tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
-| `npx tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `npx eslint --no-cache`（本笔两文件） | 0 problems |
-| `npx prettier --check`（本笔两文件） | 通过 |
+| 环                                                                      | 读数                                                  |
+| ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| `npx vitest run src/main/compute/harvest-engine.test.ts --maxWorkers=1` | **19 passed**                                         |
+| `npx vitest run src/main/compute --maxWorkers=2`                        | **28 files / 577 passed \| 5 skipped（582）**，exit 0 |
+| `npx tsc --noEmit -p tsconfig.node.json --composite false`              | exit 0                                                |
+| `npx tsc --noEmit -p tsconfig.web.json --composite false`               | exit 0                                                |
+| `npx eslint --no-cache`（本笔两文件）                                   | 0 problems                                            |
+| `npx prettier --check`（本笔两文件）                                    | 通过                                                  |
 
 ## 五 第二节那条时序错的取证方式（不是推断）
 

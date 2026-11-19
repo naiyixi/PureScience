@@ -5,6 +5,7 @@
 **审查对象**：某团队设计的、针对含非催化半胱氨酸（Cys）突变型激酶的第二代"可逆共价"抑制剂。弹头为**强亲电的 2-氰基丙烯酰胺（2-cyanoacrylamide）**（双活化 Michael 受体：β-C 亲电，α-CN + 酰胺共同吸电子）。
 
 **被审团队的核心宣称**：
+
 1. 弹头–靶 Cys 加合物高度热力学可逆（k_off ≫ 0）；
 2. 体外实测 GSH 加合物解离极快 ⇒ 胞质中"几乎不发生永久性 GSH 消耗"；
 3. 进入细胞后"像非共价药一样安全代谢"；
@@ -17,13 +18,13 @@
 
 ## 1. 假说的逻辑缺陷清单（先破逻辑，再破化学）
 
-| # | 宣称 | 逻辑/物理缺陷 | 对应章节 |
-|---|------|----------------|----------|
-| L1 | "k_off>0 ⇒ 无累积" | 混淆**平衡位置**与**解离速率**。Michael 加合产物热力学上被强烈驱动（K≫1）；`[加合物]=K·[D]·[RSH]`。基质 [RSH] 为 mM 级 ⇒ 即使 k_off 很大，平衡占据（CoA/GSH/蛋白硫醇的**瞬时隔离**）依然可观。"不永久消耗"≠"不驻留/不损害"。 | §2.4, §3.6 |
-| L2 | "体外 GSH 快解离 ⇒ 体内安全" | 混淆**闭管平衡**与**开放系统**。体内 GSH 结合物被 MRP/GS-X 泵（MRP1/2/3/5）主动外排并经**巯基尿酸途径**排出（§3.6）。每一个"可逆"加合物一旦被外排即为**永久性** GSH + 弹头双损失。体外没有外排泵，故测不到这一漏。 | §3.6 |
-| L3 | "靶点微环境协同 ⇒ 100% 驻留" | 这是**双刃剑**。若口袋通过去碱催化缺失/氢键/去溶剂化使 Cys 加合物无法发生 retro-Michael 而"驻留"，则**同一化学在任何相似微环境中都会驻留**——包括 PDH/α-KGDH E2 的硫辛酰胺、Trx2、以及其他蛋白 Cys。"选择性"永远只是**相对**的、由通量而非 k_off 决定。 | §2.4, §3.2 |
-| L4 | "GSH 不耗竭 ⇒ 无线粒体应激" | GSH 缓冲与线粒体酶失活是**两条独立通道**。本模型（即便完全让出 GSH 宣称：GSH/CoA 全程保持 100%）仍产生剂量依赖的 PDH/Trx2 共价失活与 ΔΨm 坍缩（图 1B、4B）。GSH 安全既不充分、也非必要。 | §3 |
-| L5 | "像非共价药一样代谢" | 忽略了**滞留性亲电代谢物**：D–SG/D–SCoA 是可溶性"隐匿载体"，把弹头二次转运至碱性、硫醇致密的基质（Trojan Horse，§3.4），且 D–SCoA/D–S-蛋白为不可渗透、慢周转物种。 | §3.4, §3.5 |
+| #   | 宣称                         | 逻辑/物理缺陷                                                                                                                                                                                                                                          | 对应章节   |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| L1  | "k_off>0 ⇒ 无累积"           | 混淆**平衡位置**与**解离速率**。Michael 加合产物热力学上被强烈驱动（K≫1）；`[加合物]=K·[D]·[RSH]`。基质 [RSH] 为 mM 级 ⇒ 即使 k_off 很大，平衡占据（CoA/GSH/蛋白硫醇的**瞬时隔离**）依然可观。"不永久消耗"≠"不驻留/不损害"。                           | §2.4, §3.6 |
+| L2  | "体外 GSH 快解离 ⇒ 体内安全" | 混淆**闭管平衡**与**开放系统**。体内 GSH 结合物被 MRP/GS-X 泵（MRP1/2/3/5）主动外排并经**巯基尿酸途径**排出（§3.6）。每一个"可逆"加合物一旦被外排即为**永久性** GSH + 弹头双损失。体外没有外排泵，故测不到这一漏。                                     | §3.6       |
+| L3  | "靶点微环境协同 ⇒ 100% 驻留" | 这是**双刃剑**。若口袋通过去碱催化缺失/氢键/去溶剂化使 Cys 加合物无法发生 retro-Michael 而"驻留"，则**同一化学在任何相似微环境中都会驻留**——包括 PDH/α-KGDH E2 的硫辛酰胺、Trx2、以及其他蛋白 Cys。"选择性"永远只是**相对**的、由通量而非 k_off 决定。 | §2.4, §3.2 |
+| L4  | "GSH 不耗竭 ⇒ 无线粒体应激"  | GSH 缓冲与线粒体酶失活是**两条独立通道**。本模型（即便完全让出 GSH 宣称：GSH/CoA 全程保持 100%）仍产生剂量依赖的 PDH/Trx2 共价失活与 ΔΨm 坍缩（图 1B、4B）。GSH 安全既不充分、也非必要。                                                               | §3         |
+| L5  | "像非共价药一样代谢"         | 忽略了**滞留性亲电代谢物**：D–SG/D–SCoA 是可溶性"隐匿载体"，把弹头二次转运至碱性、硫醇致密的基质（Trojan Horse，§3.4），且 D–SCoA/D–S-蛋白为不可渗透、慢周转物种。                                                                                     | §3.4, §3.5 |
 
 ---
 
@@ -47,10 +48,10 @@
 
 弹头的正向反应需要硫醇**去质子化**（硫醇盐是实际亲核体）。硫醇盐分数 `f = 1/(1+10^(pKa−pH))`。实测/文献范围的 pKa 与三房室行为：
 
-| 房室 | pH | 行为 |
-|---|---|---|
-| 溶酶体 | ~4.8 | 几乎所有硫醇质子化（GSH 的 f≈2×10⁻⁵）；Michael 加成动力学≈0。该房室对硫醇化学"惰性"——药物若为弱碱还会溶酶体截留（分布问题，非共价问题）。 |
-| 胞质 | ~7.2 | GSH 5–10 mM，f≈0.01 → 有效硫醇盐 ~50–100 µM。 |
+| 房室           | pH                                       | 行为                                                                                                                                                                                            |
+| -------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 溶酶体         | ~4.8                                     | 几乎所有硫醇质子化（GSH 的 f≈2×10⁻⁵）；Michael 加成动力学≈0。该房室对硫醇化学"惰性"——药物若为弱碱还会溶酶体截留（分布问题，非共价问题）。                                                       |
+| 胞质           | ~7.2                                     | GSH 5–10 mM，f≈0.01 → 有效硫醇盐 ~50–100 µM。                                                                                                                                                   |
 | **线粒体基质** | **~8.0**（跨内膜 ΔpH 0.5–1.4，基质偏碱） | 每个硫醇池 f 跃升 **5–6×**：GSH (pKa 9.2) 0.010→0.059；CoA (9.6) 0.004→0.025；二氢硫辛酰胺 (8.6) 0.038→0.20；**低 pKa 蛋白硫醇几乎恒定高**：Trx 亲核 Cys (pKa≈6–7) 在胞质已是 0.72、基质 0.94。 |
 
 **结合浓度看"核能力密度"**：基质同时拥有 mM 级 CoA（报告 2–5 mM 池）与 mM 级 GSH，且全部压缩在 ~0.1–0.2 倍细胞体积的**小体积**内。基质内单位体积的反应性硫醇盐密度比胞质高 **1–2 个数量级**。药物只要扩散进基质，在逃逸回胞质之前被俘获的概率就极高——这是一个**化学热力学阱（thermodynamic sink）**，不是简单缓冲。
@@ -58,9 +59,10 @@
 ### 2.3 Lys/His 一般酸碱催化与质子化转移态：同一基元步骤、两种命运
 
 可逆共价设计常声称"口袋内 Lys/His 促进质子转移协同、使加合物稳定"。必须指出：
+
 - 口袋内一个**朝向加合物 α-H 的一般碱**确实是 retro 的催化剂——若团队声称的驻留来自"缺少该碱"，则该位点的反向消除天然慢，加合物在生物学时间尺度上**就是不可逆的**（kinetic trap）；
 - 若驻留来自"口袋稳定加合物"（降低产物自由能），则 retro 能垒相对抬高，同样是 trap。
-**两种稳定化机制都以加深产物阱为代价**（图 3B 红色曲线）。硫辛酰胺（PDH/α-KGDH E2 摆臂）与 Trx2 的 CXXC 活性位点是完全类似的蛋白微环境。没有任何理由认为 trap 只发生在"被选中的"那个口袋。
+  **两种稳定化机制都以加深产物阱为代价**（图 3B 红色曲线）。硫辛酰胺（PDH/α-KGDH E2 摆臂）与 Trx2 的 CXXC 活性位点是完全类似的蛋白微环境。没有任何理由认为 trap 只发生在"被选中的"那个口袋。
 
 ### 2.4 基质高 pH 对"可逆"加合物逆反应能垒的净效应 —— 动力学陷阱的定量表述
 
@@ -108,6 +110,7 @@
 ### 3.6 "GSH 零耗竭"的开放系统谬误 + 摩尔去向账（数值，dose 10·21 d）
 
 对每个剂量的弹头摩尔去向（µmol/L 参考体积，积分自 ODE）：
+
 - 21 天共递送 **210** µM·L：血浆/系统清除 ≈104；**GSH 结合物 MRP 外排（巯基尿酸漏）≈98**；胞内代谢 ≈11；**靶蛋白累计不可逆退场 ≈0.7**；**线粒体滞留 ≈0.65 µmol/Lcyt（=4.3 µM 基质当量）**。
 - 逐条解读：>95% 的弹头确实被"干净地"处理掉——GSH 系统在**开放系统中以每日几 µM 的永久漏失为代价**（而不是闭管平衡里的"无消耗"）履行了清道夫职能；靶点只吃掉了 ~0.7/210 = **0.3%**。
 - 然而滞留的 0.3%（4.3 µM 基质浓度）命中的是**基质中总共只有 ~10 µM 的氧化还原酶池**（lipoyl + Trx2），对应 **≈43% 的 PDH/α-KGDH + Trx2 共价失活**。靶点池 0.05 µM 用 0.3% 的弹头即可 98% 占据；而决定细胞生死的线粒体酶只需要"微量但滞留"的弹头。
@@ -128,9 +131,10 @@
 把上述机制映射到已有文献，证据链按"亲电物 → 线粒体酶 → 开放系统漏 → 临床延迟表型"逐环闭合：
 
 **环 1 —— 亲电物选择性失活 PDH/α-KGDH 的硫辛酰胺辅基是确证的**
-内源性脂质过氧化亲电物 **4-羟基壬烯醛（4-HNE）**在亚 µM–µM 水平即选择性、快速失活 α-KGDH 与 PDH：失活需要能**还原 E2 上硫辛酸**的底物（即靶向**二氢硫辛酰胺**），酶活性丧失与硫辛酸巯基消失相关，抗硫辛酸抗体证实修饰发生在辅基上（Humphries & Szweda, *Biochemistry* 1998; PMID 9843389）。该组进一步证明 HNE 通过 KGDH 失活抑制 NADH 连接呼吸；而 **GSH 对硫辛酸的瞬时可逆谷胱甘肽化可保护其免于 HNE 修饰**（Applegate et al., *Biochemistry* 2008）——这恰恰说明亲电弹头与 GSH/硫辛酰胺是**同一条竞争线**。一个氰基丙烯酰胺药物每天以 µM 级肝首过暴露持续充当"外源 4-HNE"，其靶向 E2 硫辛酰胺的化学已有内生权威先例。
+内源性脂质过氧化亲电物 **4-羟基壬烯醛（4-HNE）**在亚 µM–µM 水平即选择性、快速失活 α-KGDH 与 PDH：失活需要能**还原 E2 上硫辛酸**的底物（即靶向**二氢硫辛酰胺**），酶活性丧失与硫辛酸巯基消失相关，抗硫辛酸抗体证实修饰发生在辅基上（Humphries & Szweda, _Biochemistry_ 1998; PMID 9843389）。该组进一步证明 HNE 通过 KGDH 失活抑制 NADH 连接呼吸；而 **GSH 对硫辛酸的瞬时可逆谷胱甘肽化可保护其免于 HNE 修饰**（Applegate et al., _Biochemistry_ 2008）——这恰恰说明亲电弹头与 GSH/硫辛酰胺是**同一条竞争线**。一个氰基丙烯酰胺药物每天以 µM 级肝首过暴露持续充当"外源 4-HNE"，其靶向 E2 硫辛酰胺的化学已有内生权威先例。
 
 **环 2 —— 基质碱性 + CoA 毫摩尔池 + 低 pKa 硫醇（本报告的房室前提）**
+
 - 基质 pH≈8.0（pHRed 等探针实测），跨内膜 ΔpH 0.5–1.4，且 pH 7.6→8.0 区间缓冲容量骤降，使基质对质子/氧化还原扰动更脆弱（[JBC 基质 pH 与 ROS]）。
 - 肝细胞 CoA 绝大部分位于线粒体，基质池达 2–5 mM（细胞总 CoA 亦有 90–95% 在线粒体），是弹头的巨大滞留性亲核靶。
 - 硫氧还蛋白亲核 Cys 的 pKa 低至 ~6–7（文献值 5.1–7.5），在基质 pH 8 近全额去质子化 ⇒ 对 Michael 受体异常敏感。
@@ -148,6 +152,7 @@ MRP/GS-X 泵（MRP1/2/3/5）主动外排 S-谷胱甘肽结合物；MRP2（cMOAT�
 ## 5. 给研发团队的反证总结（若只读一页）
 
 即使 100% 承认 (i) 体外 GSH k_off 快、(ii) 靶点驻留长、(iii) GSH/CoA 池几乎不耗竭，下列命题在模拟中**同时为真**：
+
 - 每个剂量都以 <1% 的摩尔份额在基质形成**准不可逆、不可渗透**的硫辛酰胺/Trx2 共价加合物；
 - 该份额以**天**为尺度滞留并累积（图 5B），使 PDH/α-KGDH + Trx2 在 dose 10 µM·day⁻¹·21 d 时失活 ~43%；
 - 占据率读数全程 87–99.7%（"选择性"），与上述损伤**完全脱钩**（图 4）；
@@ -186,14 +191,14 @@ MRP/GS-X 泵（MRP1/2/3/5）主动外排 S-谷胱甘肽结合物；MRP2（cMOAT�
 
 ## 9. 图件清单与图形核查记录
 
-| 图 | 文件 | 内容 |
-|---|---|---|
-| 1 | `tci_phase_diagram_mito_damage.{pdf,svg,png}` | 主交付相图：时间×剂量下的线粒体共价损伤与 ΔΨm 坍缩阈值（矢量） |
-| 2 | `tci_timeseries.{pdf,svg,png}` | 四元竞争 21 天时间过程 |
-| 3 | `tci_fig3_physorg.{pdf,svg,png}` | 物理有机：硫醇盐-pH 曲线 + 反应坐标示意 |
-| 4 | `tci_fig4_selectivity.{pdf,svg,png}` | 假阳性选择性：占据×损伤轨迹 + 剂量-反应 |
-| 5 | `tci_fig5_trojan_retention.{pdf,svg,png}` | 单脉冲 Trojan/滞留累积 |
-| S | `tci_model_summary.csv` | dose–day21 指标表 |
+| 图  | 文件                                          | 内容                                                           |
+| --- | --------------------------------------------- | -------------------------------------------------------------- |
+| 1   | `tci_phase_diagram_mito_damage.{pdf,svg,png}` | 主交付相图：时间×剂量下的线粒体共价损伤与 ΔΨm 坍缩阈值（矢量） |
+| 2   | `tci_timeseries.{pdf,svg,png}`                | 四元竞争 21 天时间过程                                         |
+| 3   | `tci_fig3_physorg.{pdf,svg,png}`              | 物理有机：硫醇盐-pH 曲线 + 反应坐标示意                        |
+| 4   | `tci_fig4_selectivity.{pdf,svg,png}`          | 假阳性选择性：占据×损伤轨迹 + 剂量-反应                        |
+| 5   | `tci_fig5_trojan_retention.{pdf,svg,png}`     | 单脉冲 Trojan/滞留累积                                         |
+| S   | `tci_model_summary.csv`                       | dose–day21 指标表                                              |
 
 **图形核查记录（五项规则）**：本会话中自动 `figure_review` 工具因宿主信封参数（sessionId/projectId/request）缺失而无法调用（系统性报错，重试无效）；以下按同一五项正确性清单逐图人工核查：(1) **数据保真**——所有图直接由 ODE 完整输出绘制，无剔除数据行进入任何汇总；相图 A 对数色标的 0.05% 下限仅为显示取整，未改变任何统计量；(2) **标签经济**——所有坐标轴/色标/图例均已标注且未重叠；(3) **颜色贯穿**——图 2、图 4A 跨面板同剂量/同条件同色；(4) **图型-数据形态匹配**——时间过程/轨迹用线，剂量-反应与 pH 曲线用线+log-x，二维"时间×剂量"用热图+等值线；(5) **渲染目检**——五图均已渲染并在本会话中逐张目检通过。核查结论：无 error 级违规。
 
@@ -202,26 +207,30 @@ MRP/GS-X 泵（MRP1/2/3/5）主动外排 S-谷胱甘肽结合物；MRP2（cMOAT�
 ## 10. 主要参考文献（含检索来源链接）
 
 **机制/酶学**
-- Humphries KM, Szweda LI. *Biochemistry* 1998;37(45):15835–15841. 4-HNE 通过修饰还原型硫辛酸选择性失活 α-KGDH 与 PDH。PMID 9843389. [PubMed](https://pubmed.ncbi.nlm.nih.gov/9843389/) · [ACS](https://pubs.acs.org/doi/10.1021/bi981512h)
-- Humphries KM, Yoo Y, Szweda LI. *Biochemistry* 1998;37(2):552–557（同组早期：HNE 经 KGDH 失活抑制 NADH 连接呼吸）。[ACS](https://pubs.acs.org/action/doSearch?field1=Contrib&text1=Luke+I.+Szweda)
-- Applegate MA, Humphries KM, Szweda LI. *Biochemistry* 2008;47(1):473–478（GSH 对 KGDH E2 硫辛酸的可逆谷胱甘肽化保护其免受 HNE 修饰）。
+
+- Humphries KM, Szweda LI. _Biochemistry_ 1998;37(45):15835–15841. 4-HNE 通过修饰还原型硫辛酸选择性失活 α-KGDH 与 PDH。PMID 9843389. [PubMed](https://pubmed.ncbi.nlm.nih.gov/9843389/) · [ACS](https://pubs.acs.org/doi/10.1021/bi981512h)
+- Humphries KM, Yoo Y, Szweda LI. _Biochemistry_ 1998;37(2):552–557（同组早期：HNE 经 KGDH 失活抑制 NADH 连接呼吸）。[ACS](https://pubs.acs.org/action/doSearch?field1=Contrib&text1=Luke+I.+Szweda)
+- Applegate MA, Humphries KM, Szweda LI. _Biochemistry_ 2008;47(1):473–478（GSH 对 KGDH E2 硫辛酸的可逆谷胱甘肽化保护其免受 HNE 修饰）。
 
 **房室前提（pH / CoA / 低 pKa 硫醇）**
-- 线粒体基质 pH≈8.0 与 ΔpH 0.5–1.4：[JBC: Role of External and Matrix pH in Mitochondrial ROS Generation](https://www.jbc.org/article/S0021-9258(20)64160-6/fulltext)；pHRed 动态测量 [PMC3126897 Fig.3](https://pmc.ncbi.nlm.nih.gov/articles/PMC3126897/figure/F3/)
+
+- 线粒体基质 pH≈8.0 与 ΔpH 0.5–1.4：[JBC: Role of External and Matrix pH in Mitochondrial ROS Generation](<https://www.jbc.org/article/S0021-9258(20)64160-6/fulltext>)；pHRed 动态测量 [PMC3126897 Fig.3](https://pmc.ncbi.nlm.nih.gov/articles/PMC3126897/figure/F3/)
 - 基质 CoA 2–5 mM、90–95% 线粒体定位：[Coenzyme A: Back in action (scite)](https://scite.ai/reports/coenzyme-a-back-in-action-egbA6K)；大鼠肝线粒体 CoA 池维持/胞质下降研究（cholestasis）[DOAJ](https://ouci.dntb.gov.ua/works/73wRMZ67/)
 - Trx 亲核 Cys32 低 pKa（~6–7；Trx2 家族 5.1–7.5）：[Microscopic pKa values of E. coli thioredoxin](https://www.scilit.com/publications/f07aa5cf0290de702c5136827ec9a90a) · [Zinc center modulates E. coli Trx2 pKa/redox](https://www.sciencedirect.com/science/article/abs/pii/S0022283608014800)
 - 二氢硫辛酰胺化学反应性/硫醇盐氧化：[Lipoic acid metabolism and mitochondrial redox regulation (JBC/ASBMB)](https://www.sciencedirect.com/science/article/pii/S0021925820369532) · [Ars review: thiolate oxidation](https://journals.sagepub.com/doi/pdfplus/10.1089/ars.2017.7311)
 
 **可逆共价弹头化学**
-- Serafimova RN et al. *Nat Chem Biol* 2012;8:471–476（可逆共价/α-质子酸性调谐）——检索结果综合；[Sciencedirect 综述条目](https://www.sciencedirect.com/topics/pharmacology-toxicology-and-pharmaceutical-science/covalent-bond)
-- Bálint et al. *Nat Commun* 2024（可逆共价 JNK 抑制剂：两步行动力学 k3/k4、环己烯酮 vs 开链氰基丙烯酰胺、GSH 耐受比较）[Nature](https://www.nature.com/articles/s41467-024-52573-2)
-- Gehringer/Reményi 等《Emerging and Re-emerging Warheads for TCIs》*J Med Chem* 2023（双活化 Michael 受体 / β-取代 α-氰基丙烯酰胺可逆共价分类）[ACS](https://doi.org/10.1021/acs.jmedchem.3c01825)
+
+- Serafimova RN et al. _Nat Chem Biol_ 2012;8:471–476（可逆共价/α-质子酸性调谐）——检索结果综合；[Sciencedirect 综述条目](https://www.sciencedirect.com/topics/pharmacology-toxicology-and-pharmaceutical-science/covalent-bond)
+- Bálint et al. _Nat Commun_ 2024（可逆共价 JNK 抑制剂：两步行动力学 k3/k4、环己烯酮 vs 开链氰基丙烯酰胺、GSH 耐受比较）[Nature](https://www.nature.com/articles/s41467-024-52573-2)
+- Gehringer/Reményi 等《Emerging and Re-emerging Warheads for TCIs》_J Med Chem_ 2023（双活化 Michael 受体 / β-取代 α-氰基丙烯酰胺可逆共价分类）[ACS](https://doi.org/10.1021/acs.jmedchem.3c01825)
 
 **GSH 结合物外排 / 药物蛋白加合物 / DILI 背景**
-- MRP=GS-X 泵；MRP2 介导 APAP–GSH/巯基尿酸胆汁排泄（TR⁻ 大鼠）：[EBI ChEMBL record](https://www.ebi.ac.uk/chembl/explore/document/CHEMBL2074092) · [SemanticScholar: MRP2 biliary GS-conjugates of 4-HNE](https://www.semanticscholar.org/paper/Multidrug-resistance-associated-protein2-(MRP2)-an-Ji-Ito/f1cf77f3c4cf7863b2ddd39cfedc1a40d60b5c08)
+
+- MRP=GS-X 泵；MRP2 介导 APAP–GSH/巯基尿酸胆汁排泄（TR⁻ 大鼠）：[EBI ChEMBL record](https://www.ebi.ac.uk/chembl/explore/document/CHEMBL2074092) · [SemanticScholar: MRP2 biliary GS-conjugates of 4-HNE](<https://www.semanticscholar.org/paper/Multidrug-resistance-associated-protein2-(MRP2)-an-Ji-Ito/f1cf77f3c4cf7863b2ddd39cfedc1a40d60b5c08>)
 - Drug–protein adducts: past, present, future (2020 review)：TCI GSH 加合物/半抗原化作为 DILI 理论信号；丙烯酰胺 TKI 临床总体安全；sotorasib/ibrutinib 大鼠肾 GSH 加合物假说。[scite](https://scite.ai/reports/drug-protein-adducts-past-present-and-jMmwgvOO)
 - 共价 BTK 抑制剂 GSH 结合物 LC-MS 检测：[Scilit](https://www.scilit.com/publications/e61871f82f5b93f742d9176ebc849f8f)
 
 ---
 
-*报告与模型由 `tci_thiol_exchange_kinetics.py` 生成；全部图件可复现（`python tci_thiol_exchange_kinetics.py --outdir <dir> --summary`）。*
+_报告与模型由 `tci_thiol_exchange_kinetics.py` 生成；全部图件可复现（`python tci_thiol_exchange_kinetics.py --outdir <dir> --summary`）。_

@@ -1,6 +1,7 @@
 ---
 name: grpo-rl-training
 description: Expert guidance for GRPO/RL fine-tuning with TRL for reasoning and task-specific model training
+description-zh: 用 TRL 做 GRPO/强化学习微调的实操指引，面向推理能力与特定任务的模型训练。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

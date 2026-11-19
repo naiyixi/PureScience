@@ -1,6 +1,7 @@
 ---
 name: hqq-quantization
 description: Half-Quadratic Quantization for LLMs without calibration data. Use when quantizing models to 4/3/2-bit precision without needing calibration datasets, for fast quantization workflows, or when deploying with vLLM or HuggingFace Transformers.
+description-zh: 无需校准数据的半二次量化（HQQ）：把模型压到 4/3/2 bit 而不用校准集，适合快速量化流程与受限部署环境。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

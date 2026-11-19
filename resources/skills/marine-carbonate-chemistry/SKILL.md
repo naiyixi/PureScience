@@ -1,6 +1,7 @@
 ---
 name: marine-carbonate-chemistry
 description: Solves seawater carbonate chemistry with PyCO2SYS for chemical oceanography, ocean acidification, and marine carbon-cycle research. Use for paired total alkalinity, dissolved inorganic carbon, pH, or seawater pCO2/fCO2 measurements; carbonate speciation; aragonite and calcite saturation; Revelle factors; lab-to-in-situ temperature and pressure corrections; and measurement uncertainty propagation. Applies to carbonate-system calculations, not general aqueous speciation or air-sea gas-flux estimation.
+description-zh: 用 PyCO2SYS 求解海水碳酸盐化学体系，用于化学海洋学、海洋酸化与海洋碳循环研究：输入总碱度、溶解无机碳等配套测量。
 license: MIT
 compatibility: Requires Python 3.13 with PyCO2SYS 1.8.3.4 and NumPy. Network access is needed only to install packages or obtain external data; bundled calculations run locally without credentials.
 metadata:

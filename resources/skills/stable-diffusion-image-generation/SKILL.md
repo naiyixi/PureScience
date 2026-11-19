@@ -1,6 +1,7 @@
 ---
 name: stable-diffusion-image-generation
 description: State-of-the-art text-to-image generation with Stable Diffusion models via HuggingFace Diffusers. Use when generating images from text prompts, performing image-to-image translation, inpainting, or building custom diffusion pipelines.
+description-zh: 通过 Hugging Face Diffusers 用 Stable Diffusion 做文生图：按提示词生成图像、图生图转换等。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

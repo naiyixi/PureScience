@@ -17,11 +17,11 @@
 
 ### 2.1 真实 socket 失败 → 应用自己的分类器
 
-| 造法（真网络） | 读到的族 / 码 | 屏上句子（节选） |
-| --- | --- | --- |
-| DNS：`net.connect(443,'no-such-host-ps48.invalid')` | `dns` / `ENOTFOUND` | `egress dns failure …: the name did not resolve (ENOTFOUND). Check this machine’s DNS or proxy …` |
-| 拒连：`net.connect(closedLoopbackPort)` | `refused` / `ECONNREFUSED` | `egress refused failure …: the target refused the connection (ECONNREFUSED). The service is not accepting connections on that port …` |
-| `fetch('http://10.255.255.1/x', AbortSignal.timeout(1500))` | `refused` / `ECONNREFUSED` | chain 打到 `TypeError('fetch failed') → Error('connect ECONNREFUSED 10.255.255.1:80')` |
+| 造法（真网络）                                              | 读到的族 / 码              | 屏上句子（节选）                                                                                                                      |
+| ----------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| DNS：`net.connect(443,'no-such-host-ps48.invalid')`         | `dns` / `ENOTFOUND`        | `egress dns failure …: the name did not resolve (ENOTFOUND). Check this machine’s DNS or proxy …`                                     |
+| 拒连：`net.connect(closedLoopbackPort)`                     | `refused` / `ECONNREFUSED` | `egress refused failure …: the target refused the connection (ECONNREFUSED). The service is not accepting connections on that port …` |
+| `fetch('http://10.255.255.1/x', AbortSignal.timeout(1500))` | `refused` / `ECONNREFUSED` | chain 打到 `TypeError('fetch failed') → Error('connect ECONNREFUSED 10.255.255.1:80')`                                                |
 
 ⚠️ **被读数纠正的一处判断（如实记）**：第三条我按直觉标的是"deadline 超时"，真读数是**本机网络对该地址直接拒连**
 （`connect ECONNREFUSED 10.255.255.1:80`），1.5 s 预算没到就已经失败。分类器给的是 `refused`、**与真因一致**；
@@ -29,12 +29,12 @@
 
 ### 2.2 应用自己的 `EgressProxy`：真实不可达目标（客户端逐字读到什么）
 
-| 场景 | 客户端实际收到的字节（首行 + 正文） |
-| --- | --- |
-| CONNECT 隧道 → 拒连目标 | `HTTP/1.1 502 Bad Gateway` + `PureScience egress proxy: egress refused failure reaching 127.0.0.1: the target refused the connection (ECONNREFUSED). …` |
-| CONNECT 隧道 → 不可解析目标 | `HTTP/1.1 502 Bad Gateway` + `… egress dns failure reaching no-such-host-ps48.invalid: the name did not resolve (ENOTFOUND). …` |
-| plain HTTP → 拒连目标 | `status=502` + `… egress refused failure reaching 127.0.0.1:65067: the target refused the connection (ECONNREFUSED). …` |
-| 白名单拒绝（对照，未改） | `status=403` + `… egress allowlist: host not permitted` |
+| 场景                        | 客户端实际收到的字节（首行 + 正文）                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CONNECT 隧道 → 拒连目标     | `HTTP/1.1 502 Bad Gateway` + `PureScience egress proxy: egress refused failure reaching 127.0.0.1: the target refused the connection (ECONNREFUSED). …` |
+| CONNECT 隧道 → 不可解析目标 | `HTTP/1.1 502 Bad Gateway` + `… egress dns failure reaching no-such-host-ps48.invalid: the name did not resolve (ENOTFOUND). …`                         |
+| plain HTTP → 拒连目标       | `status=502` + `… egress refused failure reaching 127.0.0.1:65067: the target refused the connection (ECONNREFUSED). …`                                 |
+| 白名单拒绝（对照，未改）    | `status=403` + `… egress allowlist: host not permitted`                                                                                                 |
 
 改动前这三条分别是：隧道**裸 destroy**（客户端只见一个匿名 hang up）、HTTP 一条**具名 403**（且不写日志）。
 
@@ -50,13 +50,13 @@
 
 ### 2.4 回放用户九天真机日志里的全部失败（203 条，真数据）
 
-| 族 | 条数 |
-| --- | --- |
-| `reset` | 147 |
-| `dns` | 38 |
-| `timeout` | 13 |
-| `unreachable` | 1 |
-| `unknown` | 4（全部是**空字符串** `""`，族内写明「未带描述」） |
+| 族            | 条数                                               |
+| ------------- | -------------------------------------------------- |
+| `reset`       | 147                                                |
+| `dns`         | 38                                                 |
+| `timeout`     | 13                                                 |
+| `unreachable` | 1                                                  |
+| `unknown`     | 4（全部是**空字符串** `""`，族内写明「未带描述」） |
 
 ⇒ **199/203 逐条具名，0 条落在"无名"**；剩下 4 条是原始日志本身没有描述，不是分类器漏判。
 这四条的原文（`[""]`）已随读数落盘；用例 `src/main/net/egress-failure.test.ts` 把上表 199 条里的**每一种字符串**
@@ -82,14 +82,14 @@ fetch failed — egress dns failure reaching https://ftp.ncbi.nlm.nih.gov/genome
 
 ## 四、门禁（隔离工作树 `/tmp/ps-r48` = 提交 `60333ac9`）
 
-| 环 | 读数 |
-| --- | --- |
-| 工作树内差异（`git status --short \| wc -l`） | `<WORKTREE_DIRTY>` |
-| `eslint --no-cache .`（全仓，CI 同口径） | `<ESLINT>` |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | `<TSCNODE>` |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | `<TSCWEB>` |
-| `vitest run src/main/net src/main/connectors --maxWorkers=4` | `<VITEST>` |
-| `bash scripts/pre-push-checks.sh` | `<PREPUSH>` |
+| 环                                                           | 读数               |
+| ------------------------------------------------------------ | ------------------ |
+| 工作树内差异（`git status --short \| wc -l`）                | `<WORKTREE_DIRTY>` |
+| `eslint --no-cache .`（全仓，CI 同口径）                     | `<ESLINT>`         |
+| `tsc --noEmit -p tsconfig.node.json --composite false`       | `<TSCNODE>`        |
+| `tsc --noEmit -p tsconfig.web.json --composite false`        | `<TSCWEB>`         |
+| `vitest run src/main/net src/main/connectors --maxWorkers=4` | `<VITEST>`         |
+| `bash scripts/pre-push-checks.sh`                            | `<PREPUSH>`        |
 
 - 本单元**零新通道 / 零新命令 / 零 i18n 键**（不改契约目录、不动 9 语字典）⇒ 无 pin 级联；
   agent/日志读的文本按本仓规矩固定英文（不进 9 语字典）。

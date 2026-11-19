@@ -16,11 +16,11 @@
 
 **(a) 设备上那次 canary 的分布**（同一份日志里 `managed preview acquire was slow` 自带的 `canaryMs`，57 个样本）：
 
-| 量 | 读数 |
-| --- | --- |
+| 量                       | 读数                      |
+| ------------------------ | ------------------------- |
 | 最小 / 中位 / p90 / 最大 | **1 / 24 / 180 / 686 ms** |
-| ≤ 2 ms（线程池空闲） | **5** 条 |
-| ≥ 20 ms（线程池被占） | **29** 条 |
+| ≤ 2 ms（线程池空闲）     | **5** 条                  |
+| ≥ 20 ms（线程池被占）    | **29** 条                 |
 
 这条读数本来就有（`managed-preview-resources` 已在用），此前没人按分布读过：**慢 acquire 发生时，共享线程池多数时候真的在排队**。因此 `fs-queue-saturated` 的门槛取 **20 ms（空闲侧 0–2 ms 与占用侧 ≥20 ms 之间的空档）+ 窗口的 10%** —— 后者防止「24 ms 的排队」被写成「1.2 s 停顿的原因」。
 
@@ -35,24 +35,24 @@ FS idleMs=0 saturatedMs=6 recoveredMs=0        # 预热后的 canary
 
 ## 三 交付（三个模块，一个字段）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/diagnostics/gc-pause-monitor.ts`（新） | `PerformanceObserver('gc')` 的有界环（512 条）；`pauseMsWithin(start,end)` 按**交集**裁剪 —— 同一段暂停不能被相邻两个窗口各算一次；运行时拒绝观察 ⇒ `unavailable`（不是 0） |
-| `src/main/diagnostics/stall-cause.ts`（新） | 一个类别 + 一句话 + 两个分量：`garbage-collection` / `fs-queue-saturated` / `cpu-in-process` / `unexplained` / `unmeasured`；阈值与设备读数一起写在常量旁边 |
+| 位置                                                | 改动                                                                                                                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/diagnostics/gc-pause-monitor.ts`（新）    | `PerformanceObserver('gc')` 的有界环（512 条）；`pauseMsWithin(start,end)` 按**交集**裁剪 —— 同一段暂停不能被相邻两个窗口各算一次；运行时拒绝观察 ⇒ `unavailable`（不是 0）           |
+| `src/main/diagnostics/stall-cause.ts`（新）         | 一个类别 + 一句话 + 两个分量：`garbage-collection` / `fs-queue-saturated` / `cpu-in-process` / `unexplained` / `unmeasured`；阈值与设备读数一起写在常量旁边                           |
 | `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每条记录新增 `cause`；GC 环与 canary 都在**启动时**就建好（停顿发生后才建的仪器只能描述恢复期，与 stack sampler 同一条教训）；canary 在停顿结束那一刻**发出**、与两个采样器一起 await |
-| `src/main/diagnostics/support-bundle.ts` | 包内 `diagnostics/event-loop-stalls.json` 的说明加一段：`cause` 是什么、它凭什么 |
+| `src/main/diagnostics/support-bundle.ts`            | 包内 `diagnostics/event-loop-stalls.json` 的说明加一段：`cause` 是什么、它凭什么                                                                                                      |
 
 **两条不冒充**：`unexplained` = 两个仪器都跑了、都不解释这个窗口（`basis` 里点名了被排除的毫秒数）；`unmeasured` = 有仪器缺席，什么都没排除。把这两态合成一个词，正是「没人看着」开始读成「机器没事」的机制。
 
 ## 四 门禁（全部实跑，数字取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（`src/main/diagnostics`） | **24 files / 184 passed**，exit 0 |
-| 新增用例 | `gc-pause-monitor` 4 条（交集裁剪、`unavailable`、有界环、`stop` 断开）、`stall-cause` 7 条（五个类别的门槛与优先级、两个「不冒充」态、共享门槛）、watchdog 4 条（GC/FS/unexplained/unmeasured 各决定一条记录）+ 真时钟那一条补两条断言（生产仪器确实产出 `measured`） |
-| 双 typecheck（`--composite false`） | node **0**；web **0**（两处夹具因新必填字段红了，按纪律补桩，没有把字段改成可选） |
-| `eslint --no-cache`（本笔改动文件） | **0 error / 0 warning** |
-| 全量 vitest | 见下节 |
+| 环                                    | 读数                                                                                                                                                                                                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（`src/main/diagnostics`） | **24 files / 184 passed**，exit 0                                                                                                                                                                                                                                      |
+| 新增用例                              | `gc-pause-monitor` 4 条（交集裁剪、`unavailable`、有界环、`stop` 断开）、`stall-cause` 7 条（五个类别的门槛与优先级、两个「不冒充」态、共享门槛）、watchdog 4 条（GC/FS/unexplained/unmeasured 各决定一条记录）+ 真时钟那一条补两条断言（生产仪器确实产出 `measured`） |
+| 双 typecheck（`--composite false`）   | node **0**；web **0**（两处夹具因新必填字段红了，按纪律补桩，没有把字段改成可选）                                                                                                                                                                                      |
+| `eslint --no-cache`（本笔改动文件）   | **0 error / 0 warning**                                                                                                                                                                                                                                                |
+| 全量 vitest                           | 见下节                                                                                                                                                                                                                                                                 |
 
 ## 五 边界（不许读成更强）
 

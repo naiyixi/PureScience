@@ -20,11 +20,11 @@
 (deny file-write* (subpath "<受管运行时根>"))           ← 最后一条，last-match-wins
 ```
 
-* **读不受限**：读不了自己库的 kernel 不是更安全，只是坏掉；
-* **运行时仍只读**：deny 放在 allow 之后，seatbelt 是 last-match-wins，所以即使运行时目录落在授权根内部也拒写；
-* **`PURESCIENCE_NOTEBOOK_CONFINE_WRITES=0`** 可以关掉（不需要改代码）—— 一个从设置里关不掉的护栏，
+- **读不受限**：读不了自己库的 kernel 不是更安全，只是坏掉；
+- **运行时仍只读**：deny 放在 allow 之后，seatbelt 是 last-match-wins，所以即使运行时目录落在授权根内部也拒写；
+- **`PURESCIENCE_NOTEBOOK_CONFINE_WRITES=0`** 可以关掉（不需要改代码）—— 一个从设置里关不掉的护栏，
   用户的工作方式就是绕开这个应用；
-* 只对 **darwin** 生效：Linux/Windows 上这个构建没有经过验证的写保护，返回原始调用而**不假装**保护过。
+- 只对 **darwin** 生效：Linux/Windows 上这个构建没有经过验证的写保护，返回原始调用而**不假装**保护过。
 
 ## 二 本机实测（真 seatbelt，非模拟）
 

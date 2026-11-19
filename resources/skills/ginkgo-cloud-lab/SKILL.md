@@ -1,6 +1,7 @@
 ---
 name: ginkgo-cloud-lab
 description: Guides protocol selection, input preparation, pricing checks, and browser ordering on Ginkgo Bioworks Cloud Lab (cloud.ginkgo.bio). Applies to cell-free, E. coli, and Pichia protein expression; HiBiT, A280, and LabChip readouts; IVT mRNA/circRNA synthesis; thermal shift assays; Echo-MS methods; SPR target onboarding; plate-reader assay onboarding; and fluorescent pixel art.
+description-zh: 指导 Ginkgo Bioworks 云实验室（cloud.ginkgo.bio）上的方案选择、输入准备、价格核对与浏览器下单。适用于无细胞、大肠杆菌与毕赤酵母蛋白表达等场景。
 license: MIT license
 compatibility: Requires network access and a browser for Ginkgo Cloud Lab; account access may be needed for ordering and results.
 metadata:

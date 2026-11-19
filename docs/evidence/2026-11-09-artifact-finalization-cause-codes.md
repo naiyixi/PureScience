@@ -8,11 +8,11 @@
 `~/Library/Logs/PureScience/{main,main.1,main.2}.log` 全量聚合（只读），`scope=artifacts:finalization`、
 `msg="artifact finalization attempt failed"` 共 **20 条**：
 
-| claim | 版本行 | 尝试次数 | 时间跨度 |
-| --- | --- | --- | --- |
-| `artifact-claim-1793897553264-38` | `4490f3e9…` | 1 → 15 | 2026-11-06 03:30 → 2026-11-07 16:02 |
-| `artifact-claim-1793807368207-30` | `9e4b6288…` | 1 → 2 | 2026-11-04 15:49 → 15:54 |
-| `artifact-claim-1793807815085-31` | `027f4c7a…` | 1 → 3 | 2026-11-04 15:56 → 16:47 |
+| claim                             | 版本行      | 尝试次数 | 时间跨度                            |
+| --------------------------------- | ----------- | -------- | ----------------------------------- |
+| `artifact-claim-1793897553264-38` | `4490f3e9…` | 1 → 15   | 2026-11-06 03:30 → 2026-11-07 16:02 |
+| `artifact-claim-1793807368207-30` | `9e4b6288…` | 1 → 2    | 2026-11-04 15:49 → 15:54            |
+| `artifact-claim-1793807815085-31` | `027f4c7a…` | 1 → 3    | 2026-11-04 15:56 → 16:47            |
 
 每条的 `data` 里 `failureKind` **一律是 `invalid-proof`**，`durableFinalizationCompleted=false`、
 `provenanceRetries=0`；除此之外只有 claim / run / message / frame / branch / segment 的 id。
@@ -25,11 +25,11 @@
 
 三个版本行现在的状态：
 
-| 版本 | state | messageId | rootFrameId |
-| --- | --- | --- | --- |
-| `4490f3e9…` | `pending` | 空 | `root-frame-pending-session-1793891820688-12` |
-| `9e4b6288…` | `unpublished` | 空 | `root-frame-pending-session-1793806439965-11` |
-| `027f4c7a…` | `unpublished` | 空 | `root-frame-pending-session-1793806439965-11` |
+| 版本        | state         | messageId | rootFrameId                                   |
+| ----------- | ------------- | --------- | --------------------------------------------- |
+| `4490f3e9…` | `pending`     | 空        | `root-frame-pending-session-1793891820688-12` |
+| `9e4b6288…` | `unpublished` | 空        | `root-frame-pending-session-1793806439965-11` |
+| `027f4c7a…` | `unpublished` | 空        | `root-frame-pending-session-1793806439965-11` |
 
 三行的帧 / 分支 / 段都是 `*-pending-session-<时间戳>-<序号>` 形态（`pending-session` 前缀由
 `src/renderer/src/stores/session-store-message-graph-owner.ts` 的 `createPendingSessionId()` 铸造）。
@@ -38,13 +38,13 @@
 
 ## 三 交付（3 个产品文件 + 1 条守卫用例）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/artifacts/provenance-repository.ts` | 新增闭集 `ArtifactFinalizationProofCause`（19 个原因码）；`ArtifactFinalizationProofError` 构造要求**具名原因**；`ArtifactOwnershipPersistenceRaceError` 只接受两条可重试原因（`runtime-segment-not-durable` / `message-not-durable`）；17 处抛出点逐个具名 |
-| `src/main/artifacts/ipc.ts` | 失败行新增 `proofCause`（仅当确为证明类拒绝）；claim 侧两处抛出点也具名 |
-| `src/main/artifacts/proof-cause-naming.test.ts`（新） | 源码守卫：两文件的**构造数 == 具名数**（防新增抛出点忘记命名）× **声明集 == 使用集**（防「声明了却没人报」的漂移），并带「扫到 2 个文件、每份 > 1000 字符」的自检，避免路径写错导致全绿空转 |
-| `src/main/artifacts/ipc.test.ts` | 终态失败用例断言 `proofCause` 真的进了失败行；既有「消息正文不得进日志」的红线断言保留且仍通过（原因码是枚举，不携带 id / 路径） |
-| `src/main/data-content-application-commands.test.ts` | 构造点跟随新签名（行为未变） |
+| 位置                                                  | 改动                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/artifacts/provenance-repository.ts`         | 新增闭集 `ArtifactFinalizationProofCause`（19 个原因码）；`ArtifactFinalizationProofError` 构造要求**具名原因**；`ArtifactOwnershipPersistenceRaceError` 只接受两条可重试原因（`runtime-segment-not-durable` / `message-not-durable`）；17 处抛出点逐个具名 |
+| `src/main/artifacts/ipc.ts`                           | 失败行新增 `proofCause`（仅当确为证明类拒绝）；claim 侧两处抛出点也具名                                                                                                                                                                                     |
+| `src/main/artifacts/proof-cause-naming.test.ts`（新） | 源码守卫：两文件的**构造数 == 具名数**（防新增抛出点忘记命名）× **声明集 == 使用集**（防「声明了却没人报」的漂移），并带「扫到 2 个文件、每份 > 1000 字符」的自检，避免路径写错导致全绿空转                                                                 |
+| `src/main/artifacts/ipc.test.ts`                      | 终态失败用例断言 `proofCause` 真的进了失败行；既有「消息正文不得进日志」的红线断言保留且仍通过（原因码是枚举，不携带 id / 路径）                                                                                                                            |
+| `src/main/data-content-application-commands.test.ts`  | 构造点跟随新签名（行为未变）                                                                                                                                                                                                                                |
 
 为什么是枚举而不是把错误正文抄进日志：正文里含版本 id，个别分支的正文来自被捕获的异常（可能带路径）。
 枚举给出同样可操作的信息量，且**日志里不可能因此多出用户数据**——这条在 `ipc.test.ts` 里已有断言
@@ -52,14 +52,14 @@
 
 ## 四 验证读数（全部在最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向单测 `ipc.test.ts` + `proof-cause-naming.test.ts` | **Test Files 2 passed / Tests 39 passed**，exit 0 |
-| 定向单测 `provenance-repository.test.ts` | **1 file / 41 tests passed**，exit 0 |
-| 定向单测 `data-content-application-commands.test.ts` | **1 file / 9 tests passed**，exit 0 |
+| 环                                                     | 读数                                                      |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| 定向单测 `ipc.test.ts` + `proof-cause-naming.test.ts`  | **Test Files 2 passed / Tests 39 passed**，exit 0         |
+| 定向单测 `provenance-repository.test.ts`               | **1 file / 41 tests passed**，exit 0                      |
+| 定向单测 `data-content-application-commands.test.ts`   | **1 file / 9 tests passed**，exit 0                       |
 | `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**（修复前它抓到一处漏改的构造点 `TS2345`，已修） |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
-| `npx eslint --no-cache`（本次 5 个文件） | **exit 0**，0 error（3 条 prettier warning 已 `--fix`） |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | **exit 0**                                                |
+| `npx eslint --no-cache`（本次 5 个文件）               | **exit 0**，0 error（3 条 prettier warning 已 `--fix`）   |
 
 **真机窗口读数：未取，原因具名** —— 要看到 `proofCause` 上屏需要一次**真实的证明失败**，而失败发生在
 应用自己的定稿路径上（claim 登记表是内存结构，重启即丢，无法用脚本伪造一个「重启前的 claim」）。
@@ -95,10 +95,10 @@
 
 ### 一 三份真实数据放在一起看，缺口是哪一条规则就唯一了
 
-| 来源 | 读数 |
-| --- | --- |
-| 日志（`~/Library/Logs/PureScience/main*.log`，只读） | 20 条失败行的 `data.messageId` 形如 `message-1793807367479-88`（**图里的 id 形态**），而 `data.promptMessageId` 形如 `prompt-a3cfe235-5ed5-4fdb-a077-c9b994382fc7`（**uuid 形态**），四条身份里另外三条与图逐字相同 |
-| SQLite（`~/.purescience/purescience.db`，`-readonly`） | 五个失败版本行的 `promptMessageId` 全部是 `prompt-<uuid>`；`rootFrameId` / `messageBranchId` / `runtimeSegmentId` 全部是 `*-pending-session-1793…` 形态 |
+| 来源                                                                  | 读数                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 日志（`~/Library/Logs/PureScience/main*.log`，只读）                  | 20 条失败行的 `data.messageId` 形如 `message-1793807367479-88`（**图里的 id 形态**），而 `data.promptMessageId` 形如 `prompt-a3cfe235-5ed5-4fdb-a077-c9b994382fc7`（**uuid 形态**），四条身份里另外三条与图逐字相同                                                                                              |
+| SQLite（`~/.purescience/purescience.db`，`-readonly`）                | 五个失败版本行的 `promptMessageId` 全部是 `prompt-<uuid>`；`rootFrameId` / `messageBranchId` / `runtimeSegmentId` 全部是 `*-pending-session-1793…` 形态                                                                                                                                                          |
 | 会话 JSON（`~/.purescience/sessions/<project>/<session>.json`，只读） | `d8da1631…` 图里 73 个节点，其中 **32 个是 `prompt-<uuid>`**（app-routed 且未抑制的回合确实会落节点），但声明的那一个 `prompt-ec3409d2…` **不在图里**；`16abfdab…` 图里 **0 个** `prompt-` 前缀节点，两个声明都不在图里。两图的 `rootFrameId`/`messageBranchId`/`runtimeSegmentId` 与日志里那三条约 **逐字相同** |
 
 ⇒ 命中的是 `prompt-not-owned`（`src/main/artifacts/provenance-repository.ts:396-404`：`promptIndex < 0` 即拒），
@@ -119,10 +119,10 @@
 
 没有 `provenanceContext` 的调用方，在派发处被补上一枚 uuid 形态的 Prompt 身份：
 
-| 位置 | 行为 |
-| --- | --- |
-| `src/main/acp/runtime-coordinator.ts:690-695`（本轮改动后行号；告警在 `:696-708`） | `request.provenanceContext` 缺席 ⇒ 铸 `prompt-${randomUUID()}` |
-| `src/main/acp/artifact-turn-owner.ts:364-401` | 四支 fallback：`root-frame-${appSessionId}`（:364） / `message-branch-${appSessionId}`（:366） / `prompt-${runId}`（:367） / `runtime-segment-${appSessionId}`（:401） |
+| 位置                                                                               | 行为                                                                                                                                                                   |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/acp/runtime-coordinator.ts:690-695`（本轮改动后行号；告警在 `:696-708`） | `request.provenanceContext` 缺席 ⇒ 铸 `prompt-${randomUUID()}`                                                                                                         |
+| `src/main/acp/artifact-turn-owner.ts:364-401`                                      | 四支 fallback：`root-frame-${appSessionId}`（:364） / `message-branch-${appSessionId}`（:366） / `prompt-${runId}`（:367） / `runtime-segment-${appSessionId}`（:401） |
 
 而 `suppressUserMessage: true` 的回合**不发射用户消息事件**（`src/main/acp/prompt-turn-workflow.ts:294` 的
 `emitUserMessage` 在该标志下直接 return），于是那枚 id 永远不会成为图里的节点，证明的 `prompt-not-owned` 必然成立。
@@ -155,12 +155,12 @@
 
 ### 一 改动（1 个产品文件 + 1 个测试文件）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/acp/runtime-coordinator.ts` | 派发处先判「这是产品自己的回合」（`!retainAsLatestUserPrompt` 或 `request.suppressUserMessage === true`）；这类回合**缺 provenance** 时，从 `latestPromptRequests` 取该会话最近一条用户 Prompt 的 `provenanceContext`，四条身份**原样**用；取不到（无用户 Prompt / 那条本身是 fallback）才落回 uuid 身份 + 既有告警 |
-| 同上 | `completeGraphAnchor()`：只有 `promptMessageId` + `rootFrameId` + `agentFrameId` + `messageBranchId` + `runtimeSegmentId` 全在才算「图里的锚点」。**fallback 自带的那枚 uuid 不满足这五条 ⇒ 不会被下一代继承**（否则只是把一条不可拥有的身份复制给下一回合） |
-| 同上 | 继承成功每会话记一条 `info`（`promptMessageId` 具名）：让「这回合的产物会记到谁名下」在日志里可查，而不是与 fallback 同形 |
-| `src/main/acp/runtime-coordinator.test.ts` | 四条：① app-owned continuation 继承四条身份（逐字）；② 被抑制的 `sendPrompt`（后台投递真实形状）继承；③ 最近那条本身是 fallback（只有 `promptMessageId`）⇒ 仍然新铸；④ **普通用户回合不继承**（新用户动作是新的 Prompt，不能记到上一回合名下） |
+| 位置                                       | 改动                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/acp/runtime-coordinator.ts`      | 派发处先判「这是产品自己的回合」（`!retainAsLatestUserPrompt` 或 `request.suppressUserMessage === true`）；这类回合**缺 provenance** 时，从 `latestPromptRequests` 取该会话最近一条用户 Prompt 的 `provenanceContext`，四条身份**原样**用；取不到（无用户 Prompt / 那条本身是 fallback）才落回 uuid 身份 + 既有告警 |
+| 同上                                       | `completeGraphAnchor()`：只有 `promptMessageId` + `rootFrameId` + `agentFrameId` + `messageBranchId` + `runtimeSegmentId` 全在才算「图里的锚点」。**fallback 自带的那枚 uuid 不满足这五条 ⇒ 不会被下一代继承**（否则只是把一条不可拥有的身份复制给下一回合）                                                        |
+| 同上                                       | 继承成功每会话记一条 `info`（`promptMessageId` 具名）：让「这回合的产物会记到谁名下」在日志里可查，而不是与 fallback 同形                                                                                                                                                                                           |
+| `src/main/acp/runtime-coordinator.test.ts` | 四条：① app-owned continuation 继承四条身份（逐字）；② 被抑制的 `sendPrompt`（后台投递真实形状）继承；③ 最近那条本身是 fallback（只有 `promptMessageId`）⇒ 仍然新铸；④ **普通用户回合不继承**（新用户动作是新的 Prompt，不能记到上一回合名下）                                                                      |
 
 ### 二 为什么是这条链而不是注入持久图解析器
 
@@ -172,12 +172,12 @@
 
 ### 三 门禁读数（最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| `vitest run src/main/acp/runtime-coordinator.test.ts src/main/acp/unowned-prompt-anchor.test.ts` | 2 文件 / **63 passed**，exit 0 |
-| `npx vitest run src/main/acp`（整目录） | 见本轮提交前的实测（见计划档 §298 §三） |
-| `tsc --noEmit -p tsconfig.node.json --composite false` / `web` | 两环各自 exit 0 |
-| `npx eslint --no-cache`（本批 2 个文件） | 0 errors / 0 warnings |
+| 环                                                                                               | 读数                                    |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `vitest run src/main/acp/runtime-coordinator.test.ts src/main/acp/unowned-prompt-anchor.test.ts` | 2 文件 / **63 passed**，exit 0          |
+| `npx vitest run src/main/acp`（整目录）                                                          | 见本轮提交前的实测（见计划档 §298 §三） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` / `web`                                   | 两环各自 exit 0                         |
+| `npx eslint --no-cache`（本批 2 个文件）                                                         | 0 errors / 0 warnings                   |
 
 ### 四 边界（不许读成更强）
 
@@ -189,4 +189,3 @@
 - **真机窗口读数未取**：本轮 `vm_stat` 空闲页 4,450 × 16 KB ≈ 70 MB、`vm.swapusage` 6,722 / 8,192 MB 已用 ⇒ 起 Electron
   只会把机器拖进抖动，读数不可信。要证「后台投递回合产出的产物能定稿」，需一次隔离数据根的真机回合（造一次投递 → 读版本行五条身份）。
   本轮证据是**协调器行为（单元级）+ 双 typecheck + lint + 整目录 ACP 套件**，不是实机 UI 取证——按仓规，这一格仍记「未取证」。
-

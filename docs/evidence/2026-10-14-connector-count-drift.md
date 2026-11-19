@@ -6,15 +6,15 @@
 
 ## 一 逐处清单（改动前）
 
-| 文件 | 行 | 原文 |
-| --- | --- | --- |
-| `README.md` | 20（引言句，双语头部锚点内） | `18 featured research skills and 24 built-in scientific connectors` |
-| `README.md` | 123 | `It also includes **24 built-in** research connectors: <24 个名字>` |
-| `README.md` | 294（比较表单元格） | `24 built-in connectors across genomics, …` |
-| `README.md` | 329（功能表单元格） | `**24 built-in** research connectors, custom local/remote MCP connectors, …` |
-| `README.en.md` | 20 / 122 / 221 / 256 | 同上四处（英文镜像逐处对应） |
-| `ROADMAP.md` | 64（✅ 清单项） | `✅ 24 built-in connectors — 23 life-science data connectors … into 200+ callable tools` |
-| `ROADMAP.md` | 118（能力表单元格） | `24 built-in connectors — 23 life-science data connectors (…) expanded to 200+ tools` |
+| 文件           | 行                           | 原文                                                                                     |
+| -------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `README.md`    | 20（引言句，双语头部锚点内） | `18 featured research skills and 24 built-in scientific connectors`                      |
+| `README.md`    | 123                          | `It also includes **24 built-in** research connectors: <24 个名字>`                      |
+| `README.md`    | 294（比较表单元格）          | `24 built-in connectors across genomics, …`                                              |
+| `README.md`    | 329（功能表单元格）          | `**24 built-in** research connectors, custom local/remote MCP connectors, …`             |
+| `README.en.md` | 20 / 122 / 221 / 256         | 同上四处（英文镜像逐处对应）                                                             |
+| `ROADMAP.md`   | 64（✅ 清单项）              | `✅ 24 built-in connectors — 23 life-science data connectors … into 200+ callable tools` |
+| `ROADMAP.md`   | 118（能力表单元格）          | `24 built-in connectors — 23 life-science data connectors (…) expanded to 200+ tools`    |
 
 注册表真实值（`ALL_CONNECTOR_IDS` 与 `getConnectorTools`）：**31 connectors / 282 tools**
 （目录侧：25 个 `featured`（无 `group`）+ 6 个 `group: 'directory'`）。

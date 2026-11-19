@@ -1,6 +1,7 @@
 ---
 name: autoskill
 description: Analyzes user-requested Screenpipe history windows to detect repeated research workflows, match existing scientific skills, and stage new skill drafts or composition recipes for review. Requires a reachable Screenpipe HTTP API, normally on localhost:3030. Detection and embedding inference run locally; the selected LLM receives redacted app/title cluster summaries and matched skill descriptions. Use only when the user explicitly asks to analyze their recent work and propose skills.
+description-zh: 分析用户指定的 Screenpipe 历史区间，识别重复出现的研究工作流，匹配现有科研技能，并把新技能草稿或组合配方放到待审状态。需要一个可连通的 Screenpipe 实例。
 allowed-tools: Read Write Edit Bash
 license: MIT license
 compatibility: Requires Python 3.10+ with httpx, PyYAML, and sentence-transformers; Screenpipe and a local LM Studio server or an opt-in cloud LLM. Initial model installation needs network access.

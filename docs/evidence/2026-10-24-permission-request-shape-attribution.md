@@ -15,10 +15,10 @@
 
 ## 2 两个判据（读源，不是推测）
 
-| 位置 | 判据 | 说明 |
-|---|---|---|
+| 位置                                                              | 判据                                                                      | 说明                                                                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `handleProviderRequest` 的审计行（`permission request received`） | `isMcpToolName(title) ∥ isMcpToolName(extractProviderToolName(toolCall))` | **两个名字都看**；`providerToolName` 来自 `_meta.toolName` / `_meta.tool_name` / `_meta.claudeCode.toolName` |
-| `restoreToolCall` 的 opencode 分支 | `isMcpToolName(title)` —— **只看标题** | 不成立且不是原生 skill 候选 ⇒ 直接 `return`，**不落任何等待侧读数** |
+| `restoreToolCall` 的 opencode 分支                                | `isMcpToolName(title)` —— **只看标题**                                    | 不成立且不是原生 skill 候选 ⇒ 直接 `return`，**不落任何等待侧读数**                                          |
 
 两者在这种形状上必然分叉：**标题是裸工具名（`read_turn` / `query_execution_log`），服务器限定名只在 `_meta` 里**。
 审计行照样判它是 MCP，而入参恢复这条路看不见它，于是「闸门说是 MCP、等待侧一句话没有」。
@@ -28,13 +28,13 @@
 日志 `~/Library/Logs/PureScience (DEV)/main*.log` 三份，**17,808** 条 JSON 行，
 窗口 `2026-10-21T15:51:11Z → 2026-10-23T21:02:50Z`（本机日志轮转决定，不是人为截断）。
 
-| 读数 | 值 |
-|---|---|
-| `permission request received` | **2,042** 行 |
-| 其中 `isMcp: true` | **1,396** |
-| 这 1,396 条里**有**任一等待侧读数（`wait outcome` / `skipping` / `timed out` / 迟到 / 丢弃） | **396** |
-| 这 1,396 条里**没有**任何等待侧读数 | **1,000** |
-| 跳过修复（`05:41:32Z`）之后：请求 / `isMcp` / 有读数 / 无读数 | **161 / 125 / 107 / 18** |
+| 读数                                                                                         | 值                       |
+| -------------------------------------------------------------------------------------------- | ------------------------ |
+| `permission request received`                                                                | **2,042** 行             |
+| 其中 `isMcp: true`                                                                           | **1,396**                |
+| 这 1,396 条里**有**任一等待侧读数（`wait outcome` / `skipping` / `timed out` / 迟到 / 丢弃） | **396**                  |
+| 这 1,396 条里**没有**任何等待侧读数                                                          | **1,000**                |
+| 跳过修复（`05:41:32Z`）之后：请求 / `isMcp` / 有读数 / 无读数                                | **161 / 125 / 107 / 18** |
 
 > 全窗口那 1,000 条不是缺陷：等待是 **opencode 独有**的机制（`restoreClaudeCodeMcpToolInput`、codex 分支
 > 都不做等待、也不落这类读数），所以在别的框架上「没有等待侧读数」是设计。判据只能取到
@@ -44,12 +44,12 @@
 
 按 `toolCallId` 精确配对，18 条分布在 4 个复查会话里：
 
-| 会话 | 条数 | `tool` 字段形态 | 该会话的 opencode 等待读数 | 判读 |
-|---|---|---|---|---|
+| 会话                        | 条数  | `tool` 字段形态                                            | 该会话的 opencode 等待读数                         | 判读                                 |
+| --------------------------- | ----- | ---------------------------------------------------------- | -------------------------------------------------- | ------------------------------------ |
 | `ses_e98b8853…`（opencode） | **1** | `purescience_reviewer_query_execution_log`（服务器限定名） | **有**（5 条 `skipping`，同会话另 5 条请求都落了） | **真分叉**：标题裸、`_meta` 有限定名 |
-| `0745858e-…` | 8 | `mcp__purescience_reviewer__*` | 0 | 另一种框架（不使用 opencode 等待） |
-| `01a16855-…` | 6 | `read_turn` / `query_execution_log` / `submit_findings` | 0 | 同上 |
-| `01a1686b-…` | 3 | 同上 | 0 | 同上 |
+| `0745858e-…`                | 8     | `mcp__purescience_reviewer__*`                             | 0                                                  | 另一种框架（不使用 opencode 等待）   |
+| `01a16855-…`                | 6     | `read_turn` / `query_execution_log` / `submit_findings`    | 0                                                  | 同上                                 |
+| `01a1686b-…`                | 3     | 同上                                                       | 0                                                  | 同上                                 |
 
 四条请求每一条都紧跟一行 `approving scope-bounded reviewer MCP tool call`（复查闸门按身份直接放行）。
 
@@ -58,12 +58,12 @@
 
 ## 4 交付（只做这一件事：让分叉自己报名字，不加大任何等待）
 
-| 位置 | 改动 |
-|---|---|
-| `permission-context.ts` `restoreToolCall` opencode 分支 | 判据拆成 `titleSaysMcp` 与 `providerNameSaysMcp` 两个具名布尔，再合成 `isMcpRequest` |
-| 同上 | 新的 `isMcpRequest = titleSaysMcp ∥ (providerNameSaysMcp && hasOwnInput)`：**只有在请求自带入参时**才按提供方名字认它是 MCP。等待只为「入参为空」的请求而生，所以这条**不可能让任何请求多等一毫秒**（用例用 `setTimer` 未被调用证明） |
-| 同上 `reportProviderNameOnlyMcpRequest()` | 每个 `toolCallId` 只报一次、按会话有界（与既有各 store 同纪律），载荷只有 `hasOwnInput` / `awaitsProviderInput` 两个布尔，**不含标题、不含入参** |
-| `runtime-session-composition.ts` | 接一行 `info`：`OpenCode permission request names its MCP server only in provider metadata` |
+| 位置                                                    | 改动                                                                                                                                                                                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `permission-context.ts` `restoreToolCall` opencode 分支 | 判据拆成 `titleSaysMcp` 与 `providerNameSaysMcp` 两个具名布尔，再合成 `isMcpRequest`                                                                                                                                                  |
+| 同上                                                    | 新的 `isMcpRequest = titleSaysMcp ∥ (providerNameSaysMcp && hasOwnInput)`：**只有在请求自带入参时**才按提供方名字认它是 MCP。等待只为「入参为空」的请求而生，所以这条**不可能让任何请求多等一毫秒**（用例用 `setTimer` 未被调用证明） |
+| 同上 `reportProviderNameOnlyMcpRequest()`               | 每个 `toolCallId` 只报一次、按会话有界（与既有各 store 同纪律），载荷只有 `hasOwnInput` / `awaitsProviderInput` 两个布尔，**不含标题、不含入参**                                                                                      |
+| `runtime-session-composition.ts`                        | 接一行 `info`：`OpenCode permission request names its MCP server only in provider metadata`                                                                                                                                           |
 
 **为什么空入参那半边不改判据**：入参落库那一侧（`observeToolCall` 的 MCP 分支）**同样以标题为准**，
 裸标题的更新在那里也进不去 ⇒ 就算把请求认成 MCP 并开始等待，那个输入也永远存不进等待者手里，
@@ -71,16 +71,16 @@
 
 ## 5 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 改动前基线 | `permission-context.test.ts` 18 passed |
-| 本文件用例 | **21 passed**（新增 3：自带入参 ⇒ 认 MCP 且报 `input-present` 0 ms；空入参 ⇒ 只报读数、`setTimer` 未被调用；同一调用只报一次且普通形状保持沉默） |
-| 变异① 去掉「提供方名字」这半边 | 恰 **1** 条红（1 failed / 20 passed），恢复全绿 |
-| 变异② 去掉那行读数 | 恰 **3** 条红（3 failed / 18 passed），恢复全绿 |
-| 变异③ 去掉「一次调用只报一次」 | 恰 **1** 条红（1 failed / 20 passed），恢复全绿 |
-| `src/main/acp` 整域 | **89 files / 1463 passed**，exit 0（基线 1460，+3） |
-| node / web typecheck（`--composite false`，堆 8192） | **EXIT 0 / EXIT 0** |
-| `eslint --no-cache` 3 文件 / `prettier --check` | **0 problems / 全过** |
+| 环                                                   | 读数                                                                                                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 改动前基线                                           | `permission-context.test.ts` 18 passed                                                                                                           |
+| 本文件用例                                           | **21 passed**（新增 3：自带入参 ⇒ 认 MCP 且报 `input-present` 0 ms；空入参 ⇒ 只报读数、`setTimer` 未被调用；同一调用只报一次且普通形状保持沉默） |
+| 变异① 去掉「提供方名字」这半边                       | 恰 **1** 条红（1 failed / 20 passed），恢复全绿                                                                                                  |
+| 变异② 去掉那行读数                                   | 恰 **3** 条红（3 failed / 18 passed），恢复全绿                                                                                                  |
+| 变异③ 去掉「一次调用只报一次」                       | 恰 **1** 条红（1 failed / 20 passed），恢复全绿                                                                                                  |
+| `src/main/acp` 整域                                  | **89 files / 1463 passed**，exit 0（基线 1460，+3）                                                                                              |
+| node / web typecheck（`--composite false`，堆 8192） | **EXIT 0 / EXIT 0**                                                                                                                              |
+| `eslint --no-cache` 3 文件 / `prettier --check`      | **0 problems / 全过**                                                                                                                            |
 
 ## 6 边界（不许读成更强）
 
@@ -106,14 +106,14 @@
 因此本轮在同一处补一个布尔：`DroppedOpenCodeInput` 增 `hasProviderName`
 （`event.providerToolName != null`），并把它透传到日志载荷。
 
-| 位置 | 改动 |
-|---|---|
-| `permission-context.ts` `DroppedOpenCodeInput` | 新增 `hasProviderName`（带注释说明它区分的两件事：从没说过服务器名 / 说在了我们不看的字段里） |
-| 同上 `handleUnusableOpenCodeInput()` | 增一个参数，两条记录（立即报 / 先记着）都带上它 |
-| 同上 `reportDroppedOpenCodeInput()` | 载荷透传 |
-| 同上 `observeToolCall` 两处调用 | 传 `event.providerToolName != null` |
-| `runtime-session-composition.ts` | 那行 `warn` 多一个字段 |
-| `permission-context.test.ts` | 新增 1 条用例（裸标题 + `_meta` 限定名 ⇒ `hasProviderName: true`）；两条既有断言补上 `hasProviderName: false`（收紧，不是放宽） |
+| 位置                                           | 改动                                                                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `permission-context.ts` `DroppedOpenCodeInput` | 新增 `hasProviderName`（带注释说明它区分的两件事：从没说过服务器名 / 说在了我们不看的字段里）                                   |
+| 同上 `handleUnusableOpenCodeInput()`           | 增一个参数，两条记录（立即报 / 先记着）都带上它                                                                                 |
+| 同上 `reportDroppedOpenCodeInput()`            | 载荷透传                                                                                                                        |
+| 同上 `observeToolCall` 两处调用                | 传 `event.providerToolName != null`                                                                                             |
+| `runtime-session-composition.ts`               | 那行 `warn` 多一个字段                                                                                                          |
+| `permission-context.test.ts`                   | 新增 1 条用例（裸标题 + `_meta` 限定名 ⇒ `hasProviderName: true`）；两条既有断言补上 `hasProviderName: false`（收紧，不是放宽） |
 
 **为什么这算一个单元而不是半截**：它把「要不要改更新侧」从猜测变成可测量的判据 ——
 `hasProviderName: true` 的出现次数就是那条修法的封顶收益；一次都不出现，那条修法就当场作废，
@@ -121,16 +121,15 @@
 
 ### 门禁（第二单元，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `permission-context.test.ts` | **22 passed**（21→22） |
-| 变异：把该调用点的 `event.providerToolName != null` 换成 `false` | 恰 **1** 条红（1 failed / 21 passed），恢复全绿 |
-| `src/main/acp` 整域 | **89 files / 1464 passed**（1463→1464） |
-| node / web typecheck | **EXIT 0 / EXIT 0** |
-| 3 文件 `eslint --no-cache` / `prettier --check` | **0 problems / 全过**（中途 prettier 要求把回调形参折行，已就地修） |
+| 环                                                               | 读数                                                                |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `permission-context.test.ts`                                     | **22 passed**（21→22）                                              |
+| 变异：把该调用点的 `event.providerToolName != null` 换成 `false` | 恰 **1** 条红（1 failed / 21 passed），恢复全绿                     |
+| `src/main/acp` 整域                                              | **89 files / 1464 passed**（1463→1464）                             |
+| node / web typecheck                                             | **EXIT 0 / EXIT 0**                                                 |
+| 3 文件 `eslint --no-cache` / `prettier --check`                  | **0 problems / 全过**（中途 prettier 要求把回调形参折行，已就地修） |
 
 ### 边界
 
 - 新字段**同样没有真机样本**：它随下一份日志一起出现。
 - 「更新侧认 `_meta`」这件事**仍未做**；判据是上面那个布尔的出现频率，不是本次交付。
-

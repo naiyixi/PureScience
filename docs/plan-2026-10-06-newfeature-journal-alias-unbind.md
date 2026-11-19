@@ -12,15 +12,15 @@
 
 ## 2. 落点与接缝（已逐一核实）
 
-| 位置 | 现状 | 本功能要做的 |
-| --- | --- | --- |
+| 位置                                        | 现状                                                                                                                                                  | 本功能要做的                                                                                                                                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/references/journal-repository.ts` | `mergeJournals`（`:203`）、别名读随刊表返回（`:410` 附近，select `normalizedName/journalId/createdVia`）、`journalAlias.findUnique/updateMany/create` | 新增 `removeJournalAlias({ normalizedName })`：**单事务**读该别名 → 不存在则**具名拒绝**（`alias-not-found`）→ 删除 → 返回结果（含被解除的名字与被释放的目标刊）；**不得**顺手动指标/文献 |
-| `src/main/references/ipc.ts` | `mergeJournals`（类型 `:79`、处理器 `:249`、路由 `:345`） | 同族加一条 `removeJournalAlias`，处理器→仓库直通；**具名错误类型**与合并的 `JournalMergeRefusal` 同风格 |
-| `src/preload/index.ts` | `mergeJournals: (input) => invoke('references.mergeJournals', …)`（`:701`） | 加 `removeJournalAlias` 包装（同形） |
-| `src/preload/renderer-api.d.ts` | 有 `mergeJournals` 的类型 | 加同形声明 |
-| `src/shared/renderer-contract-catalog.ts` | `references` 组（`:290` 附近） | 加 `['removeJournalAlias', 'references:remove-journal-alias', ELECTRON]` |
-| `src/shared/journal-merge.ts` | `JournalMergeRequest/Result/Refusal` 与 `JOURNAL_MERGE_REFUSAL_LABEL_KEYS`（标签键表） | 新增解绑的请求/结果/拒绝类型；拒绝标签键照合并的体例给（渲染层按 key 翻） |
-| 界面（期刊详情/指标面板） | 别名已随刊表返回，**无需新读通道** | 每个别名一行加「解除」控件 + 二次确认；确认文案见 §3 |
+| `src/main/references/ipc.ts`                | `mergeJournals`（类型 `:79`、处理器 `:249`、路由 `:345`）                                                                                             | 同族加一条 `removeJournalAlias`，处理器→仓库直通；**具名错误类型**与合并的 `JournalMergeRefusal` 同风格                                                                                   |
+| `src/preload/index.ts`                      | `mergeJournals: (input) => invoke('references.mergeJournals', …)`（`:701`）                                                                           | 加 `removeJournalAlias` 包装（同形）                                                                                                                                                      |
+| `src/preload/renderer-api.d.ts`             | 有 `mergeJournals` 的类型                                                                                                                             | 加同形声明                                                                                                                                                                                |
+| `src/shared/renderer-contract-catalog.ts`   | `references` 组（`:290` 附近）                                                                                                                        | 加 `['removeJournalAlias', 'references:remove-journal-alias', ELECTRON]`                                                                                                                  |
+| `src/shared/journal-merge.ts`               | `JournalMergeRequest/Result/Refusal` 与 `JOURNAL_MERGE_REFUSAL_LABEL_KEYS`（标签键表）                                                                | 新增解绑的请求/结果/拒绝类型；拒绝标签键照合并的体例给（渲染层按 key 翻）                                                                                                                 |
+| 界面（期刊详情/指标面板）                   | 别名已随刊表返回，**无需新读通道**                                                                                                                    | 每个别名一行加「解除」控件 + 二次确认；确认文案见 §3                                                                                                                                      |
 
 **pin 级联（必读）**：新增一条**通道**会同时影响五族计数（契约目录 / 前载可调用清单 / 本地 Web `unavailable` 计数 / 两个 Web 契约面 / 该家族 IPC 适配器与 local-only 集）⇒ **加完直接跑全量单测**，不要只跑连接器或 references 目录（本仓实测「定向簇必漏」）。
 
@@ -57,15 +57,15 @@
 
 **落地面**（§2 的六处全齐 + §3 的文案）：
 
-| 落点 | 改动 |
-| --- | --- |
-| `src/main/references/ipc.ts` | `ReferencesHandlers.removeJournalAlias` + 处理器映射（**直通仓库**，与合并同形）+ 路由 `references:remove-journal-alias` |
+| 落点                                          | 改动                                                                                                                                                                                   |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/references/ipc.ts`                  | `ReferencesHandlers.removeJournalAlias` + 处理器映射（**直通仓库**，与合并同形）+ 路由 `references:remove-journal-alias`                                                               |
 | `src/main/references/application-commands.ts` | **四处登记**：`Pick` 联合、`defineApplicationCommand`、组成员数组、`scope.registerGroup` 的处理器（缺第四处会以「Application command handler is missing」在启动路径抛 ⇒ 窗口永不出现） |
-| `src/shared/renderer-contract-catalog.ts` | references 组加一条（默认 Web 档 ⇒ 三处合成计数同动） |
-| `src/preload/index.ts` + `renderer-api.d.ts` | 同形包装与声明 |
-| `src/shared/web-api-map.generated.ts` | `gen:web-api-map` 重跑后 +1 行（与手改逐字一致） |
-| 渲染层 | 新组件 `JournalAliasRelease.tsx`（每别名一行 + **二次确认**）；面板按「库里有别名 **或** 有结果」挂载 ⇒ 结果行不会随最后一条别名消失 |
-| i18n | **10 键 × 9 语**（zh ≠ en、zh-Hant 纯繁体；拒绝标签键与共享层的键名逐字一致） |
+| `src/shared/renderer-contract-catalog.ts`     | references 组加一条（默认 Web 档 ⇒ 三处合成计数同动）                                                                                                                                  |
+| `src/preload/index.ts` + `renderer-api.d.ts`  | 同形包装与声明                                                                                                                                                                         |
+| `src/shared/web-api-map.generated.ts`         | `gen:web-api-map` 重跑后 +1 行（与手改逐字一致）                                                                                                                                       |
+| 渲染层                                        | 新组件 `JournalAliasRelease.tsx`（每别名一行 + **二次确认**）；面板按「库里有别名 **或** 有结果」挂载 ⇒ 结果行不会随最后一条别名消失                                                   |
+| i18n                                          | **10 键 × 9 语**（zh ≠ en、zh-Hant 纯繁体；拒绝标签键与共享层的键名逐字一致）                                                                                                          |
 
 **契约 pin（按失败原文逐个追平，未预判）**：目录 468→469、Web 安装集 393→394、Web invoke 投影 363→364、表面清单 468→469、preload 可调用清单 468→469、核心契约 231→232（requests 193→194）、本地 Web 可调用面 393→394、references 族通道 29→30（`screening-ipc.test.ts`）、合成计数内部 357→358 / 本地 Web 355→356 / 远程 Web 调度 231→232（**fail-closed 124 不变**：该通道是普通窗口写，与合并同档，不是本地专用）。
 
@@ -81,4 +81,3 @@
 **只允许跑绿之后提交该 spec**；尚未取到的部分在证据档第三节逐条具名。
 
 **未做（本单原文之外，未假装已有）**：不提供「撤销合并」（数据层没有原归属可回放 —— 见 §1 与 §5）；不做别名的手工新增。
-

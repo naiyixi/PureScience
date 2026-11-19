@@ -20,19 +20,19 @@
 
 ```js
 // 与 repository.atomicWrite 同一形状：JSON.stringify(payload, null, 2) + '\n'
-pretty  = time(() => JSON.stringify(parsed, null, 2) + '\n')
+pretty = time(() => JSON.stringify(parsed, null, 2) + '\n')
 compact = time(() => JSON.stringify(parsed) + '\n')
-diskPretty  = time(() => fs.writeFileSync(target, pretty, 'utf8'))
+diskPretty = time(() => fs.writeFileSync(target, pretty, 'utf8'))
 diskCompact = time(() => fs.writeFileSync(target, compact, 'utf8'))
 rename = time(() => fs.renameSync(target, target + '.renamed'))
 ```
 
 ## 三 读数（n = 2 份真实会话 + 中位那份 5 次重复）
 
-| 文件 | 源字节 | 消息数 | pretty 字节 | compact 字节 | stringify pretty | stringify compact | 落盘 pretty | 落盘 compact | rename |
-|---|---|---|---|---|---|---|---|---|---|
-| 中位 | 868,111 | 32 | 868,111 | 748,035 | **1.4 ms** | 1.0 ms | **1.74 ms** | 0.83 ms | 0.11 ms |
-| 最大 | 3,117,545 | 97 | 3,117,545 | 2,774,539 | **6.33 ms** | 4.80 ms | **3.98 ms** | 3.06 ms | 0.13 ms |
+| 文件 | 源字节    | 消息数 | pretty 字节 | compact 字节 | stringify pretty | stringify compact | 落盘 pretty | 落盘 compact | rename  |
+| ---- | --------- | ------ | ----------- | ------------ | ---------------- | ----------------- | ----------- | ------------ | ------- |
+| 中位 | 868,111   | 32     | 868,111     | 748,035      | **1.4 ms**       | 1.0 ms            | **1.74 ms** | 0.83 ms      | 0.11 ms |
+| 最大 | 3,117,545 | 97     | 3,117,545   | 2,774,539    | **6.33 ms**      | 4.80 ms           | **3.98 ms** | 3.06 ms      | 0.13 ms |
 
 5 次重复（中位那份）：`stringify pretty` 1.01/0.98/0.99/0.97/0.96 ms；`stringify compact` 0.75/0.72/0.75/0.70/0.73 ms；
 `JSON.parse`（读取路径）0.92/0.91/0.91/0.92/0.89 ms。
@@ -49,14 +49,14 @@ rename = time(() => fs.renameSync(target, target + '.renamed'))
 
 ## 四 本轮交付：把 `writeMs` 切成五段（而不是重写文档）
 
-| 段 | 量的是什么 | 在哪量 |
-|---|---|---|
-| `writeQueueMs` | 在仓库自己的保存队列里等前一次写 | `saveSession` 入队前取戳 |
-| `writeMaterializeMs` | 裁剪/脱敏/路径编码 —— 产出字节之前的 CPU | `writeSessionToDirectory` |
-| `writeSerializeMs` | `JSON.stringify` 整份文档 | `atomicWrite` |
-| `writeDiskMs` | 建目录 + 写临时文件 | `writeSessionToDirectory` + `atomicWrite` |
-| `writeReplaceMs` | 让写可见的那次 rename（含重试等待） | `atomicWrite` |
-| `writeUnaccountedMs` | 五段没解释掉的余量（**打印出来，不摊进任何一段**） | 慢保存日志 |
+| 段                   | 量的是什么                                         | 在哪量                                    |
+| -------------------- | -------------------------------------------------- | ----------------------------------------- |
+| `writeQueueMs`       | 在仓库自己的保存队列里等前一次写                   | `saveSession` 入队前取戳                  |
+| `writeMaterializeMs` | 裁剪/脱敏/路径编码 —— 产出字节之前的 CPU           | `writeSessionToDirectory`                 |
+| `writeSerializeMs`   | `JSON.stringify` 整份文档                          | `atomicWrite`                             |
+| `writeDiskMs`        | 建目录 + 写临时文件                                | `writeSessionToDirectory` + `atomicWrite` |
+| `writeReplaceMs`     | 让写可见的那次 rename（含重试等待）                | `atomicWrite`                             |
+| `writeUnaccountedMs` | 五段没解释掉的余量（**打印出来，不摊进任何一段**） | 慢保存日志                                |
 
 - 形状：`SessionRepository.saveSession(session, onWritePhases?)` —— 用**回调**而不是返回值，是为了让既有那些
   「一个参数」的替身仍然满足这个面（少了它会一次性改一堆夹具），也让不需要读数的调用方不付分配。
@@ -66,12 +66,12 @@ rename = time(() => fs.renameSync(target, target + '.renamed'))
 
 ## 五 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（`repository.test.ts` + `coordinator.test.ts`） | **2 files / 152 passed**，exit 0 |
-| 模块簇 `src/main/session-persistence` | **13 files / 240 passed**，exit 0 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0 error**；web **0 error** |
-| `eslint --no-cache`（本笔 4 文件） | **0 problem** |
+| 环                                                          | 读数                              |
+| ----------------------------------------------------------- | --------------------------------- |
+| 定向 vitest（`repository.test.ts` + `coordinator.test.ts`） | **2 files / 152 passed**，exit 0  |
+| 模块簇 `src/main/session-persistence`                       | **13 files / 240 passed**，exit 0 |
+| 双 typecheck（`--composite false`，堆 8192）                | node **0 error**；web **0 error** |
+| `eslint --no-cache`（本笔 4 文件）                          | **0 problem**                     |
 
 **新增/加强的断言**（只加强，未放宽）：
 ① `reports where a session write spent its time` —— 五段都是非负整数，且其和**不超过测试自己测到的整次保存耗时**（覆盖性，不是精确值）；

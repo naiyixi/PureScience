@@ -63,8 +63,9 @@ describe('bundled third-party skills', () => {
       const file = join(skillsRoot, skill.id, 'SKILL.md')
       return existsSync(file) && readFileSync(file, 'utf8').includes('\ndescription-zh:')
     })
-    // The spot-check sample the roadmap asks for, plus a couple.
-    expect(localized.length).toBeGreaterThanOrEqual(20)
+    // Every imported skill carries a Chinese description now (234/234), so this is a completeness check rather
+    // than the roadmap's spot sample.
+    expect(localized.length).toBe(thirdParty.length)
 
     const offenders: string[] = []
     for (const skill of localized) {

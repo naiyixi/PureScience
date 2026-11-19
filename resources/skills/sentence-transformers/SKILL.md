@@ -1,6 +1,7 @@
 ---
 name: sentence-transformers
 description: Framework for state-of-the-art sentence, text, and image embeddings. Provides 5000+ pre-trained models for semantic similarity, clustering, and retrieval. Supports multilingual, domain-specific, and multimodal models. Use for generating embeddings for RAG, semantic search, or similarity tasks. Best for production embedding generation.
+description-zh: 句、文本与图像嵌入的框架：5000 多个预训练模型，用于语义相似度、聚类与检索，支持多语言与特定领域模型。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

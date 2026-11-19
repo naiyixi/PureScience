@@ -6,12 +6,12 @@
 
 ## 一 改动面
 
-| 位置 | 内容 |
-| --- | --- |
-| `src/main/connectors/descriptors/literature-dedupe.ts`（新） | 判定规则本体：`bareDoiKey` / `titleKey` / `recordYear` / `dedupeLiteratureRecords`。规则逐条写在文件头。 |
+| 位置                                                         | 内容                                                                                                                                                                                            |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/connectors/descriptors/literature-dedupe.ts`（新） | 判定规则本体：`bareDoiKey` / `titleKey` / `recordYear` / `dedupeLiteratureRecords`。规则逐条写在文件头。                                                                                        |
 | `src/main/connectors/descriptors/literature-review.ts`（改） | 合并后跑折叠；返回新增 `records_before_dedupe` 与 `dedupe {removed, byDoi, byTitle}`；`total_records` 改为**折叠后**的行数（恒等于 `records.length`）；`description` / `returns` 同步写清口径。 |
-| `literature-dedupe.test.ts`（新） | 14 条：DOI 规范化（`https://doi.org/` / `doi:` / 大小写）、两侧 DOI 不同不合并、年份不兼容不合并、短标题不合并、中文标题（Han ≥ 6 字）、保留行带 `also_in`、计数自洽。 |
-| `literature-review.test.ts`（改） | 集成一条：两源各有同一篇时只出一行，`before − after = removed = byDoi + byTitle`。 |
+| `literature-dedupe.test.ts`（新）                            | 14 条：DOI 规范化（`https://doi.org/` / `doi:` / 大小写）、两侧 DOI 不同不合并、年份不兼容不合并、短标题不合并、中文标题（Han ≥ 6 字）、保留行带 `also_in`、计数自洽。                          |
+| `literature-review.test.ts`（改）                            | 集成一条：两源各有同一篇时只出一行，`before − after = removed = byDoi + byTitle`。                                                                                                              |
 
 ## 二 判定规则（为什么是这四条）
 
@@ -34,16 +34,16 @@
 的 `ToolContext` 调用，`queries` = 下面 7 条、`max_per_source` = 50（工具硬上限）⇒ 7 × 两源 × 50 = **700 行输入**。
 探针脚本是 scratch 里的临时文件（不入库），读数 2026-10-18 00:47 取。
 
-| query | before | after | removed | byDoi | byTitle | arXiv | OpenAlex |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| attention is all you need | 100 | 100 | 0 | 0 | 0 | 50 ok | 50 ok |
-| alphafold protein structure prediction | 100 | 99 | 1 | 0 | 1 | 50 ok | 50 ok |
-| CRISPR base editing | 100 | 100 | 0 | 0 | 0 | 50 ok | 50 ok |
-| diffusion models image generation | 100 | 98 | 2 | 0 | 2 | 50 ok | 50 ok |
-| large language model agents | 50 | 49 | 1 | 0 | 1 | **0 error** | 50 ok |
-| single cell RNA sequencing batch effect | 100 | 99 | 1 | 0 | 1 | 50 ok | 50 ok |
-| quantum error correction surface code | 100 | 94 | **6** | **6** | 0 | 50 ok | 50 ok |
-| **合计** | **650** | **639** | **11** | **6** | **5** | | |
+| query                                   | before  | after   | removed | byDoi | byTitle | arXiv       | OpenAlex |
+| --------------------------------------- | ------- | ------- | ------- | ----- | ------- | ----------- | -------- |
+| attention is all you need               | 100     | 100     | 0       | 0     | 0       | 50 ok       | 50 ok    |
+| alphafold protein structure prediction  | 100     | 99      | 1       | 0     | 1       | 50 ok       | 50 ok    |
+| CRISPR base editing                     | 100     | 100     | 0       | 0     | 0       | 50 ok       | 50 ok    |
+| diffusion models image generation       | 100     | 98      | 2       | 0     | 2       | 50 ok       | 50 ok    |
+| large language model agents             | 50      | 49      | 1       | 0     | 1       | **0 error** | 50 ok    |
+| single cell RNA sequencing batch effect | 100     | 99      | 1       | 0     | 1       | 50 ok       | 50 ok    |
+| quantum error correction surface code   | 100     | 94      | **6**   | **6** | 0       | 50 ok       | 50 ok    |
+| **合计**                                | **650** | **639** | **11**  | **6** | **5**   |             |          |
 
 逐条折掉的（探针原样输出，摘 6 条）：
 

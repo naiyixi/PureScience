@@ -19,12 +19,12 @@ biowulf  Run EDA analysis   queued · 12s      ← 提交后还在跑的那一�
 
 判据是"这个词从哪来"，不是"这一句读起来像不像没翻"：
 
-| 位置 | 原写法 |
-|---|---|
-| `components/JobStatusBadge.tsx` | `STATUS_STYLE: Record<ComputeJobStatus, { label: string; className: string }>`，`label: 'Queued' / 'Done' / 'Timeout' …` |
-| `components/CompletedJobCard.tsx` | `switch (job.status)` 返回 `{ label: 'finished' \| 'failed' \| 'timed out' \| 'error' }` |
-| `components/RemoteJobRow.tsx` | `{job.status === 'submitted' ? 'queued' : 'running'} · {elapsedStr}` |
-| `pages/workspace/ConversationPanel.tsx` | 附件上传芯片：`transfer.status === 'queued' ? 'Queued'` |
+| 位置                                    | 原写法                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `components/JobStatusBadge.tsx`         | `STATUS_STYLE: Record<ComputeJobStatus, { label: string; className: string }>`，`label: 'Queued' / 'Done' / 'Timeout' …` |
+| `components/CompletedJobCard.tsx`       | `switch (job.status)` 返回 `{ label: 'finished' \| 'failed' \| 'timed out' \| 'error' }`                                 |
+| `components/RemoteJobRow.tsx`           | `{job.status === 'submitted' ? 'queued' : 'running'} · {elapsedStr}`                                                     |
+| `pages/workspace/ConversationPanel.tsx` | 附件上传芯片：`transfer.status === 'queued' ? 'Queued'`                                                                  |
 
 四个组件、四份手写枚举。第三个尤其说明问题：同一行里 `elapsedStr` 是本地化的、状态词不是。
 两处（徽章与卡片）连"已取消"这一态都没有——它不是失败，但也没有词，只能落到 `default: job.status`。
@@ -36,15 +36,15 @@ src/renderer/src/components/JobStatusBadge.tsx` 改动前输出 `TOTAL heuristic
 
 ## 三 改动
 
-| 位置 | 改动 |
-|---|---|
-| `components/job-status-label.ts`（新） | 唯一口径：`JOB_STATUS_I18N_KEYS: Record<ComputeJobStatus, TranslationKey>` + `jobStatusLabel(status, t)`。用 `Record<联合>` 而不是 switch，新增一个状态时**编译期**就会要求补词；联合外的历史值原样显示（`t(undefined)` 会在渲染里抛） |
-| `components/JobStatusBadge.tsx` | 只剩配色表；词取自上面那支 |
-| `components/CompletedJobCard.tsx` | 同上；`default: job.status` 那支随之消失（未知值由模块兜住） |
-| `components/RemoteJobRow.tsx` | 运行/排队那一行改用同一支 |
-| `pages/workspace/ConversationPanel.tsx` | 上传芯片 `'Queued'` → `t('common.queued')` |
-| 九语字典 | 新增 8 键：`jobStatus.{queued,running,success,failed,timeout,error,cancelled}` + `common.queued` |
-| `components/job-status-label.render.test.tsx`（新） | 21 条：逐状态两语对值、卡片两种终态、闭集覆盖、以及"组件里不许再出现英文状态字面量"的静态守卫 |
+| 位置                                                | 改动                                                                                                                                                                                                                                   |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/job-status-label.ts`（新）              | 唯一口径：`JOB_STATUS_I18N_KEYS: Record<ComputeJobStatus, TranslationKey>` + `jobStatusLabel(status, t)`。用 `Record<联合>` 而不是 switch，新增一个状态时**编译期**就会要求补词；联合外的历史值原样显示（`t(undefined)` 会在渲染里抛） |
+| `components/JobStatusBadge.tsx`                     | 只剩配色表；词取自上面那支                                                                                                                                                                                                             |
+| `components/CompletedJobCard.tsx`                   | 同上；`default: job.status` 那支随之消失（未知值由模块兜住）                                                                                                                                                                           |
+| `components/RemoteJobRow.tsx`                       | 运行/排队那一行改用同一支                                                                                                                                                                                                              |
+| `pages/workspace/ConversationPanel.tsx`             | 上传芯片 `'Queued'` → `t('common.queued')`                                                                                                                                                                                             |
+| 九语字典                                            | 新增 8 键：`jobStatus.{queued,running,success,failed,timeout,error,cancelled}` + `common.queued`                                                                                                                                       |
+| `components/job-status-label.render.test.tsx`（新） | 21 条：逐状态两语对值、卡片两种终态、闭集覆盖、以及"组件里不许再出现英文状态字面量"的静态守卫                                                                                                                                          |
 
 `submitted` 与 `queued` **共用一句**（"调度器收下了，还没开始跑"）：给它们两句话等于造一个读者
 无法据此行动的区别。
@@ -80,13 +80,13 @@ Test Files  1 failed (1)   Tests  1 failed | 20 skipped (21)
 
 **4. 门禁**
 
-| 环 | 读数 |
-|---|---|
-| 全量 vitest `--maxWorkers=4` | **1480 files passed / 31 skipped（1511）**；**18556 passed / 228 skipped（18784）**；**exit 0**（上一轮基线 1479/18533 ⇒ +1 文件 +23 例：新文件 21 + 旧文件补的 2 条 `cancelled`） |
-| `src/renderer/src/components` 全目录 | 68 files / 560 passed |
-| `src/renderer/src/i18n`（九语门禁 + 质量门） | 5 files / 73 passed（含新文件） |
-| 双 typecheck（`--composite false`） | node **0** / web **0** |
-| `npx eslint --no-cache`（本笔全部改动 + 九语字典） | 0 error / 0 warning |
+| 环                                                 | 读数                                                                                                                                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 全量 vitest `--maxWorkers=4`                       | **1480 files passed / 31 skipped（1511）**；**18556 passed / 228 skipped（18784）**；**exit 0**（上一轮基线 1479/18533 ⇒ +1 文件 +23 例：新文件 21 + 旧文件补的 2 条 `cancelled`） |
+| `src/renderer/src/components` 全目录               | 68 files / 560 passed                                                                                                                                                              |
+| `src/renderer/src/i18n`（九语门禁 + 质量门）       | 5 files / 73 passed（含新文件）                                                                                                                                                    |
+| 双 typecheck（`--composite false`）                | node **0** / web **0**                                                                                                                                                             |
+| `npx eslint --no-cache`（本笔全部改动 + 九语字典） | 0 error / 0 warning                                                                                                                                                                |
 
 ## 五 审计器的这一格：量过了，但**没有**加形状
 

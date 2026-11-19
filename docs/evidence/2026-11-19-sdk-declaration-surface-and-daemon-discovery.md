@@ -34,13 +34,13 @@
 
 ## 二 读数
 
-| 读数 | 值 | 取法 |
-| --- | --- | --- |
-| 补声明前声明数 / 运行时公开方法数 | 11 / 20 | 读 `index.d.ts` 与 `Object.getOwnPropertyNames(PureScienceClient.prototype)` |
-| 补声明后 | 20 / 20（差额仅内部两方法） | 同上 |
-| 包内用例 | 9 文件 85 passed | `npx vitest run packages/purescience` |
-| 双 typecheck | node 0 错、web 0 错 | `typecheck:node`（`NODE_OPTIONS=--max-old-space-size=8192`）、`typecheck:web` |
-| eslint | 0 error / 0 warning | `npx eslint --no-cache` 两个改动文件 |
+| 读数                              | 值                          | 取法                                                                          |
+| --------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| 补声明前声明数 / 运行时公开方法数 | 11 / 20                     | 读 `index.d.ts` 与 `Object.getOwnPropertyNames(PureScienceClient.prototype)`  |
+| 补声明后                          | 20 / 20（差额仅内部两方法） | 同上                                                                          |
+| 包内用例                          | 9 文件 85 passed            | `npx vitest run packages/purescience`                                         |
+| 双 typecheck                      | node 0 错、web 0 错         | `typecheck:node`（`NODE_OPTIONS=--max-old-space-size=8192`）、`typecheck:web` |
+| eslint                            | 0 error / 0 warning         | `npx eslint --no-cache` 两个改动文件                                          |
 
 **真机读数（只读，真实配置根 `~/.purescience-project`）**：对运行中的实例（127.0.0.1:44100，
 `/api/bootstrap` 200）用补声明后的 SDK 逐条调用，返回真数据而不是空壳——

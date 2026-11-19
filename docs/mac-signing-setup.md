@@ -165,13 +165,13 @@ gh workflow run notary-status.yml --ref main -f probe=true
 
 同一天、同一账号、同一份构建脚本，四个包的等待时间：
 
-| 包 | 提交 → 判决 | 结果 |
-|---|---|---|
-| mac-arm64.dmg | 36 分钟 | Accepted |
-| mac-x64.dmg | 2 小时 11 分 | Accepted |
-| mac-arm64.dmg（另一个提交） | 4 小时 53 分 | Accepted |
-| mac-arm64.dmg（重建后重提） | 89 分钟 | Accepted |
-| 203 字节未签名探针 | 22 分钟 | Invalid（正常） |
+| 包                          | 提交 → 判决  | 结果            |
+| --------------------------- | ------------ | --------------- |
+| mac-arm64.dmg               | 36 分钟      | Accepted        |
+| mac-x64.dmg                 | 2 小时 11 分 | Accepted        |
+| mac-arm64.dmg（另一个提交） | 4 小时 53 分 | Accepted        |
+| mac-arm64.dmg（重建后重提） | 89 分钟      | Accepted        |
+| 203 字节未签名探针          | 22 分钟      | Invalid（正常） |
 
 结论有三条，都进了工作流：
 

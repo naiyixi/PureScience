@@ -12,12 +12,12 @@
 
 ## 1 缺口证据（已证，不要重查）
 
-| 证据 | 读数 |
-| --- | --- |
-| `packages/purescience/cli.mjs:981-989` | 动词只有 `init / doctor / start / stop / status / url / rollback-to-0.7.3` + 任务族（`project/session/package/artifacts/run/permissions/approve/...`）——**没有 `mcp`** |
-| `src/main/mcp-server-args.ts` + 各 `*-mcp-server.ts` | 现有的 stdio MCP 服务器**全部由 agent 框架 spawn**，身份靠 argv 分支 + 进程内注入的 env（`PURESCIENCE_REVIEWER_MCP_SOCKET_PATH`/`..._TOKEN`，见 `src/main/reviewer/mcp-stdio-proxy.ts:31-32,46-47`）⇒ 外部客户端**拿不到**这套 env，也就接不进来 |
-| `src/main/caller-context.ts:47-72,76-88` | 主体只有三种形状：Electron/Web 都是 `principalKind: 'human'`（Web 的 `?? 'human'` 在 69 行），headless 任务是 `'automation'`（82 行）—— **没有「外部 MCP 客户端」这一主体**，所以今天的 CLI/Web 通道**不经过**权限门；另注意 `canSatisfyHumanApproval`（91 行起）会把 human 当成「能替人批」，新主体绝不能落进这里 |
-| `src/main/acp/permission-broker.ts:369-382` | 审计的正本在这里：`recordPermissionDecision()` 打 `permission decision`（第 375 行），字段 `decision ∈ {automatic, remembered-grant, session-grant, card}` + `isMcp` + `tool` 身份；**这就是验收要的那一行**，不要新造第二套词表 |
+| 证据                                                 | 读数                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/purescience/cli.mjs:981-989`               | 动词只有 `init / doctor / start / stop / status / url / rollback-to-0.7.3` + 任务族（`project/session/package/artifacts/run/permissions/approve/...`）——**没有 `mcp`**                                                                                                                                             |
+| `src/main/mcp-server-args.ts` + 各 `*-mcp-server.ts` | 现有的 stdio MCP 服务器**全部由 agent 框架 spawn**，身份靠 argv 分支 + 进程内注入的 env（`PURESCIENCE_REVIEWER_MCP_SOCKET_PATH`/`..._TOKEN`，见 `src/main/reviewer/mcp-stdio-proxy.ts:31-32,46-47`）⇒ 外部客户端**拿不到**这套 env，也就接不进来                                                                   |
+| `src/main/caller-context.ts:47-72,76-88`             | 主体只有三种形状：Electron/Web 都是 `principalKind: 'human'`（Web 的 `?? 'human'` 在 69 行），headless 任务是 `'automation'`（82 行）—— **没有「外部 MCP 客户端」这一主体**，所以今天的 CLI/Web 通道**不经过**权限门；另注意 `canSatisfyHumanApproval`（91 行起）会把 human 当成「能替人批」，新主体绝不能落进这里 |
+| `src/main/acp/permission-broker.ts:369-382`          | 审计的正本在这里：`recordPermissionDecision()` 打 `permission decision`（第 375 行），字段 `decision ∈ {automatic, remembered-grant, session-grant, card}` + `isMcp` + `tool` 身份；**这就是验收要的那一行**，不要新造第二套词表                                                                                   |
 
 ⇒ 缺口不是「没有 MCP 协议实现」，而是**没有一条给外部客户端用的、受权限门约束的入口**。
 
@@ -51,7 +51,7 @@
 ## 5 施工顺序（六步，缺一步就是半截）
 
 1. `src/main/external-mcp/` 新模块：`surface.ts`（工具登记表 = 纯数据：`{id, description, input, returns, risk}`）
-   + `server.ts`（`listenForLocalRpc` 起环回服务，bearer token 校验收口）。
+   - `server.ts`（`listenForLocalRpc` 起环回服务，bearer token 校验收口）。
 2. **权限门接线**：命中 `risk !== 'read'` 的调用 → 构造 `AcpPermissionRequest`（`isMcp: true`、`mcpIdentity` 用
    `purescience_external/<tool>`），走 broker；**门在动作之前**（不是动作之后补记）。
 3. **审计**：broker 已有的 `recordPermissionDecision` 直接生效；另在 `external-mcp` 自己那层打一行
@@ -96,12 +96,12 @@
 
 ### 9.1 四条实测约束（决定形状，不是喜好）
 
-| # | 约束 | 读数 |
-| --- | --- | --- |
-| 1 | **卡的可见性按当前会话过滤** | `src/renderer/src/pages/workspace/session-permissions.ts:5-11` 只保留 `request.sessionId === activeSessionId` ⇒ 把外部调用的卡挂在用户没在看的会话上，卡永远不出现（死控件）。无窗口时靠 CLI：`packages/purescience/cli.mjs:862-876` 的 `permissions` / `approve --option|--cancel` |
-| 2 | **`acp:send-prompt` 不能当第一件写** | `src/main/acp/prompt-turn-workflow.ts:166-168` 要求会话已附着；force-load 只在 skill reload 分支（:196-210）⇒ 外部客户端对没打开的会话发提示必然失败 |
-| 3 | **`sessions:update-archive` 的请求要自己凑齐** | 形状 `{projectId, sessionId, archived, expectedArchivedAt}`（`src/shared/session-persistence.ts:2058-2063`）。**不要**用 `read-document` + `save-session` 走整份文档往返：投影丢掉 `activities`/`conversationGraph`，回写会损坏文档。正解是从 `sessions:list-catalog` 的行取（`SessionCatalogSummary` 用 `...rest` 投影，带 `projectId` 与 `archivedAt`，`src/shared/session-catalog-summary.ts:20-46`） |
-| 4 | **审计行已经存在，别造第二套** | `enqueuePermissionRequest` 无条件 `recordPermissionDecision(request, 'card')`（`src/main/acp/permission-broker.ts:1120-1132`）⇒ 只要 request 带 `isMcp: true` + `mcpIdentity`，`permission decision` 行与 `tool` 字段自动出现（`isMcp`/`tool` 的落点见 :369-382） |
+| #   | 约束                                           | 读数                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **卡的可见性按当前会话过滤**                   | `src/renderer/src/pages/workspace/session-permissions.ts:5-11` 只保留 `request.sessionId === activeSessionId` ⇒ 把外部调用的卡挂在用户没在看的会话上，卡永远不出现（死控件）。无窗口时靠 CLI：`packages/purescience/cli.mjs:862-876` 的 `permissions` / `approve --option                                                                                                                                | --cancel` |
+| 2   | **`acp:send-prompt` 不能当第一件写**           | `src/main/acp/prompt-turn-workflow.ts:166-168` 要求会话已附着；force-load 只在 skill reload 分支（:196-210）⇒ 外部客户端对没打开的会话发提示必然失败                                                                                                                                                                                                                                                     |
+| 3   | **`sessions:update-archive` 的请求要自己凑齐** | 形状 `{projectId, sessionId, archived, expectedArchivedAt}`（`src/shared/session-persistence.ts:2058-2063`）。**不要**用 `read-document` + `save-session` 走整份文档往返：投影丢掉 `activities`/`conversationGraph`，回写会损坏文档。正解是从 `sessions:list-catalog` 的行取（`SessionCatalogSummary` 用 `...rest` 投影，带 `projectId` 与 `archivedAt`，`src/shared/session-catalog-summary.ts:20-46`） |
+| 4   | **审计行已经存在，别造第二套**                 | `enqueuePermissionRequest` 无条件 `recordPermissionDecision(request, 'card')`（`src/main/acp/permission-broker.ts:1120-1132`）⇒ 只要 request 带 `isMcp: true` + `mcpIdentity`，`permission decision` 行与 `tool` 字段自动出现（`isMcp`/`tool` 的落点见 :369-382）                                                                                                                                        |
 
 ### 9.2 接线路径（`startExternalMcpServer` 拿不到 ACP 运行时）
 

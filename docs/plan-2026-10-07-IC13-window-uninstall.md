@@ -7,15 +7,15 @@
 
 ## 一、现状（对源核实，不是复述记录）
 
-| 事实 | 依据 |
-| --- | --- |
-| 卸载在**具名环境**上是允许的，只有托管**默认**环境是 additive-only | `src/main/notebook/package-manager.ts:748-773`（`isDefaultEnv` 门）；`package-manager.test.ts:961,1273` |
-| 准入的**目标环境名**只来自会话绑定，请求里的 `environment` 被它**覆盖** | `src/main/notebook/package-admission.ts:82-86`、`:161`（`{ ...request, environment: environmentName }`） |
-| 窗口（无会话）走的是 `runtime-selection-workflows.ts` 的 `managePackages`，它**按名解析**出环境后又**按名拒绝**非默认者 | `src/main/notebook/runtime-selection-workflows.ts:381-439`（`addressesDefault` 门） |
-| 面板的具名环境行**已经有**「Packages」入口，且明确注释为**只读视图** | `src/renderer/src/pages/settings/RuntimesPanel.tsx:1223-1247` |
-| 卸载按钮本身**没有**额外闸门 —— 它只是把请求交给主进程，由主进程拒绝 | 同上 `:1557-1562` |
-| 具名环境的**权力面**：`manage_environments` 工具可对智能体**创建 / 移除**具名环境 | `src/main/notebook/mcp-server.ts`（`MANAGE_ENVIRONMENTS_DOC`：`action:"create"/"list"/"remove"`） |
-| 包工具**没有** per-call 环境参数 | 同上 `MANAGE_PACKAGES_DOC`：「There is no per-call environment: bind/switch first」 |
+| 事实                                                                                                                    | 依据                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 卸载在**具名环境**上是允许的，只有托管**默认**环境是 additive-only                                                      | `src/main/notebook/package-manager.ts:748-773`（`isDefaultEnv` 门）；`package-manager.test.ts:961,1273`  |
+| 准入的**目标环境名**只来自会话绑定，请求里的 `environment` 被它**覆盖**                                                 | `src/main/notebook/package-admission.ts:82-86`、`:161`（`{ ...request, environment: environmentName }`） |
+| 窗口（无会话）走的是 `runtime-selection-workflows.ts` 的 `managePackages`，它**按名解析**出环境后又**按名拒绝**非默认者 | `src/main/notebook/runtime-selection-workflows.ts:381-439`（`addressesDefault` 门）                      |
+| 面板的具名环境行**已经有**「Packages」入口，且明确注释为**只读视图**                                                    | `src/renderer/src/pages/settings/RuntimesPanel.tsx:1223-1247`                                            |
+| 卸载按钮本身**没有**额外闸门 —— 它只是把请求交给主进程，由主进程拒绝                                                    | 同上 `:1557-1562`                                                                                        |
+| 具名环境的**权力面**：`manage_environments` 工具可对智能体**创建 / 移除**具名环境                                       | `src/main/notebook/mcp-server.ts`（`MANAGE_ENVIRONMENTS_DOC`：`action:"create"/"list"/"remove"`）        |
+| 包工具**没有** per-call 环境参数                                                                                        | 同上 `MANAGE_PACKAGES_DOC`：「There is no per-call environment: bind/switch first」                      |
 
 ⇒ 缺口是**精确的一条**：窗口没有任何一条路径能对「应用自己的具名环境」发起卸载 —— 它够不着默认环境
 （策略禁止），也够不着具名环境（按名拒绝）。
@@ -71,13 +71,13 @@
 
 ## 四、落地清单（改动面）
 
-| 文件 | 改动 | 判据 |
-| --- | --- | --- |
-| `src/main/notebook/package-admission.ts` | 新增端口 `resolveNamedEnvironment`；`admit` 在**无绑定**且请求带名字时按名解析，解析到就用它，否则**保持既有钉定语义**（钉默认） | 新用例三条：无绑定 + 合法名 ⇒ 落到该名；无绑定 + 非法名 ⇒ 仍钉默认（既有两条钉定用例**未改**）；有绑定 + 其他名 ⇒ 绑定胜出且解析器**根本没被调用** |
-| `src/main/notebook/package-operations.ts` | 把新端口透传给准入 | 既有套件全绿 + 新用例 |
-| `src/main/notebook/runtime-service.ts` | 从具名环境管理（`environmentManagement.manage({action:'list'})`）注入解析器 —— 与面板**同一份来源** | `runtime-service.test.ts` 相关簇绿 |
-| `src/main/notebook/runtime-selection-workflows.ts` | `managePackages`：解析到**具名**环境时把名字交给准入，而不是按名拒绝；解析不到仍按名拒绝 | 新用例：具名环境 ⇒ 请求带名字；非具名不可寻址 ⇒ 原句拒绝 |
-| `src/renderer/src/pages/settings/RuntimesPanel.tsx` | 只改**注释**（该对话框对具名环境不再是只读视图）；零行为改动、零新键 | 渲染套件不变 |
+| 文件                                                | 改动                                                                                                                             | 判据                                                                                                                                               |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/notebook/package-admission.ts`            | 新增端口 `resolveNamedEnvironment`；`admit` 在**无绑定**且请求带名字时按名解析，解析到就用它，否则**保持既有钉定语义**（钉默认） | 新用例三条：无绑定 + 合法名 ⇒ 落到该名；无绑定 + 非法名 ⇒ 仍钉默认（既有两条钉定用例**未改**）；有绑定 + 其他名 ⇒ 绑定胜出且解析器**根本没被调用** |
+| `src/main/notebook/package-operations.ts`           | 把新端口透传给准入                                                                                                               | 既有套件全绿 + 新用例                                                                                                                              |
+| `src/main/notebook/runtime-service.ts`              | 从具名环境管理（`environmentManagement.manage({action:'list'})`）注入解析器 —— 与面板**同一份来源**                              | `runtime-service.test.ts` 相关簇绿                                                                                                                 |
+| `src/main/notebook/runtime-selection-workflows.ts`  | `managePackages`：解析到**具名**环境时把名字交给准入，而不是按名拒绝；解析不到仍按名拒绝                                         | 新用例：具名环境 ⇒ 请求带名字；非具名不可寻址 ⇒ 原句拒绝                                                                                           |
+| `src/renderer/src/pages/settings/RuntimesPanel.tsx` | 只改**注释**（该对话框对具名环境不再是只读视图）；零行为改动、零新键                                                             | 渲染套件不变                                                                                                                                       |
 
 **零新通道 / 零新 i18n 键 / 零契约计数变动**（拒绝文案沿用主进程既有英文原句，渲染端照既有约定原样上屏）。
 

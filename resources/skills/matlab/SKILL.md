@@ -1,6 +1,7 @@
 ---
 name: matlab
 description: Builds, reviews, migrates, and plans MATLAB or GNU Octave numerical workflows. Use for arrays, tabular/time data, tests, projects, graphics, MAT files, and explicit Python interoperability.
+description-zh: 构建、审查、迁移与规划 MATLAB 或 GNU Octave 数值流程：数组、表格与时间数据、测试、工程、绘图、MAT 文件，以及显式的 Python 互操作。
 license: MIT
 compatibility: >-
   Documentation is pinned where noted to proprietary MATLAB R2026a and free

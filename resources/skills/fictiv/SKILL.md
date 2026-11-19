@@ -1,6 +1,7 @@
 ---
 name: fictiv
 description: Operates Fictiv (app.fictiv.com), the on-demand manufacturing platform, end to end in the user's browser. Covers uploading CAD parts, configuring process, material, finish, threads, tolerances and inspections, getting instant or manual quotes, reading and fixing DFM feedback, choosing lead time and region, checking out and paying (card or PO), tracking orders, reordering, and troubleshooting. Applies when the user mentions Fictiv, wants a part CNC machined, 3D printed, sheet-metal fabricated, urethane cast, injection or compression molded, or die cast through an online service, asks to "get a quote" or "order parts" for a STEP/SLDPRT/STL file, wants to check a Fictiv quote or order status, or has a problem with a Fictiv upload, DFM warning, price or checkout. Also applies when the user wants custom parts manufactured and has a Fictiv account, even if Fictiv is not named.
+description-zh: 在用户浏览器里端到端操作 Fictiv（按需制造平台）：上传 CAD 零件，配置工艺、材料、表面处理、螺纹、公差等参数。
 license: MIT
 compatibility: Needs network access, a browser-automation tool, and the user's logged-in Fictiv account at app.fictiv.com. The optional DOM helpers need browser JavaScript execution; the local CAD pre-flight script needs Python 3.10+ (standard library only).
 metadata:

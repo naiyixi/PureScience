@@ -16,11 +16,7 @@
     "numbers": false,
     "citations": false
   },
-  "toolCallNames": [
-    "execute",
-    "other",
-    "read"
-  ],
+  "toolCallNames": ["execute", "other", "read"],
   "toolCallCount": 13,
   "result": {
     "caseId": "figure-axis-discipline",

@@ -1,6 +1,7 @@
 ---
 name: huggingface-accelerate
 description: Simplest distributed training API. 4 lines to add distributed support to any PyTorch script. Unified API for DeepSpeed/FSDP/Megatron/DDP. Automatic device placement, mixed precision (FP16/BF16/FP8). Interactive config, single launch command. HuggingFace ecosystem standard.
+description-zh: 最简分布式训练接口：任意 PyTorch 脚本加四行即可支持分布式，统一封装 DeepSpeed/FSDP/Megatron/DDP，自动设备放置与混合精度（FP16/BF16/FP8）。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

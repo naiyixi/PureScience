@@ -1,6 +1,7 @@
 ---
 name: markdown-mermaid-writing
 description: Writes scientific Markdown documentation and Mermaid diagrams for workflows, relationships, timelines, and schemas. Provides syntax references, document templates, accessibility guidance, and version-aware rendering checks. Use when a user requests Markdown, Mermaid, or a text-based structural diagram; quantitative scientific figures require suitable plotting tools.
+description-zh: 撰写科学方向的 Markdown 文档与 Mermaid 图（流程、关系、时间线、模式）：提供语法参考、文档模板与无障碍建议。
 allowed-tools: Read Write Edit Bash
 license: Apache-2.0
 compatibility: Markdown authoring needs no runtime. Local rendering targets Mermaid and Mermaid CLI 12.0.0, Node.js 22.13+ and a supported Chromium browser. Package or CDN installation needs network access; no credentials required.

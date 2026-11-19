@@ -1,6 +1,7 @@
 ---
 name: knowledge-distillation
 description: Compress large language models using knowledge distillation from teacher to student models. Use when deploying smaller models with retained performance, transferring GPT-4 capabilities to open-source models, or reducing inference costs. Covers temperature scaling, soft targets, reverse KLD, logit distillation, and MiniLLM training strategies.
+description-zh: 用知识蒸馏压缩大模型（教师到学生）。适用于部署保持能力的小模型、把强模型的能力迁到自有小模型上。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

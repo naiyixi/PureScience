@@ -6,10 +6,10 @@
 
 这两处弹窗是**主进程自己画的原生对话框**，没有渲染器 i18n provider 可读：
 
-| 弹窗 | 何时出现 | 改动前的文案 |
-|---|---|---|
-| 数据根搬迁中途按 ⌘Q / 关窗 | 用户刚点了「移动数据」，搬迁正在进行 | `Move in progress` / `Keep waiting` / `Quit anyway` + 一段长说明（全英文） |
-| 渲染进程反复崩溃，自动恢复已暂停 | 窗口反复变白，用户正看着一个空窗口 | `Reload` / `Close window` + 两段说明（全英文） |
+| 弹窗                             | 何时出现                             | 改动前的文案                                                               |
+| -------------------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
+| 数据根搬迁中途按 ⌘Q / 关窗       | 用户刚点了「移动数据」，搬迁正在进行 | `Move in progress` / `Keep waiting` / `Quit anyway` + 一段长说明（全英文） |
+| 渲染进程反复崩溃，自动恢复已暂停 | 窗口反复变白，用户正看着一个空窗口   | `Reload` / `Close window` + 两段说明（全英文）                             |
 
 两处都出现在**用户必须在压力下做决定**的时刻：前者选错就中断一次搬迁（数据不会坏，但要重来），
 后者选错就关掉一个可能还想看一眼的窗口。读者读的是八种语言中的一种，却只拿到英文按钮 —— 这不是外观问题。
@@ -20,11 +20,11 @@
 
 ## 2 交付
 
-| 文件 | 改动 |
-|---|---|
+| 文件                                      | 改动                                                                                                                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/native-dialog-strings.ts`（新） | 两张 `Record<NativeLocaleCode, …>` 表：`MIGRATION_QUIT_STRINGS`（5 字段 × 9 语）、`RENDERER_RECOVERY_STRINGS`（4 字段 × 9 语）。英文值与改动前的字面量**逐字节相同** |
-| `src/main/storage/migration-state.ts` | 新增导出的纯函数 `migrationQuitDialogOptions()`（按钮顺序 = 安全项在前，且 `defaultId=cancelId=0`，误按 Return/Escape 不会中断搬迁）；`defaultConfirmQuit` 改为调它 |
-| `src/main/windows.ts` | 新增导出的纯函数 `rendererRecoveryDialogOptions()`（`defaultId=0` 重载、`cancelId=1` 关窗）；`render-process-gone` 处理器改为调它 |
+| `src/main/storage/migration-state.ts`     | 新增导出的纯函数 `migrationQuitDialogOptions()`（按钮顺序 = 安全项在前，且 `defaultId=cancelId=0`，误按 Return/Escape 不会中断搬迁）；`defaultConfirmQuit` 改为调它  |
+| `src/main/windows.ts`                     | 新增导出的纯函数 `rendererRecoveryDialogOptions()`（`defaultId=0` 重载、`cancelId=1` 关窗）；`render-process-gone` 处理器改为调它                                    |
 
 产品名 `PureScience` 在九语里都不翻（与关窗确认弹窗同一口径）。
 
@@ -33,22 +33,22 @@
 
 ## 3 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（新表 + `migration-state` + `windows`） | 3 files / **70 passed**，exit 0 |
-| 双 typecheck（`--composite false`） | node **0** / web **0** |
-| `npx eslint --no-cache`（本笔 6 个文件） | **0 error / 0 warning** |
-| 全量 vitest `--maxWorkers=4` | **1482 files passed**、31 skipped（共 1513）；**18574 passed**、228 skipped（共 18802），exit 0（上轮基线 1481 / 18561 ⇒ +1 文件） |
+| 环                                                  | 读数                                                                                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（新表 + `migration-state` + `windows`） | 3 files / **70 passed**，exit 0                                                                                                    |
+| 双 typecheck（`--composite false`）                 | node **0** / web **0**                                                                                                             |
+| `npx eslint --no-cache`（本笔 6 个文件）            | **0 error / 0 warning**                                                                                                            |
+| 全量 vitest `--maxWorkers=4`                        | **1482 files passed**、31 skipped（共 1513）；**18574 passed**、228 skipped（共 18802），exit 0（上轮基线 1481 / 18561 ⇒ +1 文件） |
 
 ### 3.1 变异自证（证明这三道门真的会红）
 
 对实现与表各做一次变异，跑同一批用例，三处**各自**红，随后还原并复跑回全绿：
 
-| 变异 | 红在哪 |
-|---|---|
+| 变异                                                                       | 红在哪                                                                                                                                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `migration-state.ts` 里把 `title: s.title` 换回字面量 `'Move in progress'` | ① 静态守卫 `storage/migration-state.ts carries no English dialog literals`；② 行为用例 `carries no English sentence once the OS language is one of the other eight`（`title` 仍是英文） |
-| `RENDERER_RECOVERY_STRINGS.zh.reload` 改成英文 `Reload` | 表纪律用例 `never repeats the English value in another language` |
-| 还原后复跑 | 3 files / 70 passed |
+| `RENDERER_RECOVERY_STRINGS.zh.reload` 改成英文 `Reload`                    | 表纪律用例 `never repeats the English value in another language`                                                                                                                        |
+| 还原后复跑                                                                 | 3 files / 70 passed                                                                                                                                                                     |
 
 ## 4 边界与具名未办（诚实口径）
 

@@ -37,51 +37,51 @@ GET https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&li
 
 ## 二、逐条（表 ↔ 本档互核）
 
-| 中文（canonical） | english                           | source          |
-| ----------------- | --------------------------------- | --------------- |
-| 细胞凋亡          | apoptosis                         | mesh:D017209    |
-| 自噬              | autophagy                         | mesh:D001343    |
-| 氧化应激          | oxidative stress                  | mesh:D018384    |
-| 生物标志物        | biomarkers                        | mesh:D015415    |
-| 免疫治疗          | immunotherapy                     | mesh:D007167    |
-| 血管生成          | angiogenesis                      | mesh:D000096482 |
-| 细胞增殖          | cell proliferation                | mesh:D049109    |
-| 细胞周期          | cell cycle                        | mesh:D002453    |
-| 细胞衰老          | cellular senescence               | mesh:D016922    |
-| 细胞焦亡          | pyroptosis                        | mesh:D000069292 |
-| 铁死亡            | ferroptosis                       | mesh:D000079403 |
-| 自噬体            | autophagosomes                    | mesh:D000071182 |
-| 肿瘤转移          | neoplasm metastasis               | mesh:D009362    |
-| 肿瘤微环境        | tumor microenvironment            | mesh:D059016    |
-| 抗药性            | drug resistance                   | mesh:D004351    |
-| 炎症              | inflammation                      | mesh:D007249    |
-| 炎症因子          | inflammation mediators            | mesh:D018836    |
-| 细胞因子          | cytokines                         | mesh:D016207    |
-| 肠道菌群          | gastrointestinal microbiome       | mesh:D000069196 |
-| 基因突变          | mutation                          | mesh:D009154    |
-| 基因表达          | gene expression                   | mesh:D015870    |
-| DNA损伤           | DNA damage                        | mesh:D004249    |
-| 信号转导          | signal transduction               | mesh:D015398    |
-| 内质网应激        | endoplasmic reticulum stress      | mesh:D059865    |
-| 上皮间质转化      | epithelial-mesenchymal transition | mesh:D058750    |
-| 干细胞            | stem cells                        | mesh:D013234    |
-| 外泌体            | exosomes                          | mesh:D055354    |
-| 甲基化            | methylation                       | mesh:D008745    |
-| 泛素化            | ubiquitination                    | mesh:D054875    |
-| 磷酸化            | phosphorylation                   | mesh:D010766    |
-| 糖基化            | glycosylation                     | mesh:D006031    |
-| 微小RNA           | microRNAs                         | mesh:D035683    |
-| 长链非编码RNA     | RNA, long noncoding               | mesh:D062085    |
-| p53蛋白 | tumor suppressor protein p53 | mesh:D016159 |
-| 血管内皮生长因子 | vascular endothelial growth factor a | mesh:D042461 |
-| 肿瘤坏死因子 | tumor necrosis factor-alpha | mesh:D014409 |
-| 白细胞介素6 | interleukin-6 | mesh:D015850 |
-| 白细胞介素 | interleukins | mesh:D007378 |
-| C反应蛋白 | c-reactive protein | mesh:D002097 |
-| 淀粉样蛋白 | amyloid | mesh:D000682 |
-| 血红蛋白 | hemoglobins | mesh:D006454 |
-| 肌钙蛋白 | troponin | mesh:D014336 |
-| 降钙素原 | procalcitonin | mesh:D000077740 |
+| 中文（canonical） | english                              | source          |
+| ----------------- | ------------------------------------ | --------------- |
+| 细胞凋亡          | apoptosis                            | mesh:D017209    |
+| 自噬              | autophagy                            | mesh:D001343    |
+| 氧化应激          | oxidative stress                     | mesh:D018384    |
+| 生物标志物        | biomarkers                           | mesh:D015415    |
+| 免疫治疗          | immunotherapy                        | mesh:D007167    |
+| 血管生成          | angiogenesis                         | mesh:D000096482 |
+| 细胞增殖          | cell proliferation                   | mesh:D049109    |
+| 细胞周期          | cell cycle                           | mesh:D002453    |
+| 细胞衰老          | cellular senescence                  | mesh:D016922    |
+| 细胞焦亡          | pyroptosis                           | mesh:D000069292 |
+| 铁死亡            | ferroptosis                          | mesh:D000079403 |
+| 自噬体            | autophagosomes                       | mesh:D000071182 |
+| 肿瘤转移          | neoplasm metastasis                  | mesh:D009362    |
+| 肿瘤微环境        | tumor microenvironment               | mesh:D059016    |
+| 抗药性            | drug resistance                      | mesh:D004351    |
+| 炎症              | inflammation                         | mesh:D007249    |
+| 炎症因子          | inflammation mediators               | mesh:D018836    |
+| 细胞因子          | cytokines                            | mesh:D016207    |
+| 肠道菌群          | gastrointestinal microbiome          | mesh:D000069196 |
+| 基因突变          | mutation                             | mesh:D009154    |
+| 基因表达          | gene expression                      | mesh:D015870    |
+| DNA损伤           | DNA damage                           | mesh:D004249    |
+| 信号转导          | signal transduction                  | mesh:D015398    |
+| 内质网应激        | endoplasmic reticulum stress         | mesh:D059865    |
+| 上皮间质转化      | epithelial-mesenchymal transition    | mesh:D058750    |
+| 干细胞            | stem cells                           | mesh:D013234    |
+| 外泌体            | exosomes                             | mesh:D055354    |
+| 甲基化            | methylation                          | mesh:D008745    |
+| 泛素化            | ubiquitination                       | mesh:D054875    |
+| 磷酸化            | phosphorylation                      | mesh:D010766    |
+| 糖基化            | glycosylation                        | mesh:D006031    |
+| 微小RNA           | microRNAs                            | mesh:D035683    |
+| 长链非编码RNA     | RNA, long noncoding                  | mesh:D062085    |
+| p53蛋白           | tumor suppressor protein p53         | mesh:D016159    |
+| 血管内皮生长因子  | vascular endothelial growth factor a | mesh:D042461    |
+| 肿瘤坏死因子      | tumor necrosis factor-alpha          | mesh:D014409    |
+| 白细胞介素6       | interleukin-6                        | mesh:D015850    |
+| 白细胞介素        | interleukins                         | mesh:D007378    |
+| C反应蛋白         | c-reactive protein                   | mesh:D002097    |
+| 淀粉样蛋白        | amyloid                              | mesh:D000682    |
+| 血红蛋白          | hemoglobins                          | mesh:D006454    |
+| 肌钙蛋白          | troponin                             | mesh:D014336    |
+| 降钙素原          | procalcitonin                        | mesh:D000077740 |
 
 表的行数与本档的行数由读源测试**双向**钉住（`documented.size === topics.length` + 逐行比对
 `english`/`source`）：任一边漂了、或两边一起改了其中一个字段，测试都红。

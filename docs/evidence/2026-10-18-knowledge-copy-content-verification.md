@@ -18,10 +18,10 @@ v2.10.0 的发布正文里，这条限制是**我们自己写下的**：「清�
 
 ## 二、三个落点（零新通道、零契约计数涟漪）
 
-| 面 | 改法 |
-| --- | --- |
-| 读 | `readVerifiedCopy()`：读副本前重算 sha256，**不符按缺失处理**（不是把篡改字节端上屏），再走原来的启发式自愈 |
-| 写 | 自愈只在「取回字节的摘要 == 登记指纹」时才落盘；不符就地返回正文、不写盘（这一条才是断根） |
+| 面   | 改法                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------ |
+| 读   | `readVerifiedCopy()`：读副本前重算 sha256，**不符按缺失处理**（不是把篡改字节端上屏），再走原来的启发式自愈        |
+| 写   | 自愈只在「取回字节的摘要 == 登记指纹」时才落盘；不符就地返回正文、不写盘（这一条才是断根）                         |
 | 清扫 | `sweepContents()` 逐份重算摘要：对不上的**删除**并计入新桶 `mismatched`；删不掉进 `failed`；五桶相加仍 = `scanned` |
 
 共享形状：
@@ -37,16 +37,16 @@ v2.10.0 的发布正文里，这条限制是**我们自己写下的**：「清�
 
 ## 三、读数（都实跑）
 
-| 门 | 命令 | 读数 |
-| --- | --- | --- |
-| 定向单测 | `npx vitest run src/main/knowledge src/renderer/src/pages/settings src/renderer/src/i18n` | **82 文件 / 823 passed / 1 skipped** |
-| 全量单测 | `NODE_OPTIONS=--max-old-space-size=8192 npx vitest run --maxWorkers=4` | **1355 文件 / 17337 例：1338 文件通过、17129 例通过、207 skipped；1 例红**（见下） |
+| 门              | 命令                                                                                                | 读数                                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向单测        | `npx vitest run src/main/knowledge src/renderer/src/pages/settings src/renderer/src/i18n`           | **82 文件 / 823 passed / 1 skipped**                                                                                                                                 |
+| 全量单测        | `NODE_OPTIONS=--max-old-space-size=8192 npx vitest run --maxWorkers=4`                              | **1355 文件 / 17337 例：1338 文件通过、17129 例通过、207 skipped；1 例红**（见下）                                                                                   |
 | 那 1 例红的归属 | `GlobalSearchDialog.test.tsx > sends the chosen sender filter…`（`query.mock.calls.at(-1)` 的断言） | 本单元**没碰**该文件；单文件隔离跑 **3/3 全部 39 passed**；全量那轮机器 load 37.9、swap 11.03 G/12.29 G（打包版 app 与会话的 claude 同跑）⇒ 按负载敏感记档，不当回归 |
-| 类型（node） | `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 / 0 错 |
-| 类型（web） | 同上 `-p tsconfig.web.json` | exit 0 / 0 错 |
-| 改动面 lint | `npx eslint --no-cache <19 个改动文件>` | exit 0 / 0 problems |
-| 推前钩子 | `bash scripts/pre-push-checks.sh` | **exit 0**（品牌零命中、README 双语一致、清单合规、53 个脚本入口可解析、本次推送 19 个文件 lint 0） |
-| **真机认证** | `npm run build:e2e` 后 `npx playwright test e2e/certification/knowledge-copy-integrity.spec.ts` | **1 passed (27.9s)** |
+| 类型（node）    | `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.node.json --composite false`   | exit 0 / 0 错                                                                                                                                                        |
+| 类型（web）     | 同上 `-p tsconfig.web.json`                                                                         | exit 0 / 0 错                                                                                                                                                        |
+| 改动面 lint     | `npx eslint --no-cache <19 个改动文件>`                                                             | exit 0 / 0 problems                                                                                                                                                  |
+| 推前钩子        | `bash scripts/pre-push-checks.sh`                                                                   | **exit 0**（品牌零命中、README 双语一致、清单合规、53 个脚本入口可解析、本次推送 19 个文件 lint 0）                                                                  |
+| **真机认证**    | `npm run build:e2e` 后 `npx playwright test e2e/certification/knowledge-copy-integrity.spec.ts`     | **1 passed (27.9s)**                                                                                                                                                 |
 
 真机 spec 的形状（`e2e/certification/knowledge-copy-integrity.spec.ts`）——两条读数都来自真窗口 + 真 data root，
 而且都不是面板自己的那句话：

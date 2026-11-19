@@ -10,25 +10,25 @@
 **同一性用「同一份发布资产、两种取法、逐字符比 sha256」**（不是按组织归属推理）。探针资产
 = `v2.5.1/version.json`（10,560 字节，与 298.7 MB 权重同一个 release-asset 主机族）：
 
-| 端点 | HTTP | 字节 | 耗时 | sha256 |
-|---|---|---|---|---|
-| 原始端点 `github.com/.../releases/download/v2.5.1/version.json`（`-L` 直连） | 200 | 10,560 | 1.11 s | `21c6c98b…cb722` |
-| 原始端点（经本机代理 7897） | 200 | 10,560 | 2.48 s | `21c6c98b…cb722` |
-| `gh-proxy.com/https://github.com/...` | 200 | 10,560 | 1.09 s | **同** |
-| `ghfast.top/https://github.com/...` | 200 | 10,560 | 0.84 s | **同** |
-| `ghproxy.net/https://github.com/...` | 200 | 10,560 | 2.26 s | 同（**但吞吐被否决**，见下） |
-| `hub.gitmirror.com/https://github.com/...` | — | 0 | — | **DNS 不解析**（`Could not resolve host`） |
-| `gh.llkk.cc/https://github.com/...` | — | 0 | 25.01 s | **连接超时** |
+| 端点                                                                         | HTTP | 字节   | 耗时    | sha256                                     |
+| ---------------------------------------------------------------------------- | ---- | ------ | ------- | ------------------------------------------ |
+| 原始端点 `github.com/.../releases/download/v2.5.1/version.json`（`-L` 直连） | 200  | 10,560 | 1.11 s  | `21c6c98b…cb722`                           |
+| 原始端点（经本机代理 7897）                                                  | 200  | 10,560 | 2.48 s  | `21c6c98b…cb722`                           |
+| `gh-proxy.com/https://github.com/...`                                        | 200  | 10,560 | 1.09 s  | **同**                                     |
+| `ghfast.top/https://github.com/...`                                          | 200  | 10,560 | 0.84 s  | **同**                                     |
+| `ghproxy.net/https://github.com/...`                                         | 200  | 10,560 | 2.26 s  | 同（**但吞吐被否决**，见下）               |
+| `hub.gitmirror.com/https://github.com/...`                                   | —    | 0      | —       | **DNS 不解析**（`Could not resolve host`） |
+| `gh.llkk.cc/https://github.com/...`                                          | —    | 0      | 25.01 s | **连接超时**                               |
 
 **吞吐**（同一份 298.7 MB 资产的 2 MB Range，`curl -r 0-2097151`，同机同刻）：
 
-| 路径 | 2 MB 用时 | 吞吐 |
-|---|---|---|
-| 直连（无代理） | 14.77 s | **138.7 KB/s** |
-| 经本机代理 | 2.74 s | 747.8 KB/s |
-| `ghfast.top` | 3.82 s | 536.1 KB/s |
-| `gh-proxy.com` | 1.47 s | **1394.2 KB/s** |
-| `ghproxy.net` | 30 s 只收到 994,691 B | **32.4 KB/s（超时）** ⇒ 不进表 |
+| 路径           | 2 MB 用时             | 吞吐                           |
+| -------------- | --------------------- | ------------------------------ |
+| 直连（无代理） | 14.77 s               | **138.7 KB/s**                 |
+| 经本机代理     | 2.74 s                | 747.8 KB/s                     |
+| `ghfast.top`   | 3.82 s                | 536.1 KB/s                     |
+| `gh-proxy.com` | 1.47 s                | **1394.2 KB/s**                |
+| `ghproxy.net`  | 30 s 只收到 994,691 B | **32.4 KB/s（超时）** ⇒ 不进表 |
 
 ⇒ 入表的两条：**`gh-proxy.com`（首选）、`ghfast.top`（次选）**；三条被否决的写进源码注释，**不进表**。
 
@@ -39,11 +39,11 @@
 
 ## 二 代码（本片）
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/net/source-mirrors.ts` | 规则表支持「一条规则给多个候选」（`rewrite: URL => string[]`）；新增 `github.com` 规则，**只认 `/releases/download/` 形态**，且**带查询串 / 带用户名的 URL 一律不给候选**（拒绝猜）；新增 `streamWithMirrorFallback`：**流式落地**这一层的回退，原端点优先、**换源前删掉原端点的残留字节**、无摘要一律不试候选 |
-| `src/main/engines/model-weight-cache.ts` | `WeightStreamer` 增加可选 `{ expectedSha256 }` 入参并返回**实际来源**（`'origin'` 或镜像宿主）；`downloadModelWeightsStreaming` 把发布方摘要传进去、把 `via` 带回结果；`streamUrlToFile` 改为经 `streamWithMirrorFallback`；新增 `createStallGuard`（**逐块重置**的停滞判定，30 s 无字节即判失败）并接进两条栈（Electron 的 Chromium 与 Node 的 fetch） |
-| `src/main/engines/local-parsing-models.ts` | 结果文案：来源不是 origin 时写「（经镜像 `<host>`）」，与既有 `Downloaded <file> from <host>` 同一口径，**不新增 i18n 键** |
+| 位置                                       | 改动                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/net/source-mirrors.ts`           | 规则表支持「一条规则给多个候选」（`rewrite: URL => string[]`）；新增 `github.com` 规则，**只认 `/releases/download/` 形态**，且**带查询串 / 带用户名的 URL 一律不给候选**（拒绝猜）；新增 `streamWithMirrorFallback`：**流式落地**这一层的回退，原端点优先、**换源前删掉原端点的残留字节**、无摘要一律不试候选                                          |
+| `src/main/engines/model-weight-cache.ts`   | `WeightStreamer` 增加可选 `{ expectedSha256 }` 入参并返回**实际来源**（`'origin'` 或镜像宿主）；`downloadModelWeightsStreaming` 把发布方摘要传进去、把 `via` 带回结果；`streamUrlToFile` 改为经 `streamWithMirrorFallback`；新增 `createStallGuard`（**逐块重置**的停滞判定，30 s 无字节即判失败）并接进两条栈（Electron 的 Chromium 与 Node 的 fetch） |
+| `src/main/engines/local-parsing-models.ts` | 结果文案：来源不是 origin 时写「（经镜像 `<host>`）」，与既有 `Downloaded <file> from <host>` 同一口径，**不新增 i18n 键**                                                                                                                                                                                                                              |
 
 **为什么必须有停滞判定**：九天真机日志里的下载失败多数不是「报错」，而是**连接不结束**。没有停滞判定，
 「原端点失败」这条路在**最常见的那种失败**上永远走不到 ⇒ 镜像回退等于装饰。判定写成流里的一道阶段

@@ -7,11 +7,11 @@
 
 ## 一 先量再动（读数与判据）
 
-| 量 | 值 | 取法 |
-| --- | --- | --- |
-| 全树该形状命中 | **58 处 / 35 文件** | 审计器 `node scripts/i18n-hardcoded-audit.mjs` |
-| 其中不同文案 | **51 个** | 独立扫描脚本（复刻同一正则与同一批行级过滤，自己重算，不引用审计器的汇总行） |
-| 归并后的键数 | **43 个** | 把 `${…}` 归一成 `{name}` 后按文案去重（如 `Select ${candidate.name}` 与 `Select ${skill.name}` 同一个键） |
+| 量             | 值                  | 取法                                                                                                       |
+| -------------- | ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 全树该形状命中 | **58 处 / 35 文件** | 审计器 `node scripts/i18n-hardcoded-audit.mjs`                                                             |
+| 其中不同文案   | **51 个**           | 独立扫描脚本（复刻同一正则与同一批行级过滤，自己重算，不引用审计器的汇总行）                               |
+| 归并后的键数   | **43 个**           | 把 `${…}` 归一成 `{name}` 后按文案去重（如 `Select ${candidate.name}` 与 `Select ${skill.name}` 同一个键） |
 
 **独立性自证**：那支一次性扫描脚本（`/tmp`，未入库）在**同一次运行**里打印
 `files=1196 hits=58`，与审计器同形状的 `58` 逐数字吻合 ⇒ 我手里的点位表就是审计器看见的东西，
@@ -51,34 +51,34 @@
 第一遍改完直接跑 `vitest`（先不跑 tsc）时，全量会是绿的：**`vitest` 只转译不做类型检查**。
 `tsc -p tsconfig.web.json` 一次报出 14 处，全部是**只有类型检查看得见**的形状：
 
-| 红 | 真凶 | 收法 |
-| --- | --- | --- |
+| 红                                                                                                | 真凶                                                                                                                                                                                                                           | 收法                                                                                                                |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
 | `Cannot find name 't'`（`PermissionsPanel:167`、`PreviewPanel:447`、`WorkspaceMessageItem` 6 处） | 文件里**有** `useLanguage()`，但那些行在**另一个子组件**里（`PermissionRow` / `PreviewTab` / `MessageImageList` / `ArtifactCard` / `MessageUploadAttachmentList` / `MessagePartsContent`）——grep 到 `t` 就以为全局可用，是假象 | 各子组件内补自己的 `const { t } = useLanguage()`（`MessagePartsContent` 是 `=> (…)` 直返 JSX，改成块体 + `return`） |
-| `TS2769`（`SkillImportView:353`） | `scannedRepo` 是 `string | null`，`replace(…, string)` 不吃 `null` | `scannedRepo ?? ''`（与改动前渲染该值的 JSX 插值行为一致） |
+| `TS2769`（`SkillImportView:353`）                                                                 | `scannedRepo` 是 `string                                                                                                                                                                                                       | null`，`replace(…, string)`不吃`null`                                                                               | `scannedRepo ?? ''`（与改动前渲染该值的 JSX 插值行为一致） |
 
 **收法都不用 `as` 或可选属性**：前者会把这件事从检查器眼前藏起来，后者等于悄悄降级契约。
 
 ## 五 三条既有断言按新契约改定位（**收紧**，不是放宽）
 
-| 红 | 原因 | 收法 |
-| --- | --- | --- |
+| 红                                                                                                            | 原因                                                                         | 收法                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `SkillImportApprovalDialog.render.test.tsx`「Invert 用用户语言」：`[aria-label="Select Second Skill"]` 取不到 | 该用例跑在 zh 语言下，而断言钉的是**英文**读屏名 —— 这正是本单元修的缺陷本身 | 改按 zh 名 `选择 Second Skill` 定位，并**加一条** `expect(… '[aria-label="Select Second Skill"]').toBeNull()`（英文名往后不许再出现） |
-| `SpecialistsPanel.render.test.tsx` 两条「用用户语言」用例：`[aria-label="Actions for RNA Reviewer"]` 取不到 | 同上（触发器的可访问名此前是英文模板字面量） | 改按 `RNA Reviewer 的操作` 定位，并把文件里那句已过期的注释（"trigger's accessible name … still English"）就地更正 |
+| `SpecialistsPanel.render.test.tsx` 两条「用用户语言」用例：`[aria-label="Actions for RNA Reviewer"]` 取不到   | 同上（触发器的可访问名此前是英文模板字面量）                                 | 改按 `RNA Reviewer 的操作` 定位，并把文件里那句已过期的注释（"trigger's accessible name … still English"）就地更正                    |
 
 两条都是**改定位、不改断言本意**；新增的那条 `toBeNull()` 是**加**的判据，不是放宽。
 
 ## 六 门禁读数（全部实跑，数字取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 审计器 `attr template literal`（全树） | **58 → 0**（独立扫描脚本同批复核：`hits=0`） |
-| 审计器全形状总量 | 158 → **99**（−59 = 58 处本形状 + 1 处相邻同文案的 TooltipContent） |
-| `vitest src/renderer/src/i18n` | 4 文件 / **52 passed**（含翻译质量门与 zh-Hant 简体门） |
-| 全量 `vitest run --maxWorkers=4` | **1247 passed \| 16 skipped（1263 文件）**、**16122 passed \| 207 skipped（16329 条）**，exit 0，324 s |
-| `tsc` node / web（`--composite false`） | exit 0 / exit 0 |
-| `eslint --no-cache .` | **0 error / 122 warning**（122 为既有基线，本轮 44 文件未新增一条） |
-| `prettier --check`（本轮 44 文件） | CLEAN |
-| `bash scripts/pre-push-checks.sh` | exit 0（品牌/借词扫描零命中、双语头部一致） |
+| 环                                      | 读数                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 审计器 `attr template literal`（全树）  | **58 → 0**（独立扫描脚本同批复核：`hits=0`）                                                           |
+| 审计器全形状总量                        | 158 → **99**（−59 = 58 处本形状 + 1 处相邻同文案的 TooltipContent）                                    |
+| `vitest src/renderer/src/i18n`          | 4 文件 / **52 passed**（含翻译质量门与 zh-Hant 简体门）                                                |
+| 全量 `vitest run --maxWorkers=4`        | **1247 passed \| 16 skipped（1263 文件）**、**16122 passed \| 207 skipped（16329 条）**，exit 0，324 s |
+| `tsc` node / web（`--composite false`） | exit 0 / exit 0                                                                                        |
+| `eslint --no-cache .`                   | **0 error / 122 warning**（122 为既有基线，本轮 44 文件未新增一条）                                    |
+| `prettier --check`（本轮 44 文件）      | CLEAN                                                                                                  |
+| `bash scripts/pre-push-checks.sh`       | exit 0（品牌/借词扫描零命中、双语头部一致）                                                            |
 
 ## 七 刻意的边界（不许读成「已做」）
 

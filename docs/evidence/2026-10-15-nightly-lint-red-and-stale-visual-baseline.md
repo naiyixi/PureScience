@@ -6,20 +6,20 @@
 
 ## 一 红 1：Nightly `build / Verify (lint + typecheck + test + package)` 的 eslint error
 
-| 项 | 读数 |
-| --- | --- |
-| 车道/作业 | `Nightly` run `38703077283`，提交 `83036ef0`（当时 main 的 HEAD），job `116315847727`（`build / Verify …`）= **failure** |
-| 作业级日志原文 | `✖ 131 problems (1 error, 130 warnings)` ⇒ `##[error]Process completed with exit code 1.` |
-| 唯一 error | `e2e/goals-panel.spec.ts:35:7  error  'page' is never reassigned. Use 'const' instead  prefer-const` |
-| 下游 | 同一 run 的 `build / Build …` 与 `publish` 全 **skipped**（Verify 红 ⇒ 打包与发布都不起） |
+| 项             | 读数                                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 车道/作业      | `Nightly` run `38703077283`，提交 `83036ef0`（当时 main 的 HEAD），job `116315847727`（`build / Verify …`）= **failure** |
+| 作业级日志原文 | `✖ 131 problems (1 error, 130 warnings)` ⇒ `##[error]Process completed with exit code 1.`                                |
+| 唯一 error     | `e2e/goals-panel.spec.ts:35:7  error  'page' is never reassigned. Use 'const' instead  prefer-const`                     |
+| 下游           | 同一 run 的 `build / Build …` 与 `publish` 全 **skipped**（Verify 红 ⇒ 打包与发布都不起）                                |
 
 **这条走红的时间线**（都是 `gh run list --workflow=Nightly` 的真实读数）：
 
-| 提交 | 时间 | Nightly | 说明 |
-| --- | --- | --- | --- |
-| `631dfcae` | 14:11 | success | `e2e/goals-panel.spec.ts` 还不存在 ⇒ Verify 绿 |
+| 提交       | 时间  | Nightly | 说明                                                               |
+| ---------- | ----- | ------- | ------------------------------------------------------------------ |
+| `631dfcae` | 14:11 | success | `e2e/goals-panel.spec.ts` 还不存在 ⇒ Verify 绿                     |
 | `f12f9896` | 15:46 | failure | 该文件已入库（`0c64c888` 建、`49d1be82` 加重启断言）⇒ 同一处开始红 |
-| `83036ef0` | 16:04 | failure | 同一个 error（本条定因） |
+| `83036ef0` | 16:04 | failure | 同一个 error（本条定因）                                           |
 
 **为什么另一条车道一直绿**：`Windows Full Test` 在同一批提交上全绿（`83136…`/`83036ef0` 两次都 success）——
 它**不跑全仓 eslint**。所以「某条车道绿」在这件事上给不出任何保证；这条正是本仓常驻纪律的又一实证：
@@ -36,13 +36,13 @@ warning 条数（144）高于 CI 的 130，原因可解释且已核对：这一�
 
 ## 二 红 2：认证车道的视觉基准陈旧（`settings-general.png`）
 
-| 项 | 读数 |
-| --- | --- |
-| 步 | macos-arm64 构建作业里的 `npm run test:e2e:visual`（`playwright test e2e/visual-regression.spec.ts`） |
-| 上次绿 | `74fb22fd`（昨天 21:35Z，run `38641465149`）：**1 passed (8.2s)** |
-| 本次红 | `631dfcae`（run `38690946464`）与 `83036ef0`（run `38703077283`）：`1 failed` |
+| 项       | 读数                                                                                                                                                                              |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 步       | macos-arm64 构建作业里的 `npm run test:e2e:visual`（`playwright test e2e/visual-regression.spec.ts`）                                                                             |
+| 上次绿   | `74fb22fd`（昨天 21:35Z，run `38641465149`）：**1 passed (8.2s)**                                                                                                                 |
+| 本次红   | `631dfcae`（run `38690946464`）与 `83036ef0`（run `38703077283`）：`1 failed`                                                                                                     |
 | 失败原文 | `expect(page).toHaveScreenshot(expected) failed` / `4815 pixels (ratio 0.01 of all image pixels) are different.` / `Snapshot: settings-general.png`；**重试 #1 仍红**（不是抖动） |
-| 阈值 | 该图 `maxDiffPixelRatio = 0.004`（darwin）⇒ 1% 远超它 |
+| 阈值     | 该图 `maxDiffPixelRatio = 0.004`（darwin）⇒ 1% 远超它                                                                                                                             |
 
 **定因**：`2067c866`（v2.4.0 F3 上屏）在**设置导航**里新增了一项 `Goals and readings`。
 而视觉规格截的是**整页**（`Settings` 对话框在屏，导航栏就在图里），

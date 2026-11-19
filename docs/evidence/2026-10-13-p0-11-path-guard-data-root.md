@@ -15,23 +15,23 @@
 本机 dev 常驻实例（`~/.purescience-project` 配置根 / `~/PureScience-DEV` 数据根；
 `settings.json` 里 **`dataRoot` 未设**）：
 
-| 读数 | 值 | 取自 |
-| --- | --- | --- |
-| 闸门根文件 | `{"roots":["/Users/totota/.purescience-project"],"hint":"/Users/totota/.purescience-project"}` | 应用自己写的 `claude/hooks/path-guard-roots.json` |
-| 存储层自报的数据根 | `/Users/totota/PureScience-DEV`（`isDefault: true`） | 应用自己的 `storage:get-info` |
-| 配置根下的可迁移目录 | **不存在** `artifacts/notebooks/uploads/workspaces` ⇒ 不是遗留安装 | `ls ~/.purescience-project` |
-| 真实拒答（应用自己的判定日志） | `~/PureScience-DEV/workspaces/<sessionId>/…` 多条 `deny` | `claude/hooks/path-guard-decisions.jsonl` |
+| 读数                           | 值                                                                                             | 取自                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 闸门根文件                     | `{"roots":["/Users/totota/.purescience-project"],"hint":"/Users/totota/.purescience-project"}` | 应用自己写的 `claude/hooks/path-guard-roots.json` |
+| 存储层自报的数据根             | `/Users/totota/PureScience-DEV`（`isDefault: true`）                                           | 应用自己的 `storage:get-info`                     |
+| 配置根下的可迁移目录           | **不存在** `artifacts/notebooks/uploads/workspaces` ⇒ 不是遗留安装                             | `ls ~/.purescience-project`                       |
+| 真实拒答（应用自己的判定日志） | `~/PureScience-DEV/workspaces/<sessionId>/…` 多条 `deny`                                       | `claude/hooks/path-guard-decisions.jsonl`         |
 
 **直接以应用注册的同一条命令跑已部署的守卫**（`node ~/.purescience-project/claude/hooks/path-guard.cjs`，
 stdin 喂 PreToolUse 载荷），改动前：
 
-| # | 探针载荷 | 判定 | 是不是缺陷 |
-| --- | --- | --- | --- |
-| 1 | `Bash`：本会话工作区里的脚本 `~/PureScience-DEV/workspaces/53a8675f…/gpcr_msm_kinetics_disconnect_sim.py` | **DENY** | 是（agent 自己的会话目录） |
-| 2 | `Read`：同一工作区的 notebook 产物 `…/figC_pmf_hysteresis.png` | **DENY** | 是（agent 自己的产出） |
-| 3 | `Read`：`/etc/passwd`（负向对照） | DENY | 正确 |
-| 4 | `Glob`：`/Users/totota/Documents/**`（负向对照） | DENY | 正确 |
-| 5 | `Read`：`~/.cache/torch/hub/checkpoints/model.pt`（正向对照） | ALLOW | 正确（本就不该动） |
+| #   | 探针载荷                                                                                                  | 判定     | 是不是缺陷                 |
+| --- | --------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
+| 1   | `Bash`：本会话工作区里的脚本 `~/PureScience-DEV/workspaces/53a8675f…/gpcr_msm_kinetics_disconnect_sim.py` | **DENY** | 是（agent 自己的会话目录） |
+| 2   | `Read`：同一工作区的 notebook 产物 `…/figC_pmf_hysteresis.png`                                            | **DENY** | 是（agent 自己的产出）     |
+| 3   | `Read`：`/etc/passwd`（负向对照）                                                                         | DENY     | 正确                       |
+| 4   | `Glob`：`/Users/totota/Documents/**`（负向对照）                                                          | DENY     | 正确                       |
+| 5   | `Read`：`~/.cache/torch/hub/checkpoints/model.pt`（正向对照）                                             | ALLOW    | 正确（本就不该动）         |
 
 ## 三 根因（读源，file:line）
 
@@ -79,15 +79,15 @@ await this.skills.provisionClaudeConfig(… , { roots: [dataRoot, this.storageRo
 
 **③ 逐条 fail-closed 规则（每条配一个具名用例或读数）。**
 
-| 规则 | 判据 |
-| --- | --- |
-| 根只能来自应用自己的解析，绝不来自请求/agent | 根清单唯一写入方是 `writePathGuard`，生产调用者只有一处（§三）；本次改动没有新增入参 |
-| 配置根必须仍在清单里（skills/hooks/DB 仍受保护） | 用例断言 `roots` 同时含数据根与配置根；本次读数两份都在 |
-| 用户挑过的数据根必须生效（不能被原始设置值顶替） | 用例「fences to a data root the user picked」（旧写法连它也不认 ⇒ 变更测试里当场红） |
-| 两个概念同指一个目录时**不得**改变行为 | 用例「writes the same fence file when both roots resolve to one folder」（逐字节相等） |
-| 系统临时目录**仍然不在**清单里 | 守卫脚本自己加的那条注释与实现未被触碰（`readRoots` 处） |
-| 权重缓存**仍然**放行、凭据与家目录通配**仍然**拒绝 | §六 的 3/4/5 号负向对照，改动前后逐条一致 |
-| 读不到根文件时**放行**（既有设计，防「读不到根就砖死一轮」） | 未改动；这条比本次改动更宽，因此必须写在档里而不是默认它 |
+| 规则                                                         | 判据                                                                                   |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| 根只能来自应用自己的解析，绝不来自请求/agent                 | 根清单唯一写入方是 `writePathGuard`，生产调用者只有一处（§三）；本次改动没有新增入参   |
+| 配置根必须仍在清单里（skills/hooks/DB 仍受保护）             | 用例断言 `roots` 同时含数据根与配置根；本次读数两份都在                                |
+| 用户挑过的数据根必须生效（不能被原始设置值顶替）             | 用例「fences to a data root the user picked」（旧写法连它也不认 ⇒ 变更测试里当场红）   |
+| 两个概念同指一个目录时**不得**改变行为                       | 用例「writes the same fence file when both roots resolve to one folder」（逐字节相等） |
+| 系统临时目录**仍然不在**清单里                               | 守卫脚本自己加的那条注释与实现未被触碰（`readRoots` 处）                               |
+| 权重缓存**仍然**放行、凭据与家目录通配**仍然**拒绝           | §六 的 3/4/5 号负向对照，改动前后逐条一致                                              |
+| 读不到根文件时**放行**（既有设计，防「读不到根就砖死一轮」） | 未改动；这条比本次改动更宽，因此必须写在档里而不是默认它                               |
 
 ## 六 改动后真机读数（同一实例、同一守卫、同一载荷）
 
@@ -102,13 +102,13 @@ await this.skills.provisionClaudeConfig(… , { roots: [dataRoot, this.storageRo
 
 **判定前后对照**（`bash /tmp/pathguard-probe.sh BEFORE|AFTER`，同一份已部署的 `path-guard.cjs`）：
 
-| # | 探针载荷 | 改动前 | 改动后 |
-| --- | --- | --- | --- |
-| 1 | 本会话工作区里的脚本（`Bash`） | DENY | **ALLOW** |
-| 2 | 同工作区的 notebook 产物（`Read`） | DENY | **ALLOW** |
-| 3 | `/etc/passwd` | DENY | DENY |
-| 4 | `/Users/totota/Documents/**` | DENY | DENY |
-| 5 | `~/.cache/torch/hub/checkpoints/model.pt` | ALLOW | ALLOW |
+| #   | 探针载荷                                  | 改动前 | 改动后    |
+| --- | ----------------------------------------- | ------ | --------- |
+| 1   | 本会话工作区里的脚本（`Bash`）            | DENY   | **ALLOW** |
+| 2   | 同工作区的 notebook 产物（`Read`）        | DENY   | **ALLOW** |
+| 3   | `/etc/passwd`                             | DENY   | DENY      |
+| 4   | `/Users/totota/Documents/**`              | DENY   | DENY      |
+| 5   | `~/.cache/torch/hub/checkpoints/model.pt` | ALLOW  | ALLOW     |
 
 三条负向/正向对照**逐条不变** ⇒ 本次不是「把闸门整体放宽」。
 
@@ -119,6 +119,7 @@ await this.skills.provisionClaudeConfig(… , { roots: [dataRoot, this.storageRo
 正是 `Reply with exactly: PONG` 的长度）→ 读根文件 → 探针 5 条 → `projects:delete`。
 
 **边界（不许读成别的）**：
+
 - 本读数证明的是**守卫对同一批载荷的判决变了**（真机、真部署产物、真根文件）；
   「agent 在**一轮真回合里**成功读到自己的产物」这一步没有单独取证 —— 它需要一轮里恰好发出那条
   `Bash`/`Read`，属下一窗口的窗口侧读数。判据链是「判决变了 + 拒答此前逐字出现在真实会话里」。
@@ -130,10 +131,10 @@ await this.skills.provisionClaudeConfig(… , { roots: [dataRoot, this.storageRo
 
 ## 七 门禁读数
 
-| 环 | 读数 |
-| --- | --- |
-| 定向单测 | `vitest src/main/settings src/main/storage-root.test.ts` ⇒ **88 文件 / 1433 passed｜3 skipped**；本文件 18 条（含新增 3 条） |
-| 变异测试 | 把源码改回旧表达式 ⇒ 新增用例 **2 条当场红**（证明断言非空），改回即绿 |
-| `typecheck:node` | **exit 0**，0 条 `error TS`（裸 `tsc` 不带 `--composite false` 会喷一屏 TS6307，那是用法错） |
-| `typecheck:web` | **exit 0**，0 条 `error TS` |
-| `eslint --no-cache` | 本批两文件 **0 问题** |
+| 环                  | 读数                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 定向单测            | `vitest src/main/settings src/main/storage-root.test.ts` ⇒ **88 文件 / 1433 passed｜3 skipped**；本文件 18 条（含新增 3 条） |
+| 变异测试            | 把源码改回旧表达式 ⇒ 新增用例 **2 条当场红**（证明断言非空），改回即绿                                                       |
+| `typecheck:node`    | **exit 0**，0 条 `error TS`（裸 `tsc` 不带 `--composite false` 会喷一屏 TS6307，那是用法错）                                 |
+| `typecheck:web`     | **exit 0**，0 条 `error TS`                                                                                                  |
+| `eslint --no-cache` | 本批两文件 **0 问题**                                                                                                        |

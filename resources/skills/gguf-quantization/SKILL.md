@@ -1,6 +1,7 @@
 ---
 name: gguf-quantization
 description: GGUF format and llama.cpp quantization for efficient CPU/GPU inference. Use when deploying models on consumer hardware, Apple Silicon, or when needing flexible quantization from 2-8 bit without GPU requirements.
+description-zh: GGUF 格式与 llama.cpp 量化，用 CPU/GPU 高效推理。适用于消费级硬件、Apple Silicon 上部署模型，或需要 2–8 bit 灵活量化而不必重训。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

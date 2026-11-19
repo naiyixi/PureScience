@@ -14,12 +14,12 @@
 
 ## 二 改法
 
-| 位置 | 改动 |
-|---|---|
-| 排序键 | `ownMs = durationMs - heldMs`（`heldMs` 缺席即整段都是自己的）降序；相同 own 时退回墙钟降序，再相同按记录顺序（确定性） |
-| 新列 `suspended` | 有 `heldMs` 的步骤按 `heldMs` 降序，最多 `summarySize` 条；**没有任何步骤被挂起时整列缺席**，普通启动的行形状一字不变 |
-| 条目文本 | 不变：仍印墙钟 `name=Xms` + 既有后缀（`(failed)` / `(no-cpu)` / `(held Nms)`），因此 `墙钟 = own + held` 可以从同一行读出来 |
-| `steps()` 访问器 | 语义不动（墙钟序），注释就地写明「汇总行按 own 时间排」 |
+| 位置             | 改动                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 排序键           | `ownMs = durationMs - heldMs`（`heldMs` 缺席即整段都是自己的）降序；相同 own 时退回墙钟降序，再相同按记录顺序（确定性）     |
+| 新列 `suspended` | 有 `heldMs` 的步骤按 `heldMs` 降序，最多 `summarySize` 条；**没有任何步骤被挂起时整列缺席**，普通启动的行形状一字不变       |
+| 条目文本         | 不变：仍印墙钟 `name=Xms` + 既有后缀（`(failed)` / `(no-cpu)` / `(held Nms)`），因此 `墙钟 = own + held` 可以从同一行读出来 |
+| `steps()` 访问器 | 语义不动（墙钟序），注释就地写明「汇总行按 own 时间排」                                                                     |
 
 **为什么必须两列而不是直接重排**：`stepMs` 是各步墙钟之和，被挂起步骤的墙钟**仍在 `stepMs` 里**。只重排会让
 下一个读者看到 `stepMs 22,766,129` 而六个条目没有一条对得上——那正是本仓最忌讳的「有个数没人认领」。
@@ -44,10 +44,10 @@ slowest: 'specialist-skill-catalog=11221ms(no-cpu) load-probe-answers=1818ms(hel
 把这两次启动里**具名的 6 条步骤**（名字、墙钟、held）按原顺序重放进**生产记录器**（`createComposeStepRecorder`，
 注入时钟与 held 窗口，`slowMs` 拉高以免刷慢行），得到新字段的读数：
 
-| 启动 | 旧序（按墙钟） | 新序（按 own 时间） | 新列 `suspended` |
-|---|---|---|---|
-| A（total 5797） | `open-project-db=1942(held 675)` 第一 | **`specialist-skill-catalog=1883` 第一**，`open-project-db=1942(held 675)` 第二（own 1267） | `open-project-db=1942ms(held 675ms)` |
-| B（total 15245） | `specialist-skill-catalog=11221` 第一，`load-probe-answers=1818(held 1071)` 第二 | 第一不变；**`load-probe-answers` 退到第三**（own 747，落在 `open-project-db=1225` 之后） | `load-probe-answers=1818ms(held 1071ms)` |
+| 启动             | 旧序（按墙钟）                                                                   | 新序（按 own 时间）                                                                         | 新列 `suspended`                         |
+| ---------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| A（total 5797）  | `open-project-db=1942(held 675)` 第一                                            | **`specialist-skill-catalog=1883` 第一**，`open-project-db=1942(held 675)` 第二（own 1267） | `open-project-db=1942ms(held 675ms)`     |
+| B（total 15245） | `specialist-skill-catalog=11221` 第一，`load-probe-answers=1818(held 1071)` 第二 | 第一不变；**`load-probe-answers` 退到第三**（own 747，落在 `open-project-db=1225` 之后）    | `load-probe-answers=1818ms(held 1071ms)` |
 
 **边界（不许读成更强）**：
 
@@ -60,24 +60,24 @@ slowest: 'specialist-skill-catalog=11221ms(no-cpu) load-probe-answers=1818ms(hel
 
 ## 四 变异自证（4 次，逐个删掉改动的一部分，各自变红一次）
 
-| 变异 | 结果 |
-|---|---|
-| 删掉排序第一级键（own 时间） | **2 failed / 16 passed** |
-| 删掉 `suspended` 列 | **3 failed / 15 passed** |
-| 删掉 own 相同时的墙钟次级键 | **1 failed / 17 passed** |
+| 变异                                       | 结果                     |
+| ------------------------------------------ | ------------------------ |
+| 删掉排序第一级键（own 时间）               | **2 failed / 16 passed** |
+| 删掉 `suspended` 列                        | **3 failed / 15 passed** |
+| 删掉 own 相同时的墙钟次级键                | **1 failed / 17 passed** |
 | `suspended` 不做 held 降序（退回记录顺序） | **1 failed / 17 passed** |
 
 ## 五 门禁读数（全部实跑，数字取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `npx vitest run src/main/diagnostics/compose-steps.test.ts` | **18 passed**，EXIT 0 |
-| `npx vitest run src/main/diagnostics src/main/settings/agent-runtime-manager.test.ts src/main/ipc-startup-attribution.test.ts` | **21 files / 179 passed**，EXIT 0 |
-| `npx vitest run src/main/settings --maxWorkers=2`（另一族消费者） | **94 passed / 1 skipped（95 files）**、**1475 passed / 3 skipped（1478）**，EXIT 0 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**（两份日志均 0 行） |
-| `npx eslint --no-cache`（本笔 2 文件） | **0 error / 0 warning**，EXIT 0 |
-| `npx prettier --check`（本笔 2 文件） | 通过 |
-| 全量 vitest | **未跑**：本机 swap 已用 9,350 MB / 10,240 MB、空闲页 3,847（≈60 MB），上一轮同水位下全量 45 分钟未完并产出 7 条负载假红 ⇒ 按受影响面（两族消费者 + 整目录）取读数，不拿机器去赌 |
+| 环                                                                                                                             | 读数                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx vitest run src/main/diagnostics/compose-steps.test.ts`                                                                    | **18 passed**，EXIT 0                                                                                                                                                            |
+| `npx vitest run src/main/diagnostics src/main/settings/agent-runtime-manager.test.ts src/main/ipc-startup-attribution.test.ts` | **21 files / 179 passed**，EXIT 0                                                                                                                                                |
+| `npx vitest run src/main/settings --maxWorkers=2`（另一族消费者）                                                              | **94 passed / 1 skipped（95 files）**、**1475 passed / 3 skipped（1478）**，EXIT 0                                                                                               |
+| 双 typecheck（`--composite false`，堆 8192）                                                                                   | node **0**；web **0**（两份日志均 0 行）                                                                                                                                         |
+| `npx eslint --no-cache`（本笔 2 文件）                                                                                         | **0 error / 0 warning**，EXIT 0                                                                                                                                                  |
+| `npx prettier --check`（本笔 2 文件）                                                                                          | 通过                                                                                                                                                                             |
+| 全量 vitest                                                                                                                    | **未跑**：本机 swap 已用 9,350 MB / 10,240 MB、空闲页 3,847（≈60 MB），上一轮同水位下全量 45 分钟未完并产出 7 条负载假红 ⇒ 按受影响面（两族消费者 + 整目录）取读数，不拿机器去赌 |
 
 ## 六 用例变化（只收紧，不放宽）
 

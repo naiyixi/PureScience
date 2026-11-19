@@ -23,17 +23,17 @@
 
 ## 三 正方向读数（第三方读我们的包）
 
-| 读数 | rocrate 0.16.0 | pyld 3.3.0（JSON-LD 展开） |
-| --- | --- | --- |
-| 载入 | 成功 | 成功 |
-| 实体数 | 593 | 593（与文件里的 `@graph` 逐数相同） |
-| File 实体 | 278 | 278（展开后类型 `schema:MediaObject`，即 1.1 上下文对 `File` 的映射） |
-| 校验和 | 278/278 用**它自己的 hashlib 重算**后与声明逐字符相同 | 278/278 带展开后的 `http://schema.org/sha256` |
-| 大小 | 278/278 与 `contentSize` 相同 | — |
-| 引用完整性 | `hasPart` 悬空 **0**、未被根可达的文件 **0** | `hasPart` 悬空 **0** |
-| 溯源 | 278 个 `CreateAction` | 278 个 `CreateAction` |
-| 未展开的词 | — | **0**（本地 `sha256` 词声明被正确展开成 `http://schema.org/sha256`） |
-| 根实体 | `./` · `Dataset` · `conformsTo https://w3id.org/ro/crate/1.1` | 同 |
+| 读数       | rocrate 0.16.0                                                | pyld 3.3.0（JSON-LD 展开）                                            |
+| ---------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 载入       | 成功                                                          | 成功                                                                  |
+| 实体数     | 593                                                           | 593（与文件里的 `@graph` 逐数相同）                                   |
+| File 实体  | 278                                                           | 278（展开后类型 `schema:MediaObject`，即 1.1 上下文对 `File` 的映射） |
+| 校验和     | 278/278 用**它自己的 hashlib 重算**后与声明逐字符相同         | 278/278 带展开后的 `http://schema.org/sha256`                         |
+| 大小       | 278/278 与 `contentSize` 相同                                 | —                                                                     |
+| 引用完整性 | `hasPart` 悬空 **0**、未被根可达的文件 **0**                  | `hasPart` 悬空 **0**                                                  |
+| 溯源       | 278 个 `CreateAction`                                         | 278 个 `CreateAction`                                                 |
+| 未展开的词 | —                                                             | **0**（本地 `sha256` 词声明被正确展开成 `http://schema.org/sha256`）  |
+| 根实体     | `./` · `Dataset` · `conformsTo https://w3id.org/ro/crate/1.1` | 同                                                                    |
 
 结论：**导出包可被两个互不相干的实现完整读出**，包括校验和与实体图。这是本单元要的那条证据。
 
@@ -42,11 +42,11 @@
 用 python `rocrate` 库写一个**别人格式**的包（`@context` 为 **1.3**、载荷在 `data/`、没有我们的
 `CreateAction` / 定位符），再让**产品自己的读取器** `inspectExternalRoCrate` 去读。修前：
 
-| 断言 | 级别 | 修前读数 | 判定 |
-| --- | --- | --- | --- |
-| `context-references-ro-crate-profile` | spec-should | `@context: ["https://w3id.org/ro/crate/1.3/context"]` | **假红**：1.3 是同一条 profile 的更新版本 |
-| `metadata-descriptor-conforms-to-profile` | spec-should | `conformsTo: 1.3` | **假红**（同上） |
-| `crate-describes-at-least-one-payload` | export-contract | `payloads: 0` | **假读数**：包里明明有 `data/data.csv` |
+| 断言                                      | 级别            | 修前读数                                              | 判定                                      |
+| ----------------------------------------- | --------------- | ----------------------------------------------------- | ----------------------------------------- |
+| `context-references-ro-crate-profile`     | spec-should     | `@context: ["https://w3id.org/ro/crate/1.3/context"]` | **假红**：1.3 是同一条 profile 的更新版本 |
+| `metadata-descriptor-conforms-to-profile` | spec-should     | `conformsTo: 1.3`                                     | **假红**（同上）                          |
+| `crate-describes-at-least-one-payload`    | export-contract | `payloads: 0`                                         | **假读数**：包里明明有 `data/data.csv`    |
 
 根因（读源）：`src/main/ro-crate/import.ts` 只枚举 `<crate>/files/`（**我们自己写入器的约定**），
 `declaredPayloadIds` 也只认 `files/` 前缀 ⇒ 别人的包**一个文件都进不了判定**，它的字节从未被哈希，

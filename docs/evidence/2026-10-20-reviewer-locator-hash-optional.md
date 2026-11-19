@@ -7,13 +7,13 @@
 
 日志：`~/Library/Logs/PureScience/main.log`（JSONL）。窗口 = 2026-10-17T00:00Z 起的 14,587 行。
 
-| 读数 | 值 |
-| --- | --- |
-| `reviewer:mcp / submit_findings locator out of scope` | **41**（2026-10-17T15:05Z → 10-18T17:18Z，约 26 小时） |
-| 其中「content hash 不匹配」 | **41 / 41**（没有一条是 blockIndex 越界） |
-| 分布在几个审查运行里 | **4**（`c7fb5a3d…` 23 次、`b866e3dc…` 9、`13971f84…` 5、`5d1fedcd…` 4） |
-| 提交上来的「哈希」是什么形状 | 15 个 UUID（块/消息 id）、8 个 `call_…`（工具调用 id）、8 个空串、2 个「真哈希但不是这个块的」、其余是 `artifact:<uuid>`、`message-1792…`、`x`、`unknown`，还有一句中文正文 |
-| 一次审查为这个字段付出的时间 | `b866e3dc`：15:05:12 → 15:06:39，**6 次 submit_findings 全被拒**，第 7 次（15:06:39）才通过，随后 `review complete` ⇒ 约 **87 秒**、6 个完整 MCP 往返与模型回合花在同一个字段上 |
+| 读数                                                  | 值                                                                                                                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reviewer:mcp / submit_findings locator out of scope` | **41**（2026-10-17T15:05Z → 10-18T17:18Z，约 26 小时）                                                                                                                          |
+| 其中「content hash 不匹配」                           | **41 / 41**（没有一条是 blockIndex 越界）                                                                                                                                       |
+| 分布在几个审查运行里                                  | **4**（`c7fb5a3d…` 23 次、`b866e3dc…` 9、`13971f84…` 5、`5d1fedcd…` 4）                                                                                                         |
+| 提交上来的「哈希」是什么形状                          | 15 个 UUID（块/消息 id）、8 个 `call_…`（工具调用 id）、8 个空串、2 个「真哈希但不是这个块的」、其余是 `artifact:<uuid>`、`message-1792…`、`x`、`unknown`，还有一句中文正文     |
+| 一次审查为这个字段付出的时间                          | `b866e3dc`：15:05:12 → 15:06:39，**6 次 submit_findings 全被拒**，第 7 次（15:06:39）才通过，随后 `review complete` ⇒ 约 **87 秒**、6 个完整 MCP 往返与模型回合花在同一个字段上 |
 
 两条样本（原文逐字）：
 
@@ -41,23 +41,23 @@ scope，必须拒绝。所以严格比较没有删，只是把「没送」与「
 
 ## 三 改了什么（3 个文件）
 
-| 文件 | 改动 |
-| --- | --- |
-| `src/main/reviewer/mcp-server.ts` | `checkLocatorSchema.contentHash` → `.optional()`（工具描述写明「省略即可，blockIndex 足够；真要送就必须是 read_turn 报的那串」）。`mapChecksToScope`：省略时用冻结块的哈希填上（落库永远带 pin）；**送错时仍然拒绝，且拒绝句现在点名「收到什么 / 期望什么 / 可以不送」** |
-| `src/main/reviewer/rubric.ts` | 审查员说明书里 locator 那三行改成「blockIndex 就够，别抄哈希；送了就必须逐字来自 read_turn」 |
+| 文件                                   | 改动                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/reviewer/mcp-server.ts`      | `checkLocatorSchema.contentHash` → `.optional()`（工具描述写明「省略即可，blockIndex 足够；真要送就必须是 read_turn 报的那串」）。`mapChecksToScope`：省略时用冻结块的哈希填上（落库永远带 pin）；**送错时仍然拒绝，且拒绝句现在点名「收到什么 / 期望什么 / 可以不送」**                                                                                                      |
+| `src/main/reviewer/rubric.ts`          | 审查员说明书里 locator 那三行改成「blockIndex 就够，别抄哈希；送了就必须逐字来自 read_turn」                                                                                                                                                                                                                                                                                  |
 | `src/main/reviewer/mcp-server.test.ts` | 新增 5 条：省略即接受且 pin 来自冻结块、拒绝句点名期望值、MCP schema 接受无哈希的 locator，外加两条**走真实 MCP HTTP 端点**的端到端用例（省略 → `onSubmit` 收到的 locator 是 `{blockRef:{messageId:'msg-2',blockIndex:0}, contentHash:'real-hash-msg-2'}`；送 `47221407-…` → `isError:true` 且正文含 `expected real-hash-msg-2`、`or omit contentHash`，`onSubmit` 未被调用） |
 
 ## 四 读数（全部实跑）
 
-| 项 | 读数 |
-| --- | --- |
-| `mcp-server.test.ts` + `rubric.test.ts` | **57 passed**（2 文件） |
-| 审查员整簇 `src/main/reviewer` | **24 文件 / 286 passed**（改前 281 ⇒ +5 即本轮新增） |
-| 变异证明 A（`.optional()` 改回必填） | `1 failed / 31 passed`，红在 `lets the MCP schema accept a locator without contentHash`；已还原（逐字相同） |
+| 项                                                       | 读数                                                                                                                  |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `mcp-server.test.ts` + `rubric.test.ts`                  | **57 passed**（2 文件）                                                                                               |
+| 审查员整簇 `src/main/reviewer`                           | **24 文件 / 286 passed**（改前 281 ⇒ +5 即本轮新增）                                                                  |
+| 变异证明 A（`.optional()` 改回必填）                     | `1 failed / 31 passed`，红在 `lets the MCP schema accept a locator without contentHash`；已还原（逐字相同）           |
 | 变异证明 B（pin 改回用模型送的值：`suppliedHash ?? ''`） | `1 failed / 31 passed`，红在 `accepts a locator that omits contentHash and pins the frozen block hash itself`；已还原 |
-| 真实协议用例 | 2 条 `ReviewerMcpServer HTTP transport` 用例通过（真监听、真 `initialize`、真 `tools/call`） |
-| 双 typecheck | 见 §五（本机 5 条红，全部在 `src/main/references/repository.ts`，**与本轮改动无关**，逐条归因在下） |
-| lint（全仓 `--no-cache`） | 见 §五 |
+| 真实协议用例                                             | 2 条 `ReviewerMcpServer HTTP transport` 用例通过（真监听、真 `initialize`、真 `tools/call`）                          |
+| 双 typecheck                                             | 见 §五（本机 5 条红，全部在 `src/main/references/repository.ts`，**与本轮改动无关**，逐条归因在下）                   |
+| lint（全仓 `--no-cache`）                                | 见 §五                                                                                                                |
 
 ## 五 本机环境事实（不是本轮引入的，但会误导读数）
 

@@ -36,12 +36,12 @@
 
 ## 1. 已完成（不要重做）
 
-| 版本 | 内容 | 关键读数 |
-|---|---|---|
-| v2.17.3 | 队列：`loadAll` single-flight、权威扫描移出队列、`readSessionById` 取代"读一个会话跑全量迁移" | `queuedMs` p90 **48,306 → 0 ms**、max **97,930 → 7 ms**；hydration pass 81 次/22h → 2 次 |
-| v2.17.4 | 探针答案跨进程复用（`settings/probe-answers.json`，键 = `sha256(路径 + mtimeMs:size)`）；启动钥匙串四段计时 | 新进程第一次 preflight **6,116 → 634 ms**；`encryption-available=16,758ms,providers=24ms,connectors=1ms` |
-| v2.17.5 | 兼容哈希按每文件 `size+mtime` 记忆；`session capabilities built` 点名 + `groups` | 冷启动最大单步（walk 55 ms + 读哈希 408 ms，忙时 811 ms）不再每次重跑；能力清单可归因 |
-| — | `wip/settings-probe-timing` 已删：artifact 读数并入 + 修掉"重试耗尽时计数丢失"；`timed()` 因 main 已有 `recordStep` 而丢弃 | — |
+| 版本    | 内容                                                                                                                       | 关键读数                                                                                                 |
+| ------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| v2.17.3 | 队列：`loadAll` single-flight、权威扫描移出队列、`readSessionById` 取代"读一个会话跑全量迁移"                              | `queuedMs` p90 **48,306 → 0 ms**、max **97,930 → 7 ms**；hydration pass 81 次/22h → 2 次                 |
+| v2.17.4 | 探针答案跨进程复用（`settings/probe-answers.json`，键 = `sha256(路径 + mtimeMs:size)`）；启动钥匙串四段计时                | 新进程第一次 preflight **6,116 → 634 ms**；`encryption-available=16,758ms,providers=24ms,connectors=1ms` |
+| v2.17.5 | 兼容哈希按每文件 `size+mtime` 记忆；`session capabilities built` 点名 + `groups`                                           | 冷启动最大单步（walk 55 ms + 读哈希 408 ms，忙时 811 ms）不再每次重跑；能力清单可归因                    |
+| —       | `wip/settings-probe-timing` 已删：artifact 读数并入 + 修掉"重试耗尽时计数丢失"；`timed()` 因 main 已有 `recordStep` 而丢弃 | —                                                                                                        |
 
 ---
 
@@ -50,8 +50,8 @@
 ### E-余项 — MCP 就绪超时的**修复**（读数已就位，修复未做）
 
 - 真机复现（本机，14 个服务里 11 个一起超时）：`[mcp-readiness] Timed out waiting for MCP servers: purescience_plan,
-  purescience_memory, purescience_context_summary, purescience_routine, purescience_goal, purescience_endpoints,
-  purescience_annotations, purescience_pdf, purescience_knowledge, purescience_figure, purescience_host_query`；
+purescience_memory, purescience_context_summary, purescience_routine, purescience_goal, purescience_endpoints,
+purescience_annotations, purescience_pdf, purescience_knowledge, purescience_figure, purescience_host_query`；
   随后 `createSession: first attempt failed, retrying once` → 下一次成功（重试在掩盖它）。
 - 就绪预算由**代理侧**（Claude Code 在 `session/new` 内）执行，产品端只能"少给/晚给"。
 - 结构信息已就位：`src/main/acp/session-capability-owner.ts` 的 `buildStdioServers(request, enabled)` 是**扁平 14 项**；
@@ -59,7 +59,7 @@
   `deferredServerNames()`，日志里能读到 `groups: 5 core,9 deferred`。
 - **已查清（不要再查一遍）**：ACP schema 里 `mcpServers` 只出现在 `session/new`（以及 `load`/`resume` 的重放），
   方法集合是 `session/new | load | list | delete | fork | resume | close | set_mode | set_config_option | prompt |
-  update | cancel | request_permission` —— **没有"会话建立后追加 MCP 服务"的方法**（见
+update | cancel | request_permission` —— **没有"会话建立后追加 MCP 服务"的方法**（见
   `node_modules/@agentclientprotocol/sdk/schema/schema.json`，x-method 列表）。所以"延后挂载延后组"在不改协议的前提下
   **等于让那些能力整个会话不可用**，不能这么做。
 - **因此 E 的三条可行路径**（按代价排序，任选其一并附读数）：
@@ -80,8 +80,8 @@
 - 只有 opencode 通过：`declared=28 session=read readings=28`；codebuddy 与 claude-code `session=null`
   （`errorCategory: 'network'` —— 沙盒拿不到钥匙串凭证）；本机 codex 是 `/opt/homebrew/bin/codex-acp`。
 - 探针范式：`PURESCIENCE_CONFIG_ROOT=$ROOT PURESCIENCE_STORAGE_ROOT=$ROOT PURESCIENCE_WEB_PORT=$PORT
-  PURESCIENCE_AGENT_FRAMEWORK=<framework> PURESCIENCE_ABLATION=full-contract node_modules/.bin/electron .
-  --purescience-headless --disable-gpu --user-data-dir="$ROOT/electron-userdata"`，token 读 `$ROOT/web-token`。
+PURESCIENCE_AGENT_FRAMEWORK=<framework> PURESCIENCE_ABLATION=full-contract node_modules/.bin/electron .
+--purescience-headless --disable-gpu --user-data-dir="$ROOT/electron-userdata"`，token 读 `$ROOT/web-token`。
 - **纪律：不改判据凑绿**。拿不到凭证就如实记 N/4 并附具名原因。
 
 ### B 尾巴 — `probe-codex` 585 ms

@@ -1,6 +1,7 @@
 ---
 name: folklore-variant-evidence
 description: "Retrieves ClinGen gene-disease validity assertions for a public gene or disease, and reviews source-linked public evidence and literature for one supported GRCh38 germline nuclear SNV or simple indel through Folklore Clinical Variant Interpretation MCP. Used when a scientific agent must branch deterministically on resolved, ambiguous, not-found, invalid, unsupported, or unavailable variant outcomes; chain a resolved public variant into related literature or publication details; or preserve evidence provenance without accepting patient, phenotype, family, segregation, or private case data."
+description-zh: 取回 ClinGen 对某公开基因或疾病的基因-疾病有效性断言，并针对一个受支持的 GRCh38 胚系核 SNV 或简单 indel 审查带来源的公开证据与文献。
 license: MIT
 compatibility: Requires network access to api.helena.bio (stateless Streamable HTTP MCP, no credentials) and a host supporting its advertised protocol, or curl for direct JSON-RPC POST requests.
 metadata:

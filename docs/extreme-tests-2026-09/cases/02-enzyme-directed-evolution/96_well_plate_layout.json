@@ -23,12 +23,7 @@
       "role": "S65A single-nt mutant (dry hypothesis: lower activity)"
     }
   ],
-  "timepoints_min": [
-    0,
-    10,
-    30,
-    60
-  ],
+  "timepoints_min": [0, 10, 30, 60],
   "replicates_per_mutant_timepoint": 8,
   "total_wells": 96,
   "design_note": "Columns grouped by mutant in blocks of 4; within each 4-column block the columns are timepoints 0/10/30/60 min; rows A-H are 8 independent replicate wells per (mutant, timepoint).",
@@ -36,32 +31,17 @@
     {
       "columns": "1-4",
       "mutant": "parent",
-      "timepoint_per_column_min": [
-        0,
-        10,
-        30,
-        60
-      ]
+      "timepoint_per_column_min": [0, 10, 30, 60]
     },
     {
       "columns": "5-8",
       "mutant": "S65T",
-      "timepoint_per_column_min": [
-        0,
-        10,
-        30,
-        60
-      ]
+      "timepoint_per_column_min": [0, 10, 30, 60]
     },
     {
       "columns": "9-12",
       "mutant": "S65A",
-      "timepoint_per_column_min": [
-        0,
-        10,
-        30,
-        60
-      ]
+      "timepoint_per_column_min": [0, 10, 30, 60]
     }
   ],
   "wells": [

@@ -21,10 +21,10 @@
 
 ## 二 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/reviewer/correction.ts` | 新增模块级 `inFlightCorrections: Map<mainSessionId, Promise<'completed'｜'failed'>>` 与 `MAX_DEFERRAL_HOPS = 3`；`injectAuditorMessage` 返回 `CorrectionInjectionResult`（`injected` / `no-findings` / `deferred{waitedOn}`）。查槽与占槽之间**没有 await**（单线程下即原子）；等待的是**另一个回合同一条 promise**，对方的发送失败会释放槽位让本家接手 |
-| `src/main/reviewer/orchestrator.ts` | 修正回合的落账口径：`injection.kind === 'deferred'` 记一条具名 info（带 `waitedOn` / `openCount`），**不当作失败**——继续走 Step C 等「那一回合写进持久会话的 agent 消息」，再照常做定向复评；Step C 等不到消息且本轮是 deferred 时，**不把自己的检查标成 `unaddressed`**，而是留成 `open` 并记一行具名 info |
+| 位置                                | 改动                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/reviewer/correction.ts`   | 新增模块级 `inFlightCorrections: Map<mainSessionId, Promise<'completed'｜'failed'>>` 与 `MAX_DEFERRAL_HOPS = 3`；`injectAuditorMessage` 返回 `CorrectionInjectionResult`（`injected` / `no-findings` / `deferred{waitedOn}`）。查槽与占槽之间**没有 await**（单线程下即原子）；等待的是**另一个回合同一条 promise**，对方的发送失败会释放槽位让本家接手 |
+| `src/main/reviewer/orchestrator.ts` | 修正回合的落账口径：`injection.kind === 'deferred'` 记一条具名 info（带 `waitedOn` / `openCount`），**不当作失败**——继续走 Step C 等「那一回合写进持久会话的 agent 消息」，再照常做定向复评；Step C 等不到消息且本轮是 deferred 时，**不把自己的检查标成 `unaddressed`**，而是留成 `open` 并记一行具名 info                                             |
 
 **设计判据**：① **判据是资源，不是时序** —— 被占的资源是「主会话的那一个回合」，所以键取 `mainSessionId`，
 与 `fixLoopAbortControllers` 用 `projectId\0mainSessionId` 的口径同源；② **输家要说得出为什么** ——
@@ -34,13 +34,13 @@
 
 ## 三 门禁（全部实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/reviewer` | **27 files / 319 passed**，exit 0（含新增 4 条） |
-| 新增用例（`--reporter=verbose` 逐条确认跑过） | ① 并发第二家等待并报 `deferred{completed}`（只 1 条 prompt、无失败回报）② 第一家发送失败时第二家接手发出去（`call=2`、失败只报一次）③ 回合完成后槽位释放（连续两次都是 `injected`）④ **编排层**：另一条车道占着修正回合时，本家的检查留在 `open`、`onCorrectionPrompt` 一次都没触发、库里也是 `open` |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | 0（`NODE_OPTIONS=--max-old-space-size=8192`） |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | 0 |
-| `npx eslint --no-cache <三文件>` | 0 error / 0 warning |
+| 环                                                     | 读数                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx vitest run src/main/reviewer`                     | **27 files / 319 passed**，exit 0（含新增 4 条）                                                                                                                                                                                                                                                     |
+| 新增用例（`--reporter=verbose` 逐条确认跑过）          | ① 并发第二家等待并报 `deferred{completed}`（只 1 条 prompt、无失败回报）② 第一家发送失败时第二家接手发出去（`call=2`、失败只报一次）③ 回合完成后槽位释放（连续两次都是 `injected`）④ **编排层**：另一条车道占着修正回合时，本家的检查留在 `open`、`onCorrectionPrompt` 一次都没触发、库里也是 `open` |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | 0（`NODE_OPTIONS=--max-old-space-size=8192`）                                                                                                                                                                                                                                                        |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | 0                                                                                                                                                                                                                                                                                                    |
+| `npx eslint --no-cache <三文件>`                       | 0 error / 0 warning                                                                                                                                                                                                                                                                                  |
 
 ## 四 边界（不许读成更强）
 

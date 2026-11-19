@@ -1,6 +1,7 @@
 ---
 name: pufferlib
 description: Version-aware guidance for PufferLib reinforcement-learning environments, vectorization, policies, PuffeRL training, evaluation, and safe checkpoint review. Covers the native 5.0 build and environment API, published 3.0.0 Gymnasium/PettingZoo adaptation, and a pinned historical 4.0 profile.
+description-zh: 面向 PufferLib 强化学习环境的版本感知指引：向量化、策略、PuffeRL 训练、评估与安全的检查点审查，覆盖原生 5.0 构建。
 license: MIT
 compatibility: Bundled CLIs require Python 3.10+ (standard library only). PufferLib 5.0 requires a native C/CUDA toolchain; CPU builds support evaluation, not training. PyPI 3.0.0 declares Python >=3.9 and needs a native source build with NumPy <2 and Gymnasium <=0.29.1. Native dependencies and network access are needed for installation; bundled checks require neither.
 allowed-tools: Read Bash Grep Python

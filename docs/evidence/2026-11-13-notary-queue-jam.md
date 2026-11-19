@@ -10,16 +10,16 @@
 
 `notarytool history`（2026-11-13T16:52:55Z 读取，`gh run 43467128530`）：
 
-| 提交时间 | 至读取时已等待 | 名称 | submission id | 状态 |
-| --- | --- | --- | --- | --- |
-| 11:32:48Z | 5h20m | zerolink-purescience-2.27.0-mac-x64.dmg | eed79267-fdb3-443e-b337-ef4cf3261f5b | In Progress |
-| 11:34:02Z | 5h18m | zerolink-purescience-2.27.0-mac-arm64.dmg | f3358ee5-0d8a-461f-ad7c-65c252fa8c60 | In Progress |
-| 13:24:38Z | 3h28m | zerolink-purescience-2.27.0-mac-arm64.dmg | d52b5630-8c12-44d2-be9a-1244da08500d | In Progress |
-| 13:25:25Z | 3h27m | zerolink-purescience-2.27.0-mac-x64.dmg | 618fd26f-ba5f-41fd-9b7c-e1bf4af2856f | In Progress |
-| 14:18:33Z | 2h34m | zerolink-purescience-2.27.0-mac-arm64.dmg | 8ac541a9-593b-4023-bd41-6e48f48cb5f4 | In Progress |
-| 14:19:06Z | 2h33m | zerolink-purescience-2.27.0-mac-x64.dmg | 16d6bf61-940b-43a8-87bf-9ea85b8743a5 | In Progress |
-| 15:58:27Z | 54m | probe.zip（另一支探针） | 99891708-fb39-47d4-9975-3c1d37605344 | In Progress |
-| 16:41:06Z | 11m | probe.zip（本轮探针） | f8e72ad8-437a-460b-9d7b-7623203dccae | In Progress |
+| 提交时间  | 至读取时已等待 | 名称                                      | submission id                        | 状态        |
+| --------- | -------------- | ----------------------------------------- | ------------------------------------ | ----------- |
+| 11:32:48Z | 5h20m          | zerolink-purescience-2.27.0-mac-x64.dmg   | eed79267-fdb3-443e-b337-ef4cf3261f5b | In Progress |
+| 11:34:02Z | 5h18m          | zerolink-purescience-2.27.0-mac-arm64.dmg | f3358ee5-0d8a-461f-ad7c-65c252fa8c60 | In Progress |
+| 13:24:38Z | 3h28m          | zerolink-purescience-2.27.0-mac-arm64.dmg | d52b5630-8c12-44d2-be9a-1244da08500d | In Progress |
+| 13:25:25Z | 3h27m          | zerolink-purescience-2.27.0-mac-x64.dmg   | 618fd26f-ba5f-41fd-9b7c-e1bf4af2856f | In Progress |
+| 14:18:33Z | 2h34m          | zerolink-purescience-2.27.0-mac-arm64.dmg | 8ac541a9-593b-4023-bd41-6e48f48cb5f4 | In Progress |
+| 14:19:06Z | 2h33m          | zerolink-purescience-2.27.0-mac-x64.dmg   | 16d6bf61-940b-43a8-87bf-9ea85b8743a5 | In Progress |
+| 15:58:27Z | 54m            | probe.zip（另一支探针）                   | 99891708-fb39-47d4-9975-3c1d37605344 | In Progress |
+| 16:41:06Z | 11m            | probe.zip（本轮探针）                     | f8e72ad8-437a-460b-9d7b-7623203dccae | In Progress |
 
 状态计数：`8 In Progress` —— **没有任何一笔拿到过 `Accepted` 或 `Invalid`**。
 
@@ -71,4 +71,3 @@ Service : available`。也就是说**没有已承认的故障**，状态页上�
 这不与上面的读数冲突，但它决定了证据的取法：**「状态页绿」不能用来回答「我能发版了吗」** ——
 能回答的只有 `history` 里我们那几笔提交自己的状态。同理，反过来也不成立：状态页翻红可以解释慢，
 但它不出现红**不能**证明不慢。
-

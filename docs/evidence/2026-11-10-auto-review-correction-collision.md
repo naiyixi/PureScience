@@ -43,13 +43,13 @@
 
 ## 三 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/reviewer/auto-review-trigger.ts` | 请求带上 `origin: 'auto'`（类型里写清为什么必须有它：它才是审查侧两道自动保护的开关） |
-| `src/shared/reviewer.ts` | `ReviewRunNotStartedReason` 增加 `'fix-loop-active'`，并写明「永不重试」与「手动复核不受影响」 |
-| `src/main/reviewer/ipc.ts` | `triggerReview` 最前面加**归属闸**：`origin === 'auto'` 且 `fixLoopAbortControllers` 有该会话的键 ⇒ 不启动、返回 `{started:false, reason:'fix-loop-active'}`，并写具名日志 `auto review skipped: the fix loop owns this session` |
-| `src/main/reviewer/correction.ts` | 新增 `CorrectionFailureReason = 'session-busy' \| 'provenance-failed' \| 'send-failed'` 与 `classifyCorrectionFailure`；失败日志带 `reason`，`onCorrectionFailed(reason)` 把原因交给上层 |
-| `src/main/reviewer/orchestrator.ts` | `CORRECTION_FAILURE_NOTES` 按原因给用户可见说明；`correction failed in fix loop` 一行带上 `reason`；派生 provenance 抛错归 `provenance-failed` |
+| 位置                                       | 改动                                                                                                                                                                                                                             |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/reviewer/auto-review-trigger.ts` | 请求带上 `origin: 'auto'`（类型里写清为什么必须有它：它才是审查侧两道自动保护的开关）                                                                                                                                            |
+| `src/shared/reviewer.ts`                   | `ReviewRunNotStartedReason` 增加 `'fix-loop-active'`，并写明「永不重试」与「手动复核不受影响」                                                                                                                                   |
+| `src/main/reviewer/ipc.ts`                 | `triggerReview` 最前面加**归属闸**：`origin === 'auto'` 且 `fixLoopAbortControllers` 有该会话的键 ⇒ 不启动、返回 `{started:false, reason:'fix-loop-active'}`，并写具名日志 `auto review skipped: the fix loop owns this session` |
+| `src/main/reviewer/correction.ts`          | 新增 `CorrectionFailureReason = 'session-busy' \| 'provenance-failed' \| 'send-failed'` 与 `classifyCorrectionFailure`；失败日志带 `reason`，`onCorrectionFailed(reason)` 把原因交给上层                                         |
+| `src/main/reviewer/orchestrator.ts`        | `CORRECTION_FAILURE_NOTES` 按原因给用户可见说明；`correction failed in fix loop` 一行带上 `reason`；派生 provenance 抛错归 `provenance-failed`                                                                                   |
 
 两条设计判据：① **判据是状态不是时序** —— 修正轮次的生命周期已有权威来源（`fixLoopAbortControllers` 的增删挂在
 `onFixLoopStart` / `onFixLoopEnd` 上），用它比再算一遍时序可靠；闸放在**唯一入口**（`triggerReview`，`run` 与
@@ -59,12 +59,12 @@ IPC 是同一个函数），窗口、Web 面、CLI 三条路一起受管。② *
 
 ## 四 门禁（实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `vitest run src/main/reviewer`（整簇） | **28 files / 350 passed**，exit 0 |
-| 全量 `vitest run --maxWorkers=4` | **1473 passed \| 31 skipped（1504 文件）**；**18414 passed \| 228 skipped（18642）**；235.57 s；exit 0 |
-| `tsc --noEmit`（node / web，`--composite false`，堆 4096） | 各自 exit 0 |
-| `eslint --no-cache .` | **0 error**（本单元 6 个文件 0 error / 0 warning） |
+| 环                                                         | 读数                                                                                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `vitest run src/main/reviewer`（整簇）                     | **28 files / 350 passed**，exit 0                                                                      |
+| 全量 `vitest run --maxWorkers=4`                           | **1473 passed \| 31 skipped（1504 文件）**；**18414 passed \| 228 skipped（18642）**；235.57 s；exit 0 |
+| `tsc --noEmit`（node / web，`--composite false`，堆 4096） | 各自 exit 0                                                                                            |
+| `eslint --no-cache .`                                      | **0 error**（本单元 6 个文件 0 error / 0 warning）                                                     |
 
 **变异自证**：把归属闸的条件短路成 `false && …` ⇒ 新用例当场红
 （`expected { started: true } to deeply equal { started: false, reason: 'fix-loop-active' }`），改回后 35 例全绿。

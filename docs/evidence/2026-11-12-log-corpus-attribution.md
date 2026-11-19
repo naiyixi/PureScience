@@ -7,11 +7,11 @@
 
 按 `msg` 直接聚合（不看会话来源）得到的榜首是：
 
-| 族 | 行数 | 级别 |
-| --- | --- | --- |
+| 族                                                                                  | 行数      | 级别  |
+| ----------------------------------------------------------------------------------- | --------- | ----- |
 | `review protocol incomplete`（"Reviewer stopped without calling submit_findings…"） | **2,670** | error |
-| `ipc handler was slow` | 6,444 | warn |
-| `event loop stalled` | 5,129 | warn |
+| `ipc handler was slow`                                                              | 6,444     | warn  |
+| `event loop stalled`                                                                | 5,129     | warn  |
 
 2,670 条 error 看起来是一次全局性故障。逐行看 `runId`，它们**全部**落在开发版，且同一 run 的
 `reviewer session started` 写着 `e2e-session-*` —— 那是认证车道用替身 agent 驱动的夹具会话，
@@ -25,12 +25,12 @@
 
 四态归属，缺一不可：
 
-| 归属 | 判据 |
-| --- | --- |
-| `real` | 行上（`sessionId` / `mainSessionId` / `appSessionId`）或它所在 run 里的会话 id 全部不是夹具 |
-| `fixture` | 同上，全部以 `e2e` 开头（认证/夹具会话） |
-| `mixed` | 同一个 run 里两种 id 都在场 ⇒ **不替它选边** |
-| `unattributed` | 行上没有 id，同一 run 里也没有 ⇒ 说不出归属就没有归属，**不许默认成 real** |
+| 归属           | 判据                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| `real`         | 行上（`sessionId` / `mainSessionId` / `appSessionId`）或它所在 run 里的会话 id 全部不是夹具 |
+| `fixture`      | 同上，全部以 `e2e` 开头（认证/夹具会话）                                                    |
+| `mixed`        | 同一个 run 里两种 id 都在场 ⇒ **不替它选边**                                                |
+| `unattributed` | 行上没有 id，同一 run 里也没有 ⇒ 说不出归属就没有归属，**不许默认成 real**                  |
 
 两处判据都写进自检：`--selftest` 钉住「借 run 判归属」「两种 id 同在 ⇒ mixed」「无 id 的行是
 unattributed 而不是 real」「空输入无实例」。空答案具名：`no-log-files` 退出 2、`no-rows` 退出 3、

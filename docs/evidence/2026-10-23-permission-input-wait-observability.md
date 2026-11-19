@@ -23,26 +23,26 @@
 日志：`~/Library/Logs/PureScience (DEV)/main*.log` 三份，合计 **36,095** 条 JSON 行，
 窗口 **2026-10-21T14:16:14Z → 2026-10-23T11:02:06Z**。
 
-| 读数 | 值 |
-|---|---|
-| `OpenCode permission context wait timed out` | **290** |
-| `permission request received` | 1,906 |
-| 超时按其归属切分 | 复查会话 **184** / 主会话 **106** |
-| 复查侧形态 | `reviewer_read_turn` 100、`reviewer_read_turn_history` 78、`reviewer_query_execution_log` 6 |
-| 主会话侧形态 | `knowledge_list_sources` 48、`notebook_state` 46、`annotation_list` 11、`notebook_restart` 1 |
-| 主会话超时涉及的会话 | **78** 个，且每个会话都有**自己的** `prompt start`（都是用户真实在用的一轮） |
-| 290 次超时里带 `permission request received` 同 `toolCallId` | **290 / 290**（等待结束后请求都照常走到闸门，不是被打断） |
+| 读数                                                         | 值                                                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `OpenCode permission context wait timed out`                 | **290**                                                                                      |
+| `permission request received`                                | 1,906                                                                                        |
+| 超时按其归属切分                                             | 复查会话 **184** / 主会话 **106**                                                            |
+| 复查侧形态                                                   | `reviewer_read_turn` 100、`reviewer_read_turn_history` 78、`reviewer_query_execution_log` 6  |
+| 主会话侧形态                                                 | `knowledge_list_sources` 48、`notebook_state` 46、`annotation_list` 11、`notebook_restart` 1 |
+| 主会话超时涉及的会话                                         | **78** 个，且每个会话都有**自己的** `prompt start`（都是用户真实在用的一轮）                 |
+| 290 次超时里带 `permission request received` 同 `toolCallId` | **290 / 290**（等待结束后请求都照常走到闸门，不是被打断）                                    |
 
 **主会话侧的白等量**：106 × 1,000 ms = **106,000 ms ≈ 1 分 46 秒**，全部花在**应用自有 MCP 工具**上
 （都是读类：列来源、读笔记本状态、列批注，外加 1 次 `notebook_restart`）。
 
 ### 2.1 复查那一半已经在真机上确认修好了
 
-| 时间（UTC） | 事件 |
-|---|---|
-| 2026-10-23T05:41:32.949Z | 最后一条 `wait timed out` |
+| 时间（UTC）              | 事件                                                                      |
+| ------------------------ | ------------------------------------------------------------------------- |
+| 2026-10-23T05:41:32.949Z | 最后一条 `wait timed out`                                                 |
 | 2026-10-23T05:41:44.220Z | 第一条 `skipping OpenCode input wait`（`reason: identity-only-decision`） |
-| 之后到日志末尾 11:02:06Z | 一共 **5** 条 skip，**0** 条超时 |
+| 之后到日志末尾 11:02:06Z | 一共 **5** 条 skip，**0** 条超时                                          |
 
 也就是说 `01f86101` 那条「要不要等入参由调用方自报」在**真机跑过、并且真的把复查侧的等待关掉了**：
 skip 出现之后，同一段日志里再没有一次复查超时。这条以前只有单测，现在有真机读数。
@@ -62,25 +62,25 @@ skip 出现之后，同一段日志里再没有一次复查超时。这条以前
 
 ## 3 交付
 
-| 位置 | 改动 |
-|---|---|
-| `permission-broker.ts` | `recordPermissionDecision` 补齐**四态**：`automatic`（首判与「实时自动放行」两条路）、`remembered-grant`、`session-grant`、**`card`**（`enqueuePermissionRequest`，即真正弹卡那一刻）。字段只有 `sessionId / toolCallId / decision / isMcp / rawInput('present'|'missing') / tool / profile`：**不记标题、不记入参内容**，`rawInput` 只报「有没有」——那 1 秒等的正是它 |
-| `permission-context.ts` | 新回调 `onOpenCodeInputWaitOutcome`：**每一次**走过这条路的请求都报一次 `input-present / resolved / timeout / cancelled` 与 `waitedMs`（`resolved` 以前**一声不响**，现在有分母了） |
-| 同上 | 新回调 `onOpenCodeToolCallUpdateUnusable`：带**入参**的 `tool_call` 更新被丢弃时具名报出 `reason: 'not-an-mcp-title' | 'unresolved-identity'` 与**标题**（工具名，截断 120 字符；**从不记入参本身**）。上面 A/B 的判据就落在这里 |
-| 同上 | 新回调 `onOpenCodeInputArrivedLate`：超时**之后**才到的入参报 `lateMs`（按 `toolCallId` 有界记账，上限 32/会话，会话清理即删）。A/B 之外还有第三种成因 C——「只是迟了」，这条把它分出来 |
-| `runtime-session-composition.ts` | 三条回调接成三条具名日志：`OpenCode permission input wait outcome` / `OpenCode tool call update unusable as permission input`（warn）/ `OpenCode permission input arrived after the wait gave up` |
-| 用例 | 新增 5 条：决定四态的取值顺序（`automatic` → `card` → `session-grant`）且**不含入参内容**；`input-present` 不计时；`resolved` 报 `waitedMs: 40`；`timeout` 报 `waitedMs: 1000` 且随后到达的入参报 `lateMs: 250`、**只报一次**；不可用更新报 `reason`+`title`，**没带入参的更新不产生噪声** |
+| 位置                             | 改动                                                                                                                                                                                                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `permission-broker.ts`           | `recordPermissionDecision` 补齐**四态**：`automatic`（首判与「实时自动放行」两条路）、`remembered-grant`、`session-grant`、**`card`**（`enqueuePermissionRequest`，即真正弹卡那一刻）。字段只有 `sessionId / toolCallId / decision / isMcp / rawInput('present'                            | 'missing') / tool / profile`：**不记标题、不记入参内容**，`rawInput` 只报「有没有」——那 1 秒等的正是它    |
+| `permission-context.ts`          | 新回调 `onOpenCodeInputWaitOutcome`：**每一次**走过这条路的请求都报一次 `input-present / resolved / timeout / cancelled` 与 `waitedMs`（`resolved` 以前**一声不响**，现在有分母了）                                                                                                        |
+| 同上                             | 新回调 `onOpenCodeToolCallUpdateUnusable`：带**入参**的 `tool_call` 更新被丢弃时具名报出 `reason: 'not-an-mcp-title'                                                                                                                                                                       | 'unresolved-identity'` 与**标题**（工具名，截断 120 字符；**从不记入参本身**）。上面 A/B 的判据就落在这里 |
+| 同上                             | 新回调 `onOpenCodeInputArrivedLate`：超时**之后**才到的入参报 `lateMs`（按 `toolCallId` 有界记账，上限 32/会话，会话清理即删）。A/B 之外还有第三种成因 C——「只是迟了」，这条把它分出来                                                                                                     |
+| `runtime-session-composition.ts` | 三条回调接成三条具名日志：`OpenCode permission input wait outcome` / `OpenCode tool call update unusable as permission input`（warn）/ `OpenCode permission input arrived after the wait gave up`                                                                                          |
+| 用例                             | 新增 5 条：决定四态的取值顺序（`automatic` → `card` → `session-grant`）且**不含入参内容**；`input-present` 不计时；`resolved` 报 `waitedMs: 40`；`timeout` 报 `waitedMs: 1000` 且随后到达的入参报 `lateMs: 250`、**只报一次**；不可用更新报 `reason`+`title`，**没带入参的更新不产生噪声** |
 
 ## 4 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `npx vitest run src/main/acp/permission-context.test.ts src/main/acp/permission-broker.test.ts` | **2 files / 116 passed**，exit 0 |
-| 新增 5 条用例 | 逐个具名跑出（`--reporter=verbose` 命中 5/5） |
-| **变异自证**（同时挖掉三处：`card` 决定记录、等待结果回调、不可用更新回调） | 恰好 **4 条红**：决定记录 1 条、`resolved` 1 条、`timeout`/`lateMs` 1 条、不可用更新 1 条（`4 failed | 112 passed`）；恢复后 116 全绿 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
-| `eslint --no-cache`（本单元 5 文件） | **0 error**（顺手修掉一条 prettier 折行告警，现 0 problems） |
-| `npx vitest run src/main/acp --maxWorkers=2`（整个域） | **89 files / 1457 passed**，exit 0 |
+| 环                                                                                              | 读数                                                                                                 |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npx vitest run src/main/acp/permission-context.test.ts src/main/acp/permission-broker.test.ts` | **2 files / 116 passed**，exit 0                                                                     |
+| 新增 5 条用例                                                                                   | 逐个具名跑出（`--reporter=verbose` 命中 5/5）                                                        |
+| **变异自证**（同时挖掉三处：`card` 决定记录、等待结果回调、不可用更新回调）                     | 恰好 **4 条红**：决定记录 1 条、`resolved` 1 条、`timeout`/`lateMs` 1 条、不可用更新 1 条（`4 failed | 112 passed`）；恢复后 116 全绿 |
+| 双 typecheck（`--composite false`，堆 8192）                                                    | node **0**；web **0**                                                                                |
+| `eslint --no-cache`（本单元 5 文件）                                                            | **0 error**（顺手修掉一条 prettier 折行告警，现 0 problems）                                         |
+| `npx vitest run src/main/acp --maxWorkers=2`（整个域）                                          | **89 files / 1457 passed**，exit 0                                                                   |
 
 ## 5 边界（不许读成更强）
 
@@ -97,12 +97,12 @@ skip 出现之后，同一段日志里再没有一次复查超时。这条以前
 
 dev 实例下次以本提交构建重启后，按这四张表读数，**修法由数决定**：
 
-| 读数 | 读法 |
-|---|---|
-| `OpenCode permission input wait outcome` 按 `outcome` 计数 | `resolved` 占比 ≈ 0 ⇒ 这条等待在主会话族里**从来没买到过东西**，可考虑按族跳过（沿用 `awaitsProviderInput` 那条既有缝）；`resolved` 有可观占比 ⇒ 等待有效，只能谈「值不值这 1 秒」 |
-| `permission decision` 按 `decision` 计数（同一批 `sessionId`） | 那 106 形态若是 `automatic`/`remembered-grant`/`session-grant` ⇒ **没人看过入参**，等待是纯延迟；若是 `card` ⇒ 卡片确实需要它 |
-| `OpenCode tool call update unusable as permission input` | 出现 `not-an-mcp-title` + 裸工具名形态 ⇒ 成因 B（**我们的判据丢了入参**），修缓存键/身份判据，**不许**去放宽等待 |
-| `OpenCode permission input arrived after the wait gave up` 的 `lateMs` 分布 | 出现即成因 C（只是迟了）⇒ 修法是放宽或改成「先发卡、后补入参」，**不是删掉等待** |
+| 读数                                                                        | 读法                                                                                                                                                                               |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenCode permission input wait outcome` 按 `outcome` 计数                  | `resolved` 占比 ≈ 0 ⇒ 这条等待在主会话族里**从来没买到过东西**，可考虑按族跳过（沿用 `awaitsProviderInput` 那条既有缝）；`resolved` 有可观占比 ⇒ 等待有效，只能谈「值不值这 1 秒」 |
+| `permission decision` 按 `decision` 计数（同一批 `sessionId`）              | 那 106 形态若是 `automatic`/`remembered-grant`/`session-grant` ⇒ **没人看过入参**，等待是纯延迟；若是 `card` ⇒ 卡片确实需要它                                                      |
+| `OpenCode tool call update unusable as permission input`                    | 出现 `not-an-mcp-title` + 裸工具名形态 ⇒ 成因 B（**我们的判据丢了入参**），修缓存键/身份判据，**不许**去放宽等待                                                                   |
+| `OpenCode permission input arrived after the wait gave up` 的 `lateMs` 分布 | 出现即成因 C（只是迟了）⇒ 修法是放宽或改成「先发卡、后补入参」，**不是删掉等待**                                                                                                   |
 
 一句话：**先让这四张表有数，再决定那 1 秒该不该付**；本轮只是把「付没付、付给谁、等到了没有」变成可核对的四行。
 

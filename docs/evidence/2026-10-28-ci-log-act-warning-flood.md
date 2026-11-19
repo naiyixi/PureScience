@@ -10,10 +10,10 @@
 
 先按「读真数据」核这两次读数（作业级日志各自下载、逐行统计）：
 
-| 作业 | 提交 | 结论 | 日志 | 那句警告占 |
-| --- | --- | --- | --- | --- |
+| 作业                 | 提交       | 结论    | 日志                 | 那句警告占                     |
+| -------------------- | ---------- | ------- | -------------------- | ------------------------------ |
 | `122402006892`（绿） | `6705c088` | success | 12.41MB / 119,643 行 | **77,419 行 / 7.73MB = 62.4%** |
-| `122148662592`（红） | `dae37ac3` | failure | 11.86MB / 114,797 行 | **77,421 行 = 67.4%** |
+| `122148662592`（红） | `dae37ac3` | failure | 11.86MB / 114,797 行 | **77,421 行 = 67.4%**          |
 
 **那条「看不到汇总」在这两份日志上都没有复现**：红的那份在第 114,749 行有
 `Test Files 112 failed | 1290 passed | 21 skipped (1423)`，第 114,758 行还有根因
@@ -33,8 +33,9 @@ The current testing environment is not configured to support act(...)
 `react-dom` 的 `isConcurrentActEnvironment()`（`node_modules/react-dom/cjs/react-dom-client.development.js:16316`）：
 
 ```js
-isReactActEnvironmentGlobal || null === ReactSharedInternals.actQueue || console.error(
-  'The current testing environment is not configured to support act(...)')
+isReactActEnvironmentGlobal ||
+  null === ReactSharedInternals.actQueue ||
+  console.error('The current testing environment is not configured to support act(...)')
 ```
 
 即：**只要 `IS_REACT_ACT_ENVIRONMENT` 不为真，而当前又在 `act()` 里**（`actQueue` 非空），
@@ -68,11 +69,11 @@ isReactActEnvironmentGlobal || null === ReactSharedInternals.actQueue || console
 
 ## 四 本机读数（verbose reporter：与 CI 那份日志同形）
 
-| 面 | 改前 | 改后 |
-| --- | --- | --- |
-| 三个最大来源（159 用例） | 43,171 行警告 / 3,283,319 字节 | **0 行 / 71,260 字节（-97.8%）** |
-| 三个最大来源的用例 | 159 passed | **159 passed** |
-| 全部 jsdom 面（264 文件） | —— | **2,685 passed + 1 skipped，0 失败，0 行警告**，耗时 1,070.95s |
+| 面                        | 改前                           | 改后                                                           |
+| ------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| 三个最大来源（159 用例）  | 43,171 行警告 / 3,283,319 字节 | **0 行 / 71,260 字节（-97.8%）**                               |
+| 三个最大来源的用例        | 159 passed                     | **159 passed**                                                 |
+| 全部 jsdom 面（264 文件） | ——                             | **2,685 passed + 1 skipped，0 失败，0 行警告**，耗时 1,070.95s |
 
 门禁：`eslint --no-cache`（2 文件）**0 error / 0 warning**；双 typecheck（`--composite false`，堆 8192）
 node **0** / web **0**；`test/vitest-project-partition.test.ts` 与新守卫 15 passed；
@@ -82,14 +83,14 @@ node **0** / web **0**；`test/vitest-project-partition.test.ts` 与新守卫 15
 
 - **CI 侧读数（`2ccb6f8c` 的 Verify 作业落定后现取；同一车道、相邻两笔）**：
 
-| `build / Verify` 作业日志 | `6705c088`（改前） | `2ccb6f8c`（改后） | 差 |
-| --- | --- | --- | --- |
-| 字节 | 12,416,905 | **2,999,734** | **−75.8%** |
-| 行数 | 119,643 | **30,568** | **−74.5%** |
-| 那句 act 警告 | 77,419 行 | **0 行** | 清零 |
-| `Test Files` | 1401 passed \| 24 skipped (1425) | 1402 passed \| 24 skipped (1426) | +1（新守卫用例那个文件） |
-| `Tests` | 17,763 passed \| 219 skipped | 17,764 passed \| 219 skipped | +1 |
-| `Duration` | 781.49s | 613.82s | −167.7s（**读数，不归因**：执行机与负载未受控） |
+| `build / Verify` 作业日志 | `6705c088`（改前）               | `2ccb6f8c`（改后）               | 差                                              |
+| ------------------------- | -------------------------------- | -------------------------------- | ----------------------------------------------- |
+| 字节                      | 12,416,905                       | **2,999,734**                    | **−75.8%**                                      |
+| 行数                      | 119,643                          | **30,568**                       | **−74.5%**                                      |
+| 那句 act 警告             | 77,419 行                        | **0 行**                         | 清零                                            |
+| `Test Files`              | 1401 passed \| 24 skipped (1425) | 1402 passed \| 24 skipped (1426) | +1（新守卫用例那个文件）                        |
+| `Tests`                   | 17,763 passed \| 219 skipped     | 17,764 passed \| 219 skipped     | +1                                              |
+| `Duration`                | 781.49s                          | 613.82s                          | −167.7s（**读数，不归因**：执行机与负载未受控） |
 
 - 86 个文件的逐文件声明**保留**：删掉是零行为收益、动 86 个文件的改动；台面上它只是冗余，
   单一来源已经是 setup 里那一行。

@@ -18,18 +18,18 @@
 
 ## 二 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/native-dialog-strings.ts` | 新增 `FILE_DIALOG_STRINGS`（`Record<NativeLocaleCode, FileDialogStrings>`，20 个字段 × 9 语）。英文值与改动前的字面量逐字节相同，**唯一例外**是覆盖确认的**单数分支**：原文 `1 notebook already exist`（复数加了 s、动词没改）在函数化后改成 `1 notebook already exists`，用例把两个分支都钉住。 |
-| `src/main/native-file-dialogs.ts`（新） | 11 个导出的纯构造函数，每个接受可选语言码（缺省走 `app.getLocale()` 级联）：连接器配置导入/导出、会话包导入/导出、支持包导出、更新安装包保存、受管文件保存、产物保存、产物目录选择、批注导出（按 `notes`/`annotated-pdf` 两频道）、笔记本按内核导出、覆盖确认。 |
-| `src/main/ipc.ts` | 4 处改用构造函数（连接器配置导入/导出、会话包导入、批注导出）。 |
-| `src/main/session-package/ipc.ts` | 导出面板改用 `sessionPackageSavePanelOptions`；扩展名仍取自 `SESSION_PACKAGE_EXTENSION` 单一来源。 |
-| `src/main/diagnostics/support-bundle-ipc.ts` | 支持包导出面板改用构造函数。 |
-| `src/main/update/service.ts` | 更新安装包保存面板改用构造函数。 |
-| `src/main/file-save.ts` | 三处（受管文件保存 / 产物保存 / 产物目录）改用构造函数。 |
-| `src/main/notebook/save-ipynb-all.ts` | 目录选择与覆盖确认改用构造函数；`ElectronSurface` 的两个对话框参数类型改为 Electron 自己的 `OpenDialogOptions`/`MessageBoxOptions`（原来手抄的子集连平台合法的 `type: 'none'` 都不接受）。 |
-| `src/main/native-file-dialogs.test.ts`（新） | 12 个面板 × 9 语的三向断言（读的是本语言那一行 / 英文逐字节等同旧字面量 / 任何非英文行都不得等于英文句）；OS 级联（`de-DE`、`zh-TW`、未知 `pt-BR` 落英文）；覆盖确认的 `defaultId=cancelId=1`、英文单复数、俄语三种形式、中日韩无复数变化；六个调用点不再含旧英文句（剥注释后扫）。 |
-| `src/main/native-dialog-strings.test.ts` | 新增表纪律：九语齐、每句非空、非英文不得等于英文、`zh-Hant` 不得夹简体独有字符、13 个面板标题在同语言内互不相同（防「整表抄成一句」）。 |
+| 位置                                         | 改动                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/native-dialog-strings.ts`          | 新增 `FILE_DIALOG_STRINGS`（`Record<NativeLocaleCode, FileDialogStrings>`，20 个字段 × 9 语）。英文值与改动前的字面量逐字节相同，**唯一例外**是覆盖确认的**单数分支**：原文 `1 notebook already exist`（复数加了 s、动词没改）在函数化后改成 `1 notebook already exists`，用例把两个分支都钉住。 |
+| `src/main/native-file-dialogs.ts`（新）      | 11 个导出的纯构造函数，每个接受可选语言码（缺省走 `app.getLocale()` 级联）：连接器配置导入/导出、会话包导入/导出、支持包导出、更新安装包保存、受管文件保存、产物保存、产物目录选择、批注导出（按 `notes`/`annotated-pdf` 两频道）、笔记本按内核导出、覆盖确认。                                  |
+| `src/main/ipc.ts`                            | 4 处改用构造函数（连接器配置导入/导出、会话包导入、批注导出）。                                                                                                                                                                                                                                  |
+| `src/main/session-package/ipc.ts`            | 导出面板改用 `sessionPackageSavePanelOptions`；扩展名仍取自 `SESSION_PACKAGE_EXTENSION` 单一来源。                                                                                                                                                                                               |
+| `src/main/diagnostics/support-bundle-ipc.ts` | 支持包导出面板改用构造函数。                                                                                                                                                                                                                                                                     |
+| `src/main/update/service.ts`                 | 更新安装包保存面板改用构造函数。                                                                                                                                                                                                                                                                 |
+| `src/main/file-save.ts`                      | 三处（受管文件保存 / 产物保存 / 产物目录）改用构造函数。                                                                                                                                                                                                                                         |
+| `src/main/notebook/save-ipynb-all.ts`        | 目录选择与覆盖确认改用构造函数；`ElectronSurface` 的两个对话框参数类型改为 Electron 自己的 `OpenDialogOptions`/`MessageBoxOptions`（原来手抄的子集连平台合法的 `type: 'none'` 都不接受）。                                                                                                       |
+| `src/main/native-file-dialogs.test.ts`（新） | 12 个面板 × 9 语的三向断言（读的是本语言那一行 / 英文逐字节等同旧字面量 / 任何非英文行都不得等于英文句）；OS 级联（`de-DE`、`zh-TW`、未知 `pt-BR` 落英文）；覆盖确认的 `defaultId=cancelId=1`、英文单复数、俄语三种形式、中日韩无复数变化；六个调用点不再含旧英文句（剥注释后扫）。              |
+| `src/main/native-dialog-strings.test.ts`     | 新增表纪律：九语齐、每句非空、非英文不得等于英文、`zh-Hant` 不得夹简体独有字符、13 个面板标题在同语言内互不相同（防「整表抄成一句」）。                                                                                                                                                          |
 
 术语不是新造的：连接器配置 / 支持包 / 会话包的九语用词逐字取自已上线的 `src/renderer/src/i18n/*.ts`
 （`settings.importConnectorConfig`、`settings.supportBundle`、`sessions.packageExport.title`），
@@ -37,13 +37,13 @@
 
 ## 三 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（新表 + 构造器 + file-save + save-ipynb-all + diagnostics + update） | 39 files / 468 passed |
-| 双 typecheck（`--composite false`） | node 0 error / web 0 error |
-| `npx eslint --no-cache`（本笔 10 个文件） | 0 error / 0 warning（`--fix` 后复跑） |
-| 全量 vitest `--maxWorkers=4` | **1483 files passed**、31 skipped（1514）；**18627 passed**、228 skipped（18855），exit 0（上轮 1482/18574 ⇒ +1 文件 +53 例） |
-| 变异自证 | ① 构造器里把「保存文件」读成 `saveArtifactTitle` ⇒ 3 条用例红（含英文钉）；② 德语 `connectorFilter` 抄成英文 ⇒ 「非英文不得等于英文」红；③ `zh-Hant` 写成简体「开启档案」⇒ 表纪律用例红并点名 `zh-Hant.saveFileTitle still carries 开`。 |
+| 环                                                                               | 读数                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（新表 + 构造器 + file-save + save-ipynb-all + diagnostics + update） | 39 files / 468 passed                                                                                                                                                                                                                    |
+| 双 typecheck（`--composite false`）                                              | node 0 error / web 0 error                                                                                                                                                                                                               |
+| `npx eslint --no-cache`（本笔 10 个文件）                                        | 0 error / 0 warning（`--fix` 后复跑）                                                                                                                                                                                                    |
+| 全量 vitest `--maxWorkers=4`                                                     | **1483 files passed**、31 skipped（1514）；**18627 passed**、228 skipped（18855），exit 0（上轮 1482/18574 ⇒ +1 文件 +53 例）                                                                                                            |
+| 变异自证                                                                         | ① 构造器里把「保存文件」读成 `saveArtifactTitle` ⇒ 3 条用例红（含英文钉）；② 德语 `connectorFilter` 抄成英文 ⇒ 「非英文不得等于英文」红；③ `zh-Hant` 写成简体「开启档案」⇒ 表纪律用例红并点名 `zh-Hant.saveFileTitle still carries 开`。 |
 
 ## 四 公证第 14 次读数（只记读数，不定性）
 

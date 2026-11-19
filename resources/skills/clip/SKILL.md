@@ -1,6 +1,7 @@
 ---
 name: clip
 description: OpenAI's model connecting vision and language. Enables zero-shot image classification, image-text matching, and cross-modal retrieval. Trained on 400M image-text pairs. Use for image search, content moderation, or vision-language tasks without fine-tuning. Best for general-purpose image understanding.
+description-zh: OpenAI 连接视觉与语言的模型：零样本图像分类、图文匹配与跨模态检索，训练用了 4 亿对图文。适用于图像检索与内容审核。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

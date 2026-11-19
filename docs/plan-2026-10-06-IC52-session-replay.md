@@ -26,12 +26,12 @@
 
 ## 3. 复用的既有件（已逐一核实存在）
 
-| 复用件 | 位置 | 在本单元的角色 |
-|---|---|---|
-| 产物级重放 | `src/main/artifacts/replay-runner.ts`、`replay-composition.ts`、通道 `artifacts:replay-version` | 提供「产物版本 ↔ 内容」的读取面；会话级视图**引用**它而非重造 |
-| 写审计面板 | `src/renderer/src/pages/workspace/WriteAuditPanel.tsx` | 逐步视图里「这一步写了什么」的直接来源与呈现件 |
-| 运行标记轨 | `src/renderer/src/pages/workspace/RunMarksRail.tsx` | 时间线的「运行标记」来源与呈现件（`WorkspaceMessageScroller` 已在用） |
-| 会话记录本身 | 会话文档 + 消息 id（`messageIdsOf` 一条既有写法见 `src/main/session-package/import-session.ts`） | 步骤的骨架与定位锚 |
+| 复用件       | 位置                                                                                             | 在本单元的角色                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| 产物级重放   | `src/main/artifacts/replay-runner.ts`、`replay-composition.ts`、通道 `artifacts:replay-version`  | 提供「产物版本 ↔ 内容」的读取面；会话级视图**引用**它而非重造         |
+| 写审计面板   | `src/renderer/src/pages/workspace/WriteAuditPanel.tsx`                                           | 逐步视图里「这一步写了什么」的直接来源与呈现件                        |
+| 运行标记轨   | `src/renderer/src/pages/workspace/RunMarksRail.tsx`                                              | 时间线的「运行标记」来源与呈现件（`WorkspaceMessageScroller` 已在用） |
+| 会话记录本身 | 会话文档 + 消息 id（`messageIdsOf` 一条既有写法见 `src/main/session-package/import-session.ts`） | 步骤的骨架与定位锚                                                    |
 
 ## 4. 数据从哪来（先说清，再动手）
 

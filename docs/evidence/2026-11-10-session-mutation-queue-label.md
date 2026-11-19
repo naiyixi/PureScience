@@ -6,16 +6,21 @@
 
 `session save was slow` 一行里的 `queueBlockers` 是这条队列的**唯一**归因手段 —— 队列严格串行，所以「谁排在前面」就是谁拖慢了这次保存。九天的日志里带 `queueBlockers` 的行共 **76 条**，阻塞者名称分布：
 
-| 阻塞者名 | 条数 | 中位 | 最大 |
-| --- | --- | --- | --- |
-| `save-session-specialist-binding` | **62** | 378 ms | **17,212 ms** |
-| `read-session-runtime-context` | 9 | 4 ms | 347 ms |
-| `assert-session-available` | 5 | 1,061 ms | 2,882 ms |
+| 阻塞者名                          | 条数   | 中位     | 最大          |
+| --------------------------------- | ------ | -------- | ------------- |
+| `save-session-specialist-binding` | **62** | 378 ms   | **17,212 ms** |
+| `read-session-runtime-context`    | 9      | 4 ms     | 347 ms        |
+| `assert-session-available`        | 5      | 1,061 ms | 2,882 ms      |
 
 单条样例（原样，2026-11-05T16:46:32.353Z）：
 
 ```json
-{"msg":"session save was slow","queuedMs":8192,"queueBlockers":"save-session-specialist-binding=17212ms","totalMs":10696}
+{
+  "msg": "session save was slow",
+  "queuedMs": 8192,
+  "queueBlockers": "save-session-specialist-binding=17212ms",
+  "totalMs": 10696
+}
 ```
 
 同刻的 `sessions:save-session` IPC 行 `durationMs` 20,526 ms —— 也就是说一次保存的两万毫秒里有一万七千毫秒在等别人。
@@ -32,14 +37,14 @@
 
 ## 三 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/session-persistence/coordinator.ts` | `runSessionMutation(projectId, sessionId, mutation, label = 'session-mutation')`；标签改为**调用方传入**；新增 `logSlowSessionMutation`：持有 ≥ 1,000 ms 时打一行 `session mutation held the queue`，带 `label` / `ranMs` / `cpuMs` / `cpuShare` / `attribution`（与慢保存同一套 `cpuAttributionFields`） |
-| `src/main/uploads/command-owner.ts` | 接线签名可选第 4 参 + 调用点 `finalize-session-uploads` |
-| `src/main/artifacts/ipc.ts` | 同上 + `finalize-run-artifacts` / `write-user-edited-version` |
-| `src/main/reviewer/ipc.ts` | 同上 + `review-persist` |
-| `src/main/ipc.ts` | 四处接线转发标签；产物溯源两处调用点标 `artifact-provenance-create-version` / `artifact-provenance-replay` |
-| `src/main/session-persistence/coordinator.test.ts` | 新增 3 例：标签进入自己的慢行与等待者的 `queueBlockers`；缺省标签是中性的 `session-mutation` 且**旧名不再出现**；快于阈值的变异安静 |
+| 位置                                               | 改动                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/session-persistence/coordinator.ts`      | `runSessionMutation(projectId, sessionId, mutation, label = 'session-mutation')`；标签改为**调用方传入**；新增 `logSlowSessionMutation`：持有 ≥ 1,000 ms 时打一行 `session mutation held the queue`，带 `label` / `ranMs` / `cpuMs` / `cpuShare` / `attribution`（与慢保存同一套 `cpuAttributionFields`） |
+| `src/main/uploads/command-owner.ts`                | 接线签名可选第 4 参 + 调用点 `finalize-session-uploads`                                                                                                                                                                                                                                                   |
+| `src/main/artifacts/ipc.ts`                        | 同上 + `finalize-run-artifacts` / `write-user-edited-version`                                                                                                                                                                                                                                             |
+| `src/main/reviewer/ipc.ts`                         | 同上 + `review-persist`                                                                                                                                                                                                                                                                                   |
+| `src/main/ipc.ts`                                  | 四处接线转发标签；产物溯源两处调用点标 `artifact-provenance-create-version` / `artifact-provenance-replay`                                                                                                                                                                                                |
+| `src/main/session-persistence/coordinator.test.ts` | 新增 3 例：标签进入自己的慢行与等待者的 `queueBlockers`；缺省标签是中性的 `session-mutation` 且**旧名不再出现**；快于阈值的变异安静                                                                                                                                                                       |
 
 **两条设计判据**
 
@@ -48,13 +53,13 @@
 
 ## 四 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
+| 环                                                           | 读数                      |
+| ------------------------------------------------------------ | ------------------------- |
 | `session-persistence` + `uploads` + `artifacts` + `reviewer` | **67 files / 957 passed** |
-| `coordinator.test.ts`（含新增 3 例） | **120 passed** |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache`（6 个改动文件） | **0 error / 0 warning** |
+| `coordinator.test.ts`（含新增 3 例）                         | **120 passed**            |
+| `tsc --noEmit -p tsconfig.node.json --composite false`       | exit 0                    |
+| `tsc --noEmit -p tsconfig.web.json --composite false`        | exit 0                    |
+| `eslint --no-cache`（6 个改动文件）                          | **0 error / 0 warning**   |
 
 **变异自证（两次，都还原）**：① 把入队标签改回硬编码旧名 ⇒ 两条新用例当场红（2 failed / 3 passed）；② 删掉 `logSlowSessionMutation` 的调用 ⇒ 同样是那两条红。还原后 120 passed。
 

@@ -16,9 +16,7 @@
     "numbers": false,
     "citations": false
   },
-  "toolCallNames": [
-    "execute"
-  ],
+  "toolCallNames": ["execute"],
   "toolCallCount": 1,
   "result": {
     "caseId": "claim-calibrated-to-evidence",

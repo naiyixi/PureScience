@@ -19,13 +19,13 @@
 3. `server.close()` —— 真的关掉
 4. `module.search('TP53')` 的读数：
 
-| 字段 | 值 | 说明 |
-| --- | --- | --- |
-| `status` | `ok` | 命中来自副本 |
-| `results[0].locator` | `{ kind: 'url', url }` | 与原址一致 |
-| `results[0].sha256` | 正文的 sha256 | 与测试进程独立求值一致 |
-| `results[0].unreadable` | `true` | 验证读不回来 |
-| `results[0].stale` | 未设置 | 「读不到」不是「变了」 |
+| 字段                    | 值                     | 说明                   |
+| ----------------------- | ---------------------- | ---------------------- |
+| `status`                | `ok`                   | 命中来自副本           |
+| `results[0].locator`    | `{ kind: 'url', url }` | 与原址一致             |
+| `results[0].sha256`     | 正文的 sha256          | 与测试进程独立求值一致 |
+| `results[0].unreadable` | `true`                 | 验证读不回来           |
+| `results[0].stale`      | 未设置                 | 「读不到」不是「变了」 |
 
 ## 读数二：检索不联网
 

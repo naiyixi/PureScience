@@ -1,6 +1,7 @@
 ---
 name: outlines
 description: Guarantee valid JSON/XML/code structure during generation, use Pydantic models for type-safe outputs, support local models (Transformers, vLLM), and maximize inference speed with Outlines - dottxt.ai's structured generation library
+description-zh: 用 Outlines 在生成时保证合法的 JSON/XML/代码结构：可配 Pydantic 模型做类型安全输出，支持本地模型（Transformers、vLLM），并尽量提高推理速度。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

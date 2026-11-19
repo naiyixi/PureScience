@@ -12,22 +12,38 @@
 
 **读数**（沙盒会话 `a4217126-9340-4c76-89bb-98324ecca6a2`）：
 
-| 判据 | 读数 |
-| --- | --- |
-| 日志里的回合开始 | `prompt start { sessionId: 'a4217126-…', textLength: 60 }`（＝用户原文长度；注入块没进 `request.text`） |
-| 记录被调用的自证 | `[structure-observations] structure observation recorded { sessionId, kind: 'selection', entries: 1, dropped: 0 }` |
-| 落盘位置 | `<dataRoot>/.structure-observations/a4217126-….json`，`dataRoot = /Users/totota/PureScience-DEV`（与读侧 `resolveDataRoot()` 同一个根） |
-| 文件 | 646 字节、`entries` 1 条、`dropped` 0 |
-| 条目 | `kind=selection`、`recordedAt=2026-10-12T14:26:01.771Z`、`chain=A`、`resi=22-26`、`kind=range` |
-| **与发出去的那份逐字一致** | `schemaVersion / structureId / contentDigest / chain / residueStart / residueEnd / kind / startResidue / endResidue` **九项全 True** |
+| 判据                       | 读数                                                                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 日志里的回合开始           | `prompt start { sessionId: 'a4217126-…', textLength: 60 }`（＝用户原文长度；注入块没进 `request.text`）                                 |
+| 记录被调用的自证           | `[structure-observations] structure observation recorded { sessionId, kind: 'selection', entries: 1, dropped: 0 }`                      |
+| 落盘位置                   | `<dataRoot>/.structure-observations/a4217126-….json`，`dataRoot = /Users/totota/PureScience-DEV`（与读侧 `resolveDataRoot()` 同一个根） |
+| 文件                       | 646 字节、`entries` 1 条、`dropped` 0                                                                                                   |
+| 条目                       | `kind=selection`、`recordedAt=2026-10-12T14:26:01.771Z`、`chain=A`、`resi=22-26`、`kind=range`                                          |
+| **与发出去的那份逐字一致** | `schemaVersion / structureId / contentDigest / chain / residueStart / residueEnd / kind / startResidue / endResidue` **九项全 True**    |
 
 条目原文（摘）：
 
 ```json
-{"entries":[{"recordedAt":"2026-10-12T14:26:01.771Z","kind":"selection",
-"selection":{"schemaVersion":2,"structureId":"file:d3-probe:crambin.pdb","chain":"A",
-"residueStart":22,"residueEnd":26,"startResidue":"PRO","endResidue":"CYS","kind":"range",
-"contentDigest":"sha256:42199a30a0701864a2a5cc76cd7f35cc544cd0e65fbcf63e03c166543249b811"}}],"dropped":0}
+{
+  "entries": [
+    {
+      "recordedAt": "2026-10-12T14:26:01.771Z",
+      "kind": "selection",
+      "selection": {
+        "schemaVersion": 2,
+        "structureId": "file:d3-probe:crambin.pdb",
+        "chain": "A",
+        "residueStart": 22,
+        "residueEnd": 26,
+        "startResidue": "PRO",
+        "endResidue": "CYS",
+        "kind": "range",
+        "contentDigest": "sha256:42199a30a0701864a2a5cc76cd7f35cc544cd0e65fbcf63e03c166543249b811"
+      }
+    }
+  ],
+  "dropped": 0
+}
 ```
 
 ### 这一轮抓到的真缺陷（真机读数才暴露出来的）
@@ -75,8 +91,8 @@
 
 - **P0-11（agent 范围根与真数据根不一致）**：本片两次探针里各复现一条 agent `Bash` 被拒：
   `Refused: /Users/totota/PureScience-DEV/workspaces/<id> is outside this project scope. Project files are read
-  from the project folder itself (/Users/totota/.purescience-project)`。同一批的既有记录见 D2 档。
+from the project folder itself (/Users/totota/.purescience-project)`。同一批的既有记录见 D2 档。
 - **裸 RPC 会话的派发不完整**：`prompt start` 有、工具调用有（日志里两次 `tool call failed`），但
   `sessions:read-document` 回 0 条消息、并有 `Session Plan terminal projection failed: Cannot read runtime
-  context for a missing Session`。**这不影响本片读数**（记录挂在回合准备那一刻，与消息是否落盘无关），
+context for a missing Session`。**这不影响本片读数**（记录挂在回合准备那一刻，与消息是否落盘无关），
   但它说明「拿 agent 的原话当证据」这条路在裸 RPC 会话上不可靠，需要窗口驱动。

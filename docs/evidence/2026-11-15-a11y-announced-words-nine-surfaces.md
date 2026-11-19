@@ -19,19 +19,19 @@
 
 九个面（13 个组件文件）：
 
-| 面 | 改前 | 改后 |
-|---|---|---|
-| 工具代码块复制键 | `'Copied' / 'Copy code'` | `a11y.copied` / `a11y.copyCode` |
-| notebook 代码块复制键 | `'Copy to clipboard'` | `a11y.copyToClipboard` |
-| 上下文用量（压缩键 + 环形图） | `'Compact context' / 'Context used' / 'Estimated context'` | `a11y.compactContext` / `a11y.contextUsed` / `a11y.estimatedContext` |
-| 消息项（复制键 + 模型胶囊） | `'Copy message'`、`` `Model provider: ${name}` `` | `a11y.copyMessage` / `a11y.modelProvider(WithModel)` |
-| 设置页展开/收起 | `'Maximize' / 'Restore'` | `a11y.maximize` / `a11y.restore` |
-| 本地文件浏览器书签键 | `'Pin this folder' / 'Remove bookmark'` | `a11y.pinFolder` / `a11y.removeBookmark` |
-| 计划预览全屏键（`aria-label` 与 `TooltipContent` 各一份） | `'Enter / Exit full screen'` | `a11y.enterFullScreen` / `a11y.exitFullScreen` |
-| 外链安全弹窗 | `aria-label="Open external link?"` | `a11y.openExternalLink` |
-| 项目表单关闭键 / 通用面板 | `'Close'`、`label="Theme"`、mac 之外那句回退文案 | 既有键 `common.close` / `settings.theme` + 新增 `settings.themeFallbackHint` |
-| 连接器工具权限行 | `` `Permission for ${method}` `` | `settings.connectorToolPermission`（带插值） |
-| 专家编辑器移除键 | `` `Remove ${name}` `` | **既有键** `aria.removeItem`（带插值，不新造第二份） |
+| 面                                                        | 改前                                                       | 改后                                                                         |
+| --------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 工具代码块复制键                                          | `'Copied' / 'Copy code'`                                   | `a11y.copied` / `a11y.copyCode`                                              |
+| notebook 代码块复制键                                     | `'Copy to clipboard'`                                      | `a11y.copyToClipboard`                                                       |
+| 上下文用量（压缩键 + 环形图）                             | `'Compact context' / 'Context used' / 'Estimated context'` | `a11y.compactContext` / `a11y.contextUsed` / `a11y.estimatedContext`         |
+| 消息项（复制键 + 模型胶囊）                               | `'Copy message'`、`` `Model provider: ${name}` ``          | `a11y.copyMessage` / `a11y.modelProvider(WithModel)`                         |
+| 设置页展开/收起                                           | `'Maximize' / 'Restore'`                                   | `a11y.maximize` / `a11y.restore`                                             |
+| 本地文件浏览器书签键                                      | `'Pin this folder' / 'Remove bookmark'`                    | `a11y.pinFolder` / `a11y.removeBookmark`                                     |
+| 计划预览全屏键（`aria-label` 与 `TooltipContent` 各一份） | `'Enter / Exit full screen'`                               | `a11y.enterFullScreen` / `a11y.exitFullScreen`                               |
+| 外链安全弹窗                                              | `aria-label="Open external link?"`                         | `a11y.openExternalLink`                                                      |
+| 项目表单关闭键 / 通用面板                                 | `'Close'`、`label="Theme"`、mac 之外那句回退文案           | 既有键 `common.close` / `settings.theme` + 新增 `settings.themeFallbackHint` |
+| 连接器工具权限行                                          | `` `Permission for ${method}` ``                           | `settings.connectorToolPermission`（带插值）                                 |
+| 专家编辑器移除键                                          | `` `Remove ${name}` ``                                     | **既有键** `aria.removeItem`（带插值，不新造第二份）                         |
 
 新键 20 个（`a11y.*` 17 个 + `settings.*` 2 个）在九份字典里齐全；`en` 与 `zh` 值不同形。
 
@@ -45,11 +45,11 @@
 
 ## 四 门禁（本机实跑，改动覆盖的全部目录）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（`i18n` + `pages/workspace` + `pages/settings` + `pages/home` + `components/streamdown`） | 270 files / 2812 passed、1 skipped，exit 0 |
-| 双 typecheck（`typecheck` = node + web，`--composite false`，`NODE_OPTIONS=--max-old-space-size=8192`） | node 0 / web 0 |
-| `npx eslint --no-cache`（本笔全部 22 个改动文件） | 0 problems（exit 0） |
+| 环                                                                                                      | 读数                                       |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 定向 vitest（`i18n` + `pages/workspace` + `pages/settings` + `pages/home` + `components/streamdown`）   | 270 files / 2812 passed、1 skipped，exit 0 |
+| 双 typecheck（`typecheck` = node + web，`--composite false`，`NODE_OPTIONS=--max-old-space-size=8192`） | node 0 / web 0                             |
+| `npx eslint --no-cache`（本笔全部 22 个改动文件）                                                       | 0 problems（exit 0）                       |
 
 ## 五 边界与具名未办
 

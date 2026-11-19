@@ -20,28 +20,28 @@
 
 ## 二 五张卡片（每张都取自本仓已有的真机读数档）
 
-| 卡片 | 证据档 | 卡片上的读数 |
-| --- | --- | --- |
-| 外部 MCP 客户端读本机（F1） | `docs/evidence/2026-10-30-f1-external-mcp.md` | `tools/list` 四个名字逐字、`1 passed (7.8s)`、拒绝码 `session-not-found`、审计行 scope `external mcp call` |
-| 引文发现（B2） | `docs/evidence/2026-10-29-b2-citation-discovery.md` | `83,700`、`examined=50`、200 行样本 194 行、判据 `doi-prefix` |
-| 会话包复算（D1/D2） | `…-d1-session-package-transport.md` + `…-d2-package-readings-recompute.md` | payload 摘要 `d36518b53a7d`、CLI 导出 `326 ms`、导入 `233 ms`、`"state": "match"` |
-| 长会话可读性（E1/E2） | `docs/evidence/2026-10-29-e1-e2-long-session-readings.md` | `1 passed (11.8 s)`、`2 steps`、`usage not recorded` |
-| DOCX 表格保真（H2） | `docs/evidence/2026-10-30-h2-docx-table-fidelity.md` | `1 passed (7.0s)`、`9 passed`、`43 files / 353 passed`、`3.21 px`、`0.80 px` |
+| 卡片                        | 证据档                                                                     | 卡片上的读数                                                                                               |
+| --------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 外部 MCP 客户端读本机（F1） | `docs/evidence/2026-10-30-f1-external-mcp.md`                              | `tools/list` 四个名字逐字、`1 passed (7.8s)`、拒绝码 `session-not-found`、审计行 scope `external mcp call` |
+| 引文发现（B2）              | `docs/evidence/2026-10-29-b2-citation-discovery.md`                        | `83,700`、`examined=50`、200 行样本 194 行、判据 `doi-prefix`                                              |
+| 会话包复算（D1/D2）         | `…-d1-session-package-transport.md` + `…-d2-package-readings-recompute.md` | payload 摘要 `d36518b53a7d`、CLI 导出 `326 ms`、导入 `233 ms`、`"state": "match"`                          |
+| 长会话可读性（E1/E2）       | `docs/evidence/2026-10-29-e1-e2-long-session-readings.md`                  | `1 passed (11.8 s)`、`2 steps`、`usage not recorded`                                                       |
+| DOCX 表格保真（H2）         | `docs/evidence/2026-10-30-h2-docx-table-fidelity.md`                       | `1 passed (7.0s)`、`9 passed`、`43 files / 353 passed`、`3.21 px`、`0.80 px`                               |
 
 「原话」一栏放的是**产品自己产出的句子**（日志行、拒绝文案、spec 的 console 输出），并注明出处
 （`main.log` / 返回给客户端的拒绝文案 / spec 输出），不是我们转述。
 
 ## 三 门禁与读数（全部实跑；数字取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（内容守卫 + 交互） | **2 files / 7 passed** |
-| 内容守卫的变异探针 | 把 `1 passed (7.8s)` 改成 `7.9s` ⇒ **1 failed**，报 `external-mcp: reading "1 passed (7.9s)" is not in docs/evidence/2026-10-30-f1-external-mcp.md`；还原后 4 passed |
-| 首页与 i18n 全族 | **10 files / 87 passed**（含 `translation-quality`：25 个新键九语齐平、zh ≠ en、zh-Hant 无简体残留） |
-| 真机（`build:e2e` 后 `npx playwright test … --workers=1`） | **1 passed (6.8s)**，同日第二次 **1 passed (7.7s)** |
-| 真机的变异探针 | 同一份 spec，把读数改成 `8.1s` 重建后 ⇒ **1 failed**：`Expected substring: "1 passed (7.8s)"`、`Received: … spec1 passed (8.1s) …`；还原重建后复绿（7.7s） |
-| `tsc --noEmit`（node / web，`--composite false`，堆 8192） | **0 / 0** |
-| `eslint --no-cache`（本批 6 个源文件 + spec） | **0 error**（新文件 4 处 prettier 折行已 `--fix`） |
+| 环                                                         | 读数                                                                                                                                                                 |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（内容守卫 + 交互）                             | **2 files / 7 passed**                                                                                                                                               |
+| 内容守卫的变异探针                                         | 把 `1 passed (7.8s)` 改成 `7.9s` ⇒ **1 failed**，报 `external-mcp: reading "1 passed (7.9s)" is not in docs/evidence/2026-10-30-f1-external-mcp.md`；还原后 4 passed |
+| 首页与 i18n 全族                                           | **10 files / 87 passed**（含 `translation-quality`：25 个新键九语齐平、zh ≠ en、zh-Hant 无简体残留）                                                                 |
+| 真机（`build:e2e` 后 `npx playwright test … --workers=1`） | **1 passed (6.8s)**，同日第二次 **1 passed (7.7s)**                                                                                                                  |
+| 真机的变异探针                                             | 同一份 spec，把读数改成 `8.1s` 重建后 ⇒ **1 failed**：`Expected substring: "1 passed (7.8s)"`、`Received: … spec1 passed (8.1s) …`；还原重建后复绿（7.7s）           |
+| `tsc --noEmit`（node / web，`--composite false`，堆 8192） | **0 / 0**                                                                                                                                                            |
+| `eslint --no-cache`（本批 6 个源文件 + spec）              | **0 error**（新文件 4 处 prettier 折行已 `--fix`）                                                                                                                   |
 
 真机那次 spec 自己的读数行（取自 `test-results/app-process/001-…log` 同轮输出）：
 

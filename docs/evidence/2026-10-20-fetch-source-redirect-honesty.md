@@ -16,10 +16,10 @@
 **第二面（诚实性）**：即使把回落补上，`finalUrl` 也只是「请求的 URL」而已。读者（审查员模型）拿到它
 无法区分两件不同的事：
 
-| 平台报了什么 | 事实 | 能下的结论 |
-| --- | --- | --- |
-| 报了一个不同的 URL | 跟随了跳转 | 页面身份 = `finalUrl` |
-| 报的与请求一致 | 没跳转 | 页面身份 = 请求 URL |
+| 平台报了什么       | 事实             | 能下的结论                                 |
+| ------------------ | ---------------- | ------------------------------------------ |
+| 报了一个不同的 URL | 跟随了跳转       | 页面身份 = `finalUrl`                      |
+| 报的与请求一致     | 没跳转           | 页面身份 = 请求 URL                        |
 | 什么都没报（空串） | 不知道有没有跳转 | **不能声称**页面身份，也不能声称「没跳转」 |
 
 第三种在旧实现里与第二种**同形**（都回落成请求 URL）⇒ 模型会把「我没拿到」读成「我确认过了」。
@@ -37,16 +37,16 @@
 
 ## 3 读数（全部实跑）
 
-| 项 | 读数 |
-| --- | --- |
-| 单元套件（三个改动文件的测试） | `3 files / 60 passed` |
-| 其中新增三条 | `none`（平台确认请求 URL）、`followed`（平台报了另一个 URL）、`not-reported`（空串仍能读出正文） |
-| 反向门（证明用例不是摆设） | 把实现换回 `response.url ?? url` 且只留新用例 ⇒ `1 failed / 7 passed`，报错**逐字**是 `TypeError: Invalid URL: `（与真机日志同形） |
-| 审查员整簇 + 桥接集成 | `24 passed | 1 skipped`（25 文件）、`281 passed | 3 skipped` |
-| 双 typecheck | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0** |
-| lint（本次改动的 7 个文件，`--no-cache`） | **0 error / 0 warning** |
-| 真进程探针（生产代码 esbuild 打包 + 真 `node` + 真 HTTP 服务，302 跳转） | `/plain` ⇒ `redirect: none`、`finalUrl` = 请求 URL；`/start` ⇒ `redirect: followed`、`finalUrl` = `/final`、`title` 取自落地页 |
-| 全量单测 `--maxWorkers=4` | **1346 files / 17209 passed**（16 skipped files、207 skipped 用例，exit 0） |
+| 项                                                                       | 读数                                                                                                                               |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 单元套件（三个改动文件的测试）                                           | `3 files / 60 passed`                                                                                                              |
+| 其中新增三条                                                             | `none`（平台确认请求 URL）、`followed`（平台报了另一个 URL）、`not-reported`（空串仍能读出正文）                                   |
+| 反向门（证明用例不是摆设）                                               | 把实现换回 `response.url ?? url` 且只留新用例 ⇒ `1 failed / 7 passed`，报错**逐字**是 `TypeError: Invalid URL: `（与真机日志同形） |
+| 审查员整簇 + 桥接集成                                                    | `24 passed                                                                                                                         | 1 skipped`（25 文件）、`281 passed | 3 skipped` |
+| 双 typecheck                                                             | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0**                      |
+| lint（本次改动的 7 个文件，`--no-cache`）                                | **0 error / 0 warning**                                                                                                            |
+| 真进程探针（生产代码 esbuild 打包 + 真 `node` + 真 HTTP 服务，302 跳转） | `/plain` ⇒ `redirect: none`、`finalUrl` = 请求 URL；`/start` ⇒ `redirect: followed`、`finalUrl` = `/final`、`title` 取自落地页     |
+| 全量单测 `--maxWorkers=4`                                                | **1346 files / 17209 passed**（16 skipped files、207 skipped 用例，exit 0）                                                        |
 
 真进程探针的接线：`--alias:electron=<shim>`（shim 的 `net.fetch` 就是 node 自己的 fetch），
 其余全是产品代码（导航策略、`withCorrelatedFetch`、jsdom 抽取、日志）。**这样探针能证到的两种状态是

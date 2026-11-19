@@ -1,6 +1,7 @@
 ---
 name: paperzilla
 description: Reads projects, searches project feeds, and retrieves recommendations and canonical papers in Paperzilla through the pz CLI. Supports recent recommendations, paper details, markdown-based summaries, recommendation feedback, JSON export, and Atom feed URLs.
+description-zh: 通过 pz 命令行读取 Paperzilla 中的项目、检索项目流、取回推荐与规范论文：支持最近推荐、论文详情与 Markdown 导出。
 license: MIT
 compatibility: Requires the pz CLI, network access, and a Paperzilla account with CLI access. Source builds require Go 1.23 or later.
 metadata:

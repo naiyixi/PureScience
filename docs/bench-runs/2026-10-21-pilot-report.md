@@ -4,24 +4,24 @@
 
 ## 环境
 
-| 项 | 值 |
-|---|---|
-| 应用 | 构建产物 `out/`（v2.15.3 + 本轮全部改动） |
-| config root | `/tmp/ps-pilot-a`（从 `/tmp/ps-v2153-root` 复制，实验后已删除） |
-| runtime | `opencode`（claude-code 在本机 egress 到 `api.anthropic.com` 被 `ECONNRESET`，见下） |
-| 模型 | `deepseek-v4-flash`（provider 的 anthropic 兼容端点 `api.deepseek.com/anthropic`） |
-| 种子 | 1 |
-| 权限档 | `full`（headless 没有窗口可点审批卡） |
-| 题 | `checkpoint-resume-order`（origin: v0 case，不依赖外部 API） |
+| 项          | 值                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------ |
+| 应用        | 构建产物 `out/`（v2.15.3 + 本轮全部改动）                                            |
+| config root | `/tmp/ps-pilot-a`（从 `/tmp/ps-v2153-root` 复制，实验后已删除）                      |
+| runtime     | `opencode`（claude-code 在本机 egress 到 `api.anthropic.com` 被 `ECONNRESET`，见下） |
+| 模型        | `deepseek-v4-flash`（provider 的 anthropic 兼容端点 `api.deepseek.com/anthropic`）   |
+| 种子        | 1                                                                                    |
+| 权限档      | `full`（headless 没有窗口可点审批卡）                                                |
+| 题          | `checkpoint-resume-order`（origin: v0 case，不依赖外部 API）                         |
 
 ## 四条记录
 
-| 时间 | arm | 技能文件实况 | runStatus | Pass@1 | 原子 | 判定 |
-|---|---|---|---|---|---|---|
-| 16:23 | full-contract | 19/48 有 contract（但为**旧副本**，实际无 contract） | `regraded` | ✗ | 0.33 | **无效**：技能目录是改动前物化的旧副本，标签与实况不符 |
-| 16:25 | no-contract | **0 个技能目录**（清空后未重新物化） | `completed` | ✗ | 0.33 | **无效**：这一臂实际是"没有技能"，不是"没有契约" |
-| 16:28 | full-contract | 48 个，**19 个带 contract** | `completed` | ✗ | 0.33 | ✅ 有效 |
-| 16:34 | no-contract | 48 个，**0 个带 contract**（`PURESCIENCE_ABLATION=no-contract` 生效） | `completed` | ✗ | 0.33 | ✅ 有效 |
+| 时间  | arm           | 技能文件实况                                                          | runStatus   | Pass@1 | 原子 | 判定                                                   |
+| ----- | ------------- | --------------------------------------------------------------------- | ----------- | ------ | ---- | ------------------------------------------------------ |
+| 16:23 | full-contract | 19/48 有 contract（但为**旧副本**，实际无 contract）                  | `regraded`  | ✗      | 0.33 | **无效**：技能目录是改动前物化的旧副本，标签与实况不符 |
+| 16:25 | no-contract   | **0 个技能目录**（清空后未重新物化）                                  | `completed` | ✗      | 0.33 | **无效**：这一臂实际是"没有技能"，不是"没有契约"       |
+| 16:28 | full-contract | 48 个，**19 个带 contract**                                           | `completed` | ✗      | 0.33 | ✅ 有效                                                |
+| 16:34 | no-contract   | 48 个，**0 个带 contract**（`PURESCIENCE_ABLATION=no-contract` 生效） | `completed` | ✗      | 0.33 | ✅ 有效                                                |
 
 两条有效记录的 findings 完全一致：
 
@@ -44,14 +44,14 @@ no-silent-redo   : true    (没有把重做说成续做)
 
 ## 过程发现（都已变成代码或文档里的前置）
 
-| 现象 | 处理 |
-|---|---|
-| `POST /api/v1/runs` 报 `Project is required.` | 线上字段是 `project`，不是 `projectId`；runner 已按线上形状发送并有测试钉住 |
-| 运行 60 秒后 vitest 报超时，run 仍在跑 | 真实 run 是分钟级；pilot 用例显式设为 25 分钟 |
-| headless 启动后 run 卡在 `permission context wait timed out` | headless 无窗口可点卡；pilot 显式传 `permissionProfile: 'full'` |
-| `claude-code` runtime 起 session 即 `ECONNRESET`（egress 到 `api.anthropic.com`） | 换 `opencode` runtime（本机已安装，且走 provider 的 DeepSeek 端点） |
-| 清空技能目录后不会自动重新物化 | 物化发生在**会话创建**时；臂必须"先清空 → 起会话 → 校验 contract 计数"再判分 |
-| 复制出的 config root 里技能是只读的 | 清理前需 `chmod -R u+w` |
+| 现象                                                                              | 处理                                                                         |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST /api/v1/runs` 报 `Project is required.`                                     | 线上字段是 `project`，不是 `projectId`；runner 已按线上形状发送并有测试钉住  |
+| 运行 60 秒后 vitest 报超时，run 仍在跑                                            | 真实 run 是分钟级；pilot 用例显式设为 25 分钟                                |
+| headless 启动后 run 卡在 `permission context wait timed out`                      | headless 无窗口可点卡；pilot 显式传 `permissionProfile: 'full'`              |
+| `claude-code` runtime 起 session 即 `ECONNRESET`（egress 到 `api.anthropic.com`） | 换 `opencode` runtime（本机已安装，且走 provider 的 DeepSeek 端点）          |
+| 清空技能目录后不会自动重新物化                                                    | 物化发生在**会话创建**时；臂必须"先清空 → 起会话 → 校验 contract 计数"再判分 |
+| 复制出的 config root 里技能是只读的                                               | 清理前需 `chmod -R u+w`                                                      |
 
 ## 复现命令（两臂，顺序执行）
 

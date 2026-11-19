@@ -14,12 +14,12 @@ managedFile 496 行 / artifactLineage 477 行 / artifactVersion 517 行 / manage
 
 三条读各自计时（每项 200 次，先跑一次热身把 Prisma 引擎启动排除在外）：
 
-| 读 | p50 | p90 | max |
-| --- | --- | --- | --- |
-| `managedFileSessionSync.findUnique`（账本） | 0.13 ms | 0.15 ms | 0.60 ms |
-| `artifactLineage.findMany`（裸查，只要 id） | 0.24 ms | 0.25 ms | 2.17 ms |
+| 读                                                   | p50          | p90      | max      |
+| ---------------------------------------------------- | ------------ | -------- | -------- |
+| `managedFileSessionSync.findUnique`（账本）          | 0.13 ms      | 0.15 ms  | 0.60 ms  |
+| `artifactLineage.findMany`（裸查，只要 id）          | 0.24 ms      | 0.25 ms  | 2.17 ms  |
 | `artifactLineage.findMany` + 嵌套 `versions{take:1}` | **15.88 ms** | 16.50 ms | 28.98 ms |
-| `managedFile.findMany`（五行投影） | 0.21 ms | 0.22 ms | 1.21 ms |
+| `managedFile.findMany`（五行投影）                   | 0.21 ms      | 0.22 ms  | 1.21 ms  |
 
 **嵌套那一项是唯一的异常**：裸查 0.24 ms，加上「每个血缘取最新一条已定稿版本」就变成 15.9 ms。
 它与血缘条数成正比——另一个 22 条血缘的会话单次 12.9 ms（≈0.58 ms/条），31 条 = 15.9 ms；
@@ -34,22 +34,22 @@ managedFile 496 行 / artifactLineage 477 行 / artifactVersion 517 行 / manage
 
 同一份语料上，改后走**已交付的函数本体**（不是我在探针里重写的等价物）：
 
-| 形态 | p50 | p90 | max |
-| --- | --- | --- | --- |
-| 交付前（嵌套 `take:1`） | 16.52 ms | 17.94 ms | 48.65 ms |
-| **交付后**（`isFileProjectionCurrent` 本体） | **0.63 ms** | 0.68 ms | 1.12 ms |
+| 形态                                         | p50         | p90      | max      |
+| -------------------------------------------- | ----------- | -------- | -------- |
+| 交付前（嵌套 `take:1`）                      | 16.52 ms    | 17.94 ms | 48.65 ms |
+| **交付后**（`isFileProjectionCurrent` 本体） | **0.63 ms** | 0.68 ms  | 1.12 ms  |
 
 判决一致：同一个会话两种写法都答 `true`；探针另外逐条比对过两种写法产出的 `lineageId → 最新版本 id`
 映射，`same-result=true`（31/31）。
 
 ## 三 门禁与自证
 
-| 环 | 读数 |
-| --- | --- |
-| `src/main/project-files` + `src/main/session-persistence` | **21 files / 351 passed**，exit 0 |
-| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
-| `eslint --no-cache`（改动文件） | 0 error / 0 warning |
-| 变异自证 | 把「按血缘取第一条」改成「最后一条覆盖」（即取最旧版本）⇒ `repository.test.ts` 的 `projects the latest finalized Artifact Version instead of a stale Session descriptor` **当场红**（1 failed / 38 passed）。**已还原并复跑绿** |
+| 环                                                                | 读数                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/project-files` + `src/main/session-persistence`         | **21 files / 351 passed**，exit 0                                                                                                                                                                                               |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0                                                                                                                                                                                                                   |
+| `eslint --no-cache`（改动文件）                                   | 0 error / 0 warning                                                                                                                                                                                                             |
+| 变异自证                                                          | 把「按血缘取第一条」改成「最后一条覆盖」（即取最旧版本）⇒ `repository.test.ts` 的 `projects the latest finalized Artifact Version instead of a stale Session descriptor` **当场红**（1 failed / 38 passed）。**已还原并复跑绿** |
 
 新增 `mutation-projection.test.ts` 三条：① 一个会话多条血缘时**只有一次**版本读（形状钉住，防止有人
 改回按父取一），且最新版本按 `versionNumber` 再按 `id` 取、更晚的 `staging` 行不得胜出；② 行指向旧版本 ⇒ 判陈旧；

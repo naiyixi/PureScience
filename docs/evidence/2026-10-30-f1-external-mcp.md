@@ -31,18 +31,18 @@ spec 起初自己拼读盘：`JSON.parse(doc).session.messages.length`。读数�
 
 ## 三 读数（同一次运行，逐条）
 
-| 判据 | 读数 |
-| --- | --- |
-| 监听 | `external MCP server started { transport: 'tcp', host: '127.0.0.1', port: 63607, tools: 4 }` ⇒ 只绑环回 |
-| `tools/list` | `["list_project_files","list_projects","list_sessions","read_session"]`，与 `surface.ts` 登记表**逐条相同**（名字、`description`、`inputSchema` 三者都比） |
-| `list_projects` | `{"count":1,"projects":[{"id":"cmvum8gy7…","name":"External MCP","description":""}]}` |
-| `list_sessions` | 一条：`{"id":"e2e-session-1","projectId":"cmvum8gy7…","title":"First question","status":"idle","messageCount":2,"updatedAt":"2026-10-30T06:53:15.379Z"}` |
-| `read_session` | `messageCount 2 / messagesReturned 2 / truncated false`；两条正文分别是 `First question` 与 `Deterministic reply: …`；id 与 projectId 与**盘上文档**逐字相同（读法见 §二） |
-| `list_project_files` | `{"projectId":"cmvum8gy7…","count":0,"files":[]}`（本回合没产出文件 ⇒ 空表是实数，不是缺席） |
-| 拒绝路径 | `read_session(sessionId: "no-such-session")` ⇒ `isError: true`，`{"error":{"code":"session-not-found","message":"No session has id \"no-such-session\". Call list_sessions for the ids this machine holds."}}` |
-| 审计行 | 同一轮主日志 **5** 条 `external mcp call`，每条带 `toolCallId` / `tool` / `risk: 'read'` / `outcome` / `durationMs`：4 条 `ok`（`list_projects` 1 ms、`list_sessions` 2 ms、`read_session` 1 ms、`list_project_files` 2 ms），1 条 `refused` + `code: 'session-not-found'`（1 ms） |
-| 客户端身份 | 5 条同一 `clientId`（`6c546d7f…`）= 一个外部进程一条租约；`toolCallId` 各不相同 ⇒ 事后能逐条配对 |
-| 停止 | 退出时 `external MCP server stopped { transport: 'tcp', listening: false, port: 63607 }`，发现文件随之撤除 |
+| 判据                 | 读数                                                                                                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 监听                 | `external MCP server started { transport: 'tcp', host: '127.0.0.1', port: 63607, tools: 4 }` ⇒ 只绑环回                                                                                                                                                                            |
+| `tools/list`         | `["list_project_files","list_projects","list_sessions","read_session"]`，与 `surface.ts` 登记表**逐条相同**（名字、`description`、`inputSchema` 三者都比）                                                                                                                         |
+| `list_projects`      | `{"count":1,"projects":[{"id":"cmvum8gy7…","name":"External MCP","description":""}]}`                                                                                                                                                                                              |
+| `list_sessions`      | 一条：`{"id":"e2e-session-1","projectId":"cmvum8gy7…","title":"First question","status":"idle","messageCount":2,"updatedAt":"2026-10-30T06:53:15.379Z"}`                                                                                                                           |
+| `read_session`       | `messageCount 2 / messagesReturned 2 / truncated false`；两条正文分别是 `First question` 与 `Deterministic reply: …`；id 与 projectId 与**盘上文档**逐字相同（读法见 §二）                                                                                                         |
+| `list_project_files` | `{"projectId":"cmvum8gy7…","count":0,"files":[]}`（本回合没产出文件 ⇒ 空表是实数，不是缺席）                                                                                                                                                                                       |
+| 拒绝路径             | `read_session(sessionId: "no-such-session")` ⇒ `isError: true`，`{"error":{"code":"session-not-found","message":"No session has id \"no-such-session\". Call list_sessions for the ids this machine holds."}}`                                                                     |
+| 审计行               | 同一轮主日志 **5** 条 `external mcp call`，每条带 `toolCallId` / `tool` / `risk: 'read'` / `outcome` / `durationMs`：4 条 `ok`（`list_projects` 1 ms、`list_sessions` 2 ms、`read_session` 1 ms、`list_project_files` 2 ms），1 条 `refused` + `code: 'session-not-found'`（1 ms） |
+| 客户端身份           | 5 条同一 `clientId`（`6c546d7f…`）= 一个外部进程一条租约；`toolCallId` 各不相同 ⇒ 事后能逐条配对                                                                                                                                                                                   |
+| 停止                 | 退出时 `external MCP server stopped { transport: 'tcp', listening: false, port: 63607 }`，发现文件随之撤除                                                                                                                                                                         |
 
 ## 四 没做的（具名）
 
@@ -58,10 +58,9 @@ spec 起初自己拼读盘：`JSON.parse(doc).session.messages.length`。读数�
 
 ## 五 2026-10-31 更正（第二片落地后回看本档）
 
-| 本档原话 | 现在的状态 |
-| --- | --- |
-| §一「1 passed (7.8s)」、§三「tools: 4」「`tools/list` 四条」 | 第一片当时的读数，**留作历史**。同一支 spec 现在是**两支用例 / 五个工具**：`2 passed (18.3s)`（7.5s + 10.1s），`tools/list` 多了 `archive_session` |
-| §四 1「写入类工具不在第一片」 | **已补**：`archive_session`（`risk: 'write'`）在第二片落地，且不是「先有写工具再补门」，门与工具同批 |
-| §四 2「窗口内弹卡与 `permission decision` 行本轮不会出现」 | **已取到读数**：两次问卡各一条 `permission decision`（`decision: 'card'`、`isMcp: true`、`tool: 'purescience_external/archive_session'`），与 `external mcp call` 的 `toolCallId` 逐个配对 —— 见 `2026-10-31-f1-external-mcp-write.md` §二 |
-| §四 3、4（远端 profile、打包态） | 仍未取证，结论不变 |
-
+| 本档原话                                                     | 现在的状态                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| §一「1 passed (7.8s)」、§三「tools: 4」「`tools/list` 四条」 | 第一片当时的读数，**留作历史**。同一支 spec 现在是**两支用例 / 五个工具**：`2 passed (18.3s)`（7.5s + 10.1s），`tools/list` 多了 `archive_session`                                                                                         |
+| §四 1「写入类工具不在第一片」                                | **已补**：`archive_session`（`risk: 'write'`）在第二片落地，且不是「先有写工具再补门」，门与工具同批                                                                                                                                       |
+| §四 2「窗口内弹卡与 `permission decision` 行本轮不会出现」   | **已取到读数**：两次问卡各一条 `permission decision`（`decision: 'card'`、`isMcp: true`、`tool: 'purescience_external/archive_session'`），与 `external mcp call` 的 `toolCallId` 逐个配对 —— 见 `2026-10-31-f1-external-mcp-write.md` §二 |
+| §四 3、4（远端 profile、打包态）                             | 仍未取证，结论不变                                                                                                                                                                                                                         |

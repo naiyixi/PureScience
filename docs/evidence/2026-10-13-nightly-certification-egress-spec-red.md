@@ -29,12 +29,12 @@ AggregateError: Renderer emitted errors during Electron E2E.
 
 ## 二 对照读数（同一支 spec、同一条代码路径）
 
-| 提交 | Nightly | `Build macos-arm64` | 该 spec 的 ic31 读数 |
-| --- | --- | --- | --- |
-| `dc0089ca` | `38255743811` success | success（作业 `114839513031`） | 三行**逐字相同**，`named read failure: false` |
-| `656ac561` | `38249451395` success | —（同车道 success） | — |
-| `e4d11b86` | `38243121999` success | —（同车道 success） | — |
-| **`f6b8723f`** | `38285152756` **failure** | **failure** | 三行相同，但**多出两条 `No handler registered` 的 pageerror** |
+| 提交           | Nightly                   | `Build macos-arm64`            | 该 spec 的 ic31 读数                                          |
+| -------------- | ------------------------- | ------------------------------ | ------------------------------------------------------------- |
+| `dc0089ca`     | `38255743811` success     | success（作业 `114839513031`） | 三行**逐字相同**，`named read failure: false`                 |
+| `656ac561`     | `38249451395` success     | —（同车道 success）            | —                                                             |
+| `e4d11b86`     | `38243121999` success     | —（同车道 success）            | —                                                             |
+| **`f6b8723f`** | `38285152756` **failure** | **failure**                    | 三行相同，但**多出两条 `No handler registered` 的 pageerror** |
 
 本机侧（dev 构建产物 `npm run build:e2e` → `npx playwright test e2e/certification/egress-settings-read-failure.spec.ts`）：
 **连跑 3 次全绿**（7.6s / 5.3s / 5.3s），`grep -c "No handler registered"` 三次**都是 0**。

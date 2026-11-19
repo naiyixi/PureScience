@@ -17,12 +17,7 @@
     "numbers": false,
     "citations": false
   },
-  "toolCallNames": [
-    "edit",
-    "execute",
-    "other",
-    "read"
-  ],
+  "toolCallNames": ["edit", "execute", "other", "read"],
   "skillsRead": [],
   "toolCallCount": 14,
   "manipulation": {

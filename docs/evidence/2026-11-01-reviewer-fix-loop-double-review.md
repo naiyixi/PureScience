@@ -23,13 +23,13 @@ PY
 
 读数（本轮实跑）：
 
-| 量 | 值 |
-| --- | --- |
-| `[Auditor] correction turn complete` | **11** |
-| `review triggered`（全部会话，含 4 条 e2e 夹具会话） | 17 |
-| `fix loop: running re-review`（修正轮次自己的定向复评） | 11 |
-| **修正回合结束后 2 秒内又起了一份自动复核的轮次** | **10 / 11** |
-| 同一批区块 3 秒内拿到**相反结论**的配对 | **1**（`10:01:36 flagged / 5 条` ↔ `10:01:38 pass / 4 条`） |
+| 量                                                      | 值                                                          |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| `[Auditor] correction turn complete`                    | **11**                                                      |
+| `review triggered`（全部会话，含 4 条 e2e 夹具会话）    | 17                                                          |
+| `fix loop: running re-review`（修正轮次自己的定向复评） | 11                                                          |
+| **修正回合结束后 2 秒内又起了一份自动复核的轮次**       | **10 / 11**                                                 |
+| 同一批区块 3 秒内拿到**相反结论**的配对                 | **1**（`10:01:36 flagged / 5 条` ↔ `10:01:38 pass / 4 条`） |
 
 一条典型时间线（同一会话，原字段照抄）：
 
@@ -63,11 +63,11 @@ PY
 
 ## 三 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/reviewer/ipc.ts` | `triggerReview` 在最前面加**归属闸**：`origin === 'auto'` 且该会话的修正轮次仍在跑（`fixLoopAbortControllers` 里有它的键）⇒ 不启动，返回 `{started:false, reason:'fix-loop-active'}`，并写一行具名日志 `auto review skipped: the fix loop owns this session`（带 `sessionId` / `turnMessageId`） |
-| `src/shared/reviewer.ts` | `ReviewRunNotStartedReason` 增加 `'fix-loop-active'`，并在该联合的类型注释里写明「永不重试」的理由（修正轮次自己的定向复评就是答案）与「手动复核不受影响」 |
-| `src/main/reviewer/ipc.test.ts` | 一条新用例：轮次结束 → 复核启动 → 修正轮次开幕 ⇒ 自动请求被拒（`fix-loop-active`，且 `runReview` 调用数不变）；手动请求照常启动；轮次收尾后同一自动请求恢复启动 |
+| 位置                            | 改动                                                                                                                                                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/reviewer/ipc.ts`      | `triggerReview` 在最前面加**归属闸**：`origin === 'auto'` 且该会话的修正轮次仍在跑（`fixLoopAbortControllers` 里有它的键）⇒ 不启动，返回 `{started:false, reason:'fix-loop-active'}`，并写一行具名日志 `auto review skipped: the fix loop owns this session`（带 `sessionId` / `turnMessageId`） |
+| `src/shared/reviewer.ts`        | `ReviewRunNotStartedReason` 增加 `'fix-loop-active'`，并在该联合的类型注释里写明「永不重试」的理由（修正轮次自己的定向复评就是答案）与「手动复核不受影响」                                                                                                                                       |
+| `src/main/reviewer/ipc.test.ts` | 一条新用例：轮次结束 → 复核启动 → 修正轮次开幕 ⇒ 自动请求被拒（`fix-loop-active`，且 `runReview` 调用数不变）；手动请求照常启动；轮次收尾后同一自动请求恢复启动                                                                                                                                  |
 
 **三条设计判据**：① **判据是状态不是时序** —— 修正轮次的生命周期已经有权威来源（`fixLoopAbortControllers`
 的增删就挂在 `onFixLoopStart` / `onFixLoopEnd` 上），用它比再算一遍时序可靠；② **闸放在唯一入口** —— 主进程是
@@ -76,12 +76,12 @@ PY
 
 ## 四 门禁（全部实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向：`src/main/reviewer`（整目录） | **27 文件 / 308 passed**（含新用例；`ipc.test.ts` 35 例） |
-| 变异自证 | 把闸的条件短路成 `false && …` ⇒ 新用例当场红（`expected { started: true } to deeply equal { started: false, … }`），改回后 35 例全绿 |
-| 双 typecheck（`--composite false`） | 本笔 **0 错**；两边各余 **4 条全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改 |
-| `eslint --no-cache`（本笔 3 文件） | **0 error / 0 warning** |
+| 环                                  | 读数                                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 定向：`src/main/reviewer`（整目录） | **27 文件 / 308 passed**（含新用例；`ipc.test.ts` 35 例）                                                                            |
+| 变异自证                            | 把闸的条件短路成 `false && …` ⇒ 新用例当场红（`expected { started: true } to deeply equal { started: false, … }`），改回后 35 例全绿 |
+| 双 typecheck（`--composite false`） | 本笔 **0 错**；两边各余 **4 条全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改                         |
+| `eslint --no-cache`（本笔 3 文件）  | **0 error / 0 warning**                                                                                                              |
 
 ## 五 边界（不许读成更强）与具名未办
 

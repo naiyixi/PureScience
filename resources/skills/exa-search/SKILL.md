@@ -1,6 +1,7 @@
 ---
 name: exa-search
 description: "Searches scientific and technical web content with Exa and extracts page or PDF text from URLs in batches. Supports scholarly discovery with the publication category and academic domain filters. Applies to requests to search the web, look up current research, fetch a page, or extract an article using Exa."
+description-zh: 用 Exa 检索科学与技术网页内容，并批量从 URL 抽取网页或 PDF 文本。支持按出版物类别与学术域名过滤的学术发现。
 compatibility: Requires Python 3.11+, exa-py>=2.23.0,<3, an EXA_API_KEY, and internet access.
 license: MIT
 metadata:

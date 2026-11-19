@@ -24,13 +24,13 @@ CPU 那一半早在 `src/main/notebook/kernel-idle-spin.ts` 里：空闲内核�
 
 ## 二 交付
 
-| 文件 | 做了什么 |
-| --- | --- |
-| `src/main/notebook/kernel-idle-spin.ts` | 新增**内存台账**：`KernelMemoryReading` / `KernelMemorySample` / `KernelMemoryRound` / `NotebookKernelMemorySummary` / `createKernelMemoryRing` / `sharedKernelMemory`，真实探针 `ps -o rss=`，解析器 `parseResidentBytes`（KB → 字节）。监控器在**同一拍、同一份 idle 目标表**上多测一轮内存，失败与 CPU 基线互不影响 |
-| `src/main/notebook/kernel-executor.ts` | 观测选项透传（`idleSpinMemoryProbe` / `idleSpinMemoryRing`），生产走默认 = 真探针 + 进程级环 |
-| `src/main/diagnostics/support-bundle.ts` | 新增**必填段** `notebookKernelMemory` → `diagnostics/notebook-kernel-memory.json`，`README.txt` 里加一节说明 |
-| `src/main/ipc.ts` | 组合根把 `sharedKernelMemory.summary()` 交给诊断包 |
-| 三份 spec | 环 / 监控器 / 执行器 / 诊断包各补断言，另加两条**真机探针**用例（真 ps、真内核进程） |
+| 文件                                     | 做了什么                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/notebook/kernel-idle-spin.ts`  | 新增**内存台账**：`KernelMemoryReading` / `KernelMemorySample` / `KernelMemoryRound` / `NotebookKernelMemorySummary` / `createKernelMemoryRing` / `sharedKernelMemory`，真实探针 `ps -o rss=`，解析器 `parseResidentBytes`（KB → 字节）。监控器在**同一拍、同一份 idle 目标表**上多测一轮内存，失败与 CPU 基线互不影响 |
+| `src/main/notebook/kernel-executor.ts`   | 观测选项透传（`idleSpinMemoryProbe` / `idleSpinMemoryRing`），生产走默认 = 真探针 + 进程级环                                                                                                                                                                                                                           |
+| `src/main/diagnostics/support-bundle.ts` | 新增**必填段** `notebookKernelMemory` → `diagnostics/notebook-kernel-memory.json`，`README.txt` 里加一节说明                                                                                                                                                                                                           |
+| `src/main/ipc.ts`                        | 组合根把 `sharedKernelMemory.summary()` 交给诊断包                                                                                                                                                                                                                                                                     |
+| 三份 spec                                | 环 / 监控器 / 执行器 / 诊断包各补断言，另加两条**真机探针**用例（真 ps、真内核进程）                                                                                                                                                                                                                                   |
 
 三条语义纪律（都写成注释钉在代码里，也各有一条用例）：
 
@@ -54,14 +54,14 @@ CPU 那一半早在 `src/main/notebook/kernel-idle-spin.ts` 里：空闲内核�
 
 ## 四 门禁（本机实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/notebook src/main/diagnostics --maxWorkers=3` | **131 files（122 passed / 9 skipped）／1,718 passed / 101 skipped**，退出 0 |
-| `npx vitest run src/main/notebook/kernel-idle-spin.test.ts` | 1 file / **24 passed**（含两条真探针用例） |
-| 变异证明（`measured > 0` → `measured >= 0`；`kilobytes * 1024` → `kilobytes`） | **3 例红**：解析换算、全失败轮仍给总量、真探针区间；还原后全绿 |
-| `npx eslint --no-cache`（本笔七个文件） | **0 error**；2 条 warning 全在 `kernel-executor.ts:746/756`，是**HEAD 上就有的** prettier 漂移（`git show HEAD:…` 复制到同目录再 `prettier --check` 同样告警），不是本笔引入 |
-| `npx prettier --check`（除该文件外六个） | 通过 |
-| `npm run typecheck:node` / `typecheck:web` | **0 / 0** |
+| 环                                                                             | 读数                                                                                                                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npx vitest run src/main/notebook src/main/diagnostics --maxWorkers=3`         | **131 files（122 passed / 9 skipped）／1,718 passed / 101 skipped**，退出 0                                                                                                  |
+| `npx vitest run src/main/notebook/kernel-idle-spin.test.ts`                    | 1 file / **24 passed**（含两条真探针用例）                                                                                                                                   |
+| 变异证明（`measured > 0` → `measured >= 0`；`kilobytes * 1024` → `kilobytes`） | **3 例红**：解析换算、全失败轮仍给总量、真探针区间；还原后全绿                                                                                                               |
+| `npx eslint --no-cache`（本笔七个文件）                                        | **0 error**；2 条 warning 全在 `kernel-executor.ts:746/756`，是**HEAD 上就有的** prettier 漂移（`git show HEAD:…` 复制到同目录再 `prettier --check` 同样告警），不是本笔引入 |
+| `npx prettier --check`（除该文件外六个）                                       | 通过                                                                                                                                                                         |
+| `npm run typecheck:node` / `typecheck:web`                                     | **0 / 0**                                                                                                                                                                    |
 
 ## 五 边界与具名未办
 

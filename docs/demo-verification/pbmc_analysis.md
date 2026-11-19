@@ -1,8 +1,8 @@
 # PBMC 单细胞 QC / 批次效应 / 注释 — 可复查分析报告（软件验证）
 
 生成时间：2026-08-23T21:24:06
-> 本文档仅做软件流程验证，不构成生物学或临床结论。所有可复现性所需的参数均在本脚本 `pbmc_pipeline.py` 的 `PARAMS` 中声明。
 
+> 本文档仅做软件流程验证，不构成生物学或临床结论。所有可复现性所需的参数均在本脚本 `pbmc_pipeline.py` 的 `PARAMS` 中声明。
 
 ## 1. 输入数据与溯源
 
@@ -15,6 +15,7 @@
 ## 2. QC（先声明规则，后执行）
 
 **预先声明的过滤规则**（`PARAMS`）：
+
 - `min_genes = 200`（细胞至少检出这么多基因）
 - `min_counts = 500`（细胞至少这么多 UMI 计数）
 - `max_mito% = 10.0`%（线粒体比例上限）
@@ -24,20 +25,21 @@
 - `mito_pct`：min=0.5, p25=1.4, median=1.7, p75=2.0, max=4.0
 
 **过滤执行结果**：`700 → 700` 细胞；被剔除 **0** 个（明确计数，无静默丢弃）。本 reduced 数据集已由提供者预过滤（`min_genes≥1001`, `min_counts≥2141`, `mito%≤4.0`），故标准阈值下 `n_removed = 0`。阈值敏感性见下表（仅用于演示过滤机制，不改变主流程输入）。
-- 过滤后用于下游的对象：`700 cells × 765 genes`（`raw.X`，log 归一化表达）。
 
+- 过滤后用于下游的对象：`700 cells × 765 genes`（`raw.X`，log 归一化表达）。
 
 ## 3. 主流程参数与结果
 
-| 步骤 | 参数 |
-|---|---|
-| 归一化 | **不重跑**。输入已为 log 归一化表达（`raw.X`），对已归一化数据再跑 `normalize_total` 属方法学错误；`target_sum=10000` 为 10x PBMC 惯例，提供者实际取值不可从文件恢复（见限制） |
-| 高变基因 | `n_top_genes=500`, `flavor=seurat` |
-| 缩放 | `max_value=10.0` |
-| PCA | `n_comps=50`, `random_state=42` |
-| 邻接图 | `n_neighbors=15`, `n_pcs=30`, `random_state=42` |
-| UMAP | `random_state=42`, `min_dist=0.5` |
-| Leiden | `resolution=1.0`, `flavor=leidenalg`, `n_iterations=2`, `random_state=42` |
+| 步骤     | 参数                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 归一化   | **不重跑**。输入已为 log 归一化表达（`raw.X`），对已归一化数据再跑 `normalize_total` 属方法学错误；`target_sum=10000` 为 10x PBMC 惯例，提供者实际取值不可从文件恢复（见限制） |
+| 高变基因 | `n_top_genes=500`, `flavor=seurat`                                                                                                                                             |
+| 缩放     | `max_value=10.0`                                                                                                                                                               |
+| PCA      | `n_comps=50`, `random_state=42`                                                                                                                                                |
+| 邻接图   | `n_neighbors=15`, `n_pcs=30`, `random_state=42`                                                                                                                                |
+| UMAP     | `random_state=42`, `min_dist=0.5`                                                                                                                                              |
+| Leiden   | `resolution=1.0`, `flavor=leidenalg`, `n_iterations=2`, `random_state=42`                                                                                                      |
+
 - 高变基因：`500` / `765`（数据集自带 `var['highly_variable']` 标记数：309，两者不同源于参数/算法不同）。
 - Leiden 聚类：`8` 个 cluster（resolution=1.0）。
 
@@ -61,17 +63,18 @@
 - Cluster 7：n=13，预测 `NK`；bulk 多数 = `CD34+` (100%)；top markers: HNRNPA1, NPM1, SNHG7, RPS24, SNHG8
 
 **一致性指标**（预测粗分 vs `bulk_labels` 粗分）：
+
 - 逐细胞一致率 = **74.4%**
 - Adjusted Rand Index(预测, bulk粗分) = **0.631**
 - ARI(leiden, bulk粗分) = 0.531；ARI(我的 leiden, 提供者 louvain) = 0.726（对照参考）
 
 ## 6. 图件
 
-| 文件 | 内容 |
-|---|---|
-| `qc_distributions.png` | n_genes / n_counts / mito% 分布与阈值线 |
+| 文件                          | 内容                                          |
+| ----------------------------- | --------------------------------------------- |
+| `qc_distributions.png`        | n_genes / n_counts / mito% 分布与阈值线       |
 | `umap_batch_before_after.png` | 校正前/后 UMAP，按伪批次与 `bulk_coarse` 着色 |
-| `umap_annotation.png` | Leiden 聚类与标记基因预测细胞类型 |
+| `umap_annotation.png`         | Leiden 聚类与标记基因预测细胞类型             |
 
 ## 7. 已核实（Verified）
 
@@ -100,4 +103,5 @@ python pbmc_pipeline.py \
     /Users/totota/.purescience-project/runtime/envs/default-python/lib/python3.12/site-packages/scanpy/datasets/10x_pbmc68k_reduced.h5ad \
     pbmc_outputs
 ```
+
 运行环境：scanpy 1.12.3 + harmonypy + scikit-learn；随机种子 42（`PARAMS`）。

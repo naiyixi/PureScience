@@ -43,14 +43,14 @@ v2.18 §2 第 4 条原本要「同一轮的 usage 与日志对得上」。实测
 
 **日志侧没有第二来源**，所以按原口径无法对账。这条会话里能做的只有内部一致性：
 
-| 项 | 读数 |
-|---|---|
-| 第 1 轮 turnUsage | `input 45334 / cache 45696 (=45696 读 + 0 写) / output 1049 / turnCount 2` |
-| 第 2 轮 turnUsage | `input 215 / cache 46208 (=46208 读 + 0 写) / output 40 / turnCount 1` |
-| 会话合计 | `input 45549 / cache 91904 / output 1089 / turnCount 3` |
-| 工具调用 | 1 条 |
-| 形状自洽 | `turnCount(3) ≥ 工具调用(1) + 1`：一次「模型→工具→模型」的往返至少要 2 次 provider 请求 ✓ |
-| cache 恒等式 | 两轮都满足 `cacheTokens == cachedReadTokens + cachedWriteTokens` ✓ |
+| 项                | 读数                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| 第 1 轮 turnUsage | `input 45334 / cache 45696 (=45696 读 + 0 写) / output 1049 / turnCount 2`                |
+| 第 2 轮 turnUsage | `input 215 / cache 46208 (=46208 读 + 0 写) / output 40 / turnCount 1`                    |
+| 会话合计          | `input 45549 / cache 91904 / output 1089 / turnCount 3`                                   |
+| 工具调用          | 1 条                                                                                      |
+| 形状自洽          | `turnCount(3) ≥ 工具调用(1) + 1`：一次「模型→工具→模型」的往返至少要 2 次 provider 请求 ✓ |
+| cache 恒等式      | 两轮都满足 `cacheTokens == cachedReadTokens + cachedWriteTokens` ✓                        |
 
 ## 因此这条要么改口径、要么补第二来源
 

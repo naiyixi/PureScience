@@ -1,6 +1,7 @@
 ---
 name: llama-factory
 description: Expert guidance for fine-tuning LLMs with LLaMA-Factory - WebUI no-code, 100+ models, 2/3/4/5/6/8-bit QLoRA, multimodal support
+description-zh: 用 LLaMA-Factory 微调大模型的实操指引：WebUI 免代码、100 多个模型、2/3/4/5/6/8 bit 的 QLoRA 与多模态支持。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

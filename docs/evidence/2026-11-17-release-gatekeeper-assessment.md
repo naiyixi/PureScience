@@ -18,10 +18,10 @@
 
 ## 二 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `scripts/verify-release.mjs` | 新导出纯函数 `parseGatekeeperAssessment`（解析 `spctl -a -t open --context context:primary-signature -vvv` 与 `xcrun stapler validate` 两段输出）；`evaluateRelease` 新增 `installerAssessments` / `requireNotarized` / `gatekeeperSkipReason`；`main` 新增 `--assess-installers`、`--require-notarized`，按页上的每个 mac dmg 逐张下载后交本机 Gatekeeper 判 |
-| `scripts/verify-release.test.ts` | +11 例：两种真实输出形状、空输出、工具根本没起（status null）、CloudKit 失败不当作「没有票」、零退出但无确认行、逐张一读、宽/严两态、问了却没对象、本机不能问 |
+| 位置                             | 改动                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-release.mjs`     | 新导出纯函数 `parseGatekeeperAssessment`（解析 `spctl -a -t open --context context:primary-signature -vvv` 与 `xcrun stapler validate` 两段输出）；`evaluateRelease` 新增 `installerAssessments` / `requireNotarized` / `gatekeeperSkipReason`；`main` 新增 `--assess-installers`、`--require-notarized`，按页上的每个 mac dmg 逐张下载后交本机 Gatekeeper 判 |
+| `scripts/verify-release.test.ts` | +11 例：两种真实输出形状、空输出、工具根本没起（status null）、CloudKit 失败不当作「没有票」、零退出但无确认行、逐张一读、宽/严两态、问了却没对象、本机不能问                                                                                                                                                                                                 |
 
 判据（三类缺态各占一格，都不读成通过）：
 
@@ -114,12 +114,12 @@ TeamIdentifier 不是本项目配置的那个 ⇒ 红；`unproven` ⇒ 红（**�
 
 ## 四 门禁
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run scripts/verify-release.test.ts` | **1 file / 38 passed**（原 21 → 32 → 本轮补 6：词表与证据四例 + 读取形状两处） |
-| `npm run typecheck:node` | 0（**须带 `NODE_OPTIONS=--max-old-space-size=8192`**；默认堆下 `Abort trap: 6`，那是本机小内存的老形状，不是代码错） |
-| `npm run typecheck:web` | 0 |
-| `npx eslint --no-cache scripts/verify-release.mjs scripts/verify-release.test.ts` | **0 error / 0 warning** |
+| 环                                                                                | 读数                                                                                                                 |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `npx vitest run scripts/verify-release.test.ts`                                   | **1 file / 38 passed**（原 21 → 32 → 本轮补 6：词表与证据四例 + 读取形状两处）                                       |
+| `npm run typecheck:node`                                                          | 0（**须带 `NODE_OPTIONS=--max-old-space-size=8192`**；默认堆下 `Abort trap: 6`，那是本机小内存的老形状，不是代码错） |
+| `npm run typecheck:web`                                                           | 0                                                                                                                    |
+| `npx eslint --no-cache scripts/verify-release.mjs scripts/verify-release.test.ts` | **0 error / 0 warning**                                                                                              |
 
 ## 五 边界与具名未办
 

@@ -1,6 +1,7 @@
 ---
 name: long-context
 description: Extend context windows of transformer models using RoPE, YaRN, ALiBi, and position interpolation techniques. Use when processing long documents (32k-128k+ tokens), extending pre-trained models beyond original context limits, or implementing efficient positional encodings. Covers rotary embeddings, attention biases, interpolation methods, and extrapolation strategies for LLMs.
+description-zh: 用 RoPE、YaRN、ALiBi 与位置插值扩展 transformer 的上下文窗口。适用于处理长文档（32k–128k+ token）与扩展预训练模型。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

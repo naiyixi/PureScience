@@ -7,10 +7,10 @@
 
 渲染层与主进程各有**一个**「把 pdfjs 的 text items 拼成整页文本」的站点，两处都是同一行写法：
 
-| 站点 | 旧写法 | 消费者 |
-| --- | --- | --- |
-| `src/main/settings/pdf-service.ts:516`（修复前） | `content.items.map((i) => ('str' in i ? i.str : '')).join('').trim()` | `pdf_open` / `pdf_pages` 的页文本、`pdf_scan` 的页内检索与摘要、以及**文本式表格候选** `extractPdfTableCandidatesFromText` |
-| `src/main/uploads/attachment-media.ts:289`（修复前） | 同上 | 附件 PDF 交给模型的抽取文本 |
+| 站点                                                 | 旧写法                                                                | 消费者                                                                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/settings/pdf-service.ts:516`（修复前）     | `content.items.map((i) => ('str' in i ? i.str : '')).join('').trim()` | `pdf_open` / `pdf_pages` 的页文本、`pdf_scan` 的页内检索与摘要、以及**文本式表格候选** `extractPdfTableCandidatesFromText` |
+| `src/main/uploads/attachment-media.ts:289`（修复前） | 同上                                                                  | 附件 PDF 交给模型的抽取文本                                                                                                |
 
 pdfjs 用 `hasEOL` 标记行尾、把**空格单独作为一个 item**发出（本页实测：125 个 run 里 111 个是纯空白 run）。
 `join('')` 于是把整页压成一行，且**行尾词与下一行首词直接粘住**。
@@ -41,36 +41,36 @@ pdfjs 用 `hasEOL` 标记行尾、把**空格单独作为一个 item**发出（�
 
 ### 3.1 英文 + 对齐列页（1 页 / 125 run / 10 个行尾标记）
 
-| 读数 | 旧 (`join('')`) | 新（本模块） |
-| --- | --- | --- |
-| 页文本 | `AbstractWe report a reproducible pipeline … of SARS-CoV-2with an explicit solvent model. … within 0.35 nm ofthe reference crystal pose.ResultsSite Value Uncertaintycontrol 12.4 0.3treated …` | `Abstract\n\nWe report … of SARS-CoV-2 with an explicit solvent model. … within 0.35 nm of the reference crystal pose.\n\nResults\n\nSite Value Uncertainty control 12.4 0.3 treated 9.8 0.2 reference 15.1 0.4\n\nThe table above summarises the three measurements.` |
-| 段落数 | —（无断点可言） | **5**（Abstract / 正文 / Results / 表体 / 收尾句） |
-| 粘词 | `SARS-CoV-2with`、`ofthe` | 无 |
-| 长度 | 402 | 416 |
-| 文本式表格候选 | **0** | **0** |
+| 读数           | 旧 (`join('')`)                                                                                                                                                                                 | 新（本模块）                                                                                                                                                                                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 页文本         | `AbstractWe report a reproducible pipeline … of SARS-CoV-2with an explicit solvent model. … within 0.35 nm ofthe reference crystal pose.ResultsSite Value Uncertaintycontrol 12.4 0.3treated …` | `Abstract\n\nWe report … of SARS-CoV-2 with an explicit solvent model. … within 0.35 nm of the reference crystal pose.\n\nResults\n\nSite Value Uncertainty control 12.4 0.3 treated 9.8 0.2 reference 15.1 0.4\n\nThe table above summarises the three measurements.` |
+| 段落数         | —（无断点可言）                                                                                                                                                                                 | **5**（Abstract / 正文 / Results / 表体 / 收尾句）                                                                                                                                                                                                                     |
+| 粘词           | `SARS-CoV-2with`、`ofthe`                                                                                                                                                                       | 无                                                                                                                                                                                                                                                                     |
+| 长度           | 402                                                                                                                                                                                             | 416                                                                                                                                                                                                                                                                    |
+| 文本式表格候选 | **0**                                                                                                                                                                                           | **0**                                                                                                                                                                                                                                                                  |
 
 **如实说明这张表**：本夹具的列间距**不是**空白 run（实测 `runsWith2PlusSpaces = 0`），所以「保留行内空白」这条改动**在这一页上没有改变**文本式聚列的结果——两个 0 都不是本模块造成的。表格的主路径是**带坐标的** `extractPdfTableCandidates`（本页定位 items 不受影响）；文本式候选只在解析器给不出坐标时才用得上。所以：保留行内空白是**契约正确性**（不替来源改写文本），不是本轮拿到的收益，别把它写成收益。
 `service text equals shared assembly: true` —— 服务产出的页文本与共享模块逐字相同（接线到位，服务没有另算一份）。
 
 ### 3.2 中文页（1 页 / 34 run / 4 个行尾标记）
 
-| 读数 | 旧 | 新 |
-| --- | --- | --- |
-| 段落数 | —（`摘要我们报告了…` 标题被粘进正文） | **4**（摘要 / 正文 / 方法 / 正文） |
-| 页文本 | `摘要我们报告了⼀条…结合模式。该流程将⼝袋定构象附近。⽅法受体制备使⽤…` | `摘要\n\n我们报告了…结合模式。该流程将⼝袋定构象附近。\n\n⽅法\n\n受体制备使⽤…` |
-| 汉字之间被插入空格 | 否 | **否**（CJK 两行接合按约定不插空格；`SARS-CoV-2` 两侧的拉丁空格保留） |
+| 读数               | 旧                                                                       | 新                                                                               |
+| ------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| 段落数             | —（`摘要我们报告了…` 标题被粘进正文）                                    | **4**（摘要 / 正文 / 方法 / 正文）                                               |
+| 页文本             | `摘要我们报告了⼀条…结合模式。该流程将⼝袋定构象附近。⽅法受体制备使⽤…` | `摘要\n\n我们报告了…结合模式。该流程将⼝袋定构象附近。\n\n⽅法\n\n受体制备使⽤…` |
+| 汉字之间被插入空格 | 否                                                                       | **否**（CJK 两行接合按约定不插空格；`SARS-CoV-2` 两侧的拉丁空格保留）            |
 
 **同页发现（与本改动无关、先记不算立案）**：该 PDF 的字体 ToUnicode 把若干汉字映射成**康熙部首**码位（`⼀ U+2F00`、`⽤ U+2F44`、`⽅ U+2F45`、`⼝ U+2F51`、`⽔ U+2F54`、`⼦ U+2F59`、`⼒ U+2F92`、`⾏ U+2F98` 一类），新旧两种拼装都一样。这是夹具 PDF 字体的问题（真文献多半正常映射），但中文检索若命中率异常，这里是第一个该看的地方——**先量再说**，本轮不据此改代码。
 
 ## 四 用例与变异读数（证明断言不是空跑）
 
-| 用例 | 位置 | 变异（把源码回退成 `join('')`） |
-| --- | --- | --- |
-| 页文本保留真实行结构 | `src/main/settings/pdf-service.page-text.test.ts`（新文件，3 条；**不经注入解析器**，用桩 pdfjs 走真 `parsePdf`，再经 `pages()` 从盘上读回） | `expected 'AbstractWe report a pipeline.It runs …' to be 'Abstract\n\nWe report a pipeline. It …'` ⇒ 2 failed / 1 passed |
-| 无 `hasEOL` 时按基线回退 | 同上 | 同上（红） |
-| 无文本层的页仍是空页 | 同上 | 绿（不受影响，正是该有的形状） |
-| 附件抽取保留行 | `src/main/uploads/attachment-media.test.ts`（+1 条） | `expected '--- Page 1 ---\nMethodsWe ran it.Rece…' to be '--- Page 1 ---\nMethods\n\nWe ran it.…'` ⇒ 1 failed |
-| 模块级契约（13 条，含**真实页 run 内嵌夹具**） | `src/shared/pdf-page-text.test.ts` | 真实夹具的段落读数：19 行 / 行距 12 / 段落间隔 24 ⇒ 6 段 |
+| 用例                                           | 位置                                                                                                                                         | 变异（把源码回退成 `join('')`）                                                                                          |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 页文本保留真实行结构                           | `src/main/settings/pdf-service.page-text.test.ts`（新文件，3 条；**不经注入解析器**，用桩 pdfjs 走真 `parsePdf`，再经 `pages()` 从盘上读回） | `expected 'AbstractWe report a pipeline.It runs …' to be 'Abstract\n\nWe report a pipeline. It …'` ⇒ 2 failed / 1 passed |
+| 无 `hasEOL` 时按基线回退                       | 同上                                                                                                                                         | 同上（红）                                                                                                               |
+| 无文本层的页仍是空页                           | 同上                                                                                                                                         | 绿（不受影响，正是该有的形状）                                                                                           |
+| 附件抽取保留行                                 | `src/main/uploads/attachment-media.test.ts`（+1 条）                                                                                         | `expected '--- Page 1 ---\nMethodsWe ran it.Rece…' to be '--- Page 1 ---\nMethods\n\nWe ran it.…'` ⇒ 1 failed            |
+| 模块级契约（13 条，含**真实页 run 内嵌夹具**） | `src/shared/pdf-page-text.test.ts`                                                                                                           | 真实夹具的段落读数：19 行 / 行距 12 / 段落间隔 24 ⇒ 6 段                                                                 |
 
 `vitest` 只转译不做类型检查，所以两个新测试文件另行过 `tsc`（见计划档 §六十 门禁表）。
 

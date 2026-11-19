@@ -1,6 +1,7 @@
 ---
 name: gptq
 description: Post-training 4-bit quantization for LLMs with minimal accuracy loss. Use for deploying large models (70B, 405B) on consumer GPUs, when you need 4× memory reduction with <2% perplexity degradation, or for faster inference (3-4× speedup) vs FP16. Integrates with transformers and PEFT for QLoRA fine-tuning.
+description-zh: 训练后 4 bit 量化，精度损失很小。适用于在消费级显卡上部署 70B、405B 等大模型，或需要 4 倍显存下降而困惑度退化小于 2%。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

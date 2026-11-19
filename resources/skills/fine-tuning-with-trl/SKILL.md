@@ -1,6 +1,7 @@
 ---
 name: fine-tuning-with-trl
 description: Fine-tune LLMs using reinforcement learning with TRL - SFT for instruction tuning, DPO for preference alignment, PPO/GRPO for reward optimization, and reward model training. Use when need RLHF, align model with preferences, or train from human feedback. Works with HuggingFace Transformers.
+description-zh: 用 TRL 做强化学习微调：SFT 指令微调、DPO 偏好对齐、PPO/GRPO 奖励优化，以及奖励模型训练。适用于 RLHF 与对齐训练。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

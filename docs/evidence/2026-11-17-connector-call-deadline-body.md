@@ -16,12 +16,12 @@
 
 ## 二 修法
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/connectors/engine.ts` | 定时器跨过正文读取（正文与同一个 `deadline` promise 竞速，abort 经 controller 传到 body 流）；每一处退出路径显式 `clearTimeout`，重试前的退避睡眠不再持有定时器（否则空转的 deadline 会无人竞速地 reject） |
-| 同上 | 句子分阶段：`deadline reached while waiting for the response headers` / `… the response body` |
-| 同上 | 命中截止时间时打一行 `warn`：`connector call deadline reached {connector, tool, host, phase, budgetMs}` —— 这一族的读数从此可数 |
-| `src/main/connectors/engine-deadline.test.ts` | 5 条用例：正文卡住、握手卡住、日志行只打一次且字段齐全、非截止时间的正文错误仍带出网原因、正文正常时读数照旧 |
+| 位置                                          | 改动                                                                                                                                                                                                       |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/connectors/engine.ts`               | 定时器跨过正文读取（正文与同一个 `deadline` promise 竞速，abort 经 controller 传到 body 流）；每一处退出路径显式 `clearTimeout`，重试前的退避睡眠不再持有定时器（否则空转的 deadline 会无人竞速地 reject） |
+| 同上                                          | 句子分阶段：`deadline reached while waiting for the response headers` / `… the response body`                                                                                                              |
+| 同上                                          | 命中截止时间时打一行 `warn`：`connector call deadline reached {connector, tool, host, phase, budgetMs}` —— 这一族的读数从此可数                                                                            |
+| `src/main/connectors/engine-deadline.test.ts` | 5 条用例：正文卡住、握手卡住、日志行只打一次且字段齐全、非截止时间的正文错误仍带出网原因、正文正常时读数照旧                                                                                               |
 
 ## 三 变异证明（证明这条用例真的在守）
 
@@ -49,14 +49,14 @@ PROBE large-file  ok     budget=30000ms  elapsed=7452ms bytes=4973076   sha=sha2
 
 ## 五 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| `npx vitest run src/main/connectors` | **91 passed / 1 skipped（92 文件）；1,025 passed / 55 skipped（1,080 例）**，exit 0 |
-| 定向（本笔两文件） | **24 passed**，exit 0 |
-| 变异 | 旧形状下 **2 failed**（60 s 超时即「挂住」的实证） |
-| `npx eslint --no-cache`（本笔两文件） | **0 problem**（无输出，exit 0） |
-| `npm run typecheck:node` | **0 诊断**，exit 0 |
-| `npm run typecheck:web` | **0 诊断**，exit 0 |
+| 环                                    | 读数                                                                                |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `npx vitest run src/main/connectors`  | **91 passed / 1 skipped（92 文件）；1,025 passed / 55 skipped（1,080 例）**，exit 0 |
+| 定向（本笔两文件）                    | **24 passed**，exit 0                                                               |
+| 变异                                  | 旧形状下 **2 failed**（60 s 超时即「挂住」的实证）                                  |
+| `npx eslint --no-cache`（本笔两文件） | **0 problem**（无输出，exit 0）                                                     |
+| `npm run typecheck:node`              | **0 诊断**，exit 0                                                                  |
+| `npm run typecheck:web`               | **0 诊断**，exit 0                                                                  |
 
 ## 六 边界（不许读成更强）
 

@@ -10,28 +10,28 @@
 `src/main/session-persistence/coordinator.ts:48`），超过阈值写一条
 `session save was slow`，带七段：
 
-| 段 | 含义 |
-| --- | --- |
-| `queuedMs` | 等会话写入的次序锁 |
-| `authorityMs` | 读权威会话（库 + 会话文档） |
-| `prepareMs` | 准备落盘的那份数据 |
-| `writeMs` | `repository.saveSession` —— JSON 变durable |
-| `provenanceMs` | `captureFinalizedMessages` |
-| `fileIndexMs` | `fileIndex.syncSession` |
-| `aftermathMs` | `writeMs` 之后的一切（旧读数仍可比） |
+| 段             | 含义                                       |
+| -------------- | ------------------------------------------ |
+| `queuedMs`     | 等会话写入的次序锁                         |
+| `authorityMs`  | 读权威会话（库 + 会话文档）                |
+| `prepareMs`    | 准备落盘的那份数据                         |
+| `writeMs`      | `repository.saveSession` —— JSON 变durable |
+| `provenanceMs` | `captureFinalizedMessages`                 |
+| `fileIndexMs`  | `fileIndex.syncSession`                    |
+| `aftermathMs`  | `writeMs` 之后的一切（旧读数仍可比）       |
 
 ## 2. 分布（n = 563 条慢记录）
 
-| 段 | 中位 | p90 | 最大 |
-| --- | --- | --- | --- |
-| queued | 0 ms | 169 ms | 66,668 ms |
-| authority | 66 ms | 420 ms | 42,168 ms |
-| prepare | 7 ms | 54 ms | 3,786 ms |
-| write | 72 ms | 411 ms | 67,082 ms |
-| provenance | 10 ms | 166 ms | 6,219 ms |
-| fileIndex | 94 ms | 672 ms | 15,039 ms |
-| aftermath | 179 ms | 1,050 ms | 20,157 ms |
-| **total** | **404 ms** | **2,772 ms** | **113,919 ms** |
+| 段         | 中位       | p90          | 最大           |
+| ---------- | ---------- | ------------ | -------------- |
+| queued     | 0 ms       | 169 ms       | 66,668 ms      |
+| authority  | 66 ms      | 420 ms       | 42,168 ms      |
+| prepare    | 7 ms       | 54 ms        | 3,786 ms       |
+| write      | 72 ms      | 411 ms       | 67,082 ms      |
+| provenance | 10 ms      | 166 ms       | 6,219 ms       |
+| fileIndex  | 94 ms      | 672 ms       | 15,039 ms      |
+| aftermath  | 179 ms     | 1,050 ms     | 20,157 ms      |
+| **total**  | **404 ms** | **2,772 ms** | **113,919 ms** |
 
 两件先摆明的事：
 
@@ -61,14 +61,14 @@ provenance 5,600 | fileIndex 11,446 | aftermath 17,046 | total 113,919
 
 `02:42:40 → 02:45:10`（44 条记录）：
 
-| 时刻 | 通道 | 读数 |
-| --- | --- | --- |
-| 02:42:42 | `artifacts:read-preview` ×2 | 46,131 / 46,142 ms |
+| 时刻     | 通道                          | 读数                                                       |
+| -------- | ----------------------------- | ---------------------------------------------------------- |
+| 02:42:42 | `artifacts:read-preview` ×2   | 46,131 / 46,142 ms                                         |
 | 02:42:42 | `artifact version resolve` ×5 | 每条 `queryMs` ≈ 7,258 ms，**`dbCanaryMs` 7,235–7,290 ms** |
-| 02:42:53 | `sessions:save-session` | 118,871 ms（本文件 §3） |
-| 02:43:48 | `artifact version resolve` ×2 | `readMs` 38,309 ms，**`readEventLoopMaxMs` 12,046 ms** |
-| 02:44:15 | `notebook:state` ×3 | 76,051 / 76,237 / 76,622 ms |
-| 02:44:15 | `reviewer:get-for-session` | 203,180 ms（§一百九十 已单独归因：它在等这些） |
+| 02:42:53 | `sessions:save-session`       | 118,871 ms（本文件 §3）                                    |
+| 02:43:48 | `artifact version resolve` ×2 | `readMs` 38,309 ms，**`readEventLoopMaxMs` 12,046 ms**     |
+| 02:44:15 | `notebook:state` ×3           | 76,051 / 76,237 / 76,622 ms                                |
+| 02:44:15 | `reviewer:get-for-session`    | 203,180 ms（§一百九十 已单独归因：它在等这些）             |
 
 `dbCanaryMs` 是读路径自己跑的一次 `SELECT 1`：**连 `SELECT 1` 都要 7.2 秒**。
 `readEventLoopMaxMs` 7,260–12,046 ms 说明**事件循环本身也停了**。

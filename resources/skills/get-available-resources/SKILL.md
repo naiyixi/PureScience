@@ -1,6 +1,7 @@
 ---
 name: get-available-resources
 description: Detects host inventory and effective CPU, memory, disk, scheduler, container, and accelerator limits when a user asks for resource-aware planning or before a clearly resource-sensitive local workload. Produces a redacted JSON snapshot and conservative planning helpers without stress tests or assuming visible host hardware is usable.
+description-zh: 探测主机清单，以及在用户要求按资源做规划、或在跑明显吃资源的本地负载之前，给出实际可用的 CPU、内存、磁盘、调度器、容器与加速器上限。
 license: MIT
 compatibility: Python 3.11+ on Linux, macOS, or Windows; standard library by default, optional psutil 7.2.2; accelerator management CLIs are optional read-only probes.
 metadata:

@@ -9,11 +9,11 @@
 
 ## 二 车道的判词要读作业级，不能只读车道级的「红」
 
-| 读数 | 值 |
-|---|---|
-| 失败作业 | `build / Build macos-arm64`（`919796af`：作业 120061875859；`4b94b069`：作业 119980219195） |
-| 报在哪个步骤 | `Enforce platform certification`（第 23 步） |
-| 它为什么拒 | `p0 ended with failure`（脚本原文，`set -euo pipefail` + `check p0 "$P0_OUTCOME"`） |
+| 读数             | 值                                                                                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 失败作业         | `build / Build macos-arm64`（`919796af`：作业 120061875859；`4b94b069`：作业 119980219195）                                                                          |
+| 报在哪个步骤     | `Enforce platform certification`（第 23 步）                                                                                                                         |
+| 它为什么拒       | `p0 ended with failure`（脚本原文，`set -euo pipefail` + `check p0 "$P0_OUTCOME"`）                                                                                  |
 | 上面那步长什么样 | 第 14 步 `Run P0 Electron certification` 在 API 里是 `success` —— 因为它带 `continue-on-error: true`，**步骤结论被改写成 success，而 `steps.p0.outcome` 是 failure** |
 
 ⇒ 「归纳到失败步骤清单第一环」这条在这里会指错方向：`Enforce platform certification` 是第一环，
@@ -22,8 +22,8 @@
 
 ## 三 P0 跑出了什么
 
-| 运行 | 提交 | 读数 |
-|---|---|---|
+| 运行        | 提交       | 读数                                                         |
+| ----------- | ---------- | ------------------------------------------------------------ |
 | 39820576415 | `4b94b069` | **1 failed / 3 flaky / 99 passed / 12 skipped**（31.1 分钟） |
 | 39840905132 | `919796af` | **1 failed / 10 flaky / 95 passed / 9 skipped**（38.9 分钟） |
 
@@ -75,24 +75,24 @@ Error: two notices are needed for this reading: ["task.completed"]
 
 ## 六 本单元改了什么
 
-| 位置 | 改动 | 它解决哪一条 |
-|---|---|---|
-| `src/main/notifications/notification-inbox-controller.ts` | 两道闸各自留下具名行：会话已删除 → `info`「notification dropped: its session was deleted」；会话不可解析 → `warn`「notification dropped: its session is not available」（都带 `kind` 与 `sessionId`）。第三个删除检查点同样具名（「…while it was being recorded」） | 第 2 条 |
-| `src/main/notifications/notification-inbox-record-gate.test.ts`（新） | 3 条：两道闸各一条（断言具名行与「一行都没落」）、两闸都不适用时落盘且**不**打丢弃行（并断言 pending 授权不算已读） | 第 2 条 |
-| `e2e/certification/notification-inbox-clear.spec.ts` | 播种读改成**有界等待**（`waitForNotices(page, 2, 30_000)`，250 ms 一采），并把等待耗时与当时的条目打进读数；**断言仍是「至少两条」**，一个字没放宽 | 第 3 条 |
+| 位置                                                                  | 改动                                                                                                                                                                                                                                                                | 它解决哪一条 |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `src/main/notifications/notification-inbox-controller.ts`             | 两道闸各自留下具名行：会话已删除 → `info`「notification dropped: its session was deleted」；会话不可解析 → `warn`「notification dropped: its session is not available」（都带 `kind` 与 `sessionId`）。第三个删除检查点同样具名（「…while it was being recorded」） | 第 2 条      |
+| `src/main/notifications/notification-inbox-record-gate.test.ts`（新） | 3 条：两道闸各一条（断言具名行与「一行都没落」）、两闸都不适用时落盘且**不**打丢弃行（并断言 pending 授权不算已读）                                                                                                                                                 | 第 2 条      |
+| `e2e/certification/notification-inbox-clear.spec.ts`                  | 播种读改成**有界等待**（`waitForNotices(page, 2, 30_000)`，250 ms 一采），并把等待耗时与当时的条目打进读数；**断言仍是「至少两条」**，一个字没放宽                                                                                                                  | 第 3 条      |
 
 **没有改产品行为**：闸门该不该拦、通知该不该写，判据不变。改的是「拦了要说话」与「读的时候别抢跑」。
 
 ## 七 门禁（全部实跑）
 
-| 环 | 读数 |
-|---|---|
-| 新增用例 | 1 file / **3 passed** |
-| `src/main/notifications` | **11 files / 167 passed**，exit 0 |
-| 变异：把两道闸退回裸 `return` | **2 条红**（正是「names the reason …」那两条），第 3 条仍绿 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
-| `eslint --no-cache`（本笔 3 文件） | **0 errors**（4 条 warning 全是 prettier 对**既有**行的意见，详下） |
-| `prettier --check` | 新增的两个文件过；spec 的漂移在 `HEAD` 上就有（`git show HEAD:… \| prettier --check --stdin-filepath` 同样报），不是本笔引入 |
+| 环                                           | 读数                                                                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 新增用例                                     | 1 file / **3 passed**                                                                                                        |
+| `src/main/notifications`                     | **11 files / 167 passed**，exit 0                                                                                            |
+| 变异：把两道闸退回裸 `return`                | **2 条红**（正是「names the reason …」那两条），第 3 条仍绿                                                                  |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**                                                                                                        |
+| `eslint --no-cache`（本笔 3 文件）           | **0 errors**（4 条 warning 全是 prettier 对**既有**行的意见，详下）                                                          |
+| `prettier --check`                           | 新增的两个文件过；spec 的漂移在 `HEAD` 上就有（`git show HEAD:… \| prettier --check --stdin-filepath` 同样报），不是本笔引入 |
 
 ## 八 边界（不许读成更强）
 

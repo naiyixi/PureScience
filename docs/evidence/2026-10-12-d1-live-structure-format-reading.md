@@ -6,6 +6,7 @@
 ## 取数方式（可复跑）
 
 探针跑在仓库内（`vitest`，跑完即删），`fetch` 两个真实来源：
+
 - `https://files.rcsb.org/download/1CRN.cif`（真 mmCIF）与 `…/1CRN.pdb`（真 PDB）
 - `https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v4.pdb`（真 AlphaFold 模型，B-factor 列即 pLDDT）
 
@@ -31,6 +32,7 @@ PROBE formats: cif=cif pdb=pdb 无后缀时按内容判=pdb      ← 期望 cif�
 ```
 PROBE 1CRN isAlphaFold=false（期望 false）
 ```
+
 普通 RCSB 结构**没有**被误判成 AlphaFold 产物（⇒ 不会给它一个没有含义的 pLDDT 配色）。
 
 ## ⛔ 未取（具名）

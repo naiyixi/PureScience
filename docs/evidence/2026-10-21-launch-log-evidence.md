@@ -5,15 +5,15 @@
 
 ## 一 这次红落在哪
 
-| 项 | 读数 |
-|---|---|
-| 车道 | `Nightly`，run `39511096581`，提交 `26dd678b`（完整 40 位 `26dd678be91ea6f82c5397bf7356e37b653451a4`） |
-| 失败作业 | 只有一个：`build / Build macos-arm64` |
-| 失败步骤 | `Enforce platform certification`（第 23 步） |
-| 同作业其余步骤 | `Build & package`、`Run P0 Electron certification`、`Run desktop visual regression`、`Smoke test macOS packages`、`Enforce the macOS Developer ID signature gate` 全部 success |
-| 套件自身汇总 | **95 passed / 8 flaky / 1 failed / 11 skipped（56.9 min）** |
-| 唯一 failed | `e2e/certification/search-index-coverage.spec.ts:33` —— 两次尝试同为 `firstWindow: Timeout 30000ms exceeded`，栈指向 `fixtures/electron-app.ts:280`，调用方是 `restart()`（`:560`） |
-| 另一条车道 | `Windows Full Test` 同 SHA **success**（该车道不执行认证 spec） |
+| 项             | 读数                                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 车道           | `Nightly`，run `39511096581`，提交 `26dd678b`（完整 40 位 `26dd678be91ea6f82c5397bf7356e37b653451a4`）                                                                              |
+| 失败作业       | 只有一个：`build / Build macos-arm64`                                                                                                                                               |
+| 失败步骤       | `Enforce platform certification`（第 23 步）                                                                                                                                        |
+| 同作业其余步骤 | `Build & package`、`Run P0 Electron certification`、`Run desktop visual regression`、`Smoke test macOS packages`、`Enforce the macOS Developer ID signature gate` 全部 success      |
+| 套件自身汇总   | **95 passed / 8 flaky / 1 failed / 11 skipped（56.9 min）**                                                                                                                         |
+| 唯一 failed    | `e2e/certification/search-index-coverage.spec.ts:33` —— 两次尝试同为 `firstWindow: Timeout 30000ms exceeded`，栈指向 `fixtures/electron-app.ts:280`，调用方是 `restart()`（`:560`） |
+| 另一条车道     | `Windows Full Test` 同 SHA **success**（该车道不执行认证 spec）                                                                                                                     |
 
 `Run P0 Electron certification` 显示 success 而 `Enforce platform certification` 失败，是这条车道的既有形状：
 前者带 `continue-on-error`，判决由后者给出。**按技能纪律「归因取失败步骤清单里的第一环」**，这里第一环就是
@@ -39,22 +39,22 @@
 
 夹具收尾时打印 `(N bytes)`，而那一行进了作业日志。整轮 121 次启动的字节数分布：
 
-| 统计 | 值 |
-|---|---|
+| 统计   | 值          |
+| ------ | ----------- |
 | 中位数 | **8,607 B** |
-| 最小 | 1,472 B |
-| 最大 | 39,959 B |
+| 最小   | 1,472 B     |
+| 最大   | 39,959 B    |
 
 把最小的六个与它们的 spec 对上，**正好是本轮全部出问题的那几个**：
 
-| 字节数 | spec | 该 spec 在本轮的结局 |
-|---|---|---|
-| 1,472 | `pdf-annotation-layer.spec.ts:315` | flaky（重试过） |
-| 2,226 | `pdf-table-panel-reasons.spec.ts:37` | flaky |
-| **2,489** | `search-index-coverage.spec.ts:33` | **failed（两次尝试同形）** |
-| **2,489** | `session-package-round-trip.spec.ts:62` | flaky |
-| **2,489** | `storage-migration-unfinished.spec.ts:64` | flaky |
-| 2,593 | `ro-crate-export.spec.ts:63` | flaky |
+| 字节数    | spec                                      | 该 spec 在本轮的结局       |
+| --------- | ----------------------------------------- | -------------------------- |
+| 1,472     | `pdf-annotation-layer.spec.ts:315`        | flaky（重试过）            |
+| 2,226     | `pdf-table-panel-reasons.spec.ts:37`      | flaky                      |
+| **2,489** | `search-index-coverage.spec.ts:33`        | **failed（两次尝试同形）** |
+| **2,489** | `session-package-round-trip.spec.ts:62`   | flaky                      |
+| **2,489** | `storage-migration-unfinished.spec.ts:64` | flaky                      |
+| 2,593     | `ro-crate-export.spec.ts:63`              | flaky                      |
 
 两件事只有这组数能说明：
 
@@ -71,11 +71,11 @@
 
 ## 四 这一轮改成什么（让下一次红自带证据）
 
-| 位置 | 改动 |
-|---|---|
-| `e2e/fixtures/app-process-log.ts`（新） | 纯函数：启动日志命名（序号 + spec 标题 + 重试号）、日志首部（哪次启动 / pid / 两个根 / 时间）、退出态措辞、失败文案、有界读尾部（64 KB / 20 行）；`raceWindowAgainstExit` 与 `openWindowOrNameFailure` 把「等窗口」与「等进程退出」放在一起 |
-| `e2e/fixtures/electron-app.ts` | 每次 `launch()` 写**自己的**文件 `test-results/app-process/<序号>-<spec slug>[-retryN].log`（另镜像一份到旧的固定路径，习惯不变）；`openMainWindow` 不再裸等 `firstWindow`：进程先退出就**立刻失败并给出退出码/信号 + 该次日志尾部**，超时则**保留原超时原因并说明「进程仍在运行」** |
-| `test/app-process-log.test.ts`（新，15 例） | 命名的序号/重试/长标题截断、退出态措辞、文案含路径与尾部、空尾部不打印空段、竞态两条分支、`openWindowOrNameFailure` 三条分支（含**「进程已退出时不花 30 s」**，断言 <1 s）、尾部读取对真实文件与缺失文件两态 |
+| 位置                                        | 改动                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `e2e/fixtures/app-process-log.ts`（新）     | 纯函数：启动日志命名（序号 + spec 标题 + 重试号）、日志首部（哪次启动 / pid / 两个根 / 时间）、退出态措辞、失败文案、有界读尾部（64 KB / 20 行）；`raceWindowAgainstExit` 与 `openWindowOrNameFailure` 把「等窗口」与「等进程退出」放在一起                                          |
+| `e2e/fixtures/electron-app.ts`              | 每次 `launch()` 写**自己的**文件 `test-results/app-process/<序号>-<spec slug>[-retryN].log`（另镜像一份到旧的固定路径，习惯不变）；`openMainWindow` 不再裸等 `firstWindow`：进程先退出就**立刻失败并给出退出码/信号 + 该次日志尾部**，超时则**保留原超时原因并说明「进程仍在运行」** |
+| `test/app-process-log.test.ts`（新，15 例） | 命名的序号/重试/长标题截断、退出态措辞、文案含路径与尾部、空尾部不打印空段、竞态两条分支、`openWindowOrNameFailure` 三条分支（含**「进程已退出时不花 30 s」**，断言 <1 s）、尾部读取对真实文件与缺失文件两态                                                                         |
 
 判据：失败信息必须能回答三个问题 —— **哪次启动**（文件名 + 首部）、**进程死了还是活着**（`exited (code=…, signal=…)` / `is still running`）、**它最后写了什么**（尾部原文）。
 

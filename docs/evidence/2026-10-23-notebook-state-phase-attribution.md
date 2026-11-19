@@ -7,14 +7,14 @@
 窗口侧最常读的一条笔记本通道是 `notebook:state`：打开会话、切回面板、每次内核事件之后都会重读它。
 开发实例的日志（`logs/headless.out.log`，单文件 76 MB）里，越过 IPC 通道 50 ms 阈值的 `notebook:state` 有：
 
-| 读数（现取，全量日志重算） | 值 |
-|---|---|
-| 次数 n | **116** |
-| 中位 | **1,168 ms** |
-| 均值 | 5,831 ms |
-| p90 / p95 / max | **18,664 / 21,578 / 29,180 ms** |
-| >1 s / >5 s / >10 s | **58 / 42 / 32** |
-| 这些调用合计 | **676 秒** |
+| 读数（现取，全量日志重算） | 值                              |
+| -------------------------- | ------------------------------- |
+| 次数 n                     | **116**                         |
+| 中位                       | **1,168 ms**                    |
+| 均值                       | 5,831 ms                        |
+| p90 / p95 / max            | **18,664 / 21,578 / 29,180 ms** |
+| >1 s / >5 s / >10 s        | **58 / 42 / 32**                |
+| 这些调用合计               | **676 秒**                      |
 
 这份日志只记 ≥50 ms 的调用，所以 116 是**下界**，不是调用总数：这条通道没有全量计数，只有慢行。
 
@@ -31,11 +31,11 @@
 用生产函数 `NotebookRunRepository.loadOrCreate` 直接吃真文档副本（**只读**真实数据根，副本落在 `/tmp`），
 每档三次取中位：
 
-| 文档 | runs | `loadOrCreate` | 裸 `readFile`+`JSON.parse` |
-|---|---|---|---|
-| 5.85 MB | 54 | **57 ms** | 77 ms |
-| 14.4 MB | 58 | **136 ms** | 129 ms |
-| 16.6 MB | 100 | **198 ms** | 257 ms |
+| 文档    | runs | `loadOrCreate` | 裸 `readFile`+`JSON.parse` |
+| ------- | ---- | -------------- | -------------------------- |
+| 5.85 MB | 54   | **57 ms**      | 77 ms                      |
+| 14.4 MB | 58   | **136 ms**     | 129 ms                     |
+| 16.6 MB | 100  | **198 ms**     | 257 ms                     |
 
 两列同量级 ⇒ **归一化几乎不花钱，成本就是读 + 解析**，且随文档大小线性。
 
@@ -50,13 +50,13 @@
 
 ## 3 交付（仪器，不是优化）
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/notebook/session-read-model.ts` | 新增导出 `NotebookStateReadPhases`；`state(session, phases?)` 把**持久层那一段**（读 + 解析 + 归一化 `run.json`）写进**调用方自己持有的对象**。不传 `phases` 时行为与改动前逐字相同（既有调用方零改动） |
-| `src/main/notebook/runtime-service.ts` | `state()` 取三个时间点（进入 / `sessionLifecycle.ensure` 返回 / 读模型返回），越过 `SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200` 时打**一行** `warn: notebook state read was slow`，字段 `sessionId / cold / ensureMs / loadMs / projectMs / totalMs / runs` |
-| `src/main/notebook/state-read-attribution.test.ts`（新） | 三条：慢读要打印三段且 `loadMs ≥ 250`；第二次调用 `cold=false`；快读**不出声**；另有一条 logger 抛错时答案照常返回 |
-| `src/main/notebook/session-read-model.test.ts` | 补一条：`phases.loadMs` 被填且是数字；不传 `phases` 仍合法 |
-| `src/main/notebook/runtime-service.architecture.test.ts` | 模块常量 pin 里**显式**加入新常量并写明理由（该门要求扩面必须是有意为之） |
+| 位置                                                     | 改动                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/notebook/session-read-model.ts`                | 新增导出 `NotebookStateReadPhases`；`state(session, phases?)` 把**持久层那一段**（读 + 解析 + 归一化 `run.json`）写进**调用方自己持有的对象**。不传 `phases` 时行为与改动前逐字相同（既有调用方零改动）                                                      |
+| `src/main/notebook/runtime-service.ts`                   | `state()` 取三个时间点（进入 / `sessionLifecycle.ensure` 返回 / 读模型返回），越过 `SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200` 时打**一行** `warn: notebook state read was slow`，字段 `sessionId / cold / ensureMs / loadMs / projectMs / totalMs / runs` |
+| `src/main/notebook/state-read-attribution.test.ts`（新） | 三条：慢读要打印三段且 `loadMs ≥ 250`；第二次调用 `cold=false`；快读**不出声**；另有一条 logger 抛错时答案照常返回                                                                                                                                           |
+| `src/main/notebook/session-read-model.test.ts`           | 补一条：`phases.loadMs` 被填且是数字；不传 `phases` 仍合法                                                                                                                                                                                                   |
+| `src/main/notebook/runtime-service.architecture.test.ts` | 模块常量 pin 里**显式**加入新常量并写明理由（该门要求扩面必须是有意为之）                                                                                                                                                                                    |
 
 **四条设计判据**
 
@@ -75,13 +75,13 @@
 
 ## 5 门禁（隔离工作树 `/tmp/ps-gate-2310` = `50e82458` + 本笔 5 文件，`node_modules` 软链）
 
-| 环 | 读数 |
-|---|---|
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
-| 域内 vitest（`src/main/notebook` 全目录） | **91 passed \| 8 skipped（99 文件）**；**1437 passed \| 99 skipped**，exit 0 |
-| `eslint --no-cache`（本笔 5 文件） | **0 error / 0 warning** |
-| `prettier --check`（本笔 5 文件） | 全部合风格 |
+| 环                                                     | 读数                                                                         |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**                                                                   |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | **exit 0**                                                                   |
+| 域内 vitest（`src/main/notebook` 全目录）              | **91 passed \| 8 skipped（99 文件）**；**1437 passed \| 99 skipped**，exit 0 |
+| `eslint --no-cache`（本笔 5 文件）                     | **0 error / 0 warning**                                                      |
+| `prettier --check`（本笔 5 文件）                      | 全部合风格                                                                   |
 
 **为什么门禁要开隔离工作树**：共享工作树此刻正被另一个写入者改动（`scripts/bench/**`、`src/main/ipc.ts`、
 `src/main/web-service/task-api.ts`、`src/main/capabilities/notice-journal*`），它的在制品会让

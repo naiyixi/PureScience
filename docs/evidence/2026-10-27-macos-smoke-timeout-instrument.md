@@ -9,13 +9,13 @@
 
 作业级归因（先读作业，不读车道）：
 
-| 作业 | 结论 | 失败步骤（第一个红的） |
-|---|---|---|
-| `build / Verify (lint + typecheck + test + package)` | success | —（用例 0 红） |
-| `build / Build linux-x64` | success | — |
-| `build / Build windows-x64` | success | — |
-| `build / Build macos-arm64` | success | —（同一支冒烟步骤 passed，20.8 s） |
-| **`build / Build macos-x64`** | **failure** | **17 `Smoke test macOS packages`** |
+| 作业                                                 | 结论        | 失败步骤（第一个红的）             |
+| ---------------------------------------------------- | ----------- | ---------------------------------- |
+| `build / Verify (lint + typecheck + test + package)` | success     | —（用例 0 红）                     |
+| `build / Build linux-x64`                            | success     | —                                  |
+| `build / Build windows-x64`                          | success     | —                                  |
+| `build / Build macos-arm64`                          | success     | —（同一支冒烟步骤 passed，20.8 s） |
+| **`build / Build macos-x64`**                        | **failure** | **17 `Smoke test macOS packages`** |
 
 失败原文（作业 `121739119093`）：
 
@@ -30,18 +30,18 @@
 随后两条红**都是它的后果**，不是独立缺陷：
 
 - 步骤 18 `Enforce the macOS Developer ID signature gate`：`macSignature=unproven … an unobserved state
-  must not be recorded as a pass` —— 冒烟没跑完，签名读数文件根本没被写出，闸门按设计拒收。
+must not be recorded as a pass` —— 冒烟没跑完，签名读数文件根本没被写出，闸门按设计拒收。
 - 步骤 23 `Enforce platform certification`：`MACOS_SMOKE_OUTCOME=failure` ⇒ `macos_smoke ended with failure`。
 
 ## 二 这是不是「我改坏的」
 
 三条对照，全部现取：
 
-| 对照 | 读数 | 说明 |
-|---|---|---|
-| 同一提交的另一架构 | `Build macos-arm64` 同一步骤 **passed**，整支脚本 20.8 s（两次启动） | 同一棵树、同一支脚本 |
-| 前一笔提交（`37b236cc`）同一条车道 | `Build macos-x64` 冒烟 **passed**，整支脚本 30.0 s | 同架构基线 |
-| 本笔改动面 | 只有诊断日志字段与计划档，**零** `scripts/**`、零打包路径 | 不可能是它 |
+| 对照                               | 读数                                                                 | 说明                 |
+| ---------------------------------- | -------------------------------------------------------------------- | -------------------- |
+| 同一提交的另一架构                 | `Build macos-arm64` 同一步骤 **passed**，整支脚本 20.8 s（两次启动） | 同一棵树、同一支脚本 |
+| 前一笔提交（`37b236cc`）同一条车道 | `Build macos-x64` 冒烟 **passed**，整支脚本 30.0 s                   | 同架构基线           |
+| 本笔改动面                         | 只有诊断日志字段与计划档，**零** `scripts/**`、零打包路径            | 不可能是它           |
 
 ⇒ 判决：**间歇红**（x64 runner 上单次启动卡住 >60 s；健康基线是整支 30 s、每次启动约 15 s，限值 60 s
 并不在刀口上）。**不重跑单作业**（会与下一次推送的车道抢并发组，且「取消 ≠ 绿」）；由下一次推送的
@@ -104,23 +104,23 @@ PASS ×6
 
 **四条变异逐条变红**（不是「加了断言」就算数）：
 
-| 变异 | 变红用例 |
-|---|---|
-| 消息里去掉包标签 | 2 条（四要素 + 贯通） |
-| `redactServiceTokens` 变成恒等 | 1 条（token 泄漏） |
-| `toStartupFailure` 原样透传 | 1 条（贯通） |
-| `waitFor` 不打 `SMOKE_TIMEOUT` 标 | 1 条（打标） |
+| 变异                              | 变红用例              |
+| --------------------------------- | --------------------- |
+| 消息里去掉包标签                  | 2 条（四要素 + 贯通） |
+| `redactServiceTokens` 变成恒等    | 1 条（token 泄漏）    |
+| `toStartupFailure` 原样透传       | 1 条（贯通）          |
+| `waitFor` 不打 `SMOKE_TIMEOUT` 标 | 1 条（打标）          |
 
 还原后 10 passed。
 
 ## 六 门禁
 
-| 环 | 读数 |
-|---|---|
+| 环                                                                                      | 读数                    |
+| --------------------------------------------------------------------------------------- | ----------------------- |
 | `eslint --no-cache scripts/macos-package-smoke.mjs scripts/macos-package-smoke.test.ts` | **0 error / 0 warning** |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **0** |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **0** |
-| `scripts/macos-package-smoke.test.ts` + `scripts/windows-release-workflows.test.ts` | **22 passed** |
+| `tsc --noEmit -p tsconfig.node.json --composite false`                                  | **0**                   |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                                   | **0**                   |
+| `scripts/macos-package-smoke.test.ts` + `scripts/windows-release-workflows.test.ts`     | **22 passed**           |
 
 ## 七 具名未办 / 风险
 

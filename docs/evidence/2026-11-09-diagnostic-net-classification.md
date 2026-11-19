@@ -11,9 +11,22 @@
 更新检查失败 6 次，全部只有这一行：
 
 ```json
-{"level":"error","scope":"update","msg":"operation failed","data":{"strategy":"manifest","result":"error",
- "operation":"update-check","phase":"fetch-manifest","phases":"fetch-manifest=28ms","totalPhaseMs":28,
- "outcome":"failed","durationMs":565,"errorCategory":"error"}}
+{
+  "level": "error",
+  "scope": "update",
+  "msg": "operation failed",
+  "data": {
+    "strategy": "manifest",
+    "result": "error",
+    "operation": "update-check",
+    "phase": "fetch-manifest",
+    "phases": "fetch-manifest=28ms",
+    "totalPhaseMs": 28,
+    "outcome": "failed",
+    "durationMs": 565,
+    "errorCategory": "error"
+  }
+}
 ```
 
 真实的成因在同一份日志里，但落在**另一条**、**另一层**的 warn 行上：
@@ -47,13 +60,13 @@ rather than copied`）。把 message 整段塞进去会直接破掉这条，而�
 
 ## 四 读数
 
-| 环 | 读数 |
-| --- | --- |
-| 定向单测 `vitest run src/main/logger.test.ts src/main/diagnostics/operation.test.ts` | **2 文件 / 79 例 passed**，`EXIT=0` |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | 0 error，`NODE_EXIT=0` |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | 0 error，`WEB_EXIT=0` |
-| `npx eslint --no-cache src/main/logger.ts src/main/logger.test.ts` | 0 error，`LINT_EXIT=0` |
-| **真机日志回放**（把日志里那 6 个真实 `net::` 串喂给分类器） | `tokens=6 → [["network-changed",6]]`，无一例再落回 `error` |
+| 环                                                                                   | 读数                                                       |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| 定向单测 `vitest run src/main/logger.test.ts src/main/diagnostics/operation.test.ts` | **2 文件 / 79 例 passed**，`EXIT=0`                        |
+| `tsc --noEmit -p tsconfig.node.json --composite false`                               | 0 error，`NODE_EXIT=0`                                     |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                                | 0 error，`WEB_EXIT=0`                                      |
+| `npx eslint --no-cache src/main/logger.ts src/main/logger.test.ts`                   | 0 error，`LINT_EXIT=0`                                     |
+| **真机日志回放**（把日志里那 6 个真实 `net::` 串喂给分类器）                         | `tokens=6 → [["network-changed",6]]`，无一例再落回 `error` |
 
 回放脚本是一次性探针（跑完即删，未提交）；它读的是运行中应用**自己写下的**字符串，
 不是构造的样例。

@@ -1,6 +1,7 @@
 ---
 name: quantizing-models-bitsandbytes
 description: Quantizes LLMs to 8-bit or 4-bit for 50-75% memory reduction with minimal accuracy loss. Use when GPU memory is limited, need to fit larger models, or want faster inference. Supports INT8, NF4, FP4 formats, QLoRA training, and 8-bit optimizers. Works with HuggingFace Transformers.
+description-zh: 用 bitsandbytes 把大模型量化到 8 bit 或 4 bit，显存下降 50–75% 而精度损失很小。适用于显存受限、想装下更大的模型或要更快推理。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

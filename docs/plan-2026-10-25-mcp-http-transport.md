@@ -7,12 +7,12 @@
 
 真机读数（安装版，load≈14）：
 
-| 事实 | 数 |
-|---|---|
-| 单个子进程引导（Electron-as-node） | 123 ms |
-| 单个子进程到模块就绪 | 305 ms（其中 ~180 ms 是 MCP SDK + 服务模块，压不动） |
-| 14 个并发 burst（真实会话探针） | 中位 2,635 ms / 最大 2,729 ms |
-| 代理侧就绪预算（我们自己 patch 的 `MCP_STARTUP_TIMEOUT_MS`） | 10,000 ms |
+| 事实                                                         | 数                                                   |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| 单个子进程引导（Electron-as-node）                           | 123 ms                                               |
+| 单个子进程到模块就绪                                         | 305 ms（其中 ~180 ms 是 MCP SDK + 服务模块，压不动） |
+| 14 个并发 burst（真实会话探针）                              | 中位 2,635 ms / 最大 2,729 ms                        |
+| 代理侧就绪预算（我们自己 patch 的 `MCP_STARTUP_TIMEOUT_MS`） | 10,000 ms                                            |
 
 生产里一次会话有 **11/14 一起超时**，随后靠 `createSession` 重试掩盖。本机安静时仍有 3–4 倍余量，
 说明超时发生在系统争抢/主进程忙碌时——**把 14 个子进程变成 0 个**才是根治。
@@ -50,7 +50,7 @@
 3. **owner 侧**（`session-capability-owner.ts` 的 `buildHttpServers`）：照 artifact 那段抄 ——
    用已有的 `build<X>Environment(...)` 拿环境、`canPublishHttpRoute(request)` 成立才
    `host.register<X>(routingId, env)` 并 push `{ type:'http', name, url: host.urlFor(kind, routingId),
-   headers:[authHeader] }`。
+headers:[authHeader] }`。
 
 ⚠️ 有两个能力不是「环境 → RPC」形状，接线前先读它们的 stdio run：
 `query`（host-query）与 `figure` 的 handler 可能需要额外协作者（如数据库客户端 / 规则引擎）。

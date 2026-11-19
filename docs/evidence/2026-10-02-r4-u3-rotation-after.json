@@ -3,9 +3,7 @@
     "candidates": [
       {
         "columns": 4,
-        "columnsPerRow": [
-          4
-        ],
+        "columnsPerRow": [4],
         "confidence": "high",
         "page": 1,
         "rows": 6,
@@ -27,9 +25,7 @@
     "candidates": [
       {
         "columns": 4,
-        "columnsPerRow": [
-          4
-        ],
+        "columnsPerRow": [4],
         "confidence": "high",
         "page": 1,
         "rows": 6,
@@ -46,9 +42,7 @@
     "candidates": [
       {
         "columns": 4,
-        "columnsPerRow": [
-          4
-        ],
+        "columnsPerRow": [4],
         "confidence": "high",
         "page": 1,
         "rows": 6,
@@ -94,9 +88,7 @@
     "candidates": [
       {
         "columns": 3,
-        "columnsPerRow": [
-          3
-        ],
+        "columnsPerRow": [3],
         "confidence": "high",
         "page": 4,
         "rows": 61,
@@ -113,9 +105,7 @@
     "candidates": [
       {
         "columns": 13,
-        "columnsPerRow": [
-          13
-        ],
+        "columnsPerRow": [13],
         "confidence": "high",
         "page": 4,
         "rows": 66,
@@ -132,9 +122,7 @@
     "candidates": [
       {
         "columns": 2,
-        "columnsPerRow": [
-          2
-        ],
+        "columnsPerRow": [2],
         "confidence": "high",
         "page": 7,
         "rows": 36,
@@ -151,9 +139,7 @@
     "candidates": [
       {
         "columns": 3,
-        "columnsPerRow": [
-          3
-        ],
+        "columnsPerRow": [3],
         "confidence": "high",
         "page": 2,
         "rows": 13,
@@ -170,9 +156,7 @@
     "candidates": [
       {
         "columns": 7,
-        "columnsPerRow": [
-          7
-        ],
+        "columnsPerRow": [7],
         "confidence": "high",
         "page": 4,
         "rows": 42,
@@ -189,9 +173,7 @@
     "candidates": [
       {
         "columns": 4,
-        "columnsPerRow": [
-          4
-        ],
+        "columnsPerRow": [4],
         "confidence": "high",
         "page": 5,
         "rows": 35,
@@ -208,9 +190,7 @@
     "candidates": [
       {
         "columns": 4,
-        "columnsPerRow": [
-          4
-        ],
+        "columnsPerRow": [4],
         "confidence": "high",
         "page": 6,
         "rows": 39,

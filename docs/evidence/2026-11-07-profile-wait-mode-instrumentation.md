@@ -22,19 +22,19 @@
 
 分母是**活跃时间**（采样总时长减掉 `(idle)`）：
 
-| 帧 | `wait=selector`（应用侧） | `wait=text`（旧的缺省） |
-| --- | --- | --- |
-| `elementText` | **0.0 ms · 0.0%** | 68.4 ms · 2.6% |
-| `query` | 9.1 ms · 0.4% | 45.5 ms · 1.7% |
-| `normalizeWhiteSpace` | **0.0 ms · 0.0%** | 32.6 ms · 1.2% |
-| `shouldSkipForTextMatching` | **0.0 ms · 0.0%** | 25.7 ms · 1.0% |
-| `isElementHiddenForAria` | 0.0 ms · 0.0% | 0.0 ms · 0.0% |
-| `querySelectorAll` | 37.7 ms · 1.7% | 42.0 ms · 1.6% |
-| `propagateContextChanges` | 54.2 ms · 2.4% | 54.7 ms · 2.1% |
-| `removeChild` | 75.6 ms · 3.4% | 62.5 ms · 2.4% |
-| `commitHostUpdate` | 31.4 ms · 1.4% | 41.9 ms · 1.6% |
-| `updateProperties` | 36.3 ms · 1.6% | 27.1 ms · 1.0% |
-| 采样 / 活跃 | 9 458 ms / 2 233 ms | 6 707 ms / 2 626 ms |
+| 帧                          | `wait=selector`（应用侧） | `wait=text`（旧的缺省） |
+| --------------------------- | ------------------------- | ----------------------- |
+| `elementText`               | **0.0 ms · 0.0%**         | 68.4 ms · 2.6%          |
+| `query`                     | 9.1 ms · 0.4%             | 45.5 ms · 1.7%          |
+| `normalizeWhiteSpace`       | **0.0 ms · 0.0%**         | 32.6 ms · 1.2%          |
+| `shouldSkipForTextMatching` | **0.0 ms · 0.0%**         | 25.7 ms · 1.0%          |
+| `isElementHiddenForAria`    | 0.0 ms · 0.0%             | 0.0 ms · 0.0%           |
+| `querySelectorAll`          | 37.7 ms · 1.7%            | 42.0 ms · 1.6%          |
+| `propagateContextChanges`   | 54.2 ms · 2.4%            | 54.7 ms · 2.1%          |
+| `removeChild`               | 75.6 ms · 3.4%            | 62.5 ms · 2.4%          |
+| `commitHostUpdate`          | 31.4 ms · 1.4%            | 41.9 ms · 1.6%          |
+| `updateProperties`          | 36.3 ms · 1.6%            | 27.1 ms · 1.0%          |
+| 采样 / 活跃                 | 9 458 ms / 2 233 ms       | 6 707 ms / 2 626 ms     |
 
 四项（`elementText` + `query` + `normalizeWhiteSpace` + `shouldSkipForTextMatching`）合计：
 **`selector` 9.1 ms / 0.4%，`text` 172.2 ms / 6.6%**。

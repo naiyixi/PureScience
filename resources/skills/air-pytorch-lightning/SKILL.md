@@ -1,6 +1,7 @@
 ---
 name: air-pytorch-lightning
 description: High-level PyTorch framework with Trainer class, automatic distributed training (DDP/FSDP/DeepSpeed), callbacks system, and minimal boilerplate. Scales from laptop to supercomputer with same code. Use when you want clean training loops with built-in best practices.
+description-zh: 高层 PyTorch 框架：Trainer 类、自动分布式训练（DDP/FSDP/DeepSpeed）、回调机制，样板代码极少。同一份代码可从笔记本扩到超算。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

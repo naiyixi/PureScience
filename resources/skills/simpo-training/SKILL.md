@@ -1,6 +1,7 @@
 ---
 name: simpo-training
 description: Simple Preference Optimization for LLM alignment. Reference-free alternative to DPO with better performance (+6.4 points on AlpacaEval 2.0). No reference model needed, more efficient than DPO. Use for preference alignment when want simpler, faster training than DPO/PPO.
+description-zh: 用于大模型对齐的简单偏好优化（SimPO）：无需参考模型的 DPO 替代，效果更好（AlpacaEval 2.0 上 +6.4 分），也更高效。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

@@ -1,6 +1,7 @@
 ---
 name: pathml
 description: "Supports local computational pathology research with PathML: slide loading and tiling, preprocessing and QC, h5path storage, multiplex quantification, spatial graphs, and bounded model inference. Use for whole-slide H&E, CODEX, Vectra, Mesmer, HoVer-Net, and HACTNet workflows."
+description-zh: 用 PathML 做本地计算病理研究：切片加载与切块、预处理与质控、h5path 存储、多重定量、空间图，以及有边界的模型推理。
 license: MIT
 compatibility: Requires Python 3.10-3.12 for the PathML 3.0.8 dependency stack, native OpenSlide, a JDK/compiler for python-javabridge, and Bio-Formats. Network needed for installation and optional model/dataset downloads. Bundled Python 3.10+ planners and validators need only the standard library; optional metadata/image inspection needs its reader package.
 allowed-tools: Read Write Edit Bash Glob

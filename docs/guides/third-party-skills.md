@@ -40,7 +40,7 @@ SKILLS_SOURCE_SCI=/tmp/src-sci SKILLS_SOURCE_AIR=/tmp/src-air node scripts/impor
 
 这是页缓存热的读数；冷盘约 380 ms。引入 234 个技能把首次目录读取从约 50 ms 推到了 140 ms 量级——可以接受，但已经把「manifest 里存兼容性哈希、跳过整树读取」列为后续优化项。
 
-## 中文改写（2.3，已完成 119 / 234）
+## 中文改写（2.3，已完成 234 / 234）
 
 引入的技能正文是英文，中文用户读不上手。做法刻意保守：
 
@@ -48,7 +48,7 @@ SKILLS_SOURCE_SCI=/tmp/src-sci SKILLS_SOURCE_AIR=/tmp/src-air node scripts/impor
 - 译文放 `scripts/skill-localizations.zh-CN.json`（id → 中文），`scripts/localize-skills.mjs` 应用它：幂等、可重跑，没收录的技能保持原状并在报告里点出剩余数量。
 - 注册表把 `description-zh` 读成 `BundledSkill.descriptionZh`（可选字段：没有译文就是没有，不用空串掩盖）。
 
-已完成 **119 个**，按用途分组：
+**234 个技能全部有中文流程描述**，按用途分组：
 
 - 数据与工具链：`polars-bio`、`bids`、`onekgpd`、`bulk-rnaseq`、`pysam`、`scanpy`、`anndata`、`pydeseq2`、`biopython`、`zarr-python`、`gget`、`dask`、`nextflow`
 - 统计与建模：`pymc`、`statsmodels`、`scikit-learn`、`seaborn`、`umap-learn`、`shap`、`scikit-survival`、`statistical-analysis`、`statistical-power`、`pymoo`、`simpy`
@@ -59,7 +59,7 @@ SKILLS_SOURCE_SCI=/tmp/src-sci SKILLS_SOURCE_AIR=/tmp/src-air node scripts/impor
 - 影像与仿真/其他科学：`cellprofiler`、`histolab`、`alphagenome`、`arboreto`、`nwb-conversion`、`openpiv`、`relion`、`segment-anything-model`、`lamindb`、`liteparse`、`geomaster`、`astropy`、`geopandas`、`cantera`、`fluidsim`、`pennylane`、`qiskit`、`cirq`、`aeon`、`chroma`
 - 其余：`waypoint-bio`、`arbor`、`pybamm`、`open-notebook`、`rdkit`、`hypogenic`、`exploratory-data-analysis`、`sci-diffdock`、`sci-scvi-tools`、`transformers`、`peft-fine-tuning`、`llama-cpp`、`serving-llms-vllm`、`mlflow`、`tensorboard`
 
-剩余 115 个未译，按批次继续。
+收尾读数：`localized 234 / thirdPartyTotal 234 / remaining 0`。护栏用例已从「至少 20 条」收紧为「全部第三方技能都有」——少一条就红。
 
 ## 品牌扫描的豁免（以及为什么不是漏洞）
 

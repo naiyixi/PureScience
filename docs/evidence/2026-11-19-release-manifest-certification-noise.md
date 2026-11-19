@@ -14,12 +14,12 @@ gh release download v2.30.2 -p version.json -R naiyixi/PureScience
 
 读数（`downloads` 的键与 URL 末段）：
 
-| 键 | 文件名 |
-| --- | --- |
-| `linux-x64-appimage` | `zerolink-purescience-2.30.2-linux-x86_64.AppImage` |
-| `linux-x64-deb` | `zerolink-purescience_2.30.2_amd64.deb` |
-| `mac-arm64` / `mac-x64` | `…-mac-arm64.dmg` / `…-mac-x64.dmg` |
-| `win-x64` | `…-win-x64-setup.exe` |
+| 键                      | 文件名                                              |
+| ----------------------- | --------------------------------------------------- |
+| `linux-x64-appimage`    | `zerolink-purescience-2.30.2-linux-x86_64.AppImage` |
+| `linux-x64-deb`         | `zerolink-purescience_2.30.2_amd64.deb`             |
+| `mac-arm64` / `mac-x64` | `…-mac-arm64.dmg` / `…-mac-x64.dmg`                 |
+| `win-x64`               | `…-win-x64-setup.exe`                               |
 
 五条齐，AppImage 在里面。发布作业自己的汇总行（run `44216634387`，publish job `134539767731`）：
 
@@ -75,11 +75,11 @@ warn: unrecognized release file mystery-setup.exe
 
 ## 四 门禁（本机实跑）
 
-| 环 | 读数 |
-| --- | --- |
+| 环                                                         | 读数                                                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- |
 | `npx vitest run scripts/generate-version-manifest.test.ts` | 1 file / **44 passed**（新增两条：认证证据静默、形似认证证据仍 warn） |
-| `npx eslint --no-cache`（两个改动文件） | 0 error / 0 warning |
-| 脚本 CLI（伪造产物目录，镜像模式） | exit 0，五平台，零 warn |
+| `npx eslint --no-cache`（两个改动文件）                    | 0 error / 0 warning                                                   |
+| 脚本 CLI（伪造产物目录，镜像模式）                         | exit 0，五平台，零 warn                                               |
 
 ## 五 边界（明确没做的）
 

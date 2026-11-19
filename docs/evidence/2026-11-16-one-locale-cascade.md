@@ -4,12 +4,12 @@
 
 「九种语言」这件事在树里有**四份**实现，而且四份的答案不一致：
 
-| 位置 | 原来的实现 | 对 `zh-MO` 的答案 |
-| --- | --- | --- |
-| `src/main/native-locale.ts`（原生对话框、配对页、OAuth 回跳页） | 自写级联，只认 `zh-hant` / `zh-tw` / `zh-hk` 前缀 | `zh`（简体） |
-| `src/shared/app-menu-labels.ts`（应用菜单） | 自写级联 + 正则 `^zh-(tw\|hk\|mo\|hant)(-\|$)` | `zh-Hant`（繁体） |
-| `src/shared/tray-labels.ts`（托盘） | 自写级联，`includes('hant'\|'tw'\|'hk')` | `zh`（简体） |
-| `src/renderer/src/i18n/languages.ts`（渲染层「跟随系统语言」） | 自写级联，返回值可为 `undefined` | `zh`（简体） |
+| 位置                                                            | 原来的实现                                        | 对 `zh-MO` 的答案 |
+| --------------------------------------------------------------- | ------------------------------------------------- | ----------------- |
+| `src/main/native-locale.ts`（原生对话框、配对页、OAuth 回跳页） | 自写级联，只认 `zh-hant` / `zh-tw` / `zh-hk` 前缀 | `zh`（简体）      |
+| `src/shared/app-menu-labels.ts`（应用菜单）                     | 自写级联 + 正则 `^zh-(tw\|hk\|mo\|hant)(-\|$)`    | `zh-Hant`（繁体） |
+| `src/shared/tray-labels.ts`（托盘）                             | 自写级联，`includes('hant'\|'tw'\|'hk')`          | `zh`（简体）      |
+| `src/renderer/src/i18n/languages.ts`（渲染层「跟随系统语言」）  | 自写级联，返回值可为 `undefined`                  | `zh`（简体）      |
 
 后果不是「少翻了一句」，而是**同一个 OS 语言设置下，菜单画繁体、它旁边的原生对话框画简体**。
 另外两张表声明成 `Record<string, T>`：加/漏一种语言，编译器一句话都不说，读者静默拿到英文。
@@ -30,12 +30,12 @@
 
 ## 3 门禁读数（本机实跑）
 
-| 环 | 命令 | 读数 |
-| --- | --- | --- |
-| 定向用例 | `npx vitest run src/shared/ src/renderer/src/i18n/ src/main/{app-menu,tray,native-locale,native-file-dialogs,native-dialog-strings}.test.ts` | **168 files / 1851 passed** |
-| 类型（node） | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | exit **0**（不抬堆会 `Abort trap: 6`） |
-| 类型（web） | `npm run typecheck:web` | exit **0** |
-| lint | `NODE_OPTIONS=… npx eslint --no-cache <7 个改动文件>` | exit **0**，0 error 0 warning（不抬堆同样 `Abort trap: 6`） |
+| 环           | 命令                                                                                                                                         | 读数                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| 定向用例     | `npx vitest run src/shared/ src/renderer/src/i18n/ src/main/{app-menu,tray,native-locale,native-file-dialogs,native-dialog-strings}.test.ts` | **168 files / 1851 passed**                                 |
+| 类型（node） | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node`                                                                              | exit **0**（不抬堆会 `Abort trap: 6`）                      |
+| 类型（web）  | `npm run typecheck:web`                                                                                                                      | exit **0**                                                  |
+| lint         | `NODE_OPTIONS=… npx eslint --no-cache <7 个改动文件>`                                                                                        | exit **0**，0 error 0 warning（不抬堆同样 `Abort trap: 6`） |
 
 新增断言分三层，都在 `src/shared/locale-codes.test.ts` 与 `src/renderer/src/i18n/languages.test.ts`：
 

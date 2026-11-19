@@ -1,6 +1,7 @@
 ---
 name: guidance
 description: Control LLM output with regex and grammars, guarantee valid JSON/XML/code generation, enforce structured formats, and build multi-step workflows with Guidance - Microsoft Research's constrained generation framework
+description-zh: 用 Guidance 约束大模型输出：用正则与文法保证生成合法的 JSON/XML/代码、强制结构化格式，并搭建多步工作流——这是 Microsoft Research 的受限生成框架。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

@@ -37,7 +37,7 @@ awk '/ipc handler was slow/{slow=1; ch=0; next} /ipc handler rejected/{slow=0; n
 ```ts
 useEffect(() => {
   if (!activeSession || activeSession.activePlanProjection || !getPlanProjection) return
-  void getPlanProjection(activeSession.projectId, activeSession.id).then(/* … */)
+  void (getPlanProjection(activeSession.projectId, activeSession.id).then(/* … */))
 }, [activeSession, setActivePlanProjection])
 ```
 
@@ -46,10 +46,10 @@ useEffect(() => {
 
 全树的生产消费方只有两处，读的时候别把它们混成一处：
 
-| 位置 | 什么时候问 |
-|---|---|
-| `WorkspacePage.tsx` 这个 effect | 每打开一个还没有计划的会话（**无用户动作**，本单元治的就是它） |
-| `session-plan/respond-to-session-plan.ts:45` | 用户对计划做出决定之后刷一次（一次决定一次，合理） |
+| 位置                                         | 什么时候问                                                     |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `WorkspacePage.tsx` 这个 effect              | 每打开一个还没有计划的会话（**无用户动作**，本单元治的就是它） |
+| `session-plan/respond-to-session-plan.ts:45` | 用户对计划做出决定之后刷一次（一次决定一次，合理）             |
 
 更隐蔽的一条：**修复路线自己会触发一次重问**。这一半读通道同时承担一个兜底——
 当会话状态是 `waiting-plan-approval` 而主进程说「没有计划」时，把卡住的状态解开（`finishRun`）。
@@ -71,10 +71,10 @@ useEffect(() => {
 
 ## 4 变异证明（每条只红对应的一条用例）
 
-| 变异 | 结果 |
-|---|---|
+| 变异                     | 结果                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------- |
 | 去掉账本去重（每次都问） | 只红「打开只问一次」：`expected 3 to be 2` —— 多出来的那一次正是修复路径自己触发的重问 |
-| 账本不随「打开」重置 | 只红「切走再切回来算新的一次打开」 |
+| 账本不随「打开」重置     | 只红「切走再切回来算新的一次打开」                                                     |
 
 用例文件 `WorkspacePage.plan-projection-ask.test.tsx`（4 条）：
 

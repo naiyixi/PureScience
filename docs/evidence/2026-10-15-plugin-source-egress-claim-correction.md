@@ -14,14 +14,14 @@
 
 ## 二 判据（逐条读源，file:line）
 
-| # | 事实 | 位置 |
-| --- | --- | --- |
-| 1 | 出口白名单的**作用域就是子进程**，源码注释逐字写着：`Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.` | `src/main/settings/types.ts:226`（同文件 `:231` 的代理设置同样写明「Outbound proxy for child processes」） |
-| 2 | 插件来源的取字节是合成根交给候选存储的一个**裸 fetch 闭包**：`fetch(url, { redirect: 'follow', signal })` + 20 s 超时；函数体里**没有任何** `getEgress` / 白名单 / 同意流程 | `src/main/ipc.ts` 的 `new PluginSourceCandidateStore({ fetchBytes: … })`（同文件 `:996` 是市场线同一形状：`fetch: globalThis.fetch.bind(globalThis)`） |
-| 3 | 整个 `src/main/specialist/**` 里 `egress` 只有**一处**命中，且是运行插件的**子进程环境白名单**注释（「不传父进程的 proxy 变量」），不是取字节的闸门 | `grep -rn "egress\|Egress\|proxy" src/main/specialist/ --include=*.ts`（非测试） |
-| 4 | 主进程**没有**对 `globalThis.fetch` 的全局改写 | `grep -rn "globalThis.fetch\s*=" src/main --include=*.ts`（非测试）⇒ 0 命中 |
-| 5 | 插件预览/部署的 IPC 处理器里也没有出口检查 | `grep -c "getEgress\|egress" src/main/specialist/ipc.ts` ⇒ **0** |
-| 6 | 反证（同一份 CHANGELOG 自己写清了作用域）：「网络出口白名单…**Notebook / REPL / Shell 子进程**经本地过滤代理访问网络」 | `CHANGELOG.md`（v1.x 段，该条描述出口白名单本体） |
+| #   | 事实                                                                                                                                                                        | 位置                                                                                                                                                   |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 出口白名单的**作用域就是子进程**，源码注释逐字写着：`Network egress allowlist for child processes (notebook/repl/shell). Absent means unrestricted.`                        | `src/main/settings/types.ts:226`（同文件 `:231` 的代理设置同样写明「Outbound proxy for child processes」）                                             |
+| 2   | 插件来源的取字节是合成根交给候选存储的一个**裸 fetch 闭包**：`fetch(url, { redirect: 'follow', signal })` + 20 s 超时；函数体里**没有任何** `getEgress` / 白名单 / 同意流程 | `src/main/ipc.ts` 的 `new PluginSourceCandidateStore({ fetchBytes: … })`（同文件 `:996` 是市场线同一形状：`fetch: globalThis.fetch.bind(globalThis)`） |
+| 3   | 整个 `src/main/specialist/**` 里 `egress` 只有**一处**命中，且是运行插件的**子进程环境白名单**注释（「不传父进程的 proxy 变量」），不是取字节的闸门                         | `grep -rn "egress\|Egress\|proxy" src/main/specialist/ --include=*.ts`（非测试）                                                                       |
+| 4   | 主进程**没有**对 `globalThis.fetch` 的全局改写                                                                                                                              | `grep -rn "globalThis.fetch\s*=" src/main --include=*.ts`（非测试）⇒ 0 命中                                                                            |
+| 5   | 插件预览/部署的 IPC 处理器里也没有出口检查                                                                                                                                  | `grep -c "getEgress\|egress" src/main/specialist/ipc.ts` ⇒ **0**                                                                                       |
+| 6   | 反证（同一份 CHANGELOG 自己写清了作用域）：「网络出口白名单…**Notebook / REPL / Shell 子进程**经本地过滤代理访问网络」                                                      | `CHANGELOG.md`（v1.x 段，该条描述出口白名单本体）                                                                                                      |
 
 ⇒ 结论：取字节是**主进程直取**（与市场线同一现状），**不经**应用既有出口策略；那句话把「应用整体的出网现状」说成了「走了一道门」。
 

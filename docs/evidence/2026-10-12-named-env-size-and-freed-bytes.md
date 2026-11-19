@@ -10,15 +10,15 @@
 
 ## 一、缺口核实（对源逐条核过，不是按计划措辞）
 
-| # | 事实 | 证据（file:line） |
-| --- | --- | --- |
-| 1 | 移除路径**在删除之前**测量前缀并回报 `freedBytes` | `src/main/notebook/environment-management.ts` 的 `case 'remove'`：`dirSize(prefix, …)` → `manager.removeEnvironment(name)` → `return { environments, freedBytes }` |
-| 2 | 列表路径按前缀计大小（`sizeBytes`） | 同文件 `withSizes()`（`stat` 先判存在，不存在/非有限值一律**不填**，注释写明「could not look」不得读成 0） |
-| 3 | 契约里两个字段都在，且窗口那条通道**用的是同一个结果类型** | `src/shared/notebook-env.ts`：`ManageEnvironmentsResult { environments; freedBytes? }`；`NamedEnvironmentResult = ManageEnvironmentsResult`；`EnvironmentInfo.sizeBytes?` |
-| 4 | agent 面**已消费**（因此不是「有值没人读」的另一半） | `src/main/notebook/mcp-server.ts` 的 `compactManageEnvironmentsResult`：`environments` 取 `sizeBytes`、`freedBytes` 显式透传（注释自指 P0-10b） |
-| 5 | 窗口通道链路齐备，值确实到达渲染端 | `runtime:manage-named-environments`（`src/main/notebook/runtime-ipc.ts`）→ `runtime-selection-workflows.ts` 的 `manageNamedEnvironments` → `runtime-service.ts` 的 `manageEnvironments` → `ipc.ts` 的 `notebookService.manageEnvironments` |
-| 6 | **缺口一**：渲染端把 `freedBytes` 直接丢掉 | `RuntimesPanel.tsx` 的 `confirmRemoveNamedEnv`：旧代码只取 `result.environments`，回执句是「Removed “X”.」——释放了多少一个字都没有 |
-| 7 | **缺口二**：渲染端从不读 `sizeBytes` | 同上文件的具名环境行：旧代码只印 name / language / ready / interpreterPath；`grep -rn "sizeBytes" src/renderer/src` 在组件里 0 命中（只有一处测试夹具） |
+| #   | 事实                                                       | 证据（file:line）                                                                                                                                                                                                                          |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 移除路径**在删除之前**测量前缀并回报 `freedBytes`          | `src/main/notebook/environment-management.ts` 的 `case 'remove'`：`dirSize(prefix, …)` → `manager.removeEnvironment(name)` → `return { environments, freedBytes }`                                                                         |
+| 2   | 列表路径按前缀计大小（`sizeBytes`）                        | 同文件 `withSizes()`（`stat` 先判存在，不存在/非有限值一律**不填**，注释写明「could not look」不得读成 0）                                                                                                                                 |
+| 3   | 契约里两个字段都在，且窗口那条通道**用的是同一个结果类型** | `src/shared/notebook-env.ts`：`ManageEnvironmentsResult { environments; freedBytes? }`；`NamedEnvironmentResult = ManageEnvironmentsResult`；`EnvironmentInfo.sizeBytes?`                                                                  |
+| 4   | agent 面**已消费**（因此不是「有值没人读」的另一半）       | `src/main/notebook/mcp-server.ts` 的 `compactManageEnvironmentsResult`：`environments` 取 `sizeBytes`、`freedBytes` 显式透传（注释自指 P0-10b）                                                                                            |
+| 5   | 窗口通道链路齐备，值确实到达渲染端                         | `runtime:manage-named-environments`（`src/main/notebook/runtime-ipc.ts`）→ `runtime-selection-workflows.ts` 的 `manageNamedEnvironments` → `runtime-service.ts` 的 `manageEnvironments` → `ipc.ts` 的 `notebookService.manageEnvironments` |
+| 6   | **缺口一**：渲染端把 `freedBytes` 直接丢掉                 | `RuntimesPanel.tsx` 的 `confirmRemoveNamedEnv`：旧代码只取 `result.environments`，回执句是「Removed “X”.」——释放了多少一个字都没有                                                                                                         |
+| 7   | **缺口二**：渲染端从不读 `sizeBytes`                       | 同上文件的具名环境行：旧代码只印 name / language / ready / interpreterPath；`grep -rn "sizeBytes" src/renderer/src` 在组件里 0 命中（只有一处测试夹具）                                                                                    |
 
 **结论**：这属于本仓点过名的「契约/投影里有了、生产里没有任何消费方」那一类；两条都在**渲染层**，因此
 本单元不动主进程一个字节。
@@ -42,14 +42,14 @@
 
 ## 三、门禁读数（全部实跑，读数即结论；数字取自**最后一次改动之后**的运行）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（`RuntimesPanel.render.test.tsx` + `src/renderer/src/i18n`） | 5 文件 / **96 passed** |
-| `prettier --check`（本单元 11 个文件） | 通过（首跑 11 文件全 `[warn]`，核对 `HEAD` 版本**全部 CLEAN** ⇒ 漂移是本单元引入的，已对**仅本单元的文件**跑 `--write`，复跑 `All matched files use Prettier code style!`） |
-| `eslint --no-cache .`（全仓，CI 同口径） | **0 error / 122 warning**，exit 0；**本单元 11 个文件 0 warning**（122 是既有基线，逐条都在别的文件里） |
-| `tsc` node / web（均带 `--composite false`） | exit 0 / exit 0 |
-| 全量 `vitest run --maxWorkers=4` | **1247 passed \| 16 skipped（1263 文件）**、**16114 passed \| 207 skipped（16321 条）**，exit 0，206 s（上一轮 16111 ⇒ 本轮 +3 恰为本单元新增用例） |
-| `bash scripts/pre-push-checks.sh` | exit 0 |
+| 环                                                                       | 读数                                                                                                                                                                        |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（`RuntimesPanel.render.test.tsx` + `src/renderer/src/i18n`） | 5 文件 / **96 passed**                                                                                                                                                      |
+| `prettier --check`（本单元 11 个文件）                                   | 通过（首跑 11 文件全 `[warn]`，核对 `HEAD` 版本**全部 CLEAN** ⇒ 漂移是本单元引入的，已对**仅本单元的文件**跑 `--write`，复跑 `All matched files use Prettier code style!`） |
+| `eslint --no-cache .`（全仓，CI 同口径）                                 | **0 error / 122 warning**，exit 0；**本单元 11 个文件 0 warning**（122 是既有基线，逐条都在别的文件里）                                                                     |
+| `tsc` node / web（均带 `--composite false`）                             | exit 0 / exit 0                                                                                                                                                             |
+| 全量 `vitest run --maxWorkers=4`                                         | **1247 passed \| 16 skipped（1263 文件）**、**16114 passed \| 207 skipped（16321 条）**，exit 0，206 s（上一轮 16111 ⇒ 本轮 +3 恰为本单元新增用例）                         |
+| `bash scripts/pre-push-checks.sh`                                        | exit 0                                                                                                                                                                      |
 
 **i18n 质量门**：新键随 `src/renderer/src/i18n` 套件一起跑（与上表第一行同一批），未新增 pending 条目；
 zh ≠ en、zh-Hant 纯繁体。

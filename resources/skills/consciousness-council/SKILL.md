@@ -1,6 +1,7 @@
 ---
 name: consciousness-council
 description: Structures a multi-perspective council exercise for decisions, research trade-offs, and creative challenges. Simulates thinking archetypes, separates evidence from assumptions and values, and synthesizes a conditional recommendation. Use when the user requests a council, panel, devil's advocate analysis, "mind council", or deliberate comparison of perspectives on a difficult choice.
+description-zh: 为决策、研究权衡与创意难题组织多视角议事练习：模拟不同思维原型，把证据与假设、价值判断分开，最后综合出有条件限制的结论。
 license: MIT license
 metadata:
   version: "1.2"

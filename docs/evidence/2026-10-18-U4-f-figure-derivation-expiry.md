@@ -19,26 +19,26 @@
 
 ## 二 交付（17 文件，+445 / −13）
 
-| 面 | 改动 |
-| --- | --- |
+| 面       | 改动                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 共享判决 | `src/shared/figure-observation.ts`：新增 `FigureDerivationStatus`、`figureDerivationModelRevision()`、`figureDerivationStatuses(rows)`。同一张图＝页 + 图序；按**日志顺序**（追加顺序即时间顺序，不拿时间戳排——同毫秒两条会互相盖掉）与**最新一条**比：输入指纹不同 ⇒ `input-changed`；指纹同而模型版本不同 ⇒ `model-revision-changed`；两样都同 ⇒ 仍 `current`（同一份输入同一批模型再算一次，结论没变）；非派生行返回 `undefined`（**缺席 ≠ 通过**是结构性的） |
-| 契约 | `src/shared/artifact-provenance.ts`：`RecordedStructureObservation.figureDerivationStatus?`，只出现在派生行上 |
-| 读侧接线 | `src/main/artifacts/provenance-repository.ts`：判决用**整本日志**算（后一次派生常落在本版窗口之外，按窗口算会把该标过期的全判成 `current`），再挂到窗口内的行上；窗口语义（`projectStructureObservationWindow`）一字未动 |
-| 写侧补口 | `src/main/ipc.ts`：记录时写入 `modelRevision`；确定性一路（图内数值取自文字层、库号查真库）**没有模型** ⇒ 缺席，不造版本号 |
-| 界面 | `ArtifactProvenancePanel.tsx`：过期行渲染 `data-testid="artifact-figure-observations-superseded"` 徽标 + 原因句 + 取代时刻；`current` 不渲染 |
-| 九语种 | 2 键 × 9 语言（`add-i18n-keys.py` 写入并自证九文件齐全），zh ≠ en，zh-Hant 繁体 |
+| 契约     | `src/shared/artifact-provenance.ts`：`RecordedStructureObservation.figureDerivationStatus?`，只出现在派生行上                                                                                                                                                                                                                                                                                                                                                    |
+| 读侧接线 | `src/main/artifacts/provenance-repository.ts`：判决用**整本日志**算（后一次派生常落在本版窗口之外，按窗口算会把该标过期的全判成 `current`），再挂到窗口内的行上；窗口语义（`projectStructureObservationWindow`）一字未动                                                                                                                                                                                                                                         |
+| 写侧补口 | `src/main/ipc.ts`：记录时写入 `modelRevision`；确定性一路（图内数值取自文字层、库号查真库）**没有模型** ⇒ 缺席，不造版本号                                                                                                                                                                                                                                                                                                                                       |
+| 界面     | `ArtifactProvenancePanel.tsx`：过期行渲染 `data-testid="artifact-figure-observations-superseded"` 徽标 + 原因句 + 取代时刻；`current` 不渲染                                                                                                                                                                                                                                                                                                                     |
+| 九语种   | 2 键 × 9 语言（`add-i18n-keys.py` 写入并自证九文件齐全），zh ≠ en，zh-Hant 繁体                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## 三 门禁读数（全部实跑；数字取自最后一次改动之后）
 
-| 项 | 读数 |
-| --- | --- |
-| 定向 vitest（7 文件） | **145 passed**：判决矩阵 7 条（无后续 / 换输入 / 换版本 / 两样都同 / 非派生行 / 同毫秒顺序 / 跨窗口推翻）、1 条「版本写出之后那次派生照样推翻它」的整日志读数、1 条面板徽标 + 「`current` 无徽标」 |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | 0 error |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | 0 error |
-| `eslint --no-cache`（本次 17 文件） | 0 problem（首轮 2 条缺显式返回类型，已按报错改测试助手，**未放宽规则**） |
-| i18n 套件 | 52 passed（九语齐全、zh ≠ en、zh-Hant 繁体） |
-| 全量 vitest（改过 `src/shared/**` 的跨层结果类型 ⇒ 按纪律跑全量） | **1343 文件 / 17093 passed / 207 skipped**，exit 0 |
-| 认证 spec（真窗口） | `artifact-figure-derivation-expiry.spec.ts` **1 passed (7.4s)**，先 `build:e2e` 再跑 |
+| 项                                                                | 读数                                                                                                                                                                                               |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（7 文件）                                             | **145 passed**：判决矩阵 7 条（无后续 / 换输入 / 换版本 / 两样都同 / 非派生行 / 同毫秒顺序 / 跨窗口推翻）、1 条「版本写出之后那次派生照样推翻它」的整日志读数、1 条面板徽标 + 「`current` 无徽标」 |
+| `tsc --noEmit -p tsconfig.node.json --composite false`            | 0 error                                                                                                                                                                                            |
+| `tsc --noEmit -p tsconfig.web.json --composite false`             | 0 error                                                                                                                                                                                            |
+| `eslint --no-cache`（本次 17 文件）                               | 0 problem（首轮 2 条缺显式返回类型，已按报错改测试助手，**未放宽规则**）                                                                                                                           |
+| i18n 套件                                                         | 52 passed（九语齐全、zh ≠ en、zh-Hant 繁体）                                                                                                                                                       |
+| 全量 vitest（改过 `src/shared/**` 的跨层结果类型 ⇒ 按纪律跑全量） | **1343 文件 / 17093 passed / 207 skipped**，exit 0                                                                                                                                                 |
+| 认证 spec（真窗口）                                               | `artifact-figure-derivation-expiry.spec.ts` **1 passed (7.4s)**，先 `build:e2e` 再跑                                                                                                               |
 
 ## 四 真窗口读数（本条新增徽标的验收，已取）
 

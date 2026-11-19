@@ -1,6 +1,7 @@
 ---
 name: deepspeed
 description: Expert guidance for distributed training with DeepSpeed - ZeRO optimization stages, pipeline parallelism, FP16/BF16/FP8, 1-bit Adam, sparse attention
+description-zh: 用 DeepSpeed 做分布式训练的实操指引：ZeRO 各阶段、流水线并行、FP16/BF16/FP8、1-bit Adam 与稀疏注意力。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

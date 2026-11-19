@@ -19,10 +19,10 @@ summariesWithRuntimeContext  1 其中只有 1 份带运行时上下文（也就�
 
 ## 二 改法（换答案来源，不换队列，不放宽任何判据）
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/session-persistence/repository.ts` | 新增 `loadRuntimeContextFromSummary(projectId, sessionId)` 与它的结果类型 `RuntimeContextIndexLookup`：读现成的摘要件（复用 `tryReadSessionSummary`，它自带 `size + mtimeMs` 指纹比对）⇒ 摘要在且指纹描述的就是当前字节 ⇒ `answered`；摘要缺席 / 指纹不符 / 摘要里的运行时上下文**过不了与文档读同一个 sanitizer**（`sanitizeSessionRuntimeContext`）⇒ `unavailable`。**一字节都不猜**：不可读的上下文绝不被读成「这个会话没有 Plan」。 |
-| `src/main/session-persistence/coordinator.ts` | `readSessionRuntimeContext` 先问索引，`answered` 就用它，`unavailable` 仍读文档（与改动前**逐字相同**的那条路）。读取仍在同一个队列里（`enqueue`），只是「答案从哪来」变了。慢行读数新增 `source: 'index' \| 'document'` —— 否则「索引慢」会被读成「解析慢」，两者要修的地方完全不同。 |
+| 位置                                          | 改动                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/session-persistence/repository.ts`  | 新增 `loadRuntimeContextFromSummary(projectId, sessionId)` 与它的结果类型 `RuntimeContextIndexLookup`：读现成的摘要件（复用 `tryReadSessionSummary`，它自带 `size + mtimeMs` 指纹比对）⇒ 摘要在且指纹描述的就是当前字节 ⇒ `answered`；摘要缺席 / 指纹不符 / 摘要里的运行时上下文**过不了与文档读同一个 sanitizer**（`sanitizeSessionRuntimeContext`）⇒ `unavailable`。**一字节都不猜**：不可读的上下文绝不被读成「这个会话没有 Plan」。 |
+| `src/main/session-persistence/coordinator.ts` | `readSessionRuntimeContext` 先问索引，`answered` 就用它，`unavailable` 仍读文档（与改动前**逐字相同**的那条路）。读取仍在同一个队列里（`enqueue`），只是「答案从哪来」变了。慢行读数新增 `source: 'index' \| 'document'` —— 否则「索引慢」会被读成「解析慢」，两者要修的地方完全不同。                                                                                                                                                  |
 
 `source` 是本单元的一半价值：分段读数（排队 / 读盘 / 克隆，见 `2026-10-22-runtime-context-read-phase-split.md`）
 能说出「慢在哪一段」，但说不出「这段是谁的」；索引命中后读盘段本就该接近 0，缺了 `source` 反而会把
@@ -32,13 +32,13 @@ summariesWithRuntimeContext  1 其中只有 1 份带运行时上下文（也就�
 
 在隔离工作树 `/private/tmp/ps-gate-2210`（`origin/main` `f2e79800` + 本单元 4 文件，`node_modules` 软链）上取：
 
-| 环 | 读数 |
-|---|---|
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
+| 环                                                                     | 读数                                       |
+| ---------------------------------------------------------------------- | ------------------------------------------ |
+| `tsc --noEmit -p tsconfig.node.json --composite false`                 | **exit 0**                                 |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                  | **exit 0**                                 |
 | 域内 vitest（`src/main/session-persistence` + `session-plan` + `acp`） | **105 files / 1735 passed**，exit 0，141 s |
-| `eslint --no-cache`（本笔 4 文件） | **0 problems** |
-| `prettier --check`（本笔 4 文件） | 全部合风格 |
+| `eslint --no-cache`（本笔 4 文件）                                     | **0 problems**                             |
+| `prettier --check`（本笔 4 文件）                                      | 全部合风格                                 |
 
 **tsc 抓到两条只有类型检查看得见的错（vitest 全绿时它们完全不可见）**，两条都在我自己新写的用例里：
 
@@ -49,10 +49,10 @@ summariesWithRuntimeContext  1 其中只有 1 份带运行时上下文（也就�
 
 ## 四 两条变异各自只红该红的那条
 
-| 变异 | 结果 |
-|---|---|
-| 把索引查找短路成恒 `unavailable`（等于回到改动前） | 4 条索引用例红，含「没有打开文档」那条 |
-| sanitizer 拒绝时仍回 `answered` | 只红「索引里的上下文过不了 sanitizer 必须拒答」（`expected { status: 'answered' } to deeply equal { status: 'unavailable' }`） |
+| 变异                                               | 结果                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 把索引查找短路成恒 `unavailable`（等于回到改动前） | 4 条索引用例红，含「没有打开文档」那条                                                                                         |
+| sanitizer 拒绝时仍回 `answered`                    | 只红「索引里的上下文过不了 sanitizer 必须拒答」（`expected { status: 'answered' } to deeply equal { status: 'unavailable' }`） |
 
 ## 五 边界（不许读成更强）
 

@@ -19,12 +19,11 @@
 ## 队列（按顺序；每项做完即提交）
 
 ### Q1. R4-U4「为什么不是表」的可读理由 —— **已完成**（代码 `7d520f0c` + 真机取证 `docs/evidence/2026-10-02-r4-u4-rejection-reasons.md`）
->
+
 > 真机读数（隔离实例 44185，走应用自身 RPC）：散文页 `too-few-columns` ＋ `counts={columns:1,itemCount:5,rows:5,spanningRows:0}`；
 > 空页 `blank-page`；真表格页 1 条候选（6 行×4 列 high）且 `rejectedPages` **字段不存在**；"真表 + 散文页"同样**不附理由**（抑制规则成立）。
 > 隔离证明：`/tmp/ps-q1/data/.pdfs` 3 个（本次），`~/PureScience-DEV/.pdfs` 基线 18 → 仍 18。**面板级读数已于 2026-10-02 补掉**（原记为待取证）：
 > 见本文件「面板级读数」一节 —— 散文页逐页理由＋计数已在真实窗口的 DOM 上读出。
-
 
 > 第 1 轮（02:16）实现了 Q1 全部代码与测试（shared 6 + service 3 + 面板 2 = 新增 11 例；typecheck 0、eslint 干净、
 > 复跑 5 文件 100 例全绿），但**结束时未提交**（预算耗尽在实现与门禁上）。会话侧已复验并提交推送（`7d520f0c`）。
@@ -44,6 +43,7 @@
 判据：纯散文页给出**具名原因＋计数**；真表格页照常出候选且**不带**理由。
 
 ### Q1 原清单（已实现，留作对照）（编辑清单已写在 `docs/plan-2026-10-01-v1.78.0-slices.md` §4）
+
 1. 抽 `measureTableShape(items, options)`：把 `groupRows → columnAnchors → placeInColumns → mergeSplitColumns → joinWrappedHeaderRows` 合成一处，
    返回 `{ rows, columns, spanningRows }`，**由抽取与理由共用**（两处各写一份必然会漂移，那时理由就是撒谎）。
 2. 新增 `explainTableRejection(page, items, options)`：具名原因 `blank-page` / `too-few-rows` / `too-few-columns` / `rows-do-not-span-columns`
@@ -52,12 +52,14 @@
 4. 测试：四个原因分支各一条 ＋「有候选时不出理由」；真机取一页纯散文与一页真表格对比（散文页给原因与计数、真表格页出候选且不带理由）。
 
 ### Q2. R4-U3 旋转与符号/连字修复 —— **已完成**
+
 > 旋转这一半：代码 `849b0839`（+ 调查 `facae33e`）；真机 before/after 11 例逐条对比见
 > `docs/evidence/r4-u3-rotation-investigation.md` §6（10/11 逐字不变，唯一变化是被修的缺陷页；旋转表 hash 与不旋转同表相同）。
 > 连字/软连字符这一半：**实测结论"无需改"** —— 手写 ToUnicode 夹具（`docs/evidence/2026-10-02-r4-u3-ligature-fixture.py`）
 > 经应用通道读出 3×3 完好、连字被 reader 展开成 ASCII、软连字符在两种归一化模式下都不出现在字符串里 ⇒ 不写死代码。
 > 具名未取：面板的浏览器级读数（`rotatedPages` 提示）—— **已于 2026-10-02 补掉**：旋转页提示在真实窗口的 DOM 上读出
 > （`its content stream is rotated 90°…`），见本文件「面板级读数」一节。
+
 - 目标：旋转页面上的表被当成横排文本（列全乱）、连字（ﬁ/ﬂ）与软连字符切碎单元格词。
 - 做法：先探现状（`src/shared/pdf-table-extraction.ts` 是否有旋转信息可用：`PdfTextItem` 无角度字段 ⇒ 需从 PDF 操作符取 `Tm/Td` 的旋转分量，
   或在 `src/main/settings/pdf-service.ts` 的解析层把旋转归一化）。**先写调查结论再动代码**（照 R6-U1 的先例）。
@@ -95,19 +97,21 @@
 - 纪律：**a missing measurement must never be reported as a measurement**；用量未报告就写 "not reported"，绝不写 0。
 
 ### Q4. R2 期刊实体 —— **依赖判定完成（依赖已解除）**，本版不做、立案下一版
+
 - 复核结论：筛选 S1 **已落地**（五张表 + 索引在运行期 DDL，`prisma-client.ts:766-822` 定义 / `:1107-1112` 执行；
   真机验收见 `docs/evidence/2026-09-29-literature-screening.md`）⇒ "与 S1 合批一次迁移"的前提**已失效**，
   R2-U1 只能是独立迁移。判定与证据写进 `docs/plan-2026-10-01-R2-journal-entity.md` §6。
 - 本版不做的具名理由：R2 是 U1–U4 四片连成的一条能力，半条塞进本版即"有表没入口"的空壳。**未动库**（全库 grep `model Journal`/`issn` 零命中）。
 
-
 ### Q5. A7 外部锁导入（已显式顺延 v1.79.0）
+
 - 除非 Q1–Q3 全部收口且余量充足，否则**保持顺延并写明理由**。若要做：需要新通道（含渲染器契约与 `npm run gen:web-api-map`）
   ＋ 一次真实环境构建验收；**不做半截**。
 
 ### Q6. 发 v1.79.0 —— **已完成**（tag `v1.79.0` → `a1493bf1`，Release run `36966180842`）
 
 > **回读（2026-10-02 13:24 CST，全部来自发布后的真实 API）**
+>
 > - tag `v1.79.0` 注解对象 `483c3884` → 提交 `a1493bf15bdff781183f66aced0610d729a238c3`（= release 提交，已在 `origin/main`）。
 > - publish 作业 **success**（步骤 1–12 全绿）；`notarize-mac` 两个作业按名 **SKIPPED — UNSIGNED macOS assets, not notarized**（无 Apple 凭据）。
 > - 发布页：**21 资产**（mac arm64/x64 的 dmg+zip+blockmap、win setup.exe+zip+blockmap、AppImage、deb、
@@ -142,7 +146,7 @@
 1. 每项的提交号 + 门禁结论 + 证据（真机/真文件级读数，而不是"测试通过"）。
 2. 明确列出**没做**的与**为什么**（依赖/顺延/阻塞都要具名）。
 3. 工作区干净、无临时文件残留、隔离实例已停、端口无监听。
-（与 v1.77.0/v1.78.0 同口径：宁可报"没做 + 原因"，也不报一个无法核对的"已完成"。）
+   （与 v1.77.0/v1.78.0 同口径：宁可报"没做 + 原因"，也不报一个无法核对的"已完成"。）
 
 ## 收尾记录（2026-10-02 13:2x，v1.79.0 发布轮）
 
@@ -164,7 +168,7 @@
 - 夹具新增（`e2e/fixtures/fake-opencode.mjs`，手写 PDF，不依赖生成器）：`prose-evidence.pdf`（5 行散文，
   单列）、`rotated-table-evidence.pdf`（6×4 真表，每格用 90° 文本矩阵 `[0 1 -1 0 -y x]` 放置）。
 - 实测读数（逐字）：散文页 `too-few-columns — rows 5, columns 1, rows spanning the columns 0; the shape test
-  needs 2+ rows and 2+ columns.`（候选计数 0）；旋转页形态 `6 rows x 4 columns`、提示
+needs 2+ rows and 2+ columns.`（候选计数 0）；旋转页形态 `6 rows x 4 columns`、提示
   `its content stream is rotated 90°, so the coordinates below were normalized to upright…`、表头
   `["Gene","log2FC","p-value","adjP"]`，且**不**同时报"没有表"。
 - 本轮本机运行：`2 passed (19.7s)`（连同既有 `pdf-table-extraction.spec.ts` 一并跑过）。门禁：typecheck 0、
@@ -178,10 +182,10 @@
 
 ### 1. 上轮「CI 未到结论」现在闭口为绿（读数来自真实 API，用**完整 40 位 SHA**）
 
-| 提交 | 关联 run |
-| --- | --- |
-| `007af97eaa958f1c2a5a0e72f6a777f3bd9582fa`（R4-U3/U4 面板级读数） | Nightly **#809 completed/success**、Windows Full Test **#804 completed/success** |
-| `a4cdffbc41bd4e5485ba5a96ad50e1167eb46be7`（acp：selector-error→call-failed / catalog-error→call-not-attempted） | Nightly **#810 success**、Windows Full Test **#805 success** |
+| 提交                                                                                                             | 关联 run                                                                         |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `007af97eaa958f1c2a5a0e72f6a777f3bd9582fa`（R4-U3/U4 面板级读数）                                                | Nightly **#809 completed/success**、Windows Full Test **#804 completed/success** |
+| `a4cdffbc41bd4e5485ba5a96ad50e1167eb46be7`（acp：selector-error→call-failed / catalog-error→call-not-attempted） | Nightly **#810 success**、Windows Full Test **#805 success**                     |
 
 注（**本轮实测更正**，不是推测）：`9a5482b6 / 53ce7a36 / 8480a736 / 582c0039 / 95d735c5` 这五条 `total_count=0` 的**真因是 `paths-ignore`**，不是"批次尖端"：
 `nightly.yml` 与 `windows-full-test.yml` 的 push 触发器都写有
@@ -246,12 +250,12 @@
 从发布页**真实下载**三份清单（`version.json` 5608 / `SHA256SUMS.txt` 866 / `RELEASE-CERTIFICATION.json` 4069 字节），
 与 Releases API 报的 **21 个资产**逐项对账：
 
-| 检查 | 读数 |
-| --- | --- |
+| 检查                                                          | 读数                                                                                                                   |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `version.json.downloads` 四平台的 `size` vs 上传后资产 `size` | **逐项相等**：mac-arm64 dmg `281448402`、mac-x64 dmg `296852726`、win-x64 setup.exe `232774161`、linux deb `229341488` |
-| `version.json.sha256` vs `SHA256SUMS.txt`（8 条） | 四平台**逐条一致**（`agree`） |
-| 声明引用但发布页不存在的资产 | **无**（`declared-but-absent: none`） |
-| `RELEASE-CERTIFICATION.json.sourceSha` | `a1493bf15bdff781183f66aced0610d729a238c3` = tag 提交 = 发布 run 的 `head_sha` |
+| `version.json.sha256` vs `SHA256SUMS.txt`（8 条）             | 四平台**逐条一致**（`agree`）                                                                                          |
+| 声明引用但发布页不存在的资产                                  | **无**（`declared-but-absent: none`）                                                                                  |
+| `RELEASE-CERTIFICATION.json.sourceSha`                        | `a1493bf15bdff781183f66aced0610d729a238c3` = tag 提交 = 发布 run 的 `head_sha`                                         |
 
 **未取（具名，不拿声明当重算）**：**资产字节级 sha256 本轮未重算** —— 那要下载四平台安装包约 **2.7 GB**，本轮不下载。
 所以"上传的字节与其声明哈希相符"这句话，在本轮只是**清单之间的自洽**＋本地上传作业的读数，**不是**本轮重算的结论。

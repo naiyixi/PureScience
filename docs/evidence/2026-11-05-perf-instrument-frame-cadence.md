@@ -9,11 +9,11 @@
 仪器：`~/.hermes/cache/scratch/cadence-probe.cjs`（50 行，不碰产品代码、不需要构建）。一个 `BrowserWindow`
 加载空白页，在三种窗口状态下各采 750 ms 的 `requestAnimationFrame` 间隔。
 
-| 状态 | 默认（硬件光栅）median / p90 / ticks | `--disable-gpu`（软件光栅）median / p90 / ticks |
-| --- | --- | --- |
-| 可见但非 key（`showInactive()`） | **16.7** ms / 33.3 / 38 | **16.7** ms / 33.3 / 39 |
-| 提到最前 + `app.focus({steal:true})` | **18.1** ms / 33.4 / 32 | **17.8** ms / 33.3 / 34 |
-| 隐藏（`hide()`） | 17.7 ms / 33.4 / 34 | 16.7 ms / 33.3 / 37 |
+| 状态                                 | 默认（硬件光栅）median / p90 / ticks | `--disable-gpu`（软件光栅）median / p90 / ticks |
+| ------------------------------------ | ------------------------------------ | ----------------------------------------------- |
+| 可见但非 key（`showInactive()`）     | **16.7** ms / 33.3 / 38              | **16.7** ms / 33.3 / 39                         |
+| 提到最前 + `app.focus({steal:true})` | **18.1** ms / 33.4 / 32              | **17.8** ms / 33.3 / 34                         |
+| 隐藏（`hide()`）                     | 17.7 ms / 33.4 / 34                  | 16.7 ms / 33.3 / 37                             |
 
 三条读数（本机 M2 / 8 GB / macOS 27.0.1，2026-11-05 09:1x）：
 
@@ -45,11 +45,11 @@ values[Math.min(values.length - 1, Math.floor(values.length * 0.95))]
 
 ## 三 改法（三个文件）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/shared/perf-frame-cadence.ts`（新增） | `percentile(values, q, minSamples=20)` = 最近秩、样本不足返回 `null`；`summarizeFrameCadence(gaps)` 用中位间隔对 `FOREGROUND_MIN_FPS=50` 判 `usable` / `throttled` / `no-frames`；`describeFrameMetric()` 在不可用时把 `frames/p95/max` 一律印成 `n/a` 加原因，可用时**永远先印样本数与最大值**再印 p95。 |
-| `e2e/perf/smoothness.spec.ts` | 测前 `page.bringToFront()` + 采 750 ms 空闲节奏自证；`[perf] instrument: usable/throttled — …` 一行进日志并作为 test annotation；`stopProbe` 改走 `describeFrameMetric`；帧上限断言只在仪器可用且 p95 有值时才判；`measureIpc` 采样 12 → **30**，p50/p95 走同一支最近秩，样本不足印 `n/a`。 |
-| `src/shared/perf-frame-cadence.test.ts`（新增） | 15 项：旧公式在 4 样本 / 20 样本上分别等于最大值（回归钉子）、最近秩 p95 ≠ 最大值、样本不足返回 null、非有限值被剔除、边界 20 ms 判可用 / 21 ms 判不可用、`describeFrameMetric` 在 throttled 与样本不足两种情形下都不印数字。 |
+| 位置                                            | 改动                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/perf-frame-cadence.ts`（新增）      | `percentile(values, q, minSamples=20)` = 最近秩、样本不足返回 `null`；`summarizeFrameCadence(gaps)` 用中位间隔对 `FOREGROUND_MIN_FPS=50` 判 `usable` / `throttled` / `no-frames`；`describeFrameMetric()` 在不可用时把 `frames/p95/max` 一律印成 `n/a` 加原因，可用时**永远先印样本数与最大值**再印 p95。 |
+| `e2e/perf/smoothness.spec.ts`                   | 测前 `page.bringToFront()` + 采 750 ms 空闲节奏自证；`[perf] instrument: usable/throttled — …` 一行进日志并作为 test annotation；`stopProbe` 改走 `describeFrameMetric`；帧上限断言只在仪器可用且 p95 有值时才判；`measureIpc` 采样 12 → **30**，p50/p95 走同一支最近秩，样本不足印 `n/a`。               |
+| `src/shared/perf-frame-cadence.test.ts`（新增） | 15 项：旧公式在 4 样本 / 20 样本上分别等于最大值（回归钉子）、最近秩 p95 ≠ 最大值、样本不足返回 null、非有限值被剔除、边界 20 ms 判可用 / 21 ms 判不可用、`describeFrameMetric` 在 throttled 与样本不足两种情形下都不印数字。                                                                             |
 
 ## 四 真机读数（隔离工作树 `/tmp/ps-perf` @ `3f628550` + 本笔；`npm run build:e2e` ✓ 25.57 s）
 
@@ -80,14 +80,14 @@ values[Math.min(values.length - 1, Math.floor(values.length * 0.95))]
 
 ## 五 门禁读数（隔离工作树，读数取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest | **1 file / 15 passed**（`src/shared/perf-frame-cadence.test.ts`） |
-| `src/shared` 整目录 vitest | **156 files / 1671 passed**（4.92 s） |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**（`e2e/**` 与 `src/shared/**` 都在该 project 里） |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0**（`src/shared/**` 也在 web project 里） |
-| `eslint --no-cache`（本笔 3 文件） | **0 error / 0 warning**（先 4 条 prettier warning，已 `--fix`） |
-| 真机 perf spec | **1 passed (10.2s)**，见 §四 |
+| 环                                                     | 读数                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| 定向 vitest                                            | **1 file / 15 passed**（`src/shared/perf-frame-cadence.test.ts`） |
+| `src/shared` 整目录 vitest                             | **156 files / 1671 passed**（4.92 s）                             |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**（`e2e/**` 与 `src/shared/**` 都在该 project 里）       |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | **exit 0**（`src/shared/**` 也在 web project 里）                 |
+| `eslint --no-cache`（本笔 3 文件）                     | **0 error / 0 warning**（先 4 条 prettier warning，已 `--fix`）   |
+| 真机 perf spec                                         | **1 passed (10.2s)**，见 §四                                      |
 
 ## 六 边界（不许读成更强）
 

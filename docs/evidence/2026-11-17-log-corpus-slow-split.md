@@ -21,11 +21,11 @@ slow rows: 1780 summed 6271859 ms  (real 1762 | fixture 0 | mixed 0 | unattribut
 
 这两种都必须能分开，否则下一轮会照着这个数字去"优化保存路径"。实测分工如下（同一次运行）：
 
-| 切法 | 行数 | 时间 |
-| --- | --- | --- |
-| 能切开（生产者写了 `heldMs`/`ownMs`） | 73 | own 5,133,738 ms ｜ held（循环没在跑）651,749 ms |
-| 没有停顿窗口压在它上面（生产者**不写**这两个字段） | 1,707 | 486,374 ms，整段都是 handler 自己的 |
-| 窗口环丢过覆盖（`heldUnmeasured: 'windows-dropped'`） | 0 | 说不出来，不替它选边 |
+| 切法                                                  | 行数  | 时间                                             |
+| ----------------------------------------------------- | ----- | ------------------------------------------------ |
+| 能切开（生产者写了 `heldMs`/`ownMs`）                 | 73    | own 5,133,738 ms ｜ held（循环没在跑）651,749 ms |
+| 没有停顿窗口压在它上面（生产者**不写**这两个字段）    | 1,707 | 486,374 ms，整段都是 handler 自己的              |
+| 窗口环丢过覆盖（`heldUnmeasured: 'windows-dropped'`） | 0     | 说不出来，不替它选边                             |
 
 也就是说：**1,707 条"慢行"合计只有 486 秒（8 分钟）**；那 1 小时 44 分几乎全部来自 73 条长调用，
 其中又有 4 条 `acp:send-prompt` 就占了 4,844,958 ms（13–27 分钟/条）。
@@ -36,12 +36,12 @@ slow rows: 1780 summed 6271859 ms  (real 1762 | fixture 0 | mixed 0 | unattribut
 `src/main/diagnostics/ipc-rejection.ts`、`loop-held-windows.ts`、`stall-cause.ts`），工具此前一个都没用。
 现在：
 
-| 报表项 | 判据 | 含义 |
-| --- | --- | --- |
-| `slow split` | 行上有有限 `heldMs` | 切成 own / held；`ownMs` 缺省时按 `durationMs - heldMs` 推出，且两者之和**永不超过**该实例的 summed |
-| `noStall` | 行上没有 `heldMs` 也没有 `heldUnmeasured` | 生产者的**缺席即语义**：没有停顿窗口压在它上面（`heldSplitFromMeasured` 在 `rounded < 1` 时返回 `undefined`）⇒ 整段时长是 handler 自己的。与"没测"是两件事 |
-| `dropped` | `heldUnmeasured: 'windows-dropped'` | 环已把这段覆盖丢掉 ⇒ 说不出来，具名而不并进任何一边 |
-| `stalls` | 按 `cause.kind` 分组 + `lateMs` 合计 | `process-frozen` 单独累计：那一窗里**本进程没有任何线程在跑**，属于机器 |
+| 报表项       | 判据                                      | 含义                                                                                                                                                       |
+| ------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slow split` | 行上有有限 `heldMs`                       | 切成 own / held；`ownMs` 缺省时按 `durationMs - heldMs` 推出，且两者之和**永不超过**该实例的 summed                                                        |
+| `noStall`    | 行上没有 `heldMs` 也没有 `heldUnmeasured` | 生产者的**缺席即语义**：没有停顿窗口压在它上面（`heldSplitFromMeasured` 在 `rounded < 1` 时返回 `undefined`）⇒ 整段时长是 handler 自己的。与"没测"是两件事 |
+| `dropped`    | `heldUnmeasured: 'windows-dropped'`       | 环已把这段覆盖丢掉 ⇒ 说不出来，具名而不并进任何一边                                                                                                        |
+| `stalls`     | 按 `cause.kind` 分组 + `lateMs` 合计      | `process-frozen` 单独累计：那一窗里**本进程没有任何线程在跑**，属于机器                                                                                    |
 
 `own` 有一句必须写在报表里的话：它只说「循环在跑」，**不说「在算」**——长回合天然有几分钟的 own，
 要判是不是我们的 CPU，得回头看该行的 `cpuShare`/`attribution`。这句和三种态一起进了 read-me。

@@ -1,4 +1,5 @@
 # mRNA-脂质纳米颗粒（LNP）胞内早期→晚期内体成熟过程中的相拓扑学转变与逃逸失效
+
 ## ——“全 DOPE + pKa≈6.8 + 早期内体瞬时 100% H_II”极致配方的微观物理化学与热力学裁决报告
 
 **审查类型**：微观物理化学 / 界面热力学 / 相变动力学（半定量建模 + 文献锚定）
@@ -23,13 +24,13 @@
 
 ## 1. 争议配方主张的复述
 
-| 主张条款 | 原文逻辑 | 本报告对应裁决章节 |
-|---|---|---|
-| A1 | 用 DOPE（锥形）替换 DSPC（圆柱形） | §3 分子堆积几何 |
-| A2 | 把可电离脂质表观 pKa 精准上调至 6.8 | §7-§8 时序与血中电荷 |
-| A3 | pH 6.0 早期内体瞬间“100% H_II”多形性转变 | §4-§5 拓扑/相变热力学 |
-| A4 | 以极大负固有曲率直接“撕裂”内体膜 | §4、§7 撕裂的对象错误 |
-| A5 | 不影响血循环稳定性，逃逸率 >30% | §9-§10 体内风险与可达上限 |
+| 主张条款 | 原文逻辑                                 | 本报告对应裁决章节        |
+| -------- | ---------------------------------------- | ------------------------- |
+| A1       | 用 DOPE（锥形）替换 DSPC（圆柱形）       | §3 分子堆积几何           |
+| A2       | 把可电离脂质表观 pKa 精准上调至 6.8      | §7-§8 时序与血中电荷      |
+| A3       | pH 6.0 早期内体瞬间“100% H_II”多形性转变 | §4-§5 拓扑/相变热力学     |
+| A4       | 以极大负固有曲率直接“撕裂”内体膜         | §4、§7 撕裂的对象错误     |
+| A5       | 不影响血循环稳定性，逃逸率 >30%          | §9-§10 体内风险与可达上限 |
 
 ---
 
@@ -62,10 +63,10 @@
 
 **脚本输出（table_packing_parameter.csv）**
 
-| 脂质 | v (nm³, 双链) | a₀ (nm²) | l_c (nm) | **S** | 几何 | 相倾向 |
-|---|---|---|---|---|---|---|
-| DSPC（18:0/18:0 PC） | 1.023 | 0.66 | 1.66 | **0.934** | 近圆柱 | 双层 L_α（稳定化） |
-| DOPE（18:1ᶜⁱˢ/18:1ᶜⁱˢ PE） | 1.023 | 0.56 | 1.57 | **1.165** | 锥形/截锥 | **倒六角 H_II**（T_h≈5–10 °C，37 °C 体相即 H_II） |
+| 脂质                       | v (nm³, 双链) | a₀ (nm²) | l_c (nm) | **S**     | 几何      | 相倾向                                            |
+| -------------------------- | ------------- | -------- | -------- | --------- | --------- | ------------------------------------------------- |
+| DSPC（18:0/18:0 PC）       | 1.023         | 0.66     | 1.66     | **0.934** | 近圆柱    | 双层 L_α（稳定化）                                |
+| DOPE（18:1ᶜⁱˢ/18:1ᶜⁱˢ PE） | 1.023         | 0.56     | 1.57     | **1.165** | 锥形/截锥 | **倒六角 H_II**（T_h≈5–10 °C，37 °C 体相即 H_II） |
 
 **三点必须讲清：**
 
@@ -97,9 +98,9 @@
 
 脚本 E4 扫描 (pH × φ_DOPE) 得到 **图 2**（两个 pKa 的相偏好热图）。定义“净曲率过冲” ζ−ζ_crit：>0 红区=凝聚核偏好 H_II（坍塌区），<0 蓝区=L_α/无序。
 
-| 配方 | 融合能垒最低 pH | **内部 H_II 坍塌起 pH** |
-|---|---|---|
-| REF：pKa 6.44、DSPC | **6.28**（EE→LE 过渡窗） | **5.68**（已近溶酶体） |
+| 配方                       | 融合能垒最低 pH           | **内部 H_II 坍塌起 pH**               |
+| -------------------------- | ------------------------- | ------------------------------------- |
+| REF：pKa 6.44、DSPC        | **6.28**（EE→LE 过渡窗）  | **5.68**（已近溶酶体）                |
 | EXTREME：pKa 6.80、全 DOPE | **7.02**（细胞外/刚内吞） | **6.56**（早期内体，~内吞后 2–3 min） |
 
 - pKa 从 6.44→6.80、φ 从 0→1，都把**坍塌边界上移 ~0.9 个 pH 单位**（图 2 黑线右移/上移）。EXT 在 **pH≈6.5 的早期内体（甚至更早）** 就进入本体 H_II 稳定区。
@@ -134,14 +135,14 @@
 
 **图 4** 展示了 REF 与 EXT 在统一 pH(t) 轨迹上的群动力学（120 min）：
 
-| 配方 / NPC1 水平 | 净逃逸 | 内部坍塌峰值 | 溶酶体货运 | 循环外排 |
-|---|---|---|---|---|
-| **REF**，NPC1 high | 2.60% | 5.4% @ 42 min | 69% | 28% |
-| **REF**，NPC1 normal | 2.49% | 6.7% @ 43 min | 85% | 12% |
-| **REF**，NPC1 low/inhib | 2.18% | 7.6% @ 43 min | 96% | 1.3% |
-| **EXTREME**，NPC1 high | ≈0.001% | **91% @ 8 min** | 90% | 9% |
-| **EXTREME**，NPC1 normal | ≈0.001% | **96.5% @ 8 min** | 96% | 3.5% |
-| **EXTREME**，NPC1 low/inhib | ≈0.001% | **99.6% @ 8 min** | 99% | 0.4% |
+| 配方 / NPC1 水平            | 净逃逸  | 内部坍塌峰值      | 溶酶体货运 | 循环外排 |
+| --------------------------- | ------- | ----------------- | ---------- | -------- |
+| **REF**，NPC1 high          | 2.60%   | 5.4% @ 42 min     | 69%        | 28%      |
+| **REF**，NPC1 normal        | 2.49%   | 6.7% @ 43 min     | 85%        | 12%      |
+| **REF**，NPC1 low/inhib     | 2.18%   | 7.6% @ 43 min     | 96%        | 1.3%     |
+| **EXTREME**，NPC1 high      | ≈0.001% | **91% @ 8 min**   | 90%        | 9%       |
+| **EXTREME**，NPC1 normal    | ≈0.001% | **96.5% @ 8 min** | 96%        | 3.5%     |
+| **EXTREME**，NPC1 low/inhib | ≈0.001% | **99.6% @ 8 min** | 99%        | 0.4%     |
 
 （数据同时输出于 `table_formulation_metrics.csv`）
 
@@ -191,21 +192,22 @@
 ## 12. 参考出处
 
 **正文已锚定（可直接检索）：**
-1. Gilleron J, et al. Image-based analysis of lipid nanoparticle–mediated siRNA delivery, intracellular trafficking and endosomal escape. *Nat. Biotechnol.* 31, 638–646 (2013). doi:10.1038/nbt.2612
-2. Jayaraman M, et al. Maximizing the potency of siRNA lipid nanoparticles for hepatic gene silencing in vivo. *Angew. Chem. Int. Ed.* 51, 8529–8533 (2012).
-3. Sahay G, et al. Efficiency of siRNA delivery by lipid nanoparticles is limited by endocytic recycling. *Nat. Biotechnol.* 31, 653–658 (2013).
-4. Pattipeiluhu R, et al. Liquid crystalline inverted lipid phases encapsulating siRNA enhance lipid nanoparticle mediated transfection. *Nat. Commun.* 15, 1303 (2024). doi:10.1038/s41467-024-45666-5
-5. Hassett KJ, et al. Optimization of Lipid Nanoparticles for Intramuscular Administration of mRNA Vaccines. *Mol. Ther. Nucleic Acids* 15, 1–11 (2019).
-6. Wittrup A, et al. Visualizing lipid-formulated siRNA release from endosomes. *Nat. Biotechnol.* 33, 870–876 (2015).
-7. Koltover I, Salditt T, Rädler JO, Safinya CR. An inverted hexagonal phase of cationic liposome–DNA complexes related to DNA release and delivery. *Science* 281, 78–81 (1998).
-8. Chernomordik LV, Kozlov MM. Mechanics of membrane fusion. *Nat. Struct. Mol. Biol.* 15, 675–683 (2008).
-9. Kozlovsky Y, Kozlov MM. Stalk model of membrane fusion: solution of energy crisis. *Biophys. J.* 82, 882–895 (2002).
-10. Marsh D. Intrinsic curvature in normal and inverted lipid structures and in membranes. *Biophys. J.* 70, 2248–2255 (1996).
-11. Tate MW, Gruner SM. Temperature dependence of the structural dimensions of the inverted hexagonal (H_II) phase of PE-containing membranes. *Biochemistry* 28, 4245–4253 (1989).
-12. Nagle JF, Tristram-Nagle S. Structure of lipid bilayers. *Biochim. Biophys. Acta* 1469, 159–195 (2000).
-13. Tanford C. *The Hydrophobic Effect*. Wiley, 1980.
-14. Israelachvili JN. *Intermolecular and Surface Forces*, 3rd ed. Academic Press, 2011.
-15. 近期 cryo-EM/SAXS LNP 内部结构综述：“From Morphology to Mechanism: Cryo-Electron Microscopy Insights into Lipid Nanoparticles for RNA Delivery”，*ACS Nano* (2026)。
+
+1. Gilleron J, et al. Image-based analysis of lipid nanoparticle–mediated siRNA delivery, intracellular trafficking and endosomal escape. _Nat. Biotechnol._ 31, 638–646 (2013). doi:10.1038/nbt.2612
+2. Jayaraman M, et al. Maximizing the potency of siRNA lipid nanoparticles for hepatic gene silencing in vivo. _Angew. Chem. Int. Ed._ 51, 8529–8533 (2012).
+3. Sahay G, et al. Efficiency of siRNA delivery by lipid nanoparticles is limited by endocytic recycling. _Nat. Biotechnol._ 31, 653–658 (2013).
+4. Pattipeiluhu R, et al. Liquid crystalline inverted lipid phases encapsulating siRNA enhance lipid nanoparticle mediated transfection. _Nat. Commun._ 15, 1303 (2024). doi:10.1038/s41467-024-45666-5
+5. Hassett KJ, et al. Optimization of Lipid Nanoparticles for Intramuscular Administration of mRNA Vaccines. _Mol. Ther. Nucleic Acids_ 15, 1–11 (2019).
+6. Wittrup A, et al. Visualizing lipid-formulated siRNA release from endosomes. _Nat. Biotechnol._ 33, 870–876 (2015).
+7. Koltover I, Salditt T, Rädler JO, Safinya CR. An inverted hexagonal phase of cationic liposome–DNA complexes related to DNA release and delivery. _Science_ 281, 78–81 (1998).
+8. Chernomordik LV, Kozlov MM. Mechanics of membrane fusion. _Nat. Struct. Mol. Biol._ 15, 675–683 (2008).
+9. Kozlovsky Y, Kozlov MM. Stalk model of membrane fusion: solution of energy crisis. _Biophys. J._ 82, 882–895 (2002).
+10. Marsh D. Intrinsic curvature in normal and inverted lipid structures and in membranes. _Biophys. J._ 70, 2248–2255 (1996).
+11. Tate MW, Gruner SM. Temperature dependence of the structural dimensions of the inverted hexagonal (H_II) phase of PE-containing membranes. _Biochemistry_ 28, 4245–4253 (1989).
+12. Nagle JF, Tristram-Nagle S. Structure of lipid bilayers. _Biochim. Biophys. Acta_ 1469, 159–195 (2000).
+13. Tanford C. _The Hydrophobic Effect_. Wiley, 1980.
+14. Israelachvili JN. _Intermolecular and Surface Forces_, 3rd ed. Academic Press, 2011.
+15. 近期 cryo-EM/SAXS LNP 内部结构综述：“From Morphology to Mechanism: Cryo-Electron Microscopy Insights into Lipid Nanoparticles for RNA Delivery”，_ACS Nano_ (2026)。
 16. 获批 mRNA-LNP（BNT162b2/Spikevax）的 cryo-EM 内部结构研究（2021；电子致密核 + 外周 mRNA 纹理；核内脂质有序度随制备与组分变化）。
 
 **注明（未给出正式文献条目的定性表述）**：NPC1 抑制剂 NP3.47 使 LNP-siRNA 滞留 LE/Lys 并改变沉默效率的说法见于近年内体逃逸/循环文献；本报告仅以其作为 NPC1“滞留-外排”通路建模方向的旁证，不构成对具体文献的引用承诺。
@@ -214,21 +216,21 @@
 
 ## 附录 A：模型参数表（全部可在 `CONFIG` 字典中修改并重跑）
 
-| 参数 | 值 | 含义 |
-|---|---|---|
-| ζ_crit | 0.30 nm⁻¹ | 本体 H_II（坍塌）阈值 |
-| ζ* | 0.235 nm⁻¹ | 融合孔道能垒最优点 |
-| Em | 10.0 k_BT | 孔道能垒基底 |
-| a_esc | 700 k_BT·nm² | 曲率二次型系数 |
-| A_ESC_RATE | 800 min⁻¹ | 逃逸尝试前置因子（标定） |
-| K_curv | 0.15 k_BT·nm | 坍塌驱动力系数（每脂） |
-| N_lip | 2×10⁵ | ~100 nm LNP 脂分子数 |
-| c₀(DSPC/DOPE/chol) | −0.02 / −0.48 / −0.05 nm⁻¹ | 单层固有曲率 |
-| c₀_IL = −0.12 −0.42α | — | 可电离脂曲率-质子化耦合 |
-| TAU_PEG / θ_crit | 6 min / 0.40 | PEG 脱落 |
-| K_LYS / pH_lys | 0.06 min⁻¹ / 5.45 | 溶酶体货运 |
-| K_RECYC_N1 / REC_TAU | 0.02 min⁻¹ / 25 min | NPC1 门控循环外排 |
-| 摩尔比 | 50/38.5/10/1.5 | IL/Chol/helper/PEG |
+| 参数                 | 值                         | 含义                     |
+| -------------------- | -------------------------- | ------------------------ |
+| ζ_crit               | 0.30 nm⁻¹                  | 本体 H_II（坍塌）阈值    |
+| ζ*                   | 0.235 nm⁻¹                 | 融合孔道能垒最优点       |
+| Em                   | 10.0 k_BT                  | 孔道能垒基底             |
+| a_esc                | 700 k_BT·nm²               | 曲率二次型系数           |
+| A_ESC_RATE           | 800 min⁻¹                  | 逃逸尝试前置因子（标定） |
+| K_curv               | 0.15 k_BT·nm               | 坍塌驱动力系数（每脂）   |
+| N_lip                | 2×10⁵                      | ~100 nm LNP 脂分子数     |
+| c₀(DSPC/DOPE/chol)   | −0.02 / −0.48 / −0.05 nm⁻¹ | 单层固有曲率             |
+| c₀_IL = −0.12 −0.42α | —                          | 可电离脂曲率-质子化耦合  |
+| TAU_PEG / θ_crit     | 6 min / 0.40               | PEG 脱落                 |
+| K_LYS / pH_lys       | 0.06 min⁻¹ / 5.45          | 溶酶体货运               |
+| K_RECYC_N1 / REC_TAU | 0.02 min⁻¹ / 25 min        | NPC1 门控循环外排        |
+| 摩尔比               | 50/38.5/10/1.5             | IL/Chol/helper/PEG       |
 
 ## 附录 B：图形索引（figure_review 五项检查已按图面结构人工核对；会话中自动化 endpoint 不可用）
 
@@ -239,4 +241,5 @@
 - `fig5_design_deadzone_map.png`：设计平面净递送热图（体内加权）——全平面最高 ≈6.6%，EXTREME 角为“死区”。
 
 ---
-*本报告由 `lnp_endosomal_escape_thermodynamics.py` 直接生成全部数值与图形；修改脚本内 `CONFIG` 即可复现/反驳任一参数假设。*
+
+_本报告由 `lnp_endosomal_escape_thermodynamics.py` 直接生成全部数值与图形；修改脚本内 `CONFIG` 即可复现/反驳任一参数假设。_

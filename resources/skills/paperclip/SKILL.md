@@ -1,6 +1,7 @@
 ---
 name: paperclip
 description: Searches and reads biomedical papers, FDA/PMDA/EMA documents, clinical trials, and protein records with the GXL Paperclip CLI and Python SDK. Supports source-scoped search, full-text grep, metadata SQL, map/reduce extraction, figure analysis, optional repositories and claim verification, and line-pinned citations. Use when a task names GXL paperclip, asks to install or authenticate it, or requests literature retrieval and evidence extraction through Paperclip.
+description-zh: 用 GXL Paperclip 命令行与 Python SDK 检索并阅读生物医学论文、FDA/PMDA/EMA 文件、临床试验与蛋白记录：按来源限定检索、全文取用。
 allowed-tools: Bash Read Write
 license: MIT
 compatibility: Requires network access and the GXL paperclip CLI. The macOS/Linux installer requires Python 3.8+ plus curl or wget; it installs a Python launcher and private library, not an interpreter. Use PAPERCLIP_API_KEY or existing browser-login credentials. Hosted MCP is available without local CLI installation. Reviewed against CLI/SDK 0.7.92.

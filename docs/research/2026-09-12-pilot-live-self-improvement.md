@@ -1,6 +1,6 @@
 # PILOT in the Loop 研读 → PureScience 自进化落地建议
 
-- 论文：*PILOT in the Loop: Live Self-Improvement for Long-Horizon Agents*（AllSpark Team，arXiv:2608.26530v1，2026-08-27；10 位作者，前两位 equal contribution）
+- 论文：_PILOT in the Loop: Live Self-Improvement for Long-Horizon Agents_（AllSpark Team，arXiv:2608.26530v1，2026-08-27；10 位作者，前两位 equal contribution）
 - 研读日期：2026-09-12 · 材料：arXiv v1 **HTML 全文**（非仅摘要）+ 代码对照自查
 - 结论一句话：**论文真正的贡献不是"自我进化"，而是把监督挪到运行中（live）**；我们的自进化通路（技能 / 记忆 / 检查点 / 追溯报告 / 确定性基准）比论文的 harness 厚得多，但全部是**事后闭环**，且**写入即生效、没有验证门控**——这两点才是本次借鉴的实质。
 - 本文件为研读与方案，**不含任何代码改动**。
@@ -11,10 +11,10 @@
 
 ### 1.1 要解决的问题
 
-| 现状 | 论文指出的缺陷 |
-| --- | --- |
-| 单智能体自纠错（ReAct / Self-Refine / CRITIC） | 执行与自评共用一个上下文；执行细节挤占判断所需注意力 |
-| 子代理委派（AutoGen / MetaGPT / Magentic-One / Claude Code subagents） | 主代理**无法在子代理仍在运行时改道**，只能等它跑完 |
+| 现状                                                                                                           | 论文指出的缺陷                                                        |
+| -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 单智能体自纠错（ReAct / Self-Refine / CRITIC）                                                                 | 执行与自评共用一个上下文；执行细节挤占判断所需注意力                  |
+| 子代理委派（AutoGen / MetaGPT / Magentic-One / Claude Code subagents）                                         | 主代理**无法在子代理仍在运行时改道**，只能等它跑完                    |
 | 事后自进化（Reflexion / ExpeL / ACE / ADAS / AutoHarness / Meta-Harness / Self-Harness / Continual Harness …） | 经验只在执行结束后处理 → 帮不了产生它的那一轮，也没法立刻用该轮去验证 |
 
 ### 1.2 两个耦合机制
@@ -27,31 +27,31 @@
 
 ### 1.3 关键数字（v1 全文）
 
-| 指标 | 结果 |
-| --- | --- |
+| 指标                          | 结果                                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Terminal-Bench 2.0（89 任务） | GLM-5.1 **71.9%** / Kimi-K2.6 **71.3%**；两骨架平均 71.6%（Pi 66.3%）；Hard 分档 55.0%/55.0%（Pi 50.0%/48.3%） |
-| SWE-bench Pro（平均） | PILOT **59.9%** vs Pi 55.5% / Mini-SWE-Agent 55.2% |
-| 六组合排名 | 第一 5/6（Kimi 上 SWE-bench Multilingual 第二） |
-| 自进化 20 轮 best-so-far | +14.6pp（GLM-5.1：66.3→80.9）、+12.4pp（Kimi-K2.6：68.5→80.9）；同起点同骨架下 OpenCode +7.9pp、Pi +2.3pp |
-| 技能库规模 | GLM 62→83、Kimi 50→81 |
-| 每任务平均输出 token | 28.5K→16.3K（**−42.9%**）/ 41.9K→22.1K（**−47.4%**） |
-| 每百万输出 token 成功评测数 | **+110.3%** / **+134.0%** |
-| 难度分档增益（通过任务数） | GLM：Easy +2 / Medium +6 / **Hard +8**；Kimi：+1 / +7 / **+12** |
+| SWE-bench Pro（平均）         | PILOT **59.9%** vs Pi 55.5% / Mini-SWE-Agent 55.2%                                                             |
+| 六组合排名                    | 第一 5/6（Kimi 上 SWE-bench Multilingual 第二）                                                                |
+| 自进化 20 轮 best-so-far      | +14.6pp（GLM-5.1：66.3→80.9）、+12.4pp（Kimi-K2.6：68.5→80.9）；同起点同骨架下 OpenCode +7.9pp、Pi +2.3pp      |
+| 技能库规模                    | GLM 62→83、Kimi 50→81                                                                                          |
+| 每任务平均输出 token          | 28.5K→16.3K（**−42.9%**）/ 41.9K→22.1K（**−47.4%**）                                                           |
+| 每百万输出 token 成功评测数   | **+110.3%** / **+134.0%**                                                                                      |
+| 难度分档增益（通过任务数）    | GLM：Easy +2 / Medium +6 / **Hard +8**；Kimi：+1 / +7 / **+12**                                                |
 
 ### 1.4 门控口径（最值得抄的一条）
 
-迭代内更新**只用 live 轨迹 + 环境反馈**产生（拿不到 verifier 信号，也没有奖励）；迭代结束后**只有成功 run 的更新被并入 H_{k+1}，失败 run 的更新丢弃**；verifier 结果**从不**用于创建或修改更新内容。这是"避免把失败做法固化成技能"的护栏。
+迭代内更新**只用 live 轨迹 + 环境反馈**产生（拿不到 verifier 信号，也没有奖励）；迭代结束后**只有成功 run 的更新被并入 H\_{k+1}，失败 run 的更新丢弃**；verifier 结果**从不**用于创建或修改更新内容。这是"避免把失败做法固化成技能"的护栏。
 
 ### 1.5 live steering 的作用范围（论文自评，判定标准很严）
 
 判定=supervisor 指出具体错误 / stalled branch / 无效策略 → worker 采纳 → 沿纠正路径成功；被忽略、过期、冗余的干预不算。
 
-| 难度 | GLM-5.1 | Kimi-K2.6 |
-| --- | --- | --- |
-| Easy | 0.0% | 0.0% |
-| Medium | 1.1% | 8.1% |
+| 难度     | GLM-5.1  | Kimi-K2.6 |
+| -------- | -------- | --------- |
+| Easy     | 0.0%     | 0.0%      |
+| Medium   | 1.1%     | 8.1%      |
 | **Hard** | **6.1%** | **19.7%** |
-| 全部 | 2.3% | 10.6% |
+| 全部     | 2.3%     | 10.6%     |
 
 → 结论：live steering 的价值集中在**长执行链、错误会累积**的难任务；简单任务无需干预。
 
@@ -66,23 +66,23 @@
 
 ## 2. 我们现在的自进化现状（代码级对照）
 
-| # | 维度 | PILOT | PureScience 现状 | 代码证据 |
-| --- | --- | --- | --- | --- |
-| 1 | 监督者与执行者上下文分离 | ✅ supervisor 独立会话 | ✅ **已有**：fresh-context Reviewer ACP 会话 + reviewer-only 工具作用域 + rubric + 外部来源核验 | `src/main/reviewer/orchestrator.ts:1-6`、`src/main/reviewer/rubric.ts`、`src/main/acp/reviewer-session-owner.ts:139` |
-| 2 | 监督**时机** | ✅ 运行中（live） | ❌ **事后**：`runReview` 在每轮 turn 完成后触发 | `src/main/reviewer/orchestrator.ts:1` |
-| 3 | supervisor → worker 纠正 | ✅ `Steer`（排队到下一轮） | ⚠️ 有事后纠正轮：`[Auditor]` 消息注入主会话 + 修复循环 ≤3 轮 | `src/main/reviewer/correction.ts:1-20`、`orchestrator.ts:6` |
-| 4 | worker → supervisor 上报/提问 | ✅ `Notification` / `Question`（可暂停等待） | ❌ 无 | — |
-| 5 | 中断单个 worker | ✅ `Abort` | ⚠️ 仅会话级 `cancelPrompt` 与 `reviewer:abort-fix-loop` | `src/main/acp/application-commands.ts:70-74`、`src/main/host-application-commands.ts:188` |
-| 6 | 并行 worker | ✅ 每 episode 可 spawn 多个 | ✅ `delegate_tasks` ≤12 并行、独立会话、支持 `completion_contract` | `src/main/connectors/descriptors/delegate-tasks.ts` |
-| 7 | 中间结果回收 | ✅ 事件级实时 | ❌ `Promise.all` + `waitForRun`：**全部跑完才拿到输出** | `src/main/connectors/sub-agent-executor.ts:143` |
-| 8 | 技能写入能力 | ✅ | ✅ `create_skill` + `skill_eval`（评审并给具体改写）+ `skill_list/skill_read` + 系统提示 bootstrap 块 | `src/shared/skill-create.ts`、`src/shared/skill-eval.ts:1-11,63-68`、`src/main/skills/mcp-server.ts:182,216-230` |
-| 9 | 技能写入者 | ✅ 独立监督上下文 | ⚠️ **执行者自己**（同一上下文） | app MCP 工具集（`src/main/agent-framework/app-mcp-names.ts`） |
-| 10 | harness 热更新 | ✅ 更新后 spawn 的 worker 加载 H′ | ✅ **已有**：会话/子代理 spawn 时 materializer 同步技能目录；会话内还有 `reloadDecision: continue\|reload` 与 `needForceLoad` | `src/main/skills/materializer.ts:101-233`、`src/main/settings/claude-config-provision.ts:139`、`src/main/acp/turn-skill-owner.ts:35-40` |
-| 11 | 长期记忆 | ✅ memory 写入 | ✅ `memory_save_note` + 分类驱动召回 + `supersededBy` 失效链 | `src/shared/memory-mcp.ts:8`、`src/main/settings/memory-recall.ts:42,65-76` |
-| 12 | **验证门控保留** | ✅ 仅成功 run 的更新并入 | ❌ **无**：技能/记忆写入即永久生效，不携带"来源 run 是否通过检查" | `create_skill` 入参无 outcome/来源字段 |
-| 13 | 确定性验证器 | ⚠️ 依赖 benchmark verifier | ✅ **现成且更强**：SciBench-Local 9 条机械规则对 trace 求值（**禁 LLM 打分**）+ 执行追溯报告 + 检查点输入指纹 | `src/shared/sci-bench.ts`、`docs/sci-bench-v0.md`、`src/shared/trace-report.ts` |
-| 14 | 复用/继承追踪 | 指令要求记录"建立在哪些技能上" | ⚠️ 部分：每轮技能活动已记录，但"技能 A 建立在技能 B 上""技能被谁用了"未建模 | `src/main/acp/turn-skill-owner.ts`、`src/main/acp/codex-skill-activity.ts` |
-| 15 | 自进化 KPI | ✅ token↓ + 成功/百万 token↑ | ⚠️ 有 token/上下文统计，无"每百万 token 成功数"口径 | `src/main/acp/*-turn-usage.ts`、`context-usage-tracker.ts` |
+| #   | 维度                          | PILOT                                        | PureScience 现状                                                                                                              | 代码证据                                                                                                                                |
+| --- | ----------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 监督者与执行者上下文分离      | ✅ supervisor 独立会话                       | ✅ **已有**：fresh-context Reviewer ACP 会话 + reviewer-only 工具作用域 + rubric + 外部来源核验                               | `src/main/reviewer/orchestrator.ts:1-6`、`src/main/reviewer/rubric.ts`、`src/main/acp/reviewer-session-owner.ts:139`                    |
+| 2   | 监督**时机**                  | ✅ 运行中（live）                            | ❌ **事后**：`runReview` 在每轮 turn 完成后触发                                                                               | `src/main/reviewer/orchestrator.ts:1`                                                                                                   |
+| 3   | supervisor → worker 纠正      | ✅ `Steer`（排队到下一轮）                   | ⚠️ 有事后纠正轮：`[Auditor]` 消息注入主会话 + 修复循环 ≤3 轮                                                                  | `src/main/reviewer/correction.ts:1-20`、`orchestrator.ts:6`                                                                             |
+| 4   | worker → supervisor 上报/提问 | ✅ `Notification` / `Question`（可暂停等待） | ❌ 无                                                                                                                         | —                                                                                                                                       |
+| 5   | 中断单个 worker               | ✅ `Abort`                                   | ⚠️ 仅会话级 `cancelPrompt` 与 `reviewer:abort-fix-loop`                                                                       | `src/main/acp/application-commands.ts:70-74`、`src/main/host-application-commands.ts:188`                                               |
+| 6   | 并行 worker                   | ✅ 每 episode 可 spawn 多个                  | ✅ `delegate_tasks` ≤12 并行、独立会话、支持 `completion_contract`                                                            | `src/main/connectors/descriptors/delegate-tasks.ts`                                                                                     |
+| 7   | 中间结果回收                  | ✅ 事件级实时                                | ❌ `Promise.all` + `waitForRun`：**全部跑完才拿到输出**                                                                       | `src/main/connectors/sub-agent-executor.ts:143`                                                                                         |
+| 8   | 技能写入能力                  | ✅                                           | ✅ `create_skill` + `skill_eval`（评审并给具体改写）+ `skill_list/skill_read` + 系统提示 bootstrap 块                         | `src/shared/skill-create.ts`、`src/shared/skill-eval.ts:1-11,63-68`、`src/main/skills/mcp-server.ts:182,216-230`                        |
+| 9   | 技能写入者                    | ✅ 独立监督上下文                            | ⚠️ **执行者自己**（同一上下文）                                                                                               | app MCP 工具集（`src/main/agent-framework/app-mcp-names.ts`）                                                                           |
+| 10  | harness 热更新                | ✅ 更新后 spawn 的 worker 加载 H′            | ✅ **已有**：会话/子代理 spawn 时 materializer 同步技能目录；会话内还有 `reloadDecision: continue\|reload` 与 `needForceLoad` | `src/main/skills/materializer.ts:101-233`、`src/main/settings/claude-config-provision.ts:139`、`src/main/acp/turn-skill-owner.ts:35-40` |
+| 11  | 长期记忆                      | ✅ memory 写入                               | ✅ `memory_save_note` + 分类驱动召回 + `supersededBy` 失效链                                                                  | `src/shared/memory-mcp.ts:8`、`src/main/settings/memory-recall.ts:42,65-76`                                                             |
+| 12  | **验证门控保留**              | ✅ 仅成功 run 的更新并入                     | ❌ **无**：技能/记忆写入即永久生效，不携带"来源 run 是否通过检查"                                                             | `create_skill` 入参无 outcome/来源字段                                                                                                  |
+| 13  | 确定性验证器                  | ⚠️ 依赖 benchmark verifier                   | ✅ **现成且更强**：SciBench-Local 9 条机械规则对 trace 求值（**禁 LLM 打分**）+ 执行追溯报告 + 检查点输入指纹                 | `src/shared/sci-bench.ts`、`docs/sci-bench-v0.md`、`src/shared/trace-report.ts`                                                         |
+| 14  | 复用/继承追踪                 | 指令要求记录"建立在哪些技能上"               | ⚠️ 部分：每轮技能活动已记录，但"技能 A 建立在技能 B 上""技能被谁用了"未建模                                                   | `src/main/acp/turn-skill-owner.ts`、`src/main/acp/codex-skill-activity.ts`                                                              |
+| 15  | 自进化 KPI                    | ✅ token↓ + 成功/百万 token↑                 | ⚠️ 有 token/上下文统计，无"每百万 token 成功数"口径                                                                           | `src/main/acp/*-turn-usage.ts`、`context-usage-tracker.ts`                                                                              |
 
 **一句话**：第 1、6、8、10、11、13 项我们已经比论文的 harness 更厚（论文的 harness 只有 skills + memory 两件）；缺的是 **2、4、12**——**时机**、**worker→supervisor 通道**、**验证门控**。
 
@@ -144,14 +144,14 @@
 
 ## 5. 建议单元排期（待拍板）
 
-| 单元 | 范围 | 类型 | 依赖 | 验收 |
-| --- | --- | --- | --- | --- |
-| **U1** | 技能/记忆溯源与验证门控（`shared/skill-provenance.ts` + `create_skill` 扩展 + 面板徽标） | 纯应用层 | — | 契约+派生函数+单测；UI 徽标有真数据；`unverified` 技能不自动加载 |
-| **U2** | 失败模式知识类与三级门控策略 | 纯应用层 | U1 | 负面知识必须带复现证据；SciBench 用例守护 |
-| **U3** | 复用链台账 + 技能收益榜（零新通道） | 渲染层为主 | U1 | 面板非空壳；无数据显式标注；stale 候选可导出 |
-| **U4** | 自进化 KPI 进发版说明（SciBench 口径 + 对照表） | 文档/流程 | U1 | 发版说明含真实求值表；未计算如实标注 |
-| **U5** | `SupervisorChannel` MVP：应用层 steer/abort + 两向事件 **（先只接 Claude Code + `delegate_tasks` worker）** | 跨模块（最重） | U1 | fixture 事件流确定性测试；实机长任务出现带句柄 steer 且 trace report 可见 |
-| **U6** | 干预台账 + 机械判定"干预是否被采纳"（论文表 2 的自动化版） | 分析层 | U5 | 判定规则可机械执行；产出分难度统计 |
+| 单元   | 范围                                                                                                        | 类型           | 依赖 | 验收                                                                      |
+| ------ | ----------------------------------------------------------------------------------------------------------- | -------------- | ---- | ------------------------------------------------------------------------- |
+| **U1** | 技能/记忆溯源与验证门控（`shared/skill-provenance.ts` + `create_skill` 扩展 + 面板徽标）                    | 纯应用层       | —    | 契约+派生函数+单测；UI 徽标有真数据；`unverified` 技能不自动加载          |
+| **U2** | 失败模式知识类与三级门控策略                                                                                | 纯应用层       | U1   | 负面知识必须带复现证据；SciBench 用例守护                                 |
+| **U3** | 复用链台账 + 技能收益榜（零新通道）                                                                         | 渲染层为主     | U1   | 面板非空壳；无数据显式标注；stale 候选可导出                              |
+| **U4** | 自进化 KPI 进发版说明（SciBench 口径 + 对照表）                                                             | 文档/流程      | U1   | 发版说明含真实求值表；未计算如实标注                                      |
+| **U5** | `SupervisorChannel` MVP：应用层 steer/abort + 两向事件 **（先只接 Claude Code + `delegate_tasks` worker）** | 跨模块（最重） | U1   | fixture 事件流确定性测试；实机长任务出现带句柄 steer 且 trace report 可见 |
+| **U6** | 干预台账 + 机械判定"干预是否被采纳"（论文表 2 的自动化版）                                                  | 分析层         | U5   | 判定规则可机械执行；产出分难度统计                                        |
 
 **建议**：U1–U4 一批（都在应用层、可机械验收、直接服务"自进化不空壳"，且 U1 是所有后续项的地基）；U5/U6 单独立项、先跑通一例再扩到 Codex/OpenCode。
 

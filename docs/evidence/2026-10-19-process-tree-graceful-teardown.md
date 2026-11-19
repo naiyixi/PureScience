@@ -29,11 +29,11 @@
 树形：1 个根进程 + 5 个孙进程；三种孙进程行为各跑一遍。判据是**孙进程自己写的退出记录**
 （`clean <pid>`：它收到了 SIGTERM 并完成了自己的收尾）。
 
-| 孙进程行为 | 修复前（`15cbfcf1`） | 修复后 |
-| --- | --- | --- |
-| SIGTERM 后 600 ms 收尾 | `reaped:false`、升级 SIGKILL、**32 ms**、`cleanExits: 0` | `reaped:true`、**未升级**、**646 ms**、`cleanExits: 5` |
-| 默认（收到即退） | `reaped:false`、升级 SIGKILL（记 2 个幸存者）、**40 ms** | `reaped:true`、未升级、**32 ms** |
-| 显式忽略 SIGTERM | `reaped:false`、升级 SIGKILL、31 ms | `reaped:true`、升级 SIGKILL、**3109 ms**（先给满宽限，再杀，再等内核收完） |
+| 孙进程行为             | 修复前（`15cbfcf1`）                                     | 修复后                                                                     |
+| ---------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| SIGTERM 后 600 ms 收尾 | `reaped:false`、升级 SIGKILL、**32 ms**、`cleanExits: 0` | `reaped:true`、**未升级**、**646 ms**、`cleanExits: 5`                     |
+| 默认（收到即退）       | `reaped:false`、升级 SIGKILL（记 2 个幸存者）、**40 ms** | `reaped:true`、未升级、**32 ms**                                           |
+| 显式忽略 SIGTERM       | `reaped:false`、升级 SIGKILL、31 ms                      | `reaped:true`、升级 SIGKILL、**3109 ms**（先给满宽限，再杀，再等内核收完） |
 
 第二行是最刺眼的一条：**连收到 SIGTERM 就立刻退出的进程，也会在那 30 ms 的复查里被记成幸存者** ——
 可见原来的「幸存者」根本不是「不听话」，而是「还没死完」。
@@ -69,14 +69,14 @@
 
 ## 5 门禁读数
 
-| 项 | 读数 |
-| --- | --- |
-| `src/main/process-tree.test.ts` | **16 passed**（12 既有 + 4 新增） |
-| 受影响簇（process-tree / lifecycle-shutdown / acp 连接收口两侧 / notebook kernel+shell） | **6 files / 128 passed | 6 skipped** |
-| `tsc -p tsconfig.node.json --composite false` | exit 0 |
-| `tsc -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache` 两个改动文件 | 0 error / 0 warning |
-| 全量单测 | **1345 files / 17196 passed**（16 skipped files、207 skipped 用例，exit 0；比上一轮 +4 用例，正好是新增用例数） |
+| 项                                                                                       | 读数                                                                                                            |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/main/process-tree.test.ts`                                                          | **16 passed**（12 既有 + 4 新增）                                                                               |
+| 受影响簇（process-tree / lifecycle-shutdown / acp 连接收口两侧 / notebook kernel+shell） | **6 files / 128 passed                                                                                          | 6 skipped** |
+| `tsc -p tsconfig.node.json --composite false`                                            | exit 0                                                                                                          |
+| `tsc -p tsconfig.web.json --composite false`                                             | exit 0                                                                                                          |
+| `eslint --no-cache` 两个改动文件                                                         | 0 error / 0 warning                                                                                             |
+| 全量单测                                                                                 | **1345 files / 17196 passed**（16 skipped files、207 skipped 用例，exit 0；比上一轮 +4 用例，正好是新增用例数） |
 
 ## 6 边界（不许读成更强）
 

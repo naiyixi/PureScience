@@ -10,13 +10,13 @@
 `~/Library/Logs/PureScience/{main.log,main.1.log,main.2.log}`，筛 `ipc handler was slow` 且
 `channel === "reviewer:get-for-session"`：
 
-| 指标 | 读数 |
-| --- | --- |
-| 慢记录条数（>50 ms 才记） | **675** |
-| 中位数 | 209 ms |
-| p90 / p99 | 1,341 ms / 15,467 ms |
-| 最大 | **203,180 ms**（`2026-10-18T02:44:15.300Z`，runId `5d1fedcd…`） |
-| >1 s / >5 s / >10 s / >30 s / >60 s | 90 / 29 / 14 / 2 / 1 |
+| 指标                                | 读数                                                            |
+| ----------------------------------- | --------------------------------------------------------------- |
+| 慢记录条数（>50 ms 才记）           | **675**                                                         |
+| 中位数                              | 209 ms                                                          |
+| p90 / p99                           | 1,341 ms / 15,467 ms                                            |
+| 最大                                | **203,180 ms**（`2026-10-18T02:44:15.300Z`，runId `5d1fedcd…`） |
+| >1 s / >5 s / >10 s / >30 s / >60 s | 90 / 29 / 14 / 2 / 1                                            |
 
 ## 二、那 203 秒在等什么（区间重叠）
 
@@ -25,15 +25,15 @@
 - 与别的慢通道重叠的并集：**195.2 s / 203.2 s = 96%**
 - 12 条重叠记录，其中：
 
-| 通道 | 条数 | 最长 |
-| --- | --- | --- |
-| `sessions:save-session` | 2 | **118,871 ms** |
-| `notebook:state` | 3 | 76,622 ms |
-| `settings:function-models` | 2 | 56,113 ms |
-| `artifacts:read-preview` | 2 | 46,142 ms |
-| `acp:get-plan-projection` | 1 | 13,498 ms |
-| `settings:get-local-parsing-models` | 1 | 8,390 ms |
-| `sessions:import-posture` | 1 | 436 ms |
+| 通道                                | 条数 | 最长           |
+| ----------------------------------- | ---- | -------------- |
+| `sessions:save-session`             | 2    | **118,871 ms** |
+| `notebook:state`                    | 3    | 76,622 ms      |
+| `settings:function-models`          | 2    | 56,113 ms      |
+| `artifacts:read-preview`            | 2    | 46,142 ms      |
+| `acp:get-plan-projection`           | 1    | 13,498 ms      |
+| `settings:get-local-parsing-models` | 1    | 8,390 ms       |
+| `sessions:import-posture`           | 1    | 436 ms         |
 
 同一窗口里 `artifact-provenance` 自己的分段读数给出了更硬的证据：一次 **30 KB** 的读，`readMs` 38,309 ms、
 `readEventLoopMaxMs` **12,046 ms**；而 `dbCanaryMs` **7,915 ms** 意思是连 `SELECT 1` 都要排队近 8 秒。
@@ -47,14 +47,14 @@
 
 被测对象是本机 review 最多的那个会话（8 条 review，全部 `complete`）：
 
-| 段 | 读数 |
-| --- | --- |
-| `getReviewsForProjectSession` | **35 ms** |
+| 段                                                                  | 读数                                   |
+| ------------------------------------------------------------------- | -------------------------------------- |
+| `getReviewsForProjectSession`                                       | **35 ms**                              |
 | 会话文档：读 2,094,358 字节 → `JSON.parse` → `normalizeSessionFile` | 2.9–4.3 + 2.4–3.0 + 2.9–5.4 ms（5 次） |
-| `flagStaleReviews`（8 条 review） | **冷 28 ms / 暖 21 ms** |
-| 其中 19 次产物版本 resolve | 合计 74 ms，单次 ≤ 4 ms |
-| 单个 turn 的 structural pass | 6.7 ms |
-| **合计（约）** | **≈ 76 ms** |
+| `flagStaleReviews`（8 条 review）                                   | **冷 28 ms / 暖 21 ms**                |
+| 其中 19 次产物版本 resolve                                          | 合计 74 ms，单次 ≤ 4 ms                |
+| 单个 turn 的 structural pass                                        | 6.7 ms                                 |
+| **合计（约）**                                                      | **≈ 76 ms**                            |
 
 203,180 / 76 ≈ **2,670 倍**。
 
@@ -63,13 +63,13 @@
 上一轮的记事本把 203 s 归到「每条 review 顺序 rehash、单细胞 `.h5ad` 300 MB 级产物、同一版本被重复哈希」。
 真数据不支持它：
 
-| 问题 | 读数（真库只读查询 + 磁盘 stat） |
-| --- | --- |
-| Review 总数 / 单会话最多 | 149 / 8 |
-| 全部 review 引用的产物版本次数 / 唯一版本 | 806 / 796 ⇒ **重复因子 1.01** |
-| 全部字节 / 唯一字节 | 100.3 MB / 99.4 MB |
-| 单会话最大（本机"最大"那个） | **2.2 MB / 19 个版本** |
-| 最大单个文件 | 5.1 MB |
+| 问题                                      | 读数（真库只读查询 + 磁盘 stat） |
+| ----------------------------------------- | -------------------------------- |
+| Review 总数 / 单会话最多                  | 149 / 8                          |
+| 全部 review 引用的产物版本次数 / 唯一版本 | 806 / 796 ⇒ **重复因子 1.01**    |
+| 全部字节 / 唯一字节                       | 100.3 MB / 99.4 MB               |
+| 单会话最大（本机"最大"那个）              | **2.2 MB / 19 个版本**           |
+| 最大单个文件                              | 5.1 MB                           |
 
 按「25 s/条 × 8 条」的推法，每一条得指向 ~300 MB 的产物；实测该会话 19 个版本加起来 2.2 MB。
 **"重复哈希"这条假设的收益上限是 1%，不值得为它动实现。**

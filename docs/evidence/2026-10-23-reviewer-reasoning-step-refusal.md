@@ -9,10 +9,10 @@
 按纪律，下一刀不该再在 notebook 里找，而要从**真机日志里谁在占主线程/谁在挡路**取数。于是把两份真机日志按
 `level/scope/msg` 聚合了一遍（只读），本机两份现役日志分别是：
 
-| 日志 | 记录数 | 分布 | 窗口 |
-|---|---|---|---|
-| `~/Library/Logs/PureScience/main.log`（打包版 **v2.15.3**） | 2,927 | 全部 `warn`，且**全部**是 `event loop stalled` | 2026-10-23 当天 |
-| `~/Library/Logs/PureScience (DEV)/main.log`（dev 实例） | 11,039 | info 9,321 / warn 1,649 / error 61 / debug 8 | 2026-10-21 16:09 → 10-22 20:01 UTC |
+| 日志                                                        | 记录数 | 分布                                           | 窗口                               |
+| ----------------------------------------------------------- | ------ | ---------------------------------------------- | ---------------------------------- |
+| `~/Library/Logs/PureScience/main.log`（打包版 **v2.15.3**） | 2,927  | 全部 `warn`，且**全部**是 `event loop stalled` | 2026-10-23 当天                    |
+| `~/Library/Logs/PureScience (DEV)/main.log`（dev 实例）     | 11,039 | info 9,321 / warn 1,649 / error 61 / debug 8   | 2026-10-21 16:09 → 10-22 20:01 UTC |
 
 打包版那一份先排除掉一条**已知**结论：它没有 `lateMs` 字段 ⇒ 跑的是 §两百零三 修复**之前**的代码
 （修复提交 `0e6d47cf` 落在 `v2.15.3` 那个发布提交 `6f03a1a4` 之后 23 分钟）⇒ 那 2,927 条是旧构建的洪水，
@@ -21,15 +21,15 @@
 
 DEV 那一份才有产品行为。按条数排下来，第二条就是本单元：
 
-| 条数 | level | scope | msg |
-|---|---|---|---|
-| 428 | warn | application-commands | application command handler was slow |
-| 399 | warn | diagnostics | event loop stalled |
-| **289** | warn | acp | **OpenCode permission context wait timed out** |
-| 110 | warn | acp | agent stderr |
-| 102 | warn | ipc | ipc handler was slow |
-| **16** | warn | acp | **rejecting non-reviewer tool requested by background reviewer** |
-| **15** | **error** | reviewer:orchestrator | **review protocol incomplete** |
+| 条数    | level     | scope                 | msg                                                              |
+| ------- | --------- | --------------------- | ---------------------------------------------------------------- |
+| 428     | warn      | application-commands  | application command handler was slow                             |
+| 399     | warn      | diagnostics           | event loop stalled                                               |
+| **289** | warn      | acp                   | **OpenCode permission context wait timed out**                   |
+| 110     | warn      | acp                   | agent stderr                                                     |
+| 102     | warn      | ipc                   | ipc handler was slow                                             |
+| **16**  | warn      | acp                   | **rejecting non-reviewer tool requested by background reviewer** |
+| **15**  | **error** | reviewer:orchestrator | **review protocol incomplete**                                   |
 
 ## 2 读数：16 次拒绝，15 次整轮复查作废，且是**逐条对得上**的
 
@@ -75,29 +75,29 @@ ACP 的 `ToolKind` 枚举里有 `think`，语义是**模型自己的推理步骤
 - 新增 `REVIEWER_PURE_REASONING_TOOL_KINDS = new Set(['think'])`，且**只在**判定为「不是复查自己的 MCP 工具」
   之后才看它（复查 MCP 工具优先，走原来那条带作用域检查的分支）；
 - 命中时走 allow（优先 `allow_once`，与原来同一取法），并打**自己的一句** info：`approving reviewer reasoning
-  step` / `rule: 'reviewer-pure-reasoning-step'` —— 它不是 scope-bounded 的批准，混进原来那句会让读数谎称
+step` / `rule: 'reviewer-pure-reasoning-step'` —— 它不是 scope-bounded 的批准，混进原来那句会让读数谎称
   发生过一次作用域内批准；
 - **没有 allow 选项就 cancel**（fail-closed），不猜一个选项。
 
 ## 4 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/acp/reviewer-session-owner.ts` | 判定抽成两个纯函数：`classifyReviewerToolCall`（三态：`reviewer-mcp` / `pure-reasoning` / `foreign`）与 `decideReviewerPermission`（`allow` 带 rule / `reject` 带选项 / `cancel`），外加 `permissionDecisionResponse` 把判定映射成 ACP 响应。`resolvePermission` 只剩「取上下文 → 判定 → 记日志/计数 → 响应」这四步，原来的身份识别逻辑**逐字搬进**纯函数，行为对 `reviewer-mcp` 与 `foreign` 不变 |
-| 同上，拒绝行 | 补 `toolKind`。原来的 `tool: toolName ?? kind` 有两种含义（工具名 / ACP kind）而日志里看不出是哪一种，`think` 恰好两者都可能（OpenCode 有一个叫 think 的工具，ACP 也有一个 think 的 kind）—— 这正是下一段「边界」要盯的那一格 |
-| `src/main/acp/reviewer-session-owner.permission-decision.test.ts`（新） | 18 条：三条身份识别路径（opencode 标题 / claude `_meta` / codex 标题）、`think` → `pure-reasoning`、**七种其它 kind 逐个仍 foreign**（`execute`/`read`/`fetch`/`edit`/`search`/`switch_mode`/`other`）、MCP 分支优先于 kind、两个 MCP 服务时不认、无 allow 选项即 cancel、响应映射三种形态 |
+| 位置                                                                    | 改动                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/acp/reviewer-session-owner.ts`                                | 判定抽成两个纯函数：`classifyReviewerToolCall`（三态：`reviewer-mcp` / `pure-reasoning` / `foreign`）与 `decideReviewerPermission`（`allow` 带 rule / `reject` 带选项 / `cancel`），外加 `permissionDecisionResponse` 把判定映射成 ACP 响应。`resolvePermission` 只剩「取上下文 → 判定 → 记日志/计数 → 响应」这四步，原来的身份识别逻辑**逐字搬进**纯函数，行为对 `reviewer-mcp` 与 `foreign` 不变 |
+| 同上，拒绝行                                                            | 补 `toolKind`。原来的 `tool: toolName ?? kind` 有两种含义（工具名 / ACP kind）而日志里看不出是哪一种，`think` 恰好两者都可能（OpenCode 有一个叫 think 的工具，ACP 也有一个 think 的 kind）—— 这正是下一段「边界」要盯的那一格                                                                                                                                                                      |
+| `src/main/acp/reviewer-session-owner.permission-decision.test.ts`（新） | 18 条：三条身份识别路径（opencode 标题 / claude `_meta` / codex 标题）、`think` → `pure-reasoning`、**七种其它 kind 逐个仍 foreign**（`execute`/`read`/`fetch`/`edit`/`search`/`switch_mode`/`other`）、MCP 分支优先于 kind、两个 MCP 服务时不认、无 allow 选项即 cancel、响应映射三种形态                                                                                                         |
 
 ## 5 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 新增用例 | **1 file / 18 passed** |
-| `src/main/acp` 全簇 | **89 files / 1,445 passed**，exit 0（77.5 s） |
-| `src/main/reviewer` 全簇 | **26 files / 298 passed**，exit 0（54.9 s） |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
-| `eslint --no-cache`（本笔 2 文件） | **0 problems** |
-| `prettier --check`（本笔 2 文件） | 全过 |
+| 环                                                     | 读数                                          |
+| ------------------------------------------------------ | --------------------------------------------- |
+| 新增用例                                               | **1 file / 18 passed**                        |
+| `src/main/acp` 全簇                                    | **89 files / 1,445 passed**，exit 0（77.5 s） |
+| `src/main/reviewer` 全簇                               | **26 files / 298 passed**，exit 0（54.9 s）   |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**                                    |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | **exit 0**                                    |
+| `eslint --no-cache`（本笔 2 文件）                     | **0 problems**                                |
+| `prettier --check`（本笔 2 文件）                      | 全过                                          |
 
 **两条变异各自只红该红的那几条**：① 把 `REVIEWER_PURE_REASONING_TOOL_KINDS` 换成空集（＝回到改动前）⇒
 **3 条**红（`think` 分类、`think` 放行、`think` 无 allow 选项时 cancel），其余 12 条绿；

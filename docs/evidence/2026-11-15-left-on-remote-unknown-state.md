@@ -7,11 +7,11 @@
 
 `JobResult.left_on_remote`（`src/shared/compute.ts`）原来只有一个形状：一个数组。空数组同时承担两件相反的事：
 
-| 真实情况 | 写进库的 `left_on_remote` | 读到的人以为 |
-| --- | --- | --- |
-| 枚举过远端工作目录，确实一个文件都没留下 | `'[]'` | 远端是干净的 |
+| 真实情况                                                                                     | 写进库的 `left_on_remote`                           | 读到的人以为 |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------ |
+| 枚举过远端工作目录，确实一个文件都没留下                                                     | `'[]'`                                              | 远端是干净的 |
 | 收割在枚举**之前**就停了（余量不足 / 卷读不出来 / 主机查不到 / SSH 解析失败 / 枚举本身失败） | `'[]'`（`2f7ac9bc` 之前那条跳过路径写的就是空数组） | 远端是干净的 |
-| 收割还没开始 | 列不存在 | 远端是干净的 |
+| 收割还没开始                                                                                 | 列不存在                                            | 远端是干净的 |
 
 于是**三个读者都在替一份没做过的检查担保**：
 
@@ -50,15 +50,15 @@
 
 ## 三 门禁（本机实跑，2026-11-15 00:0x CST）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/compute --maxWorkers=2` | **28 passed \| 1 skipped（29 files）**；**579 passed \| 5 skipped（584）**，exit 0 |
-| `npx vitest run src/renderer/src/components/FeaturedOutputs.render.test.tsx --maxWorkers=1` | **6 passed**，exit 0 |
-| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts` | **42 passed**，exit 0（zh 值不得等于 en 值、九文件齐平） |
-| `npx tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
-| `npx tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `npx eslint --no-cache`（本笔 20 个文件） | exit 0，0 problems |
-| `npx prettier --check`（同上） | 通过 |
+| 环                                                                                          | 读数                                                                               |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `npx vitest run src/main/compute --maxWorkers=2`                                            | **28 passed \| 1 skipped（29 files）**；**579 passed \| 5 skipped（584）**，exit 0 |
+| `npx vitest run src/renderer/src/components/FeaturedOutputs.render.test.tsx --maxWorkers=1` | **6 passed**，exit 0                                                               |
+| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts`                          | **42 passed**，exit 0（zh 值不得等于 en 值、九文件齐平）                           |
+| `npx tsc --noEmit -p tsconfig.node.json --composite false`                                  | exit 0                                                                             |
+| `npx tsc --noEmit -p tsconfig.web.json --composite false`                                   | exit 0                                                                             |
+| `npx eslint --no-cache`（本笔 20 个文件）                                                   | exit 0，0 problems                                                                 |
+| `npx prettier --check`（同上）                                                              | 通过                                                                               |
 
 与上一单元基线对照：`src/main/compute` 从 577 passed 涨到 579（新增两条：`ipc.test.ts`「枚举过但为空要报 0」、`compute-service.test.ts`「没枚举要报未知」）；另有 `harvest-engine.test.ts` 两条既有用例补上了状态断言、面板新增两条渲染用例。
 

@@ -68,7 +68,7 @@
 
   **实测结果（会话 `e055db44-5247-4fcb-9e2a-195c94ac883e`，改动后构建）**：
   1. provisioning 落地：`settings.json` 出现 `hooks.PostToolUse = [{matcher:"Skill", hooks:[{type:"command",
-     command:'node "…/claude/hooks/skill-usage-capture.cjs" || true'}]}]`；
+command:'node "…/claude/hooks/skill-usage-capture.cjs" || true'}]}]`；
   2. agent 真加载了技能（界面 `Loaded skill: mcp-genes`，296ms）；
   3. **采集到名字**：`{"toolName":"Skill","toolInput":{"skill":"mcp-genes"},"sessionId":"e055db44-…","cwd":"…/workspaces/ad6619d2-…"}`。
   4. **归属键现成**：`sessionId` = 应用会话 id（与持久化会话 `id` 一致），`cwd` 亦一致 → 不需要猜。
@@ -104,13 +104,13 @@
     否则浏览器 UI 报 `Incompatible PureScience Web RPC protocol`（协议版本随目录变化，旧包不匹配）。
   - **历史 119 个会话仍无名**（采集只从装了钩子的版本开始）——面板已用说明文字显式标注，未冒充回溯覆盖。
 
-  | 事实 | 出处 |
-  |---|---|
-  | 适配器把调用方 `options.hooks` 合并进 SDK 钩子 | `node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js:4040`（`...userProvidedOptions?.hooks`，`PostToolUse` 数组拼接） |
-  | 适配器**官方文档**把 `hooks` 列为受支持透传项 | 同包 `dist/acp-agent.d.ts:409-426`：`hooks (merged with ACP's hooks)` |
-  | 应用已持有该 options 通道 | `src/main/agent-framework/claude-code.ts:67-79`（`meta.claudeCode.options` ← `ctx.sessionOptions`） |
-  | 应用还自持一份 Claude `settings.json` 路径 | `src/main/settings/backend-resolver.ts:886`（`settings: join(appConfigDir,'settings.json')`），目录来自 `agent-runtime-manager.ts:691` `getAppClaudeConfigDir(storageRoot)` |
-  | 钩子事件与 JSON 形态在 SDK 类型中存在 | `@anthropic-ai/claude-agent-sdk/sdk.d.ts:809`（`HookCallbackMatcher`）、`:816`（`PostToolUse`）、`:4919+`（`{type:'command'}`）；`HookCallback.hooks` 本体是**进程内函数**，故**跨 ACP JSON 边界应走 `type:'command'` 的命令钩子或 settings.json**，不要试图传函数 |
+  | 事实                                           | 出处                                                                                                                                                                                                                                                               |
+  | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | 适配器把调用方 `options.hooks` 合并进 SDK 钩子 | `node_modules/@agentclientprotocol/claude-agent-acp/dist/acp-agent.js:4040`（`...userProvidedOptions?.hooks`，`PostToolUse` 数组拼接）                                                                                                                             |
+  | 适配器**官方文档**把 `hooks` 列为受支持透传项  | 同包 `dist/acp-agent.d.ts:409-426`：`hooks (merged with ACP's hooks)`                                                                                                                                                                                              |
+  | 应用已持有该 options 通道                      | `src/main/agent-framework/claude-code.ts:67-79`（`meta.claudeCode.options` ← `ctx.sessionOptions`）                                                                                                                                                                |
+  | 应用还自持一份 Claude `settings.json` 路径     | `src/main/settings/backend-resolver.ts:886`（`settings: join(appConfigDir,'settings.json')`），目录来自 `agent-runtime-manager.ts:691` `getAppClaudeConfigDir(storageRoot)`                                                                                        |
+  | 钩子事件与 JSON 形态在 SDK 类型中存在          | `@anthropic-ai/claude-agent-sdk/sdk.d.ts:809`（`HookCallbackMatcher`）、`:816`（`PostToolUse`）、`:4919+`（`{type:'command'}`）；`HookCallback.hooks` 本体是**进程内函数**，故**跨 ACP JSON 边界应走 `type:'command'` 的命令钩子或 settings.json**，不要试图传函数 |
 
   **拟实现（下一步）**：在应用自有的 claude 配置里加 `PostToolUse` matcher（目标工具 `Skill`），命令钩子把 stdin 的 `{tool_name, tool_input}` 追加写入项目侧 JSONL；
   应用读取该 JSONL，把 `tool_input` 里的技能名写进活动/轮次元数据 → `skillUsagesFromActivities`（`src/shared/skill-usage.ts`，已就绪）立即产出排行。
@@ -141,11 +141,11 @@
 真实会话 `68b9adc4` 的活动流喂给策略**确实触发唤醒**（`repeated-tool-failure@turn:3`，无降级），
 但该会话 **12 次审计启动、0 条台账日志**。逐层查下去是**三处独立缺陷**：
 
-| # | 缺陷 | 位置 | 修法 | 证据 |
-|---|---|---|---|---|
-| 1 | **渲染端算出的 plan 在 main 边界被丢弃** | `main/reviewer/ipc.ts` 的 `triggerReview` 用**显式解构**组 options，没有 `supervisor` | 透传 `supervisor: request.supervisor` | 边界测试（抽掉该行→红）`ed3d700` |
-| 2 | **只有自动路径带 plan；跳过即丢；手动"请求评审"盲审** | 台账挂在 `triggerAutoReview` 内；`WorkspacePage.requestManualReview` 走同一装配却不带 plan | 台账**并入 `assembleReviewRunRequest`**（两路共用）；运行时信号改为**审计真正启动后**才消费 | 渲染端测试（抽掉装配→红）`3beb231` |
-| 3 | **首审不留痕（可审计性）** | `logSupervisorLedger` 只写在 `runScopedReview`（修正轮重审路径），**首审路径没有** | 首审路径同样留痕 | **活体**：`c370c41` 重建后同一条 RPC 首次产出日志行 |
+| #   | 缺陷                                                  | 位置                                                                                       | 修法                                                                                        | 证据                                                |
+| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 1   | **渲染端算出的 plan 在 main 边界被丢弃**              | `main/reviewer/ipc.ts` 的 `triggerReview` 用**显式解构**组 options，没有 `supervisor`      | 透传 `supervisor: request.supervisor`                                                       | 边界测试（抽掉该行→红）`ed3d700`                    |
+| 2   | **只有自动路径带 plan；跳过即丢；手动"请求评审"盲审** | 台账挂在 `triggerAutoReview` 内；`WorkspacePage.requestManualReview` 走同一装配却不带 plan | 台账**并入 `assembleReviewRunRequest`**（两路共用）；运行时信号改为**审计真正启动后**才消费 | 渲染端测试（抽掉装配→红）`3beb231`                  |
+| 3   | **首审不留痕（可审计性）**                            | `logSupervisorLedger` 只写在 `runScopedReview`（修正轮重审路径），**首审路径没有**         | 首审路径同样留痕                                                                            | **活体**：`c370c41` 重建后同一条 RPC 首次产出日志行 |
 
 **活体验证（确定性，不经 UI，跑在运行中的实例上）**：`POST /rpc/reviewer:run` 携带 plan →
 `{"started": true}` → 日志首次出现
@@ -194,6 +194,7 @@
   **Escape 是关键步**：加上它之后日志出现 `prompt start { sessionId, textLength: 76 }` 等派发记录；
   不加它则**连续三次无派发**（输入框持有全文、发送按钮被点、但日志无 `prompt start`）——
   「有历史后 Enter 被弹层吞掉」的假设由此证实。
+
 - **审计链路在真实 UI 会话里已跑通**：同一次会话日志出现
   `[reviewer:ipc] review triggered { sessionId: … }` → `[reviewer:orchestrator] runReview started { sessionId: … }`，
   即**渲染端 → main → reviewer 全链路可用**（B3 台账走的就是这条链）。

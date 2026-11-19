@@ -1,6 +1,7 @@
 ---
 name: stable-baselines3
 description: Trains and evaluates single-agent reinforcement learning with Stable Baselines3 (PPO, SAC, DQN, TD3, DDPG, A2C), Gymnasium custom environments, vectorized rollouts, callbacks, and checkpoint normalization. Applies to reproducible RL experiments, continuous control, discrete actions, and SB3-Contrib recurrent or masked policies.
+description-zh: 用 Stable Baselines3 训练并评估单智能体强化学习（PPO、SAC、DQN、TD3、DDPG、A2C）：Gymnasium 自定义环境、向量化采样、回调与检查点。
 license: MIT license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.10+, PyTorch >= 2.8, and stable-baselines3 2.9.0. Gymnasium environments; optional extras for TensorBoard and Atari (ale-py).

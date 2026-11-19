@@ -3,23 +3,23 @@
 **问题**：`compose runtime steps` 里 `open-project-db` 一直是启动最慢的一步（真机 330 ms，`cpuShare 0.30`
 说明不是 CPU 密集）。它做的就是 `ensureProjectSchema`：一串**串行**的 DDL 经 Prisma 查询引擎执行。
 
-| 动作 | 条数 |
-|---|---|
-| `CREATE TABLE IF NOT EXISTS` | ~40 |
-| `CREATE INDEX IF NOT EXISTS` | ~60 |
+| 动作                                                                                 | 条数              |
+| ------------------------------------------------------------------------------------ | ----------------- |
+| `CREATE TABLE IF NOT EXISTS`                                                         | ~40               |
+| `CREATE INDEX IF NOT EXISTS`                                                         | ~60               |
 | 守卫式 `ALTER TABLE ADD COLUMN`（每个先读 `sqlite_master` 再读 `PRAGMA table_info`） | ~40 步 → ~80 往返 |
-| CHECK 约束迁移（可能重建表） | 6 组 |
+| CHECK 约束迁移（可能重建表）                                                         | 6 组              |
 
 **在已是最新的库上，这一整套的答案是「都在」，但每次启动都要问一遍。**
 
 ## 读数（255 MB 真实库的副本，5 轮，`scripts/bench/project-db-open.bench.test.ts`）
 
-| | p50 | p90 |
-|---|---|---|
-| 改前 `ensureProjectSchema` | **120.7 ms** | 174.7 ms |
-| 改后 `ensureProjectSchema` | **38.4 ms** | 55.0 ms |
-| 改前 打开步合计（含引擎 `SELECT 1`） | 129.0 ms | 180.8 ms |
-| 改后 打开步合计 | **48.6 ms** | 63.3 ms |
+|                                      | p50          | p90      |
+| ------------------------------------ | ------------ | -------- |
+| 改前 `ensureProjectSchema`           | **120.7 ms** | 174.7 ms |
+| 改后 `ensureProjectSchema`           | **38.4 ms**  | 55.0 ms  |
+| 改前 打开步合计（含引擎 `SELECT 1`） | 129.0 ms     | 180.8 ms |
+| 改后 打开步合计                      | **48.6 ms**  | 63.3 ms  |
 
 复现：`PURESCIENCE_BENCH_PROJECT_DB=1 npx vitest run scripts/bench/project-db-open.bench.test.ts`
 （脚本把读数写到 `docs/bench-runs/2026-10-25-project-db-open.txt`）。
@@ -42,11 +42,11 @@
 
 ## 真机对照（打包版 2.18.0 + 本次改动，同一台机器、同一个 255 MB 库）
 
-| 启动 | `open-project-db` | `compose runtime steps` 合计 |
-|---|---|---|
-| 改动前（无快路径，每次启动都一样） | **330 ms** | 404 ms |
-| 改动后第一次（无 `SchemaStamp`，跑全序列并写戳） | 432 ms | 492 ms |
-| 改动后第二次（命中快路径） | **126 ms** | **185 ms** |
+| 启动                                             | `open-project-db` | `compose runtime steps` 合计 |
+| ------------------------------------------------ | ----------------- | ---------------------------- |
+| 改动前（无快路径，每次启动都一样）               | **330 ms**        | 404 ms                       |
+| 改动后第一次（无 `SchemaStamp`，跑全序列并写戳） | 432 ms            | 492 ms                       |
+| 改动后第二次（命中快路径）                       | **126 ms**        | **185 ms**                   |
 
 平台：macOS 26（arm64），应用 `/Applications/PureScience.app`，`CFBundleShortVersionString = 2.18.0`，
 asar 里能 grep 到 `SchemaStamp` / `ddlFingerprint` 且 `user_version` 已不存在（先证明跑的是这棵树）。
@@ -74,11 +74,11 @@ DMG 拉全 **284,233,437** 字节（= 资产登记值）；`shasum -a 256` = `37
 与 `SHA256SUMS.txt` 那行**逐字符一致**；asar 里 `SchemaStamp`、`ddlFingerprint`、`/api/v1/agent-card` 都在
 （先证明跑的是这棵树）。装机后两次启动：
 
-| 启动 | `open-project-db` | `compose runtime steps` 合计 |
-|---|---|---|
-| v2.18.0 发布件（对照） | **406 ms** | 497 ms |
-| v2.18.1 `23c2ad0d` | **148 ms** | 255 ms |
-| v2.18.1 `4f28496b` | **106 ms** | 214 ms |
+| 启动                   | `open-project-db` | `compose runtime steps` 合计 |
+| ---------------------- | ----------------- | ---------------------------- |
+| v2.18.0 发布件（对照） | **406 ms**        | 497 ms                       |
+| v2.18.1 `23c2ad0d`     | **148 ms**        | 255 ms                       |
+| v2.18.1 `4f28496b`     | **106 ms**        | 214 ms                       |
 
 两次都**没有** `specialist-skill-catalog` 的慢步骤行（阈值 250 ms），而 v2.18.0 上是 324 / 374 ms。
 

@@ -23,10 +23,10 @@ error 出现的入口是面板**自己的**运行控件（终端 + Enter），�
 
 而 `status` 有**两种来源**，这是本单元踩到的关键机制：
 
-| 场景 | `notebook-env:getStatus()` 的来源 | pythonReady 怎么来 |
-| --- | --- | --- |
-| 装好的应用（`resources/micromamba` 在） | `createNotebookEnvironmentLifecycle` 的真实生命周期 | **读盘**：`pythonReady(root, DEFAULT_ENV_VERSION)`（`runtime-paths.ts:491`：就绪标记 + 解释器文件在） |
-| 没有 provisioner（开发构建、或打包件缺 micromamba 资源） | `createUnavailableLifecycle.status()`（`environment-lifecycle-workflows.ts:66-70`） | **写死 `false`**，盘上有什么都不看 |
+| 场景                                                     | `notebook-env:getStatus()` 的来源                                                   | pythonReady 怎么来                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 装好的应用（`resources/micromamba` 在）                  | `createNotebookEnvironmentLifecycle` 的真实生命周期                                 | **读盘**：`pythonReady(root, DEFAULT_ENV_VERSION)`（`runtime-paths.ts:491`：就绪标记 + 解释器文件在） |
+| 没有 provisioner（开发构建、或打包件缺 micromamba 资源） | `createUnavailableLifecycle.status()`（`environment-lifecycle-workflows.ts:66-70`） | **写死 `false`**，盘上有什么都不看                                                                    |
 
 ⇒ 第二条路上**任何播种都打不开面板**（我第一版 spec 正是这样红的：`expect(status.pythonReady).toBe(true)` 收到 `false`），
 它只能被**具名挂起**，不能改断言、也不能把「打不开」记成「文案没出现」。

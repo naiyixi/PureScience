@@ -19,43 +19,44 @@ The rules below were fixed in `assay_analysis.py` **before** running the analyse
 
 ## 1. Data-quality check (reporting only)
 
-| Check | Result |
-|---|---|
-| Duplicate `sample_id` | 0 |
-| Fully duplicate rows | 0 |
-| Missing values per column | {'sample_id': 0, 'group': 0, 'replicate': 0, 'measurement': 1} |
-| Group A — rows / non-missing / missing | 12 / 11 / 1 |
-| Group B — rows / non-missing / missing | 12 / 12 / 0 |
+| Check                                     | Result                                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| Duplicate `sample_id`                     | 0                                                                                      |
+| Fully duplicate rows                      | 0                                                                                      |
+| Missing values per column                 | {'sample_id': 0, 'group': 0, 'replicate': 0, 'measurement': 1}                         |
+| Group A — rows / non-missing / missing    | 12 / 11 / 1                                                                            |
+| Group B — rows / non-missing / missing    | 12 / 12 / 0                                                                            |
 | `replicate` per group (min–max, n unique) | {'A': {'min': 1, 'max': 12, 'nunique': 12}, 'B': {'min': 1, 'max': 12, 'nunique': 12}} |
 
 Missing values in detail:
+
 - `A03` (group A): `measurement` is missing → excluded from all numeric analyses; counted, not imputed.
 
 Extreme values by the pre-specified 3·IQR fence (per group, complete cases):
 
 | sample_id | group | measurement | group fence [low, high] |
-|---|---|---|---|
-| A11 | A | 12.210 | [7.595, 12.180] |
-| B07 | B | 45.000 | [8.965, 16.368] |
+| --------- | ----- | ----------- | ----------------------- |
+| A11       | A     | 12.210      | [7.595, 12.180]         |
+| B07       | B     | 45.000      | [8.965, 16.368]         |
 
 Each sample appears once (24 unique `sample_id`); the `replicate` column is a per-group index (1–12) with no repeated-measure structure, so observations are treated as independent.
 
 ## 2. Primary (“raw”) analysis — all complete cases
 
-| Group | n | mean | median | SD | min | Q1 | Q3 | max |
-|---|---|---|---|---|---|---|---|---|
-| A | 11 | 10.044 | 9.940 | 0.936 | 8.500 | 9.560 | 10.215 | 12.210 |
-| B | 12 | 15.466 | 12.635 | 9.362 | 11.750 | 12.137 | 13.195 | 45.000 |
+| Group | n   | mean   | median | SD    | min    | Q1     | Q3     | max    |
+| ----- | --- | ------ | ------ | ----- | ------ | ------ | ------ | ------ |
+| A     | 11  | 10.044 | 9.940  | 0.936 | 8.500  | 9.560  | 10.215 | 12.210 |
+| B     | 12  | 15.466 | 12.635 | 9.362 | 11.750 | 12.137 | 13.195 | 45.000 |
 
-| Assumption check / test | Value |
-|---|---|
-| Shapiro–Wilk W, p — group A | 0.9098, p=0.2427 |
-| Shapiro–Wilk W, p — group B | 0.4164, p=<0.0001 |
-| Levene F, p (median-centred) | 0.9907, p=0.3309 |
-| **Test used** | **Mann-Whitney U** |
-| Test statistic | U (group A) = 4.0000 |
-| p-value (two-sided) | 0.0002 |
-| Effect size | rank-biserial r (B - A) = 0.9394 |
+| Assumption check / test      | Value                            |
+| ---------------------------- | -------------------------------- |
+| Shapiro–Wilk W, p — group A  | 0.9098, p=0.2427                 |
+| Shapiro–Wilk W, p — group B  | 0.4164, p=<0.0001                |
+| Levene F, p (median-centred) | 0.9907, p=0.3309                 |
+| **Test used**                | **Mann-Whitney U**               |
+| Test statistic               | U (group A) = 4.0000             |
+| p-value (two-sided)          | 0.0002                           |
+| Effect size                  | rank-biserial r (B - A) = 0.9394 |
 
 **Interpretation note:** Normality assumption of the two-sample t-test is violated (Shapiro-Wilk: group A p=0.2427, group B p=<0.0001). No t-test p-value is forced; the distribution-free Mann-Whitney U is reported instead.
 
@@ -63,22 +64,22 @@ Groups were compared as **A vs B** (signed effects are B − A).
 
 ## 3. Sensitivity analysis — 3·IQR extremes excluded
 
-| Group | n | mean | median | SD | min | Q1 | Q3 | max |
-|---|---|---|---|---|---|---|---|---|
-| A | 10 | 9.827 | 9.925 | 0.632 | 8.500 | 9.520 | 10.115 | 10.910 |
-| B | 11 | 12.781 | 12.490 | 1.122 | 11.750 | 12.085 | 12.915 | 15.730 |
+| Group | n   | mean   | median | SD    | min    | Q1     | Q3     | max    |
+| ----- | --- | ------ | ------ | ----- | ------ | ------ | ------ | ------ |
+| A     | 10  | 9.827  | 9.925  | 0.632 | 8.500  | 9.520  | 10.115 | 10.910 |
+| B     | 11  | 12.781 | 12.490 | 1.122 | 11.750 | 12.085 | 12.915 | 15.730 |
 
 Excluded extreme values in this analysis: A11, B07. No other records removed.
 
-| Assumption check / test | Value |
-|---|---|
-| Shapiro–Wilk W, p — group A | 0.9481, p=0.6462 |
-| Shapiro–Wilk W, p — group B | 0.7864, p=0.0062 |
-| Levene F, p (median-centred) | 0.8094, p=0.3796 |
-| **Test used** | **Mann-Whitney U** |
-| Test statistic | U (group A) = 0.0000 |
-| p-value (two-sided) | 0.0001 |
-| Effect size | rank-biserial r (B - A) = 1.0000 |
+| Assumption check / test      | Value                            |
+| ---------------------------- | -------------------------------- |
+| Shapiro–Wilk W, p — group A  | 0.9481, p=0.6462                 |
+| Shapiro–Wilk W, p — group B  | 0.7864, p=0.0062                 |
+| Levene F, p (median-centred) | 0.8094, p=0.3796                 |
+| **Test used**                | **Mann-Whitney U**               |
+| Test statistic               | U (group A) = 0.0000             |
+| p-value (two-sided)          | 0.0001                           |
+| Effect size                  | rank-biserial r (B - A) = 1.0000 |
 
 **Interpretation note:** Normality assumption of the two-sample t-test is violated (Shapiro-Wilk: group A p=0.6462, group B p=0.0062). No t-test p-value is forced; the distribution-free Mann-Whitney U is reported instead.
 
@@ -86,10 +87,10 @@ Groups were compared as **A vs B** (signed effects are B − A).
 
 ## 4. Raw vs sensitivity: how robust is the group contrast?
 
-| Analysis | median B − median A | mean B − mean A | n (A, B) | test | p |
-|---|---|---|---|---|---|
-| primary_raw | 2.695 | 5.422 | (11, 12) | Mann-Whitney U | 0.0002 |
-| sensitivity | 2.565 | 2.954 | (10, 11) | Mann-Whitney U | 0.0001 |
+| Analysis    | median B − median A | mean B − mean A | n (A, B) | test           | p      |
+| ----------- | ------------------- | --------------- | -------- | -------------- | ------ |
+| primary_raw | 2.695               | 5.422           | (11, 12) | Mann-Whitney U | 0.0002 |
+| sensitivity | 2.565               | 2.954           | (10, 11) | Mann-Whitney U | 0.0001 |
 
 The single `45.00` value in group B dominates the raw-data summaries and drives the raw-analysis result. The sensitivity analysis re-estimates the group contrast without the pre-specified extreme values to check whether the qualitative conclusion holds.
 

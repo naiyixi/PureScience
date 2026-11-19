@@ -1,6 +1,7 @@
 ---
 name: model-pruning
 description: Reduce LLM size and accelerate inference using pruning techniques like Wanda and SparseGPT. Use when compressing models without retraining, achieving 50% sparsity with minimal accuracy loss, or enabling faster inference on hardware accelerators. Covers unstructured pruning, structured pruning, N:M sparsity, magnitude pruning, and one-shot methods.
+description-zh: 用 Wanda、SparseGPT 等剪枝技术压缩大模型并加速推理：不重训即可压到 50% 稀疏度而精度损失很小。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

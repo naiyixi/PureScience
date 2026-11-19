@@ -5,10 +5,10 @@
 
 ## 一 读数（为什么取这一条）
 
-| 通道 | 次数 | 中位 | 最大 |
-|---|---|---|---|
-| `settings:npm-available` | **37** | **1,917 ms** | 22,604 ms |
-| `settings:get-settings`（对照：同样只读设置） | 16 | 145 ms | 558 ms |
+| 通道                                          | 次数   | 中位         | 最大      |
+| --------------------------------------------- | ------ | ------------ | --------- |
+| `settings:npm-available`                      | **37** | **1,917 ms** | 22,604 ms |
+| `settings:get-settings`（对照：同样只读设置） | 16     | 145 ms       | 558 ms    |
 
 - 这条通道只回答一个问题：**PATH 上有没有 npm**。它被 37 次调用，每一次都跑一整遍 `npm --version`
   —— npm 是一个 JS 程序加一层 shim，所以那是**一整个 Node 启动**，而不是一次文件系统查询。
@@ -21,11 +21,11 @@
 
 ## 二 交付
 
-| 位置 | 改动 |
-|---|---|
+| 位置                                        | 改动                                                                                                                                                                                                                                                                    |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/settings/npm-executable.ts`（新） | `resolveNpmExecutable`：按（已增广的）`PATH` 扫出 npm，Windows 上按 `npm.cmd`/`npm.exe`/`npm.bat`/`npm` 顺序试；`createNpmAvailabilityProbe`：用 `withVersionProbeCache` 按**文件身份**（`mtimeMs`+`size`，跟随符号链接）记忆「npm 能答 `--version`」，并发同键共享一次 |
-| `src/main/settings/claude-install.ts` | `detectNpmAvailable(runNpm?)`：**未注入探针**时走记忆化的 `npmAvailable()`；**注入探针时行为逐字不变**（`resolve ⇒ available`、`reject ⇒ unavailable`），因此既有替身用例与 `runInstallWithFallback(npmProbe)` 一个字节未改 |
-| `scripts/ci/change-impact.json` | 把本笔新文件与上一轮的 `version-probe-cache.ts` 一起登记进 `windows_sensitive` —— 两者都有 `platform === 'win32'` 分支，而分类器要求「带 Windows 运行时信号的生产文件必须被分类为 Windows 敏感」，上一轮的 `nightly`/`Windows Full Test` 正是红在这一条上 |
+| `src/main/settings/claude-install.ts`       | `detectNpmAvailable(runNpm?)`：**未注入探针**时走记忆化的 `npmAvailable()`；**注入探针时行为逐字不变**（`resolve ⇒ available`、`reject ⇒ unavailable`），因此既有替身用例与 `runInstallWithFallback(npmProbe)` 一个字节未改                                             |
+| `scripts/ci/change-impact.json`             | 把本笔新文件与上一轮的 `version-probe-cache.ts` 一起登记进 `windows_sensitive` —— 两者都有 `platform === 'win32'` 分支，而分类器要求「带 Windows 运行时信号的生产文件必须被分类为 Windows 敏感」，上一轮的 `nightly`/`Windows Full Test` 正是红在这一条上               |
 
 **三条边界（写进模块头注）**：
 
@@ -48,13 +48,13 @@ resolved=/Users/totota/.local/bin/npm rawSpawnMs=276.5 coldMs=337.8 warm1Ms=1.8 
 
 ## 四 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `src/main/settings` + `src/main/diagnostics` 整域 | **104 files / 1,523 passed**（3 skipped），exit 0 |
-| 本笔 2 个测试文件 | **43 passed**（新增 10 条模块用例 + 2 条接线用例） |
-| `scripts/ci/classify-pr-changes.test.ts` | **41 passed**（红转绿：`version-probe-cache.ts` 归位后 `uncoveredFiles` 为空） |
-| 双 typecheck（`--composite false`，堆 8192） | node / web 均 exit 0 |
-| `eslint --no-cache` + `prettier --check` | 0 problems / 全过 |
+| 环                                                | 读数                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/main/settings` + `src/main/diagnostics` 整域 | **104 files / 1,523 passed**（3 skipped），exit 0                              |
+| 本笔 2 个测试文件                                 | **43 passed**（新增 10 条模块用例 + 2 条接线用例）                             |
+| `scripts/ci/classify-pr-changes.test.ts`          | **41 passed**（红转绿：`version-probe-cache.ts` 归位后 `uncoveredFiles` 为空） |
+| 双 typecheck（`--composite false`，堆 8192）      | node / web 均 exit 0                                                           |
+| `eslint --no-cache` + `prettier --check`          | 0 problems / 全过                                                              |
 
 ## 五 边界（不许读成更强）
 

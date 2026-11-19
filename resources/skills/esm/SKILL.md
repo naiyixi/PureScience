@@ -1,6 +1,7 @@
 ---
 name: esm
 description: Uses the Biohub esm Python SDK for ESM3 protein generation, ESMC embeddings, and ESMFold2 all-atom folding. Applies to local model inference and Biohub hosted clients, including former Forge workflows; distinguishes the separate legacy fair-esm distribution.
+description-zh: 用 Biohub 的 esm Python SDK 做 ESM3 蛋白生成、ESMC 嵌入与 ESMFold2 全原子折叠。适用于本地模型推理与 Biohub 托管客户端，含原先的 Forge 工作流。
 license: MIT license
 compatibility: Requires Python 3.12+ and esm 3.4.1.post1. Local pretrained inference needs model weights and sufficient RAM or GPU memory; hosted inference needs network access and ESM_API_KEY. Use an isolated environment, separate from fair-esm.
 metadata:

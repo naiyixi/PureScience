@@ -14,12 +14,14 @@
 ## 1. U1：实体 + 迁移 + Repository
 
 ### 1.1 `prisma/schema.prisma`
+
 - 新增 `model Journal`：`id`、`normalizedName`、`issn?`（**唯一索引，允许为空**——解析不出 ISSN 时不得伪造）、`issnL?`、`eissn?`、`publisher`、`homepage?`、`createdAt`、`updatedAt`。
 - 新增 `model JournalMetric`：`journalId`、`kind`（`impact-factor` | `jcr-quartile` | `cas-partition` | `cas-top` | `acceptance-rate` …）、`value`、`year`、`source`、`fetchedAt`、`note?`。**指标独立成表**（逐年变化 + 来源可追溯；做成 `Journal` 的列＝把某年某来源的数字伪装成固有属性）。
 - `model Reference`（`:477` 一带）增 `journalId String?`（可空 + 索引）——**既有行不动、不回填**（回填会把「解析失败」悄悄变成「没有期刊」）。
 - 风格照 `ScreeningRuleRevision`（`:657-667`）：字段行内注释写清「为什么」，`@@id`/`@@index` 用复合键表达不变式。
 
 ### 1.2 `src/main/projects/prisma-client.ts`
+
 - 新增 `JOURNAL_TABLE_DDL` / `JOURNAL_METRIC_TABLE_DDL`（照 `SCREENING_*_TABLE_DDL` 的写法，`DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`）；
 - 新增索引 DDL 数组：`Journal.issn` **唯一**（`CREATE UNIQUE INDEX IF NOT EXISTS`，注意 SQLite 对 NULL 的语义：多行 NULL 不冲突 ⇒ 允许「无 ISSN」的期刊共存）、`Journal.normalizedName`、`JournalMetric(journalId, kind, year)`、`Reference(journalId)`；
 - 挂进 `:1107-1112` 的执行序列。
@@ -34,6 +36,7 @@
 索引在加列之后创建。
 
 ### 1.4 `JournalRepository`（新建，位置照 `src/main/references/repository.ts` 的邻居与命名）
+
 - `upsertByIssn(issn, fields)`：**ISSN 唯一**；同一 ISSN 两次 upsert 只出一行（验收 ①）。
 - 无 ISSN 时 `upsertByNormalizedName(name)`：**只做精确规范化**（大小写/标点/空白归一），**绝不模糊合并**。
 - `appendMetric({ journalId, kind, value, year, source })`：**append-only**——改指标＝新增一行，不 UPDATE（验收 ②）；`year`/`source` 缺失 ⇒ **拒绝落库**（不是落 0、不是落空串）。
@@ -49,14 +52,14 @@
 
 ## 3. 验收（真机/真文件，逐条）
 
-| 判据 | 怎么取 |
-| --- | --- |
-| 迁移在真实库上跑通 | 隔离实例（`PURESCIENCE_STORAGE_ROOT=/tmp/<新>`）建库后跑 DDL 序列；**再加一次**运行验证幂等（第二次不改任何东西）。
-| 幂等加列 | 上面 1.3 的用例 + 在**已存在数据的库**上跑一次（带若干既有 `Reference` 行）。 |
-| 同一 ISSN 两次 upsert 只出一行 | 直接对该库查询计数（不是看接口返回值就完事）。 |
-| 指标 append-only | 先写一条、再「改」一次 ⇒ 库里是**两行**，旧行逐字未变。 |
-| 解析失败留空且原因可达 | 真库：成功者 `journalId` 非空；失败者留空 + 具名原因可读。 |
-| **绝不静默模糊合并** | 造两个近似名（如 `Nature` / `Nature Communications`）⇒ 不同行、不吞并。 |
+| 判据                           | 怎么取                                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 迁移在真实库上跑通             | 隔离实例（`PURESCIENCE_STORAGE_ROOT=/tmp/<新>`）建库后跑 DDL 序列；**再加一次**运行验证幂等（第二次不改任何东西）。 |
+| 幂等加列                       | 上面 1.3 的用例 + 在**已存在数据的库**上跑一次（带若干既有 `Reference` 行）。                                       |
+| 同一 ISSN 两次 upsert 只出一行 | 直接对该库查询计数（不是看接口返回值就完事）。                                                                      |
+| 指标 append-only               | 先写一条、再「改」一次 ⇒ 库里是**两行**，旧行逐字未变。                                                             |
+| 解析失败留空且原因可达         | 真库：成功者 `journalId` 非空；失败者留空 + 具名原因可读。                                                          |
+| **绝不静默模糊合并**           | 造两个近似名（如 `Nature` / `Nature Communications`）⇒ 不同行、不吞并。                                             |
 
 **纪律提醒**：真实配置根 `~/.purescience-project` 只读；所有写入落在 `/tmp` 的隔离根；凭据不入库、不入文档、不入提交。
 
@@ -71,13 +74,13 @@
 
 ### 5.1 指标导入片（建议下一片）
 
-| 面 | 内容 | 验收（真机/真文件） |
-| --- | --- | --- |
-| 数据形状 | 一行 = `{ issn? , journalName? , kind , value , year , source }`；**year 与 source 必填**（无年份无来源的数字不是事实） | 缺 year/source 的行**进不了库**且给出具名原因 |
-| 写入 | 复用 `JournalRepository`：有 ISSN 走 `upsertByIssn`、只有名字走 `upsertByNormalizedName`；值一律走 `appendMetric`（append-only） | 同一 ISSN 两次导入只出一行期刊；改指标＝**新增行** |
-| 报告 | 导入**逐行给结果**：`imported` / 具名跳过原因（`no-value`、`no-year`、`no-source`、`bad-issn`、`name-ambiguous`、`name-missing`）——**不静默丢行**（与 R3「未捕获必须带具名原因」同口径） | 真机：正例入库、反例逐条具名，**零静默丢弃** |
-| 入口 | 新增应用命令 `references:import-journal-metrics`（本仓命令模式：owner `Pick` + `defineApplicationCommand` + handler map），并跑 `npm run gen:web-api-map` 保持生成物同步 | 通过真实 RPC 导入一次并回读库 |
-| 界面 | 本片**不做**界面：UI 属 U3（显示指标时**必须**带上年份与来源；缺失显示「未知」而非 0/空白） | — |
+| 面       | 内容                                                                                                                                                                                     | 验收（真机/真文件）                                |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 数据形状 | 一行 = `{ issn? , journalName? , kind , value , year , source }`；**year 与 source 必填**（无年份无来源的数字不是事实）                                                                  | 缺 year/source 的行**进不了库**且给出具名原因      |
+| 写入     | 复用 `JournalRepository`：有 ISSN 走 `upsertByIssn`、只有名字走 `upsertByNormalizedName`；值一律走 `appendMetric`（append-only）                                                         | 同一 ISSN 两次导入只出一行期刊；改指标＝**新增行** |
+| 报告     | 导入**逐行给结果**：`imported` / 具名跳过原因（`no-value`、`no-year`、`no-source`、`bad-issn`、`name-ambiguous`、`name-missing`）——**不静默丢行**（与 R3「未捕获必须带具名原因」同口径） | 真机：正例入库、反例逐条具名，**零静默丢弃**       |
+| 入口     | 新增应用命令 `references:import-journal-metrics`（本仓命令模式：owner `Pick` + `defineApplicationCommand` + handler map），并跑 `npm run gen:web-api-map` 保持生成物同步                 | 通过真实 RPC 导入一次并回读库                      |
+| 界面     | 本片**不做**界面：UI 属 U3（显示指标时**必须**带上年份与来源；缺失显示「未知」而非 0/空白）                                                                                              | —                                                  |
 
 ### 5.1 执行结果（2026-10-02 夜，真机已过）
 

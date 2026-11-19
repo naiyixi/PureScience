@@ -9,15 +9,15 @@
 
 ## 一 缺口形状：同一个事件有两个生产者，其中较弱的那条绕过三道门
 
-| | 收件箱服务（保留） | 回合工作流附带的那条（删除） |
-|---|---|---|
-| 设置开关 `notificationsEnabled` | **有**（`isEnabled`） | 无 |
-| 应用在前台就不弹 | **有**（`isAppFocused`） | 无 |
-| 无头 `--serve` 守护进程不弹 | **有**（`buildTaskNotificationShow` 的 `if (deps.headless) return`） | 无 |
-| 点通知回到那个会话 | **有**（`setActivationHandler`） | 无 |
-| 未读计数 / 收件箱卡片 | **有**（`setUnreadHandler`、`notificationInbox.record`） | 无 |
-| 正文语言 | 规范英文，渲染层按界面语言映射 | 硬编码一种语言（`任务已完成` / `任务执行失败`） |
-| 触发条件 | 用户发起的回合 + 未聚焦 + 设置开启 | **每个回合结束无条件** |
+|                                 | 收件箱服务（保留）                                                   | 回合工作流附带的那条（删除）                    |
+| ------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| 设置开关 `notificationsEnabled` | **有**（`isEnabled`）                                                | 无                                              |
+| 应用在前台就不弹                | **有**（`isAppFocused`）                                             | 无                                              |
+| 无头 `--serve` 守护进程不弹     | **有**（`buildTaskNotificationShow` 的 `if (deps.headless) return`） | 无                                              |
+| 点通知回到那个会话              | **有**（`setActivationHandler`）                                     | 无                                              |
+| 未读计数 / 收件箱卡片           | **有**（`setUnreadHandler`、`notificationInbox.record`）             | 无                                              |
+| 正文语言                        | 规范英文，渲染层按界面语言映射                                       | 硬编码一种语言（`任务已完成` / `任务执行失败`） |
+| 触发条件                        | 用户发起的回合 + 未聚焦 + 设置开启                                   | **每个回合结束无条件**                          |
 
 同一件事写两遍，弱的那份就会被当成「反正也能弹」而活下来——这次它活到了「关掉通知照样弹、
 前台盯着屏幕也弹、无头守护进程也弹、且在另外八种界面语言下弹一段中文」。
@@ -41,11 +41,11 @@
 
 ## 三 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/notifications/turn-notifications.ts` | **删除**（全树唯一消费者是下面那一行） |
-| `src/main/acp/prompt-turn-workflow.ts` | 去掉 import 与该调用（回合收尾只做 `disarmTurnSilenceWatchdog` + finalize） |
-| `src/main/notifications/notification-single-producer.test.ts`（新） | 5 条守卫，见下 |
+| 位置                                                                | 改动                                                                        |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/main/notifications/turn-notifications.ts`                      | **删除**（全树唯一消费者是下面那一行）                                      |
+| `src/main/acp/prompt-turn-workflow.ts`                              | 去掉 import 与该调用（回合收尾只做 `disarmTurnSilenceWatchdog` + finalize） |
+| `src/main/notifications/notification-single-producer.test.ts`（新） | 5 条守卫，见下                                                              |
 
 守卫是**双向**的（只钉「没有第二个」会允许「一个都没有」）：
 
@@ -66,13 +66,13 @@
 
 ## 四 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（`src/main/acp` + `src/main/notifications`，107 文件） | **1681 passed**，exit 0 |
-| 新守卫单跑 | 1 file / **5 passed** |
-| 双 typecheck（`--composite false`） | node **0**；web **0** |
-| `npx eslint --no-cache`（本笔 2 个 TS 文件） | **0 problem** |
-| 全量 vitest `--maxWorkers=4` | **1484 files passed**、31 skipped（1515）；**18632 passed**、228 skipped（18860），exit 0（上一笔 1483/18627 ⇒ +1 文件 +5 例，即本笔的守卫） |
+| 环                                                                 | 读数                                                                                                                                         |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（`src/main/acp` + `src/main/notifications`，107 文件） | **1681 passed**，exit 0                                                                                                                      |
+| 新守卫单跑                                                         | 1 file / **5 passed**                                                                                                                        |
+| 双 typecheck（`--composite false`）                                | node **0**；web **0**                                                                                                                        |
+| `npx eslint --no-cache`（本笔 2 个 TS 文件）                       | **0 problem**                                                                                                                                |
+| 全量 vitest `--maxWorkers=4`                                       | **1484 files passed**、31 skipped（1515）；**18632 passed**、228 skipped（18860），exit 0（上一笔 1483/18627 ⇒ +1 文件 +5 例，即本笔的守卫） |
 
 ## 五 边界与具名未办
 

@@ -26,15 +26,15 @@ aria-label={`${… ? t('ws.removeFailed') : 'Cancel'} attachment ${name}`}   // 
 
 ## 二 本笔改了什么
 
-| 面 | 改前（模板串里的英文） | 新键 |
-|---|---|---|
-| 运行时面板的环境分区 | `` `${label} runtime` `` | `a11y.runtimeSection` |
-| 技能导入的仓库折叠键 | `` `${…} repositories` `` | `a11y.repositoriesSection` |
-| 输入框动作菜单的授权计数徽标 | `` `${n} allowed this session` `` | `a11y.grantsThisSession` |
-| 对话面板的附件取消键 | `'Cancel'` + `attachment ${name}` | `a11y.cancelAttachment` / `a11y.removeFailedAttachment` |
-| 本地文件浏览器的上级目录键 | `` `${…} parent directory` `` | `a11y.parentDirectory` |
-| PDF 预览的滚动区 | `` `${name} scrollable preview` `` | `a11y.scrollablePreview` |
-| 计划预览的步骤状态点 | `` `${step.title} status: …` `` | `a11y.stepStatus` |
+| 面                           | 改前（模板串里的英文）             | 新键                                                    |
+| ---------------------------- | ---------------------------------- | ------------------------------------------------------- |
+| 运行时面板的环境分区         | `` `${label} runtime` ``           | `a11y.runtimeSection`                                   |
+| 技能导入的仓库折叠键         | `` `${…} repositories` ``          | `a11y.repositoriesSection`                              |
+| 输入框动作菜单的授权计数徽标 | `` `${n} allowed this session` ``  | `a11y.grantsThisSession`                                |
+| 对话面板的附件取消键         | `'Cancel'` + `attachment ${name}`  | `a11y.cancelAttachment` / `a11y.removeFailedAttachment` |
+| 本地文件浏览器的上级目录键   | `` `${…} parent directory` ``      | `a11y.parentDirectory`                                  |
+| PDF 预览的滚动区             | `` `${name} scrollable preview` `` | `a11y.scrollablePreview`                                |
+| 计划预览的步骤状态点         | `` `${step.title} status: …` ``    | `a11y.stepStatus`                                       |
 
 新键 8 个 × 九语（72 条），`en` 与 `zh` 不同形；`zh-Hant` 用繁体字形（`執行環境` / `上層目錄` / `可捲動`）。
 词序按各语言给：`fr` 是 `Environnement d'exécution : {label}`，`ja` 是 `リポジトリを{action}`，
@@ -58,13 +58,13 @@ aria-label={`${… ? t('ws.removeFailed') : 'Cancel'} attachment ${name}`}   // 
 
 ## 四 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| 全树扫描（本笔的判据本体） | 522 个源文件；模板串 offender **7 → 0** |
-| 定向 vitest（`src/renderer/src/i18n`，含守卫与翻译质量门） | 5 files / 57 passed |
-| 定向 vitest（`pages/workspace` + `pages/settings` + `components`） | 314 files / 3200 passed、1 skipped |
-| 双 typecheck（node + web，`--composite false`，堆 8192） | 0 / 0 |
-| `npx eslint --no-cache`（本笔全部改动文件） | 0 problems（exit 0） |
+| 环                                                                 | 读数                                    |
+| ------------------------------------------------------------------ | --------------------------------------- |
+| 全树扫描（本笔的判据本体）                                         | 522 个源文件；模板串 offender **7 → 0** |
+| 定向 vitest（`src/renderer/src/i18n`，含守卫与翻译质量门）         | 5 files / 57 passed                     |
+| 定向 vitest（`pages/workspace` + `pages/settings` + `components`） | 314 files / 3200 passed、1 skipped      |
+| 双 typecheck（node + web，`--composite false`，堆 8192）           | 0 / 0                                   |
+| `npx eslint --no-cache`（本笔全部改动文件）                        | 0 problems（exit 0）                    |
 
 ## 五 边界与具名未办
 

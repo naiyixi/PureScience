@@ -1,6 +1,7 @@
 ---
 name: tellurium
 description: Simulates biochemical kinetic models from SBML or Antimony with Tellurium and libRoadRunner, checks model units, compares deterministic parameter perturbations, and exports and replays SBML plus SED-ML COMBINE archives. Use for reaction-network time courses, kinetic parameters, concentration dynamics and reproducible simulation experiments; steady-state constraint-based metabolic flux analysis belongs to cobrapy.
+description-zh: 用 Tellurium 与 libRoadRunner 从 SBML 或 Antimony 模拟生化动力学模型：检查模型单位、比较确定性参数扰动，并导出与重放结果。
 license: MIT
 compatibility: Requires Python 3.11 with Tellurium 2.2.13.1, libRoadRunner 2.10.0, Antimony 3.2.0, python-libsbml 5.21.2, python-libsedml 2.0.34 and python-libcombine 0.2.20. Network is needed for installation only. Native wheels were tested on macOS ARM64. No credentials or external services.
 metadata:

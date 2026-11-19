@@ -1,6 +1,7 @@
 ---
 name: flowkit
 description: Analyzes flow cytometry data with FlowKit, including spillover compensation, logicle and biexponential transforms, hierarchical gating, GatingML strategies, and supported FlowJo 10 workspaces. Use for reproducible gate counts, population percentages, gated fluorescence summaries, or reproducing a FlowJo analysis in Python. For FCS metadata inspection or file-format repair alone, use FlowIO.
+description-zh: 用 FlowKit 分析流式细胞术数据：溢漏补偿、logicle 与双指数变换、层次门控、GatingML 策略，以及受支持的 FlowJo 10 工作区。
 license: MIT
 compatibility: Requires Python 3.13 with flowkit==1.3.2 for the tested environment. Dependencies include FlowIO, FlowUtils, NumPy, pandas, SciPy, lxml, and Bokeh. Installation needs network access; analysis uses local FCS/XML/WSP files without credentials. FlowUtils needs a C compiler if a compatible wheel is unavailable.
 metadata:

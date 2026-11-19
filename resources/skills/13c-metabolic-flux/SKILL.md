@@ -1,6 +1,7 @@
 ---
 name: 13c-metabolic-flux
 description: Estimates intracellular metabolic fluxes from steady-state carbon-13 isotope-tracing measurements using validated atom maps, mfapy isotope simulation, constrained multistart fitting, and flux-profile diagnostics. Use for 13C-MFA, carbon tracing, mass isotopomer distributions (MDVs/MIDs), positional isotopomers, parallel tracer experiments, and determining whether labeling data constrain a pathway flux. Distinguishes measured-label inference from COBRA flux balance analysis and flags experiments requiring nonstationary MFA.
+description-zh: 用经验证的原子映射、mfapy 同位素模拟、带约束的多起点拟合与通量分布诊断，从稳态碳-13 同位素示踪测量估计细胞内代谢通量。
 license: MIT
 compatibility: Python 3.12 with uv and Git for installation. Tested with mfapy 0.6.3 at a10433af16682386548b360297e2476152d46ede, NumPy 2.5.3, SciPy 1.18.1, and NLopt 2.11.0. Network access is needed only to install public dependencies. Inference runs locally without credentials; inputs are JSON.
 metadata:

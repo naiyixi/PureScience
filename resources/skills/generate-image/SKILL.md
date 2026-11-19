@@ -1,6 +1,7 @@
 ---
 name: generate-image
 description: Generates or edits images with AI models through the OpenRouter Image API (Gemini, Seedream, Recraft, GPT-Image, Riverflow). Use for photos, illustrations, artwork, concept art, visual assets, logos, and image editing or compositing from reference images. For flowcharts, circuits, pathways, and other technical diagrams, use the scientific-schematics skill instead.
+description-zh: 通过 OpenRouter 图像接口（Gemini、Seedream、Recraft、GPT-Image、Riverflow）生成或编辑图像：照片、插画、艺术图、概念设计、视觉素材与标志。
 license: MIT
 compatibility: Requires Python 3.9+ and network access to openrouter.ai. The bundled script uses only the standard library. Image generation requires the OPENROUTER_API_KEY credential and bills per request; listing models, inspecting a model, and --dry-run do not. Targets the OpenRouter Image API (POST /api/v1/images) documentation and public discovery reviewed on 2026-09-30.
 allowed-tools: Read Write Edit Bash

@@ -6,13 +6,13 @@
 
 ## 一 交付（提交 `66fe6cd7`，9 文件）
 
-| 文件 | 作用 |
-|---|---|
-| `src/main/diagnostics/stall-record-ring.ts`（新） | 有界环（默认 16 条）+ `summary()`：`capacity / observed / dropped / oldestAt / newestAt / status / records` |
-| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每条上报的停顿**先入环再写日志**（写日志抛错时记录不丢）；新增 `records?` 注入缝，生产用共享环 |
-| `src/main/diagnostics/support-bundle.ts` | 新增**必填** `facts.stalls`；写 `diagnostics/event-loop-stalls.json`（自建目录）；README.txt 增一节 |
-| `src/main/ipc.ts` | 组合根把 `sharedStallRecords.summary()` 接进 facts（唯一生产读取方） |
-| 三个测试文件 + `e2e/support-bundle.spec.ts` | 见 §三 |
+| 文件                                                | 作用                                                                                                        |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `src/main/diagnostics/stall-record-ring.ts`（新）   | 有界环（默认 16 条）+ `summary()`：`capacity / observed / dropped / oldestAt / newestAt / status / records` |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每条上报的停顿**先入环再写日志**（写日志抛错时记录不丢）；新增 `records?` 注入缝，生产用共享环              |
+| `src/main/diagnostics/support-bundle.ts`            | 新增**必填** `facts.stalls`；写 `diagnostics/event-loop-stalls.json`（自建目录）；README.txt 增一节         |
+| `src/main/ipc.ts`                                   | 组合根把 `sharedStallRecords.summary()` 接进 facts（唯一生产读取方）                                        |
+| 三个测试文件 + `e2e/support-bundle.spec.ts`         | 见 §三                                                                                                      |
 
 **为什么是环，不是「解析日志」**：解析器会在日志格式变化时报告「零次停顿」，与健康机器**同形**；
 环里存的是 watchdog 自己的 `EventLoopStallRecord`，只有一份词汇。**为什么要 `dropped`**：只报

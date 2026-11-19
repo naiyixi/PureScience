@@ -1,6 +1,7 @@
 ---
 name: adaptyv
 description: Uses the Adaptyv Bio Foundry API and Python SDK to design protein characterization experiments, estimate costs, submit sequences, monitor laboratory progress, and retrieve results. Applies to Adaptyv Foundry, its target catalog, binding screening and affinity assays, thermostability, expression, fluorescence, epitope binning, and enzyme activity workflows, including code using adaptyv or FoundryClient.
+description-zh: 用 Adaptyv Bio Foundry 的接口与 Python SDK 设计蛋白表征实验、估算成本、提交序列、跟踪实验室进度并取回结果。适用于 Adaptyv Foundry 相关流程。
 license: MIT
 compatibility: Requires network access, an Adaptyv Foundry account and bearer token. Python examples require Python 3.11+ and adaptyv-sdk installed from its official GitHub repository; direct REST examples use httpx.
 metadata:

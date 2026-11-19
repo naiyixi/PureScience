@@ -9,8 +9,8 @@
 真机日志 `~/Library/Logs/PureScience/main.{log,1.log,2.log}`（2026-11-04 → 11-10）里
 `sessions:import-posture` 的 `ipc handler was slow` 共 **102** 条：
 
-| n | med | p90 | p99 | max |
-| --- | --- | --- | --- | --- |
+| n   | med    | p90    | p99      | max      |
+| --- | ------ | ------ | -------- | -------- |
 | 102 | 183 ms | 995 ms | 2,855 ms | 3,908 ms |
 
 归因分布：`cpu-bound-in-process` 54、`inconclusive` 39、`no-cpu-in-process` 9。
@@ -43,14 +43,14 @@
 
 ## 四 判据与自证（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（`useSessionImportPosture.test.tsx`） | **1 file / 4 passed** |
-| `src/renderer/src/hooks` + `src/renderer/src/components/session-package` | **9 files / 59 passed** |
+| 环                                                                             | 读数                         |
+| ------------------------------------------------------------------------------ | ---------------------------- |
+| 定向 vitest（`useSessionImportPosture.test.tsx`）                              | **1 file / 4 passed**        |
+| `src/renderer/src/hooks` + `src/renderer/src/components/session-package`       | **9 files / 59 passed**      |
 | `src/renderer/src/pages/workspace`（整目录，含 10+ 支 WorkspacePage 渲染用例） | **177 files / 1,915 passed** |
-| `src/renderer/src`（整个渲染层） | **411 files / 4,455 passed | 1 skipped** |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache`（本笔 3 文件） | 0 error / 0 warning |
+| `src/renderer/src`（整个渲染层）                                               | **411 files / 4,455 passed   | 1 skipped** |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                          | exit 0                       |
+| `eslint --no-cache`（本笔 3 文件）                                             | 0 error / 0 warning          |
 
 四条用例：① 调用方每次都递进一个新对象、字段相同 ⇒ 只读一次（这正是回归的形状）；
 ② 换会话会重读，且返回的记录挂在它自己的 id 下；③ 换会话之后才到位的旧答案不会显示；

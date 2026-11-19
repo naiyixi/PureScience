@@ -8,9 +8,9 @@
 - `src/main/projects/prisma-client.ts:15` `PROJECT_DB_CONNECTION_LIMIT = 1`，`:923` 拼进 URL `?connection_limit=1`。
 - 该文件里**没有**任何 `journal_mode` / `WAL` / `busy_timeout` 设置。
 - `:12-14` 的注释写明了 limit=1 的**两条**理由（原文）：
-  1. **硬约束**：*"SQLite PRAGMAs are connection-scoped. The runtime constraint migration disables foreign keys
-     before entering its rebuild transaction, so this client must keep both operations on one physical connection."*
-  2. **软理由**：*"A single writer also avoids unnecessary SQLITE_BUSY contention for the local Project DB."*
+  1. **硬约束**：_"SQLite PRAGMAs are connection-scoped. The runtime constraint migration disables foreign keys
+     before entering its rebuild transaction, so this client must keep both operations on one physical connection."_
+  2. **软理由**：_"A single writer also avoids unnecessary SQLITE_BUSY contention for the local Project DB."_
 
 ## 设计要分清的一条 PRAGMA 语义（这决定了实施顺序）
 
@@ -52,10 +52,10 @@
 
 本文件开头把"读被写者的日志锁挡住"写成 WAL 的理由。**我做了两次对照实验，都没能复现这个机制**：
 
-| 实验 | 做法 | 结果 |
-|---|---|---|
-| v1 | 写者停在 `BEGIN IMMEDIATE`（RESERVED 锁），另一连接读 `SELECT 1` ×40 | `delete` 与 `wal` **都 0 阻塞**，中位 0.001 ms |
-| v2 | 写者提交 **120,000 行**（提交窗口 77 ms(delete) / 158 ms(wal)），读者线程持续读 | `delete`：737,096 次读、**0 阻塞**、p99 0.016 ms、>20 ms 的读 **0**；`wal`：798,192 次、**0 阻塞**、p99 0.014 ms |
+| 实验 | 做法                                                                            | 结果                                                                                                             |
+| ---- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| v1   | 写者停在 `BEGIN IMMEDIATE`（RESERVED 锁），另一连接读 `SELECT 1` ×40            | `delete` 与 `wal` **都 0 阻塞**，中位 0.001 ms                                                                   |
+| v2   | 写者提交 **120,000 行**（提交窗口 77 ms(delete) / 158 ms(wal)），读者线程持续读 | `delete`：737,096 次读、**0 阻塞**、p99 0.016 ms、>20 ms 的读 **0**；`wal`：798,192 次、**0 阻塞**、p99 0.014 ms |
 
 - v1 的负结果本身有解释：`BEGIN IMMEDIATE` 只拿 RESERVED 锁，**读仍可过**；真正可能挡读的是提交的写回阶段。
 - 但 **v2 把写回窗口拉到几十毫秒后，两种模式下读依然一次都没被顶起来** ⇒

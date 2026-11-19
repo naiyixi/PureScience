@@ -1,6 +1,7 @@
 ---
 name: nanogpt
 description: Educational GPT implementation in ~300 lines. Reproduces GPT-2 (124M) on OpenWebText. Clean, hackable code for learning transformers. By Andrej Karpathy. Perfect for understanding GPT architecture from scratch. Train on Shakespeare (CPU) or OpenWebText (multi-GPU).
+description-zh: 约 300 行的教学级 GPT 实现，在 OpenWebText 上复现 GPT-2（124M）。代码干净可改，适合学习 transformer 与 GPT——作者 Andrej Karpathy。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

@@ -4,11 +4,11 @@
 
 ## 一、缺口（三判已过）
 
-| 判 | 结论 | 依据 |
-| --- | --- | --- |
-| ① 是用户可见载荷吗 | **是** | 面板 `ReferencesScreeningPanel` 的汇总来自 main 的 `next.summary` + `next.reasonCounts`（`ReferencesScreeningPanel.tsx:311-322`），是读者正对着看的那份数据 |
+| 判                 | 结论                                   | 依据                                                                                                                                                                                                                                                                                                                              |
+| ------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ① 是用户可见载荷吗 | **是**                                 | 面板 `ReferencesScreeningPanel` 的汇总来自 main 的 `next.summary` + `next.reasonCounts`（`ReferencesScreeningPanel.tsx:311-322`），是读者正对着看的那份数据                                                                                                                                                                       |
 | ② 语义对读者有用吗 | **是，且领域层自己写明了为什么要具名** | `src/shared/references-screening.ts:64-70`：`SCREENING_FAILURE_KINDS = ['model-error','transport-error','invalid-response']`，注释原文——「Named, so a resumed pass can **retry a transport error** and keep an unusable response **for inspection instead of retrying it forever**」⇒ 读者看到「failed: N」却分不出**该不该重跑** |
-| ③ 挂载点在哪 | **面板已有同类行可照抄** | `ReferencesScreeningPanel.tsx:1039-1043` 已经在印延后理由：`SCREENING_NAMED_REASONS.filter(计数>0).map(r => `${t(REASON_LABEL[r])}: ${count}`)` ⇒ 失败类别**照同一形状加一行**即可，不新开层级 |
+| ③ 挂载点在哪       | **面板已有同类行可照抄**               | `ReferencesScreeningPanel.tsx:1039-1043` 已经在印延后理由：`SCREENING_NAMED_REASONS.filter(计数>0).map(r => `${t(REASON_LABEL[r])}: ${count}`)` ⇒ 失败类别**照同一形状加一行**即可，不新开层级                                                                                                                                    |
 
 **现状**：`failureKind` 在 `src/renderer/src/**` **零命中**（除本条外整层没读过）——即「`failed: N` 有个数，没有类别」。
 
@@ -19,7 +19,7 @@
 `src/shared/references-screening.ts:255` 附近，`reasonCounts: Record<ScreeningNamedReason, number>` 旁边加：
 
 ```ts
-  failureKindCounts: Record<ScreeningFailureKind, number>
+failureKindCounts: Record<ScreeningFailureKind, number>
 ```
 
 （`ScreeningFailureKind` 已在同文件 `:71` 定义，无需新类型。）
@@ -47,7 +47,7 @@ const FAILURE_KIND_LABEL: Record<ScreeningFailureKind, TranslationKey> = {
 ```
 
 （放 `REASON_LABEL`（`:69-76`）旁。）渲染一行，**与 `:1039-1043` 同形**：
-只印计数 > 0 的项，`标签: 计数` 用 ` · ` 连接；全 0 时该行不出现（不留空标题）。
+只印计数 > 0 的项，`标签: 计数` 用 `·` 连接；全 0 时该行不出现（不留空标题）。
 `summaryText` 的 state 增 `failures: Record<ScreeningFailureKind, number>`，在 `:311-322` 从 `next.failureKindCounts` 赋值。
 
 ### 4. i18n：3 键 × 9 语（zh ≠ en）

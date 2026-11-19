@@ -5,15 +5,15 @@
 
 ## 收敛过程（每一次都是排除法）
 
-| 层 | 读数 | 结论 |
-|---|---|---|
-| `compose-runtime` → `web-service-started` | 1280 ms | 原来这一段**没有任何读数** |
-| 其中：compose 之后那串 await（unread 恢复 / 图标变体 / 远端访问 / web controller） | 11 ms | 排除 |
-| 其中：13 处 `modules.add` 里的 MCP client manager + agent runtime | 13 ms | 排除 |
-| 其中：全部 electron runtime surface 安装 | 0 ms | 排除 |
-| 其中：12 个已计时的 compose 步骤 | 435–743 ms | 已知 |
-| 其中：`codeReconstructionRunner` / `screeningModelRunner` / 权限授权投影 | 0 / 78 / 0 ms | 排除 |
-| **其中：`new OfficePreviewSupervisor({…})` 之后到 `createNotebookEnvironmentLifecycle` 之前** | **668–2512 ms** | **命中** |
+| 层                                                                                            | 读数            | 结论                       |
+| --------------------------------------------------------------------------------------------- | --------------- | -------------------------- |
+| `compose-runtime` → `web-service-started`                                                     | 1280 ms         | 原来这一段**没有任何读数** |
+| 其中：compose 之后那串 await（unread 恢复 / 图标变体 / 远端访问 / web controller）            | 11 ms           | 排除                       |
+| 其中：13 处 `modules.add` 里的 MCP client manager + agent runtime                             | 13 ms           | 排除                       |
+| 其中：全部 electron runtime surface 安装                                                      | 0 ms            | 排除                       |
+| 其中：12 个已计时的 compose 步骤                                                              | 435–743 ms      | 已知                       |
+| 其中：`codeReconstructionRunner` / `screeningModelRunner` / 权限授权投影                      | 0 / 78 / 0 ms   | 排除                       |
+| **其中：`new OfficePreviewSupervisor({…})` 之后到 `createNotebookEnvironmentLifecycle` 之前** | **668–2512 ms** | **命中**                   |
 
 ## 命中点：一对象字面量之间的三行
 
@@ -72,11 +72,11 @@ interpreter=…/ps-real-provision-DAzvm4/envs/lazy-channel-proof/bin/python
 装机后（`CFBundleShortVersionString = 2.18.2`，asar 里 `channelName` / `composition stage` / `SchemaStamp` 都在）
 的三次冷启动：
 
-| 读点 | 读数 |
-|---|---|
-| `compose runtime steps` | 294 / 299 / 298 ms（`open-project-db` 113–135 ms、`load-probe-answers` 77–124 ms） |
-| `compose-runtime` → `ipc-handlers-registered` | 1165 → 1719 ms（554 ms，其中已计时的 compose 步骤 479 ms） |
-| **`web-service-started`** | **1735 ms** |
+| 读点                                          | 读数                                                                               |
+| --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `compose runtime steps`                       | 294 / 299 / 298 ms（`open-project-db` 113–135 ms、`load-probe-answers` 77–124 ms） |
+| `compose-runtime` → `ipc-handlers-registered` | 1165 → 1719 ms（554 ms，其中已计时的 compose 步骤 479 ms）                         |
+| **`web-service-started`**                     | **1735 ms**                                                                        |
 
 没有 `specialist-skill-catalog` 的慢步骤行（低于 250 ms 阈值）。对照改动前的同类读数
 （`ipc-handlers-registered` 2469 / 3021 / 4157 ms、`web-service-started` 2480 / 3177 / 4170 ms），

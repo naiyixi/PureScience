@@ -10,10 +10,10 @@
 
 `unread task state failed` 共 **2** 条，两条都是 Prisma 的交互式事务过期：
 
-| 时间（Z） | 层次 | 原话（节选） |
-| --- | --- | --- |
+| 时间（Z）                | 层次        | 原话（节选）                                                                                                                                                                                                                   |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2026-10-29T17:39:10.501Z | warn / main | `Invalid transaction.unreadTaskSession.findMany() invocation in …/out/main/unread-task-repository-YmavVEWF.js:66:56 … Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction` |
-| 2026-11-01T01:15:58.401Z | warn / main | 同上，同一个方法、同一行 |
+| 2026-11-01T01:15:58.401Z | warn / main | 同上，同一个方法、同一行                                                                                                                                                                                                       |
 
 产物里的 `:66` 即 `reconcile()` 里那条 `findMany` —— **第一条查询还没发出去，事务就已经过期**。
 调用方（`src/main/index.ts` 的 `onError`）只做 `log.warn('unread task state failed', error)`，内存态与落库态就此分叉：
@@ -43,22 +43,22 @@ PY
 
 ## 二 交付
 
-| 文件 | 改动 |
-| --- | --- |
-| `src/main/notifications/unread-task-repository.ts` | `reconcile()`：读 → 算差 → **一次批量事务**（`$transaction([...])`，数组形态）；删除仍按 400 分块，新增改 `createMany`（同样分块）。`reconcileSessionCatalog()` 同形改造 |
-| 同上 | `UnreadTaskReconcileError`：消息带 `desired/existing/created/deleted` 与原错因（`cause` 保留），经 `onError` 落到 `unread task state failed` 那一行 |
-| `src/main/notifications/unread-task-repository.test.ts` | +2 例（真 SQLite 项目库）：600 条快照 ⇒ `$transaction` 只调 1 次、参数是数组、长度 2、`load()` 逐条等于快照顺序；触发器拒收 ⇒ 抛具名错、消息含四个数、整盘回滚 |
+| 文件                                                    | 改动                                                                                                                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/notifications/unread-task-repository.ts`      | `reconcile()`：读 → 算差 → **一次批量事务**（`$transaction([...])`，数组形态）；删除仍按 400 分块，新增改 `createMany`（同样分块）。`reconcileSessionCatalog()` 同形改造 |
+| 同上                                                    | `UnreadTaskReconcileError`：消息带 `desired/existing/created/deleted` 与原错因（`cause` 保留），经 `onError` 落到 `unread task state failed` 那一行                      |
+| `src/main/notifications/unread-task-repository.test.ts` | +2 例（真 SQLite 项目库）：600 条快照 ⇒ `$transaction` 只调 1 次、参数是数组、长度 2、`load()` 逐条等于快照顺序；触发器拒收 ⇒ 抛具名错、消息含四个数、整盘回滚           |
 
 语句数：旧 `1 + N`（N = 缺失条数）→ 新 `≤ ceil(删除/400) + ceil(新增/400)`（本机典型 2）。
 
 ## 三 门禁（全部实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `src/main/notifications` 整目录 | 11 文件 / 169 例全绿 |
-| 变异自证 | 改回「交互式事务 + 逐条 `create`」⇒「一次批量事务」那条当场红（`$transaction` 参数不是数组） |
-| `eslint --no-cache`（本笔 2 文件） | 0 error / 0 warning |
-| 双 typecheck（`--composite false`） | 本笔 0 错（余 4 条全在并行会话在制的 `src/main/references/screening-service.ts`，未去改） |
+| 环                                  | 读数                                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- |
+| `src/main/notifications` 整目录     | 11 文件 / 169 例全绿                                                                         |
+| 变异自证                            | 改回「交互式事务 + 逐条 `create`」⇒「一次批量事务」那条当场红（`$transaction` 参数不是数组） |
+| `eslint --no-cache`（本笔 2 文件）  | 0 error / 0 warning                                                                          |
+| 双 typecheck（`--composite false`） | 本笔 0 错（余 4 条全在并行会话在制的 `src/main/references/screening-service.ts`，未去改）    |
 
 ## 四 边界
 

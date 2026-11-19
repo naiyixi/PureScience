@@ -6,14 +6,14 @@ RPC 分支、MCP 工具面、stdio 传输的分流，并顺手修掉 main 上仍
 
 ## 一 这一笔改了什么（文件级）
 
-| 文件 | 内容 |
-| --- | --- |
-| `src/main/notebook/local-rpc-server.ts` | `skillCreate` 新增 `skillMethodCompiler` 选项与 `fromRunId` 分支：带 `from_run_id` 时由应用**自己的记录**编译（不读调用方给的正文），同时具名拒绝 `instructions`/`kind`/`evidence` 任一并存（两个真源会被静默取一个） |
-| `src/main/skills/mcp-server.ts` | ① `createSkill` 的返回类型张开为「草稿 ∪ 编译结果」；② 工具 schema 新增 `from_run_id`（snake→camel **显式**映射，不为改名静默丢掉）；③ `instructions` 改为**可选**（否则模型被迫送出一份它不允许送的正文）并在处理器里强制「二选一」；④ 新增 `createLocalSkillCreator`：stdio 传输**按每一种形态需要什么**分流 —— 草稿仍就地写（与改动前逐字一致），编译走应用 RPC（运行记录只在主进程里） |
-| `src/shared/skill-create.ts` | 工具描述/系统提示各一句（agent 面向，英文）；`fromRunId` 字段与 `fingerprint`/`sourceRunId` 结果字段；schema 里 `instructions` 的说明改为「除非给了 `from_run_id`」 |
-| `src/main/skills/mcp-server.test.ts` | 新增 3 条：工具面 `from_run_id` → 编译形态；双源 ⇒ 具名拒答；两者都没有 ⇒ 具名拒答；另有 2 条对 `createLocalSkillCreator` 的分流（草稿真落盘 / 编译走 RPC 且**不碰**技能目录） |
-| `src/main/notebook/local-rpc-server.skill-import.test.ts` | 新增 1 条：RPC 层别名解析 + 编译分派 + 冲突拒答 + 未配置拒答 |
-| `src/main/notebook/local-rpc-server.skill-create-from-run.test.ts` | **新增**：服务层端到端（见第三节） |
+| 文件                                                               | 内容                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/notebook/local-rpc-server.ts`                            | `skillCreate` 新增 `skillMethodCompiler` 选项与 `fromRunId` 分支：带 `from_run_id` 时由应用**自己的记录**编译（不读调用方给的正文），同时具名拒绝 `instructions`/`kind`/`evidence` 任一并存（两个真源会被静默取一个）                                                                                                                                                                      |
+| `src/main/skills/mcp-server.ts`                                    | ① `createSkill` 的返回类型张开为「草稿 ∪ 编译结果」；② 工具 schema 新增 `from_run_id`（snake→camel **显式**映射，不为改名静默丢掉）；③ `instructions` 改为**可选**（否则模型被迫送出一份它不允许送的正文）并在处理器里强制「二选一」；④ 新增 `createLocalSkillCreator`：stdio 传输**按每一种形态需要什么**分流 —— 草稿仍就地写（与改动前逐字一致），编译走应用 RPC（运行记录只在主进程里） |
+| `src/shared/skill-create.ts`                                       | 工具描述/系统提示各一句（agent 面向，英文）；`fromRunId` 字段与 `fingerprint`/`sourceRunId` 结果字段；schema 里 `instructions` 的说明改为「除非给了 `from_run_id`」                                                                                                                                                                                                                        |
+| `src/main/skills/mcp-server.test.ts`                               | 新增 3 条：工具面 `from_run_id` → 编译形态；双源 ⇒ 具名拒答；两者都没有 ⇒ 具名拒答；另有 2 条对 `createLocalSkillCreator` 的分流（草稿真落盘 / 编译走 RPC 且**不碰**技能目录）                                                                                                                                                                                                             |
+| `src/main/notebook/local-rpc-server.skill-import.test.ts`          | 新增 1 条：RPC 层别名解析 + 编译分派 + 冲突拒答 + 未配置拒答                                                                                                                                                                                                                                                                                                                               |
+| `src/main/notebook/local-rpc-server.skill-create-from-run.test.ts` | **新增**：服务层端到端（见第三节）                                                                                                                                                                                                                                                                                                                                                         |
 
 ## 二 契约 / 单元层读数
 
@@ -46,10 +46,10 @@ PROBE second compile {"fingerprintStable":true}
 
 ## 五 变异证明（断言没被削弱）
 
-| 变异 | 读数 |
-| --- | --- |
+| 变异                                                     | 读数                                                                                                                       |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | RPC 分支把 `runId: fromRunId` 改成 `String(params.name)` | 服务层 2 条**当场红**（一条 `expected { state: 'refused' } to match { state: 'created' }`，一条拒答详情里没有那个 run id） |
-| 编排层删掉 `provenance: draft.provenance` | 服务层 + 编排层共 2 条**当场红**（`trust_origin: "run-7"` 不在文档里） |
+| 编排层删掉 `provenance: draft.provenance`                | 服务层 + 编排层共 2 条**当场红**（`trust_origin: "run-7"` 不在文档里）                                                     |
 
 两次变异都已回退，六个文件的 md5 与变异前**逐字相同** ✓。
 
@@ -62,18 +62,18 @@ PROBE second compile {"fingerprintStable":true}
 
 ## 七 未取证（具名，不冒充）
 
-| 面 | 为什么没取 | 落点 |
-| --- | --- | --- |
+| 面                                                                             | 为什么没取                                                                                         | 落点                                                                                    |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | **真窗口点击读数**（在会话里让 agent 用 `from_run_id` 存一条技能、看屏上结果） | 内存闸门关着：空闲页 **4097 ≈ 64 MB**、swap **8555M / 10240M** ⇒ 按仓规不起 `build:e2e` + Electron | 归会话在隔离实例里取（`PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` 同时指向隔离根） |
-| **真实 agent 回合**（模型真的调 `create_skill{from_run_id}`） | 同上；且成功路径会把技能写进配置根，真实配置根只读 | 同上，用隔离实例 |
-| 窗口态的「已存技能」列表是否显示指纹/来源 | 该面属另一单元（技能库展示），本笔未动渲染层 | 不声称 |
+| **真实 agent 回合**（模型真的调 `create_skill{from_run_id}`）                  | 同上；且成功路径会把技能写进配置根，真实配置根只读                                                 | 同上，用隔离实例                                                                        |
+| 窗口态的「已存技能」列表是否显示指纹/来源                                      | 该面属另一单元（技能库展示），本笔未动渲染层                                                       | 不声称                                                                                  |
 
 ## 八 门禁读数（本笔）
 
-| 门 | 读数 |
-| --- | --- |
-| `npx eslint --no-cache .`（全仓） | **0 error / 130 warning**（我碰过的 6 个文件 scoped 复跑 **0 problem**） |
-| `tsc -p tsconfig.node.json --composite false` | **0 error** |
-| `tsc -p tsconfig.web.json --composite false` | **0 error** |
-| 全量 `npx vitest run --maxWorkers=4` | 见提交信息（占位替换后的真实读数） |
-| CI | 见队列档 §一百三十五 的双车道判决 |
+| 门                                            | 读数                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| `npx eslint --no-cache .`（全仓）             | **0 error / 130 warning**（我碰过的 6 个文件 scoped 复跑 **0 problem**） |
+| `tsc -p tsconfig.node.json --composite false` | **0 error**                                                              |
+| `tsc -p tsconfig.web.json --composite false`  | **0 error**                                                              |
+| 全量 `npx vitest run --maxWorkers=4`          | 见提交信息（占位替换后的真实读数）                                       |
+| CI                                            | 见队列档 §一百三十五 的双车道判决                                        |

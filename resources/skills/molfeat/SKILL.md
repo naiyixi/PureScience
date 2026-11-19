@@ -1,6 +1,7 @@
 ---
 name: molfeat
 description: Featurizes small molecules with Molfeat for QSAR/QSPR, chemical similarity, virtual screening, and molecular ML. Covers ECFP/MACCS fingerprints, RDKit descriptors, pharmacophores, pretrained embeddings, configuration persistence, and molecule-to-label alignment.
+description-zh: 用 Molfeat 把小分子特征化，用于 QSAR/QSPR、化学相似性、虚拟筛选与分子机器学习：ECFP/MACCS 指纹、RDKit 描述符、药效团与预训练表征。
 license: Apache-2.0 license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.11+ and molfeat 1.0.0 (RDKit, datamol, PyTorch). macOS Intel needs Python 3.11–3.12 and upstream platform-specific dependency pins. Optional extras and network access are needed for pretrained models; core fingerprints run offline.

@@ -16,14 +16,14 @@ Error: Timed out waiting for the packaged macOS web service (DMG-mounted bundle
 
 同一份日志里，应用自己打印的启动阶段（`[main] operation phase`）走到：
 
-| 阶段 | 应用自报 elapsedMs |
-| --- | --- |
-| `load-bootstrap-modules` | 1,468 |
-| `single-instance-lock` | 1,811 |
-| `prepare-runtime` | 1,813 |
-| `load-application-modules` | 1,818 |
-| `electron-ready` | **26,931** |
-| `compose-runtime` | **31,676** |
+| 阶段                       | 应用自报 elapsedMs |
+| -------------------------- | ------------------ |
+| `load-bootstrap-modules`   | 1,468              |
+| `single-instance-lock`     | 1,811              |
+| `prepare-runtime`          | 1,813              |
+| `load-application-modules` | 1,818              |
+| `electron-ready`           | **26,931**         |
+| `compose-runtime`          | **31,676**         |
 
 **这条读数的边界**（不许越过）：
 
@@ -46,11 +46,11 @@ Error: Timed out waiting for the packaged macOS web service (DMG-mounted bundle
 
 ## 三 改动
 
-| 位置 | 改动 |
-| --- | --- |
-| `scripts/macos-package-smoke.mjs` | 新增 `extractStartupPhases(output)`：按 `[main] operation phase` 切块，取 `phase` + `elapsedMs`；**缺时间的块整块丢弃**（「到过这里但不知道什么时候」不能当一条阶段读数）。`describeStartupTimeout` 增加一行 `- startup phases: N reported, last '<名>' at <ms> ms ⇒ <最近 6 条时间线>`；一条都没有时写 `none — the app never reported a startup phase` |
-| 同上（成功态） | `launchAndProbe` 拿到端点后打一条 `packaged startup (<label>): endpoint announced after <ms> ms; startup phases: …`。**通过的那一侧此前一条读数都没有** ⇒ 任何「这台 runner 是不是比昨天慢」的问题都没有基线；有了它，复发时才能拿「两台跑道的通过耗时」对照，而不是只凭一次超时下结论 |
-| `scripts/macos-package-smoke.test.ts` | 用真实日志形状（上面那张表里的四条阶段）钉住：条数、最后阶段名与毫秒数、时间线里含 `electron-ready@26931 ms`；「一个阶段都没有」那态单独断言；缺 `elapsedMs` 的截断块被丢弃 |
+| 位置                                  | 改动                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/macos-package-smoke.mjs`     | 新增 `extractStartupPhases(output)`：按 `[main] operation phase` 切块，取 `phase` + `elapsedMs`；**缺时间的块整块丢弃**（「到过这里但不知道什么时候」不能当一条阶段读数）。`describeStartupTimeout` 增加一行 `- startup phases: N reported, last '<名>' at <ms> ms ⇒ <最近 6 条时间线>`；一条都没有时写 `none — the app never reported a startup phase` |
+| 同上（成功态）                        | `launchAndProbe` 拿到端点后打一条 `packaged startup (<label>): endpoint announced after <ms> ms; startup phases: …`。**通过的那一侧此前一条读数都没有** ⇒ 任何「这台 runner 是不是比昨天慢」的问题都没有基线；有了它，复发时才能拿「两台跑道的通过耗时」对照，而不是只凭一次超时下结论                                                                  |
+| `scripts/macos-package-smoke.test.ts` | 用真实日志形状（上面那张表里的四条阶段）钉住：条数、最后阶段名与毫秒数、时间线里含 `electron-ready@26931 ms`；「一个阶段都没有」那态单独断言；缺 `elapsedMs` 的截断块被丢弃                                                                                                                                                                             |
 
 **没有改超时预算**（仍是 60 s）。加预算是另一件事：它会把「机器慢」这类红变成绿，需要先有复发读数与「慢在哪一段」的分段证据，
 否则就是拿加大超时把一道闸门调成常绿。这一条写在 §四。
@@ -66,12 +66,12 @@ Error: Timed out waiting for the packaged macOS web service (DMG-mounted bundle
 
 ## 五 门禁（本机实跑，2026-11-15 03:2x CST）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run scripts/macos-package-smoke.test.ts scripts/ci/mac-signing-status.test.ts --maxWorkers=1`（成功态那条用例补上之后） | **2 files / 34 passed**，exit 0 |
-| `npx eslint --no-cache scripts/macos-package-smoke.{mjs,test.ts}` | 0 problems |
-| `npx prettier --check`（同上） | 通过 |
-| 直接跑脚本（空 artifact 目录 + `--signature-reading`） | exit 1，marker 落盘，`reason` 为真实那句 `Expected exactly one macOS dmg …; found 0` |
+| 环                                                                                                                                  | 读数                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `npx vitest run scripts/macos-package-smoke.test.ts scripts/ci/mac-signing-status.test.ts --maxWorkers=1`（成功态那条用例补上之后） | **2 files / 34 passed**，exit 0                                                      |
+| `npx eslint --no-cache scripts/macos-package-smoke.{mjs,test.ts}`                                                                   | 0 problems                                                                           |
+| `npx prettier --check`（同上）                                                                                                      | 通过                                                                                 |
+| 直接跑脚本（空 artifact 目录 + `--signature-reading`）                                                                              | exit 1，marker 落盘，`reason` 为真实那句 `Expected exactly one macOS dmg …; found 0` |
 
 首版把 `extractStartupPhases` 同时写成 `export const` 并列入文件末尾的导出表 ⇒ Node 报 `SyntaxError: Duplicate export`，
 `leaves the marker on disk when the script itself fails` 这条用例当场抓住（marker 没落盘）；把 `describeStartupPhases` 提成导出时

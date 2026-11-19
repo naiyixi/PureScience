@@ -8,10 +8,10 @@
 
 ## 一 交付
 
-| 位置 | 内容 |
-| --- | --- |
+| 位置                                                             | 内容                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `naiyixi/homebrew-tap`（新建 public 仓库）`Casks/purescience.rb` | `version "2.26.0"`；`sha256 arm: …, intel: …` 双架构；`url` 按架构选 `-mac-arm64.dmg` / `-mac-x64.dmg`；`livecheck :github_latest`；`app "PureScience.app"`；`zap trash` 收 `~/.purescience` 与 `~/.purescience-project`；caveats 明写「ad-hoc 签名、未公证，必要时 `--no-quarantine`」 |
-| `README.md` / `README.en.md` | Quick Start 增一段 macOS（Homebrew）安装命令，三段必须连写：`brew tap` → `brew trust` → `brew install --cask` |
+| `README.md` / `README.en.md`                                     | Quick Start 增一段 macOS（Homebrew）安装命令，三段必须连写：`brew tap` → `brew trust` → `brew install --cask`                                                                                                                                                                           |
 
 tap 仓库两笔：`3f28506`（首版）＋ 一笔收尾（去掉 Homebrew 7 已弃用的 `verified:` 参数、补 `zap`）。
 
@@ -36,19 +36,19 @@ tap 仓库两笔：`3f28506`（首版）＋ 一笔收尾（去掉 Homebrew 7 已
      —— ad-hoc 签名，与 v2.27.0 的证书是同一件事；
    - `GitHub repository not notable enough (<30 forks, <30 watchers and <75 stars)` —— 那是**进 Homebrew 官方
      cask 库**的策略门，自建 tap 不受它限制（audit 对第三方 tap 仍会记这条）。
-   两轮之间还踩了 Homebrew 7 的两处弃用，都已改掉：`url … verified:` 参数、`depends_on macos: ">= :monterey"`
-   字符串比较写法（正解 `depends_on macos: :monterey`）。
+     两轮之间还踩了 Homebrew 7 的两处弃用，都已改掉：`url … verified:` 参数、`depends_on macos: ">= :monterey"`
+     字符串比较写法（正解 `depends_on macos: :monterey`）。
 
 ## 三 排期档核对（动手之前先看那一行还在不在）
 
-| 排期项 | 现状 | 判据 |
-| --- | --- | --- |
-| v2.22.0 把 `statics.zerolink.com` 换成真实 feed | **✅ 已交付（内容随 v2.23.0 发布）** | `electron-builder.yml:170-178` 的 `publish:` 已是 `provider: github / owner: naiyixi / repo: PureScience`，注释写明该镜像域名从未解析；`CHANGELOG.md:84-88` 记「v2.22.0 的全部内容随 v2.23.0 一起发布；tag `v2.22.0` 保留为历史标记，不产出资产」 |
-| v2.22.0 README 删掉 51.8 s 自陈 | **✅ 已满足** | `grep -n "unoptimis" README.md README.en.md` 零命中（§291 §五 已记，勿再改） |
-| v2.22.0 更新提示明说 mac 需手动重装 | **✅ 已交付** | 键 `update.macManualInstallNote` 九语言齐全（`zh.ts:2528` / `en.ts:2717` / …），`UpdateDialog.tsx:168-172` 在 darwin 且非 restart 时渲染；`create-strategy.ts:80-87` 在缺 Team ID 时记具名日志 `mac-team-id-not-provisioned` |
-| v2.22.0 换自有 Team ID | **⛔ 仍阻塞（外部）** | 本轮挂载读数：`Signature=adhoc`、`TeamIdentifier=not set` ⇒ 要采购 Developer ID 证书；代码侧已改成「按**实际签名**判断能否原地更新 + 保守回落到手动安装」，不再借别人的 Team ID |
-| v2.24.0 npm 发布 | **✅ 已交付，但名字与档里写的不一样** | `npm view purescience version` → **0.1.2**；档里写的是 `@zerolink/purescience`（该名字 404）。首发改成非 scoped 的 `purescience`（`2b90ace7`） |
-| v2.24.0 Homebrew cask | **✅ 本轮交付** | 见上两节 |
+| 排期项                                          | 现状                                  | 判据                                                                                                                                                                                                                                              |
+| ----------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v2.22.0 把 `statics.zerolink.com` 换成真实 feed | **✅ 已交付（内容随 v2.23.0 发布）**  | `electron-builder.yml:170-178` 的 `publish:` 已是 `provider: github / owner: naiyixi / repo: PureScience`，注释写明该镜像域名从未解析；`CHANGELOG.md:84-88` 记「v2.22.0 的全部内容随 v2.23.0 一起发布；tag `v2.22.0` 保留为历史标记，不产出资产」 |
+| v2.22.0 README 删掉 51.8 s 自陈                 | **✅ 已满足**                         | `grep -n "unoptimis" README.md README.en.md` 零命中（§291 §五 已记，勿再改）                                                                                                                                                                      |
+| v2.22.0 更新提示明说 mac 需手动重装             | **✅ 已交付**                         | 键 `update.macManualInstallNote` 九语言齐全（`zh.ts:2528` / `en.ts:2717` / …），`UpdateDialog.tsx:168-172` 在 darwin 且非 restart 时渲染；`create-strategy.ts:80-87` 在缺 Team ID 时记具名日志 `mac-team-id-not-provisioned`                      |
+| v2.22.0 换自有 Team ID                          | **⛔ 仍阻塞（外部）**                 | 本轮挂载读数：`Signature=adhoc`、`TeamIdentifier=not set` ⇒ 要采购 Developer ID 证书；代码侧已改成「按**实际签名**判断能否原地更新 + 保守回落到手动安装」，不再借别人的 Team ID                                                                   |
+| v2.24.0 npm 发布                                | **✅ 已交付，但名字与档里写的不一样** | `npm view purescience version` → **0.1.2**；档里写的是 `@zerolink/purescience`（该名字 404）。首发改成非 scoped 的 `purescience`（`2b90ace7`）                                                                                                    |
+| v2.24.0 Homebrew cask                           | **✅ 本轮交付**                       | 见上两节                                                                                                                                                                                                                                          |
 
 结论：v2.22.0 的四条**没有一条是代码缺口**（三条早已交付、一条卡外部证书）；v2.24.0 的 npm 早已发、只差 cask，
 本轮补齐 ⇒ **这一版只剩 v2.27.0 的证书这一条外部阻塞**，不需要为 cask 抬版本号（纯分发与文档）。

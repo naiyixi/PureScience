@@ -6,15 +6,16 @@
 
 ## 隔离三件齐（缺一件就会污染用户环境）
 
-| 项 | 值 |
-|---|---|
-| 配置根 | `PURESCIENCE_STORAGE_ROOT=/tmp/ps-ui-root` |
-| **数据根** | 同目录 `settings.json` 里写 `dataRoot=/tmp/ps-ui-data`（**只搬配置根不够**：受管文件会落进用户真实数据根） |
-| 端口 / 档案 / CDP | `PURESCIENCE_WEB_PORT=44155` + `--user-data-dir=/tmp/ps-ui-profile` + `--remote-debugging-port=9229` |
+| 项                | 值                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| 配置根            | `PURESCIENCE_STORAGE_ROOT=/tmp/ps-ui-root`                                                                 |
+| **数据根**        | 同目录 `settings.json` 里写 `dataRoot=/tmp/ps-ui-data`（**只搬配置根不够**：受管文件会落进用户真实数据根） |
+| 端口 / 档案 / CDP | `PURESCIENCE_WEB_PORT=44155` + `--user-data-dir=/tmp/ps-ui-profile` + `--remote-debugging-port=9229`       |
 
 夹具（刻意造两态）：`runtime/pkgs/pkg-a/lib.so`（有第二条链 ⇒ **可证冗余**）+ `runtime/envs/mine/lib.so`（同 inode 的第二条链）
-+ `runtime/pkgs/pkg-b/only.bin`（**最后一条链**）；另经渲染端自己的 API 建项目 `ui-read-probe` 并在
-`notebooks/<id>/run-1/data/results.h5ad` 写 4 MiB。
+
+- `runtime/pkgs/pkg-b/only.bin`（**最后一条链**）；另经渲染端自己的 API 建项目 `ui-read-probe` 并在
+  `notebooks/<id>/run-1/data/results.h5ad` 写 4 MiB。
 
 ## 读数一：「按项目」一节真的渲染（真窗口）
 

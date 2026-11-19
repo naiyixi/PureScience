@@ -1,6 +1,7 @@
 ---
 name: training-llms-megatron
 description: Trains large language models (2B-462B parameters) using NVIDIA Megatron-Core with advanced parallelism strategies. Use when training models >1B parameters, need maximum GPU efficiency (47% MFU on H100), or require tensor/pipeline/sequence/context/expert parallelism. Production-ready framework used for Nemotron, LLaMA, DeepSeek.
+description-zh: 用 NVIDIA Megatron-Core 训练 2B–462B 参数的大模型，配合多种并行策略：训练超过 1B 参数、追求 GPU 效率时使用。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

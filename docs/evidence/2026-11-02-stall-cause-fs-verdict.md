@@ -22,12 +22,12 @@
 
 按 `msg == "event loop stalled"` 抽全部记录（3,585 条），其中带可用 fs 读数 **3,503 条**：
 
-| 判决 | 条数 |
-|---|---|
+| 判决                 | 条数      |
+| -------------------- | --------- |
 | `fs-queue-saturated` | **3,460** |
-| `garbage-collection` | 18 |
-| `cpu-in-process` | 13 |
-| `unexplained` | 12 |
+| `garbage-collection` | 18        |
+| `cpu-in-process`     | 13        |
+| `unexplained`        | 12        |
 
 在这 3,460 条里：
 
@@ -47,12 +47,12 @@ lateMs 801  canaryMs 5496  inFlight 0  windowMs 1301
 
 ## 三 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/diagnostics/stall-cause.ts` | `fsSaturated` 增加一条硬前提 **`fs.inFlight > 0`**：没有任何我们自己的读在排队时，canary 的等待只能归给循环，不能归给池。`describeFs()` 两态写法（`with N of our reads waiting` / `with nothing of ours queued`）；`unexplained` 的句子在「canary 很慢但无人排队」时补一句 `; that canary waited on a loop that was gone, not on a busy pool` —— 否则读者只会看到那个 5,826 ms 又把它读回池。类型注释写明 `inFlight` **不是**池深度（只统计调用 `beginFsOperation` 的调用方，当前只有 managed preview acquire 一条路），所以 0 的含义是「没有证据」，不是「池空闲」 |
-| `src/main/diagnostics/stall-cause.test.ts` | share 门槛那条用例的三处夹具补上「有排在队里的读」，让它继续测**份额**而不是被新闸顺带决定；新增两条成对用例：真机形状（`lateMs 507 / canary 5826 / inFlight 0`）必须**不是** `fs-queue-saturated` 且句子点名原因；`inFlight ≥ 1` 时**仍然**是 `fs-queue-saturated`（防止把闸满足成「永不再点名池」） |
-| `src/main/diagnostics/event-loop-stall-watchdog.test.ts` | 走**真报道路径**再加一例：`inFlight: () => 0` + canary 5,826 ⇒ `unexplained`，`basis` 含 `nothing of ours queued` 与 `waited on a loop that was gone`，且 `fs` 读数原样保留 |
-| `src/main/diagnostics/support-bundle.ts` | `event-loop-stalls.json` 的说明补一句：`fs-queue-saturated` 只在「我们自己的读也在等同一个池」时才给；canary 慢而无人排队＝循环不在了。导出件是外部读者唯一的说明书，说明与判据必须同步 |
+| 位置                                                     | 改动                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/diagnostics/stall-cause.ts`                    | `fsSaturated` 增加一条硬前提 **`fs.inFlight > 0`**：没有任何我们自己的读在排队时，canary 的等待只能归给循环，不能归给池。`describeFs()` 两态写法（`with N of our reads waiting` / `with nothing of ours queued`）；`unexplained` 的句子在「canary 很慢但无人排队」时补一句 `; that canary waited on a loop that was gone, not on a busy pool` —— 否则读者只会看到那个 5,826 ms 又把它读回池。类型注释写明 `inFlight` **不是**池深度（只统计调用 `beginFsOperation` 的调用方，当前只有 managed preview acquire 一条路），所以 0 的含义是「没有证据」，不是「池空闲」 |
+| `src/main/diagnostics/stall-cause.test.ts`               | share 门槛那条用例的三处夹具补上「有排在队里的读」，让它继续测**份额**而不是被新闸顺带决定；新增两条成对用例：真机形状（`lateMs 507 / canary 5826 / inFlight 0`）必须**不是** `fs-queue-saturated` 且句子点名原因；`inFlight ≥ 1` 时**仍然**是 `fs-queue-saturated`（防止把闸满足成「永不再点名池」）                                                                                                                                                                                                                                                               |
+| `src/main/diagnostics/event-loop-stall-watchdog.test.ts` | 走**真报道路径**再加一例：`inFlight: () => 0` + canary 5,826 ⇒ `unexplained`，`basis` 含 `nothing of ours queued` 与 `waited on a loop that was gone`，且 `fs` 读数原样保留                                                                                                                                                                                                                                                                                                                                                                                         |
+| `src/main/diagnostics/support-bundle.ts`                 | `event-loop-stalls.json` 的说明补一句：`fs-queue-saturated` 只在「我们自己的读也在等同一个池」时才给；canary 慢而无人排队＝循环不在了。导出件是外部读者唯一的说明书，说明与判据必须同步                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## 四 真机读数（生产函数 × 真实记录的回放，改前/改后）
 

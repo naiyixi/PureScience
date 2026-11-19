@@ -20,11 +20,11 @@ Settings → General → Export support bundle，解包读 `diagnostics/host-tim
 
 ## 形状（三态，缺席一律具名）
 
-| `status` | 含义 | 会带什么 |
-|---|---|---|
-| `timeline` | 环里有样本 | `sampleCount`、`oldestAt`/`newestAt`、`spanMs`、`sampleCapacity`、`samplesDropped`（worker 自报）、`samples[]`、`paging` |
-| `no-samples` | 采样器在跑但环是空的 | 只有容量与丢弃数；**不写 `samples: []`** |
-| `unavailable` | 采样器从未启动（`sampler-not-started`）或线程没应答（`no-answer`） | `reason` 具名 |
+| `status`      | 含义                                                               | 会带什么                                                                                                                 |
+| ------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `timeline`    | 环里有样本                                                         | `sampleCount`、`oldestAt`/`newestAt`、`spanMs`、`sampleCapacity`、`samplesDropped`（worker 自报）、`samples[]`、`paging` |
+| `no-samples`  | 采样器在跑但环是空的                                               | 只有容量与丢弃数；**不写 `samples: []`**                                                                                 |
+| `unavailable` | 采样器从未启动（`sampler-not-started`）或线程没应答（`no-answer`） | `reason` 具名                                                                                                            |
 
 `paging` 同理两态：`readings`（只带 `pageouts`/`swapouts` 两个数，不带平台原始文本）或
 `unavailable` + `platform-exposes-no-counters` / `no-counters-parsed`。**没有读数不等于零**。

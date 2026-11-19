@@ -7,22 +7,22 @@
 打包版日志 `~/Library/Logs/PureScience/main{,1,2}.log` 里 `ipc handler was slow` 的
 `network:check-connectivity` 共 **122 行**：
 
-| 分桶 | 行数 |
-| --- | --- |
-| < 1 s | 57 |
-| 1–5 s | 52 |
-| 5–60 s | 10 |
-| > 60 s | 3 |
+| 分桶   | 行数 |
+| ------ | ---- |
+| < 1 s  | 57   |
+| 1–5 s  | 52   |
+| 5–60 s | 10   |
+| > 60 s | 3    |
 
 探针自己写死的预算是 **5 s**（`REGISTRY_PROBE_TIMEOUT_MS`），而 **13 行越过它**。最有力的四行是
 **进程确实在跑**的那种（同一行里带 1.5–8.7 s 的 CPU）：
 
-| 时间（UTC） | 时长 | `cpuMs` |
-| --- | --- | --- |
-| 2026-11-06T04:48:14 | 12.5 s | 1,575 |
-| 2026-11-09T03:19:17 | 15.2 s | 8,669 |
-| 2026-11-09T15:47:50 | 17.3 s | 6,622 |
-| 2026-11-05T03:39:01 | 12.6 s | 5,262 |
+| 时间（UTC）         | 时长   | `cpuMs` |
+| ------------------- | ------ | ------- |
+| 2026-11-06T04:48:14 | 12.5 s | 1,575   |
+| 2026-11-09T03:19:17 | 15.2 s | 8,669   |
+| 2026-11-09T15:47:50 | 17.3 s | 6,622   |
+| 2026-11-05T03:39:01 | 12.6 s | 5,262   |
 
 另有 3 行 428.4 s / 972.4 s / 980.3 s，其 `attribution` 是 `no-cpu-in-process`（窗口里本进程几乎没被调度，
 睡眠/挂起也在这一类）⇒ **不作为主要证据**，只说明「这条探针没有一个与它同名的硬上限」。
@@ -44,13 +44,13 @@
 
 同一台机器、同一时刻，两处 registry 各探一次（`HEAD`，5 s socket 超时，间隔 200 ms）：
 
-| 次 | npmjs | npmmirror |
-| --- | --- | --- |
-| 1 | 654 ms | 151 ms |
-| 2 | 429 ms | 82 ms |
-| 3 | 607 ms | 72 ms |
-| 4 | 520 ms | 133 ms |
-| 5 | 569 ms | 85 ms |
+| 次  | npmjs  | npmmirror |
+| --- | ------ | --------- |
+| 1   | 654 ms | 151 ms    |
+| 2   | 429 ms | 82 ms     |
+| 3   | 607 ms | 72 ms     |
+| 4   | 520 ms | 133 ms    |
+| 5   | 569 ms | 85 ms     |
 
 ⇒ **首个成功** 72–151 ms（= npmmirror 那一条），**全部落定** 429–654 ms（= npmjs 那一条）。
 在这台机器上改前改后的差距是 **约 4–9 倍**；在探测挂住的那种机器上差距是「5 秒 vs 十几分钟」。
@@ -58,17 +58,16 @@
 **再用产品自己的函数量一遍**（不是另写一段 https）：同一次运行里，`checkInternetReachability()`
 （改后：首个成功即答）与「两个探针都跑完」各量三次，真实外网、真实定时器：
 
-| 次 | `checkInternetReachability()` | 两个探针都跑完 | npmjs / npmmirror |
-| --- | --- | --- | --- |
-| 1 | 163 ms | 634 ms | 632 ms / 69 ms |
-| 2 | 150 ms | 522 ms | 522 ms / 62 ms |
-| 3 | 75 ms | 666 ms | 665 ms / 66 ms |
+| 次  | `checkInternetReachability()` | 两个探针都跑完 | npmjs / npmmirror |
+| --- | ----------------------------- | -------------- | ----------------- |
+| 1   | 163 ms                        | 634 ms         | 632 ms / 69 ms    |
+| 2   | 150 ms                        | 522 ms         | 522 ms / 62 ms    |
+| 3   | 75 ms                         | 666 ms         | 665 ms / 66 ms    |
 
 ⇒ 走交付的那个函数，答案落在 **75–163 ms**；改前的形状（等两个都落定）是 **522–666 ms**。
 口径说明：这是一次性探针文件（量完即删、不进提交）在 vitest 里 import 交付函数量的，
 **不是窗口里的读数** —— `network:check-connectivity` 在契约目录里是 Electron-only，
 Web RPC 面根本不承载它（实测 `POST /rpc/network:check-connectivity` 回 `method_not_found`）。
-
 
 复跑配方（只读外网，不写盘）：
 
@@ -84,23 +83,23 @@ const one=(u)=>new Promise((r)=>{const s=Date.now();
 
 ## 四 交付
 
-| 位置 | 改动 |
-| --- | --- |
-| `environment-check.ts` | `probeRegistryReachability` 拆成 `createRegistryProbe(requestFn = httpsRequest)`（与本仓 `createConnectionTypeResolver(execFileFn)` 同一种注入写法）；预算改成**整条链一条墙钟**（`setTimeout` → `settle` + `request.destroy`），跳转不重新计时；所有出口（成功 / 非 2xx / 跳转过多 / 网络错误 / 超时）汇到一个 `settle`，重复落定一律忽略 |
-| `environment-check.ts` | 导出 `createRegistryProbe` 与 `REGISTRY_PROBE_TIMEOUT_MS`（测试直接读源里的那个数，不在测试里再抄一份） |
-| `network-info.ts` | `checkInternetReachability` 改成**首个成功即答**：`finished(reachable)` —— 成功立即 resolve(true)，全部失败才 resolve(false)；落败那条**不取消**（下次调用仍走热路径），语义仍是「任一 registry 2xx ⇒ 可达」 |
-| `environment-check.test.ts` | +4 例：无 socket 时按墙钟放弃且 destroy 被调用；跳转链共用一条预算（第二跳不答 ⇒ 报超时而不是「跳转过多」）；正常应答返回实测毫秒；非 2xx 报失败 |
-| `network-info.test.ts` | +1 例：第一条永不落定、第二条答 12 ms ⇒ 仍 resolve(true) |
+| 位置                        | 改动                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `environment-check.ts`      | `probeRegistryReachability` 拆成 `createRegistryProbe(requestFn = httpsRequest)`（与本仓 `createConnectionTypeResolver(execFileFn)` 同一种注入写法）；预算改成**整条链一条墙钟**（`setTimeout` → `settle` + `request.destroy`），跳转不重新计时；所有出口（成功 / 非 2xx / 跳转过多 / 网络错误 / 超时）汇到一个 `settle`，重复落定一律忽略 |
+| `environment-check.ts`      | 导出 `createRegistryProbe` 与 `REGISTRY_PROBE_TIMEOUT_MS`（测试直接读源里的那个数，不在测试里再抄一份）                                                                                                                                                                                                                                    |
+| `network-info.ts`           | `checkInternetReachability` 改成**首个成功即答**：`finished(reachable)` —— 成功立即 resolve(true)，全部失败才 resolve(false)；落败那条**不取消**（下次调用仍走热路径），语义仍是「任一 registry 2xx ⇒ 可达」                                                                                                                               |
+| `environment-check.test.ts` | +4 例：无 socket 时按墙钟放弃且 destroy 被调用；跳转链共用一条预算（第二跳不答 ⇒ 报超时而不是「跳转过多」）；正常应答返回实测毫秒；非 2xx 报失败                                                                                                                                                                                           |
+| `network-info.test.ts`      | +1 例：第一条永不落定、第二条答 12 ms ⇒ 仍 resolve(true)                                                                                                                                                                                                                                                                                   |
 
 ## 五 门禁（全部实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `src/main/settings` + `src/main/net` + `network-ipc.test.ts` | **105 files / 1,594 passed**（3 skipped），exit 0 |
-| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
-| `eslint --no-cache`（4 个改动文件） | 0 error / 0 warning |
-| 全仓 `eslint --no-cache .` | **0 error / 94 warning**（与基线同值） |
-| 变异自证（两次，均已还原） | ① 墙钟退回 `request.setTimeout` ⇒ 两条预算用例当场红；② `checkInternetReachability` 退回 `Promise.all` ⇒「首个成功即答」当场红（60 s 后失败），合计 3 failed / 40 passed |
+| 环                                                                | 读数                                                                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/main/settings` + `src/main/net` + `network-ipc.test.ts`      | **105 files / 1,594 passed**（3 skipped），exit 0                                                                                                                        |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0                                                                                                                                                            |
+| `eslint --no-cache`（4 个改动文件）                               | 0 error / 0 warning                                                                                                                                                      |
+| 全仓 `eslint --no-cache .`                                        | **0 error / 94 warning**（与基线同值）                                                                                                                                   |
+| 变异自证（两次，均已还原）                                        | ① 墙钟退回 `request.setTimeout` ⇒ 两条预算用例当场红；② `checkInternetReachability` 退回 `Promise.all` ⇒「首个成功即答」当场红（60 s 后失败），合计 3 failed / 40 passed |
 
 ## 六 边界（不许读成更强）
 

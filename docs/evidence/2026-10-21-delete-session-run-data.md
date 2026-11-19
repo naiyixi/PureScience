@@ -11,15 +11,15 @@
 
 ## 二 交付形状
 
-| 层 | 落点 | 行为 |
-|---|---|---|
-| 主进程 | `src/main/notebook/session-data-cleanup.ts` 新增 `measureSessionNotebookData` | **与删除同一处铸造路径、同一道 id 边界**（`SAFE_ID_SEGMENT`）；三态 `measured{bytes}` / `absent` / `unavailable{reason}` |
-| 主进程 | `src/main/session-persistence/ipc.ts` 通道 `sessions:read-notebook-usage` | 读取器**注入边界**（`SessionNotebookUsageReader`）；默认实现每次调用现取 `resolveDataRoot()`（会话中途换根不会指向旧树），抛错落 `unavailable/unreadable`，**永不落 `absent`** |
-| 预载/契约 | `sessions.readNotebookUsage` + `renderer-api.d.ts` + 契约目录 + 生成物 | 计数连锁 7 处一次改齐（见 §四） |
-| 渲染层 | `pages/workspace/use-session-notebook-usage.ts` | 读数**盖会话 id 戳**：换会话时旧数字不会被贴到另一个标题旁（同步清空会撞 `react-hooks/set-state-in-effect`）；读失败 → `unavailable` |
-| 渲染层 | `lib/session-deletion-notice.ts` `sessionNotebookUsageMessage` | 四态文案：有读数（带体积）/ 零产出 / 无法测量 / 无读数可讲（`null`，调用方不渲染） |
-| 渲染层 | `pages/workspace/DeleteSessionDialog.tsx` | 第二段描述，锚点 `data-slot="delete-session-run-data"` |
-| 九语 | `i18n/{en,zh,zh-Hant,de,es,fr,ja,ko,ru}.ts` | 3 键 × 9 语；zh 值与 en 值不同形 |
+| 层        | 落点                                                                          | 行为                                                                                                                                                                           |
+| --------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 主进程    | `src/main/notebook/session-data-cleanup.ts` 新增 `measureSessionNotebookData` | **与删除同一处铸造路径、同一道 id 边界**（`SAFE_ID_SEGMENT`）；三态 `measured{bytes}` / `absent` / `unavailable{reason}`                                                       |
+| 主进程    | `src/main/session-persistence/ipc.ts` 通道 `sessions:read-notebook-usage`     | 读取器**注入边界**（`SessionNotebookUsageReader`）；默认实现每次调用现取 `resolveDataRoot()`（会话中途换根不会指向旧树），抛错落 `unavailable/unreadable`，**永不落 `absent`** |
+| 预载/契约 | `sessions.readNotebookUsage` + `renderer-api.d.ts` + 契约目录 + 生成物        | 计数连锁 7 处一次改齐（见 §四）                                                                                                                                                |
+| 渲染层    | `pages/workspace/use-session-notebook-usage.ts`                               | 读数**盖会话 id 戳**：换会话时旧数字不会被贴到另一个标题旁（同步清空会撞 `react-hooks/set-state-in-effect`）；读失败 → `unavailable`                                           |
+| 渲染层    | `lib/session-deletion-notice.ts` `sessionNotebookUsageMessage`                | 四态文案：有读数（带体积）/ 零产出 / 无法测量 / 无读数可讲（`null`，调用方不渲染）                                                                                             |
+| 渲染层    | `pages/workspace/DeleteSessionDialog.tsx`                                     | 第二段描述，锚点 `data-slot="delete-session-run-data"`                                                                                                                         |
+| 九语      | `i18n/{en,zh,zh-Hant,de,es,fr,ja,ko,ru}.ts`                                   | 3 键 × 9 语；zh 值与 en 值不同形                                                                                                                                               |
 
 ## 三 真读数（产品自己的测量函数，只读，跑在本机真实数据根上）
 
@@ -40,13 +40,13 @@ PROBE ../escape  e26108e7…                  {"state":"unavailable","reason":"u
 
 ## 四 门禁（全部实跑；数字取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 全量 vitest `--maxWorkers=4` | **1361 passed \| 16 skipped（1377 文件）**；**17,345 passed \| 207 skipped（17,552 例）**；exit 0 |
-| 定向 vitest（本单元 13 个目录/文件簇） | **312 passed \| 8 skipped（320 文件）**；**4,130 passed \| 99 skipped（4,229 例）**；exit 0 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0 error**；web **0 error** |
-| `eslint --no-cache`（本笔 30 文件） | **0 error**；1 warning 落在 `src/preload/index.ts:554`（**既有行、不在本笔 hunk 内**） |
-| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过（品牌扫描零命中） |
+| 环                                           | 读数                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 全量 vitest `--maxWorkers=4`                 | **1361 passed \| 16 skipped（1377 文件）**；**17,345 passed \| 207 skipped（17,552 例）**；exit 0 |
+| 定向 vitest（本单元 13 个目录/文件簇）       | **312 passed \| 8 skipped（320 文件）**；**4,130 passed \| 99 skipped（4,229 例）**；exit 0       |
+| 双 typecheck（`--composite false`，堆 8192） | node **0 error**；web **0 error**                                                                 |
+| `eslint --no-cache`（本笔 30 文件）          | **0 error**；1 warning 落在 `src/preload/index.ts:554`（**既有行、不在本笔 hunk 内**）            |
+| `scripts/pre-push-checks.sh`                 | **exit 0**，8 段全过（品牌扫描零命中）                                                            |
 
 契约计数连锁（一次改齐，不是逐个撞）：`application-command-composition.ts` INTERNAL 368→369 / LOCAL_WEB 366→367 /
 REMOTE_WEB 235→236（fail-closed 仍 131）；契约目录 497→498、invoke 投影 374→375、local-Web 可调用面 404→405；

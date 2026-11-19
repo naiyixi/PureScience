@@ -1,6 +1,7 @@
 ---
 name: modal
 description: Modal is a serverless cloud platform for running Python on demand, including on-demand GPUs. Use when deploying or serving AI/ML models, running GPU-accelerated workloads (training, fine-tuning, inference), serving web endpoints, scheduling batch jobs, or scaling Python code to cloud containers with the Modal SDK.
+description-zh: Modal 是按需运行 Python 的无服务器云平台，含按需 GPU。适用于部署与对外提供 AI/ML 模型、跑 GPU 加速的训练与微调负载。
 license: Apache-2.0
 compatibility: Requires Python 3.10-3.14 and modal 1.6.0. Cloud execution needs a Modal account, authentication and network access; GPU use needs a payment method. Workload dependencies belong in their container Images.
 metadata:

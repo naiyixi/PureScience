@@ -6,14 +6,14 @@
 
 ## 一 链路（三层各自的前置都在）
 
-| 层 | 落点 | 内容 |
-| --- | --- | --- |
-| 工具身份与结果契约 | `src/shared/pdf.ts` | `PDF_TRANSLATE_TOOL_NAME = 'pdf_translate'`、`PDF_TRANSLATE_TOOL_DESCRIPTION`、`PdfTranslateResult` / `PdfTranslatedPage` / `PdfTranslatedParagraph` / `PdfTranslationRestored`（`none` 分支带可选 `detail`，好让「读失败」与「还没翻」分开）；并把入口写进 `PDF_MCP_SYSTEM_PROMPT_APPEND`（agent 侧可发现性：工具名、用途、「会续跑」） |
-| 工具面 | `src/main/settings/pdf-mcp-server.ts` | schema（`doc_id` + 可选 `target_language`）、`pdfTranslateToolDefinition`、`registerTool`、`runPdfMcpServer` 里经 `callPdfRpc('pdfTranslate', …)` 转发；注册数 6 → **7**（用例已同步改计数） |
-| RPC 方法 | `src/main/notebook/local-rpc-server.ts` | `pdfTranslate` 加进 `PDF_RPC_METHODS`；`pdf.translate(...)` 进 pdf 选项接口；参数**校验不强制转换**（空 `targetLanguage` 具名拒绝，不回落成别人没要的语言） |
-| 装配 | `src/main/ipc.ts`（pdf 适配块） | 读**整份**文档页文本 → `runDocumentTranslation(...)`，checkpoint 落在**与 PDF 库同一个数据根**（`resolveDataRoot()`，store 自己加 `translations/`）；`not-configured` / `empty-source` 两种拒绝在此**抛出**（工具面拿到具名错误，而不是一份「0 段已翻译」） |
-| 编排 | `src/main/translation/document-translation.ts`（新） | 页文本 → 段落单元 → **跑在既有运行器 `run-translation.ts` 之上**（不并行第二套引擎）→ 再读 checkpoint 给出**逐段**列表 |
-| 段落来源 | `src/shared/translation-units.ts` | `segmentPageIntoTranslationUnits` 现在从 `pdfPageTextParagraphs()` 取段落（见第二节第 2 条） |
+| 层                 | 落点                                                 | 内容                                                                                                                                                                                                                                                                                                                                     |
+| ------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 工具身份与结果契约 | `src/shared/pdf.ts`                                  | `PDF_TRANSLATE_TOOL_NAME = 'pdf_translate'`、`PDF_TRANSLATE_TOOL_DESCRIPTION`、`PdfTranslateResult` / `PdfTranslatedPage` / `PdfTranslatedParagraph` / `PdfTranslationRestored`（`none` 分支带可选 `detail`，好让「读失败」与「还没翻」分开）；并把入口写进 `PDF_MCP_SYSTEM_PROMPT_APPEND`（agent 侧可发现性：工具名、用途、「会续跑」） |
+| 工具面             | `src/main/settings/pdf-mcp-server.ts`                | schema（`doc_id` + 可选 `target_language`）、`pdfTranslateToolDefinition`、`registerTool`、`runPdfMcpServer` 里经 `callPdfRpc('pdfTranslate', …)` 转发；注册数 6 → **7**（用例已同步改计数）                                                                                                                                             |
+| RPC 方法           | `src/main/notebook/local-rpc-server.ts`              | `pdfTranslate` 加进 `PDF_RPC_METHODS`；`pdf.translate(...)` 进 pdf 选项接口；参数**校验不强制转换**（空 `targetLanguage` 具名拒绝，不回落成别人没要的语言）                                                                                                                                                                              |
+| 装配               | `src/main/ipc.ts`（pdf 适配块）                      | 读**整份**文档页文本 → `runDocumentTranslation(...)`，checkpoint 落在**与 PDF 库同一个数据根**（`resolveDataRoot()`，store 自己加 `translations/`）；`not-configured` / `empty-source` 两种拒绝在此**抛出**（工具面拿到具名错误，而不是一份「0 段已翻译」）                                                                              |
+| 编排               | `src/main/translation/document-translation.ts`（新） | 页文本 → 段落单元 → **跑在既有运行器 `run-translation.ts` 之上**（不并行第二套引擎）→ 再读 checkpoint 给出**逐段**列表                                                                                                                                                                                                                   |
+| 段落来源           | `src/shared/translation-units.ts`                    | `segmentPageIntoTranslationUnits` 现在从 `pdfPageTextParagraphs()` 取段落（见第二节第 2 条）                                                                                                                                                                                                                                             |
 
 **模型目标**：新增 `SettingsService.resolveAuxiliaryChatTarget()`（`src/main/settings/service.ts`）—— 把用户**正在跑**的
 provider + model（`providers.resolveActiveModel()`，与运行时同一个解析器）解析成确切的 `/chat/completions` 端点 + key
@@ -58,42 +58,42 @@ A6「具名缺态」同一条原则，先落在工具面。
 根 = `/tmp/ps-translate-live`（隔离，非真实数据根）。探针件为**临时**文件（已删），读数落 `/tmp/ps-translate-live/readings.jsonl`。
 模型端点是唯一被替换的接缝（真调会花用户额度）：替身按请求作答 `【译】<原文>`。
 
-| 读数 | 值 |
-| --- | --- |
-| 真 PDF 解析 | `PROBE_PDF {"pageCount":1,"pages":1}` |
-| 首次翻译 | `PROBE_WRITE {"paragraphCount":5,"translated":5,"reused":0,"failed":[],"stopped":null,"restored":{"state":"none","reason":"no-checkpoint"},"emptyPages":[],"requestsSent":5,"checkpointPath":"/tmp/ps-translate-live/translations/f99fc7ed….json"}` |
-| 段落身份与原文（真跑产出，逐段） | `p1#1 'Abstract'` / `p1#2 'We report a reproducible pipeline for profiling the main…'` / `p1#3 'Results'` / `p1#4 'Site Value Uncertainty control 12.4 0.3 treated 9.8 0.2…'` / `p1#5 'The table above summarises the three measurements.'` ⇒ 与 §六十 那份页文本读数的「英文页 5 段」一致 |
-| **跨进程**读回（第二个 vitest 进程，同根、真 pdfjs 再解析同一份 PDF） | `PROBE_DISK {"exists":true,"state":"ok","recordCount":5, sampleRecord {id:p1#1, sourceHash:fdf12ba1…, status:translated, text:'【译】Abstract'}}` |
-| **跨进程**续跑 | `PROBE_READ {"reused":5,"translated":0,"failed":[],"restored":{"state":"partial","records":5},"firstTranslation":"【译】Abstract"}`；该进程的 fetch 替身**一被调用就抛**，一次都没抛 ⇒ 复用来自盘上的文件，不是进程内记忆 |
-| checkpoint 文件（**手读盘**复核，不走 store） | `version=1`、`source={kind:'pdf', id:'probe-doc', contentHash:'4f13a6de…'}`、5 条记录各带 `sourceHash` |
+| 读数                                                                  | 值                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 真 PDF 解析                                                           | `PROBE_PDF {"pageCount":1,"pages":1}`                                                                                                                                                                                                                                                      |
+| 首次翻译                                                              | `PROBE_WRITE {"paragraphCount":5,"translated":5,"reused":0,"failed":[],"stopped":null,"restored":{"state":"none","reason":"no-checkpoint"},"emptyPages":[],"requestsSent":5,"checkpointPath":"/tmp/ps-translate-live/translations/f99fc7ed….json"}`                                        |
+| 段落身份与原文（真跑产出，逐段）                                      | `p1#1 'Abstract'` / `p1#2 'We report a reproducible pipeline for profiling the main…'` / `p1#3 'Results'` / `p1#4 'Site Value Uncertainty control 12.4 0.3 treated 9.8 0.2…'` / `p1#5 'The table above summarises the three measurements.'` ⇒ 与 §六十 那份页文本读数的「英文页 5 段」一致 |
+| **跨进程**读回（第二个 vitest 进程，同根、真 pdfjs 再解析同一份 PDF） | `PROBE_DISK {"exists":true,"state":"ok","recordCount":5, sampleRecord {id:p1#1, sourceHash:fdf12ba1…, status:translated, text:'【译】Abstract'}}`                                                                                                                                          |
+| **跨进程**续跑                                                        | `PROBE_READ {"reused":5,"translated":0,"failed":[],"restored":{"state":"partial","records":5},"firstTranslation":"【译】Abstract"}`；该进程的 fetch 替身**一被调用就抛**，一次都没抛 ⇒ 复用来自盘上的文件，不是进程内记忆                                                                  |
+| checkpoint 文件（**手读盘**复核，不走 store）                         | `version=1`、`source={kind:'pdf', id:'probe-doc', contentHash:'4f13a6de…'}`、5 条记录各带 `sourceHash`                                                                                                                                                                                     |
 
 ### 3.2 离线可判的性质（单元套件，全部实跑）
 
-| 性质 | 读数 |
-| --- | --- |
-| 段落身份稳定 + 报告 = 落盘真相 | 列表与**手读盘**的记录逐条同状态；`checkpointPath` 就是那个文件；`translated+reused+failed+skipped == paragraphCount` |
-| 续跑不重发 | 第二次运行 **0 次请求**、`reused=2/translated=0`、`restored={partial, records}`，且译文仍是**第一次**那份（第二次替身会答 `译2:…`，出现即说明重发过） |
-| 文档文本改了 | `restored={state:'none', reason:'source-content-changed'}`（具名「没有续跑及其原因」），两段都重发 |
-| 换 docId 同内容 | `restored={state:'none', reason:'no-checkpoint'}`、`reused=0` ⇒ checkpoint 按文档身份隔离 |
-| 中途停机 | `stopped='requested'`、`skipped=2`，未触及的两段各带 `status='failed'` + `reason='not-attempted'` |
-| 失败段落 | `failed=[{id:'p1#1',reason:'http-error (500): model endpoint unavailable'}]`，下次重跑**重新发它** |
-| 空文本层页 | `emptyPages=[2]`、该页不产出段落 |
-| checkpoint 存在但读不出 | `restored={state:'none', reason:'unreadable', detail:'invalid-json'}` ⇒「读失败」与「还没翻」分开命名，并当轮重译修好 |
-| **拒绝**：没有模型端点 | `{ok:false, reason:'not-configured'}`、**一次请求都没发**、盘上**没有**任何文件（不是一个空 checkpoint） |
-| **拒绝**：整份没有段落 | `{ok:false, reason:'empty-source'}`、0 请求、盘上无文件 |
-| 端点解析（`resolveAuxiliaryChatTarget`） | 未配置 ⇒ `undefined`；官方 DeepSeek 活跃 ⇒ `https://api.deepseek.com/v1/chat/completions` + 活跃模型 + 明文 key；自建网关根 ⇒ `https://gw.example.com/v1/chat/completions`（无 key 就不带 key） |
-| 工具面 | 7 个工具注册齐（原 6 + `pdf_translate`）；只传 `doc_id` 时**不带任何调用方没给的选项**；`target_language` 原样透传 |
-| **变异验证**（把「报告从 store 读回」改成空记录集） | `document-translation.test.ts` **10 条里 6 条红** ⇒ 新用例不是空跑 |
+| 性质                                                | 读数                                                                                                                                                                                            |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 段落身份稳定 + 报告 = 落盘真相                      | 列表与**手读盘**的记录逐条同状态；`checkpointPath` 就是那个文件；`translated+reused+failed+skipped == paragraphCount`                                                                           |
+| 续跑不重发                                          | 第二次运行 **0 次请求**、`reused=2/translated=0`、`restored={partial, records}`，且译文仍是**第一次**那份（第二次替身会答 `译2:…`，出现即说明重发过）                                           |
+| 文档文本改了                                        | `restored={state:'none', reason:'source-content-changed'}`（具名「没有续跑及其原因」），两段都重发                                                                                              |
+| 换 docId 同内容                                     | `restored={state:'none', reason:'no-checkpoint'}`、`reused=0` ⇒ checkpoint 按文档身份隔离                                                                                                       |
+| 中途停机                                            | `stopped='requested'`、`skipped=2`，未触及的两段各带 `status='failed'` + `reason='not-attempted'`                                                                                               |
+| 失败段落                                            | `failed=[{id:'p1#1',reason:'http-error (500): model endpoint unavailable'}]`，下次重跑**重新发它**                                                                                              |
+| 空文本层页                                          | `emptyPages=[2]`、该页不产出段落                                                                                                                                                                |
+| checkpoint 存在但读不出                             | `restored={state:'none', reason:'unreadable', detail:'invalid-json'}` ⇒「读失败」与「还没翻」分开命名，并当轮重译修好                                                                           |
+| **拒绝**：没有模型端点                              | `{ok:false, reason:'not-configured'}`、**一次请求都没发**、盘上**没有**任何文件（不是一个空 checkpoint）                                                                                        |
+| **拒绝**：整份没有段落                              | `{ok:false, reason:'empty-source'}`、0 请求、盘上无文件                                                                                                                                         |
+| 端点解析（`resolveAuxiliaryChatTarget`）            | 未配置 ⇒ `undefined`；官方 DeepSeek 活跃 ⇒ `https://api.deepseek.com/v1/chat/completions` + 活跃模型 + 明文 key；自建网关根 ⇒ `https://gw.example.com/v1/chat/completions`（无 key 就不带 key） |
+| 工具面                                              | 7 个工具注册齐（原 6 + `pdf_translate`）；只传 `doc_id` 时**不带任何调用方没给的选项**；`target_language` 原样透传                                                                              |
+| **变异验证**（把「报告从 store 读回」改成空记录集） | `document-translation.test.ts` **10 条里 6 条红** ⇒ 新用例不是空跑                                                                                                                              |
 
 ## 四 门禁读数（取最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 `vitest`（translation + shared translation-units/pdf-page-text/pdf + settings pdf-mcp-server/service/service.providers/ipc/pdf-ipc + notebook local-rpc-server） | **13 文件 / 415 passed**，exit 0 |
-| `tsc` node / web（`--composite false`） | **exit 0 / exit 0**（各自单独取退出码） |
-| `eslint --no-cache`（本批 11 个文件） | **0 error**；`src/main/ipc.ts:2064` 的 1 条 prettier 警告是 **HEAD 上既有的漂移**（`git show HEAD:src/main/ipc.ts` 交 prettier 就不合格，且不在本批 hunk 里）⇒ 不并入本批 |
-| `prettier --check`（本批 11 文件） | CLEAN（先跑出 2 文件未格式化，`--write` 后就地修掉） |
-| 全量 `vitest` / `pre-push-checks` / 隔离门禁 | 见本轮汇报（门禁在**本提交的隔离工作树**上跑） |
+| 环                                                                                                                                                                    | 读数                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 `vitest`（translation + shared translation-units/pdf-page-text/pdf + settings pdf-mcp-server/service/service.providers/ipc/pdf-ipc + notebook local-rpc-server） | **13 文件 / 415 passed**，exit 0                                                                                                                                          |
+| `tsc` node / web（`--composite false`）                                                                                                                               | **exit 0 / exit 0**（各自单独取退出码）                                                                                                                                   |
+| `eslint --no-cache`（本批 11 个文件）                                                                                                                                 | **0 error**；`src/main/ipc.ts:2064` 的 1 条 prettier 警告是 **HEAD 上既有的漂移**（`git show HEAD:src/main/ipc.ts` 交 prettier 就不合格，且不在本批 hunk 里）⇒ 不并入本批 |
+| `prettier --check`（本批 11 文件）                                                                                                                                    | CLEAN（先跑出 2 文件未格式化，`--write` 后就地修掉）                                                                                                                      |
+| 全量 `vitest` / `pre-push-checks` / 隔离门禁                                                                                                                          | 见本轮汇报（门禁在**本提交的隔离工作树**上跑）                                                                                                                            |
 
 ## 五 刻意的边界（不许读成「已做」）
 

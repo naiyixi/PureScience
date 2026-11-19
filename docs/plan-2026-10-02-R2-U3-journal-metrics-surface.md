@@ -7,16 +7,16 @@
 
 ## 0. 现状（读自当前 HEAD，不是猜）
 
-| 事实 | 位置 |
-| --- | --- |
-| `JournalRepository` **没有期刊级读路径**（只有 `listMetrics(journalId)` 单刊） | `src/main/references/journal-repository.ts:221`；`upsertBy*`/`resolveJournal`/`appendMetric`/`findMetric` 之外无 list |
-| 期刊是**存储根级**实体，不挂项目 | `ipc.ts:127-132` 的 `createDefaultJournalRepository`；`importJournalMetrics` 签名**不带** projectId（`ipc.ts:68`） |
-| 引文库界面是「一个对话框 + 若干 section 条件渲染」，不是多 tab | `src/renderer/src/components/references/ReferencesLibraryDialog.tsx:919-1263`（单 `<section>`）；筛选面按 `showScreening && selectedCollectionId !== null` 条件挂载（`:1111-1122`） |
-| 切换开关的既有形状 | `showScreening` 状态 `:176`、按钮 `aria-pressed` `:930-932`、切换时重置 `:297` |
-| i18n 键前缀惯例 | `references.screening.*`（`i18n/zh.ts`）；9 个语言文件（de/en/es/fr/ja/ko/ru/zh/zh-Hant）+ `i18n/pending-translations/{de,es,fr,ja,ko,ru,zh-Hant}.pending.json` |
-| 契约连锁（加一条通道会动到的计数测试） | `application-command-composition.test.ts`（342/340/221）、`renderer-contract-catalog.test.ts`（453）、`renderer-surface-inventory.test.ts`、`preload/index.test.ts`（core 223 / requests 185）、`renderer-argument-shape-characterization.test.ts`、`screening-ipc.test.ts` |
-| 归档决策必须清出 | `src/shared/entry-layer-archived-surfaces.ts:98` 一条（`references.importJournalMetrics`）——注释已写明「U3 接上后该条必须在 honesty 测试里被清出」 |
-| 生成物 | `npm run gen:web-api-map`（`src/shared/web-api-map.generated.ts`，须幂等） |
+| 事实                                                                           | 位置                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JournalRepository` **没有期刊级读路径**（只有 `listMetrics(journalId)` 单刊） | `src/main/references/journal-repository.ts:221`；`upsertBy*`/`resolveJournal`/`appendMetric`/`findMetric` 之外无 list                                                                                                                                                       |
+| 期刊是**存储根级**实体，不挂项目                                               | `ipc.ts:127-132` 的 `createDefaultJournalRepository`；`importJournalMetrics` 签名**不带** projectId（`ipc.ts:68`）                                                                                                                                                          |
+| 引文库界面是「一个对话框 + 若干 section 条件渲染」，不是多 tab                 | `src/renderer/src/components/references/ReferencesLibraryDialog.tsx:919-1263`（单 `<section>`）；筛选面按 `showScreening && selectedCollectionId !== null` 条件挂载（`:1111-1122`）                                                                                         |
+| 切换开关的既有形状                                                             | `showScreening` 状态 `:176`、按钮 `aria-pressed` `:930-932`、切换时重置 `:297`                                                                                                                                                                                              |
+| i18n 键前缀惯例                                                                | `references.screening.*`（`i18n/zh.ts`）；9 个语言文件（de/en/es/fr/ja/ko/ru/zh/zh-Hant）+ `i18n/pending-translations/{de,es,fr,ja,ko,ru,zh-Hant}.pending.json`                                                                                                             |
+| 契约连锁（加一条通道会动到的计数测试）                                         | `application-command-composition.test.ts`（342/340/221）、`renderer-contract-catalog.test.ts`（453）、`renderer-surface-inventory.test.ts`、`preload/index.test.ts`（core 223 / requests 185）、`renderer-argument-shape-characterization.test.ts`、`screening-ipc.test.ts` |
+| 归档决策必须清出                                                               | `src/shared/entry-layer-archived-surfaces.ts:98` 一条（`references.importJournalMetrics`）——注释已写明「U3 接上后该条必须在 honesty 测试里被清出」                                                                                                                          |
+| 生成物                                                                         | `npm run gen:web-api-map`（`src/shared/web-api-map.generated.ts`，须幂等）                                                                                                                                                                                                  |
 
 ## 1. 设计决策（先把会漂移的口径钉死）
 
@@ -62,15 +62,15 @@
 
 ## 3. 验收（真机/真文件，逐条；单测不算）
 
-| 判据 | 怎么取 |
-| --- | --- |
-| **按「一区」筛选结果正确** | 隔离实例里先用**导入命令**造数据（分区 `一区`/`二区` 各若干、影响因子数值与不可比值各若干），再走真实 RPC 读回视图；断言筛选结果集逐个名字正确 |
-| **无指标期刊显示「未知」** | 造一个只有名字、没有任何指标行的期刊 ⇒ 面板与视图均为「未知」，**且不为 0、不为空串** |
-| **同一期刊多年指标能区分年份** | 同刊写两年影响因子 ⇒ 视图取最大年份并**显示该年份**；展开/另一年份读数可分辨 |
-| 数字不可比不得当 0 | 造 `value='n/a'`（须有 year＋source 才能入库）⇒ 数字筛选中归入 `value-not-numeric` 排除计数，**且计数行显示出来** |
-| 计数对账 | `matched + excluded + missing = total`，真机读数逐项相等 |
+| 判据                           | 怎么取                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **按「一区」筛选结果正确**     | 隔离实例里先用**导入命令**造数据（分区 `一区`/`二区` 各若干、影响因子数值与不可比值各若干），再走真实 RPC 读回视图；断言筛选结果集逐个名字正确   |
+| **无指标期刊显示「未知」**     | 造一个只有名字、没有任何指标行的期刊 ⇒ 面板与视图均为「未知」，**且不为 0、不为空串**                                                            |
+| **同一期刊多年指标能区分年份** | 同刊写两年影响因子 ⇒ 视图取最大年份并**显示该年份**；展开/另一年份读数可分辨                                                                     |
+| 数字不可比不得当 0             | 造 `value='n/a'`（须有 year＋source 才能入库）⇒ 数字筛选中归入 `value-not-numeric` 排除计数，**且计数行显示出来**                                |
+| 计数对账                       | `matched + excluded + missing = total`，真机读数逐项相等                                                                                         |
 | **面板级读数**（不是只看服务） | 照 R4-U4 的先例加一条认证 spec（真窗口、走界面自己的入口、读渲染出来的 DOM）：隔离实例 ＋ 真库，读出「一区」筛选后的行、「未知」文本、年份与来源 |
-| 无空壳 | 面板必须有真交互闭环（筛选控件改变结果、空结果给具名解释），**禁**只读死的占位表 |
+| 无空壳                         | 面板必须有真交互闭环（筛选控件改变结果、空结果给具名解释），**禁**只读死的占位表                                                                 |
 
 隔离与清理口径同上一片：`PURESCIENCE_STORAGE_ROOT=/tmp/<新>` ＋ `settings.json` 里绝对 `dataRoot` ＋ 独立 `PURESCIENCE_WEB_PORT`；
 收尾停进程、确认端口无监听、删临时目录、`git status` 干净。真实根只读。
@@ -94,7 +94,7 @@
   - 按「一区」：命中 Nature ＋ 中华医学杂志；二区计 `notMatching`、无分区主张计 `missingMetric`，`2+2+1+0=5`；
   - 影响因子 ≥ 10：命中 2 本；**`n/a` 的那本计 `valueNotNumeric`，绝不当 0 也绝不参与比较**；
   - 限定 2022：同刊取到 62.1(2022)，不限定则取 64.8(2023) ⇒ 多年可分辨。
-  全文 `docs/evidence/2026-10-02-r2-u3-journal-metrics-surface.md` ＋ 逐字原文 `…-raw.txt` ＋ 探针/夹具。
+    全文 `docs/evidence/2026-10-02-r2-u3-journal-metrics-surface.md` ＋ 逐字原文 `…-raw.txt` ＋ 探针/夹具。
 - **未取（具名）**：**真实窗口的面板 DOM 读数**——只有组件级渲染用例与真机数据路径读数；
   要取需一条认证 spec（真 Electron 窗口 ＋ 夹具数据根），本片未做，如实记为待取证。
 - **本片实测到的既有缺口（立案）**：`Journal` 实体**只存 `normalizedName`**，面板只能显示规范化名（读数里可见 `nature` 全小写）；

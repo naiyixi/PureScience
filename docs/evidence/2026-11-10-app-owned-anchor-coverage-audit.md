@@ -8,12 +8,12 @@
 
 ## 二 入口清单（生产代码，`grep -rn "suppressUserMessage" src/ --include=*.ts`，排除测试）
 
-| 入口 | 位置 | 锚点来源 | 重启后是否仍可用 |
-| --- | --- | --- | --- |
-| 后台投递回合 | `src/main/ipc.ts:1820` → `background-delivery/owner.ts:216` `promptAnchorFor` | 投递结果写入**之后**从会话图解析（`resolveInheritablePromptContext`） | ✅ 用持久图，不依赖进程内表 |
-| 中断回合续跑 | `src/main/acp/interrupted-turn-continuation.ts:71` `resolveProvenanceContext` | 从 `session.conversationGraph` 取 `getActiveConversationContext(promptMessageId)` | ✅ 持久图；context-reset 时改挂目标 Runtime Segment |
-| 筛选 / 受限推理 / 产物代码重建 / handoff 续写 / reviewer | `screening-model-runner.ts:220`、`restricted-inference-runner.ts:264`、`artifact-code-reconstruction-runner.ts:300`、`handoff-continuity-owner.ts:128`、reviewer 驱动 | 派发处继承本进程最近一条用户 Prompt（`runtime-coordinator.ts:714`） | ⚠️ 进程内；这些入口都由**正在进行的回合**触发，重启后不会自己发起 |
-| 兜底 | `runtime-coordinator.ts:736` | 铸 `prompt-<uuid>`，每会话一条具名 `warn`（`consequence: 'prompt-not-owned'`） | 终态，且**已具名**——不属于「静默丢产物」 |
+| 入口                                                     | 位置                                                                                                                                                                  | 锚点来源                                                                          | 重启后是否仍可用                                                  |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 后台投递回合                                             | `src/main/ipc.ts:1820` → `background-delivery/owner.ts:216` `promptAnchorFor`                                                                                         | 投递结果写入**之后**从会话图解析（`resolveInheritablePromptContext`）             | ✅ 用持久图，不依赖进程内表                                       |
+| 中断回合续跑                                             | `src/main/acp/interrupted-turn-continuation.ts:71` `resolveProvenanceContext`                                                                                         | 从 `session.conversationGraph` 取 `getActiveConversationContext(promptMessageId)` | ✅ 持久图；context-reset 时改挂目标 Runtime Segment               |
+| 筛选 / 受限推理 / 产物代码重建 / handoff 续写 / reviewer | `screening-model-runner.ts:220`、`restricted-inference-runner.ts:264`、`artifact-code-reconstruction-runner.ts:300`、`handoff-continuity-owner.ts:128`、reviewer 驱动 | 派发处继承本进程最近一条用户 Prompt（`runtime-coordinator.ts:714`）               | ⚠️ 进程内；这些入口都由**正在进行的回合**触发，重启后不会自己发起 |
+| 兜底                                                     | `runtime-coordinator.ts:736`                                                                                                                                          | 铸 `prompt-<uuid>`，每会话一条具名 `warn`（`consequence: 'prompt-not-owned'`）    | 终态，且**已具名**——不属于「静默丢产物」                          |
 
 **判决**：`fcc2bb4b` 之后，重启后能自己发起的两条路径（投递、中断续跑）都从持久图取锚点；其余入口
 要么在进程内（有表可用），要么落在具名兜底上。台账 §299 §四 ③ 那条「按即将使用的 Segment 取锚点」**不需要立**：

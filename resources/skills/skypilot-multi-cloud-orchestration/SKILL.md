@@ -1,6 +1,7 @@
 ---
 name: skypilot-multi-cloud-orchestration
 description: Multi-cloud orchestration for ML workloads with automatic cost optimization. Use when you need to run training or batch jobs across multiple clouds, leverage spot instances with auto-recovery, or optimize GPU costs across providers.
+description-zh: 机器学习负载的多云编排，自动优化成本：跨多个云跑训练与批处理，利用抢占实例并自动恢复。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

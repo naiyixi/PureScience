@@ -1,6 +1,7 @@
 ---
 name: market-research-reports
 description: Builds evidence-traceable market research reports and assumption-driven market sizing or forecast scenarios. Use for market definition, industry and customer evidence, competitive landscapes, TAM/SAM/SOM reconciliation, forecast sensitivity, and auditable report scaffolds.
+description-zh: 产出证据可追溯的市场研究报告，以及由假设驱动的市场规模与预测情景：市场定义、行业与客户证据、竞争格局。
 license: MIT
 compatibility: Python 3.11+ standard library for optional offline CLIs. The optional LaTeX template uses XeLaTeX or LuaLaTeX. Online research requires user-approved network access and source-specific terms; bundled scripts make no network, LLM, or image calls.
 metadata:

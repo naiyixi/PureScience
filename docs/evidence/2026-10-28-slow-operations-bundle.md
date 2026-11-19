@@ -17,17 +17,17 @@
 
 数据源：`logs/headless.out.log`（`~/purescience/logs/`，本次未写入）。
 
-| 读数 | 值 |
-|---|---|
-| 文件大小 / 行数 | **77,191,907 B / 3,754,483 行** |
-| 日志内启动次数（按每次启动都打印的 `PureScience Web:` 切分） | **224** |
-| 支援包的日志上限（`DEFAULT_MAX_LOG_BYTES`） | **8 MB** |
-| 8 MB 窗口覆盖到的启动次数 | **29 / 224（13 %）** |
-| `[ipc] ipc handler was slow` 记录的条数 | **3,005** |
-| 其中落在最新 8 MB 之内的 | **276（9.2 %）** ⇒ **2,729 条慢调用行随包一起发不出去** |
-| 慢调用耗时 p50 / p90 / 最大 | **315 ms / 14,550 ms / 2,507,409 ms** |
-| 已带 `heldMs` 的行 | **2**（拆分是最近才落地的，旧行没有这个词） |
-| 最常出现的慢通道 | `acp:get-plan-projection` 727、`sessions:save-session` 400、`sessions:list-catalog` 280、`settings:get-preflight` 198、`settings:npm-available` 197、`storage:get-info` 190、`notebook:state` 116、`settings:get-settings` 109 |
+| 读数                                                         | 值                                                                                                                                                                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 文件大小 / 行数                                              | **77,191,907 B / 3,754,483 行**                                                                                                                                                                                                |
+| 日志内启动次数（按每次启动都打印的 `PureScience Web:` 切分） | **224**                                                                                                                                                                                                                        |
+| 支援包的日志上限（`DEFAULT_MAX_LOG_BYTES`）                  | **8 MB**                                                                                                                                                                                                                       |
+| 8 MB 窗口覆盖到的启动次数                                    | **29 / 224（13 %）**                                                                                                                                                                                                           |
+| `[ipc] ipc handler was slow` 记录的条数                      | **3,005**                                                                                                                                                                                                                      |
+| 其中落在最新 8 MB 之内的                                     | **276（9.2 %）** ⇒ **2,729 条慢调用行随包一起发不出去**                                                                                                                                                                        |
+| 慢调用耗时 p50 / p90 / 最大                                  | **315 ms / 14,550 ms / 2,507,409 ms**                                                                                                                                                                                          |
+| 已带 `heldMs` 的行                                           | **2**（拆分是最近才落地的，旧行没有这个词）                                                                                                                                                                                    |
+| 最常出现的慢通道                                             | `acp:get-plan-projection` 727、`sessions:save-session` 400、`sessions:list-catalog` 280、`settings:get-preflight` 198、`settings:npm-available` 197、`storage:get-info` 190、`notebook:state` 116、`settings:get-settings` 109 |
 
 **这组数字只证明「前提成立」**：这类记录在真机上大量存在，而按字节上限走的包里几乎没有。它**不**证明新的
 那一段已经被真机归档出来（见 §五 边界）。
@@ -39,24 +39,24 @@
 
 ## 三 交付
 
-| 位置 | 改动 |
-|---|---|
+| 位置                                                | 改动                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/diagnostics/slow-operation-ring.ts`（新） | 有界环（24 条）：`observed` / `dropped` / `capacity` 三个数分开答；`status` 在空时具名为 `no-slow-operations-observed`；`at` 记墙钟，最新在末尾。写入前归一：**只保留真正测到的字段**，`heldUnmeasured: 'windows-dropped'` 这种具名缺态必须存活（拍平成 0 会被读成「循环没被占住」），而 `cpuShare: 0` 这种**测到的零**也必须保留（它是一句读数，不是缺测） |
-| `src/main/diagnostics/ipc-rejection.ts` | 新增 `slowOperationSink` 接缝，**默认写共享环**；CPU 一次采样同时喂日志行与环（两次 `process.cpuUsage()` 会描述两个窗口，两处就会各说一套） |
-| `src/main/application-command-router.ts` | 同上：`report()` 里对 `slow-handler` / `handler-rejected` 且**耗时过阈值**的记录入环。阈值不能省 —— 路由对每次抛错都报 `handler-rejected`，不过阈值的那条不该进一个叫「慢」的文件 |
-| `src/main/diagnostics/support-bundle.ts` | 新增**必填** `slowOperations`，写 `diagnostics/slow-operations.json`，README 里写明这一段是什么（含计数含义） |
-| `src/main/ipc.ts` | 组合根的包事实里追加 `slowOperations: sharedSlowOperations.summary()`（写进环却没人读＝用户永远收不到） |
+| `src/main/diagnostics/ipc-rejection.ts`             | 新增 `slowOperationSink` 接缝，**默认写共享环**；CPU 一次采样同时喂日志行与环（两次 `process.cpuUsage()` 会描述两个窗口，两处就会各说一套）                                                                                                                                                                                                                 |
+| `src/main/application-command-router.ts`            | 同上：`report()` 里对 `slow-handler` / `handler-rejected` 且**耗时过阈值**的记录入环。阈值不能省 —— 路由对每次抛错都报 `handler-rejected`，不过阈值的那条不该进一个叫「慢」的文件                                                                                                                                                                           |
+| `src/main/diagnostics/support-bundle.ts`            | 新增**必填** `slowOperations`，写 `diagnostics/slow-operations.json`，README 里写明这一段是什么（含计数含义）                                                                                                                                                                                                                                               |
+| `src/main/ipc.ts`                                   | 组合根的包事实里追加 `slowOperations: sharedSlowOperations.summary()`（写进环却没人读＝用户永远收不到）                                                                                                                                                                                                                                                     |
 
 ## 四 门禁读数（全部实跑，数字取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 定向：`src/main/diagnostics` + `application-command-router.test.ts` + `ipc-startup-attribution.test.ts`（`--maxWorkers=1`） | **24 files / 191 passed**，EXIT 0 |
-| 新增/扩写用例 | 环 4 条、默认接线 3 条（IPC 默认环、命令默认环、组合根↔包源码链）、IPC 生产者 2 条（同源同一测量 / sink 抛错不改结果）、命令生产者 1 条（慢记录、**快速抛错不记录**、慢抛错带 `code`）、支援包 2 条（带拆分与计数 / 空态具名） |
-| 变异自证 4 次 | ① IPC 默认 sink 改空操作 → **1 红**；② 路由去掉耗时阈值 → **1 红**（补了「快速抛错不入环」用例之后）；③ 包段改名为不存在的文件 → **2 红**；④ 环归一里删掉 `heldUnmeasured` 传递 → **1 红**。每次都只咬住守它的那一条，改完复原 |
-| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
-| `eslint --no-cache`（本笔 11 文件） | **0 error / 0 warning**（prettier 的 5 条 warning 已用 `--write` 消掉，复检全过） |
-| 全量 vitest | 见 §六（本机 swap 已用 10,298/11,264 MB、空闲页 ~4,015（≈63 MB）⇒ 按 `--maxWorkers=2` 跑，读数以日志为准） |
+| 环                                                                                                                          | 读数                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 定向：`src/main/diagnostics` + `application-command-router.test.ts` + `ipc-startup-attribution.test.ts`（`--maxWorkers=1`） | **24 files / 191 passed**，EXIT 0                                                                                                                                                                                              |
+| 新增/扩写用例                                                                                                               | 环 4 条、默认接线 3 条（IPC 默认环、命令默认环、组合根↔包源码链）、IPC 生产者 2 条（同源同一测量 / sink 抛错不改结果）、命令生产者 1 条（慢记录、**快速抛错不记录**、慢抛错带 `code`）、支援包 2 条（带拆分与计数 / 空态具名） |
+| 变异自证 4 次                                                                                                               | ① IPC 默认 sink 改空操作 → **1 红**；② 路由去掉耗时阈值 → **1 红**（补了「快速抛错不入环」用例之后）；③ 包段改名为不存在的文件 → **2 红**；④ 环归一里删掉 `heldUnmeasured` 传递 → **1 红**。每次都只咬住守它的那一条，改完复原 |
+| 双 typecheck（`--composite false`，堆 8192）                                                                                | node **0**；web **0**                                                                                                                                                                                                          |
+| `eslint --no-cache`（本笔 11 文件）                                                                                         | **0 error / 0 warning**（prettier 的 5 条 warning 已用 `--write` 消掉，复检全过）                                                                                                                                              |
+| 全量 vitest                                                                                                                 | 见 §六（本机 swap 已用 10,298/11,264 MB、空闲页 ~4,015（≈63 MB）⇒ 按 `--maxWorkers=2` 跑，读数以日志为准）                                                                                                                     |
 
 ## 五 边界（不许读成更强）
 

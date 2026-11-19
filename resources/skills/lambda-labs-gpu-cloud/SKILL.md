@@ -1,6 +1,7 @@
 ---
 name: lambda-labs-gpu-cloud
 description: Reserved and on-demand GPU cloud instances for ML training and inference. Use when you need dedicated GPU instances with simple SSH access, persistent filesystems, or high-performance multi-node clusters for large-scale training.
+description-zh: 预留与按需的 GPU 云实例，用于机器学习训练与推理：简单的 SSH 接入、持久文件系统与高性能多卡实例。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

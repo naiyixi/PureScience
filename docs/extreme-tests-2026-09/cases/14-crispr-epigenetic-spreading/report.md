@@ -9,15 +9,15 @@
 
 ## 0. 执行摘要与声明判定
 
-**被审查方案声称：** *"利用 dCas9-DNMT3A-DNMT3L 融合蛋白靶向甲基化沉默某癌基因启动子处的特定 CpG 岛（约 250 bp），通过短暂脉冲式表达（瞬转 48 小时），即可在该位点建立**永久可遗传的转录抑制**；该编辑**高度精准**，甲基化标记**绝对严格限制**在 gRNA 靶向的 250 bp 窗内，**绝不会**扩散至相邻抑癌基因或引发临近染色质构象异变。"*
+**被审查方案声称：** _"利用 dCas9-DNMT3A-DNMT3L 融合蛋白靶向甲基化沉默某癌基因启动子处的特定 CpG 岛（约 250 bp），通过短暂脉冲式表达（瞬转 48 小时），即可在该位点建立**永久可遗传的转录抑制**；该编辑**高度精准**，甲基化标记**绝对严格限制**在 gRNA 靶向的 250 bp 窗内，**绝不会**扩散至相邻抑癌基因或引发临近染色质构象异变。"_
 
 模拟与机理审查的核心结论：**该方案的三项主张相互矛盾，无法同时成立。**
 
-| # | 声称 | 判定 | 依据（本报告/模拟） |
-|---|------|------|----------------------|
-| 1 | 短暂脉冲即可建立"永久"可遗传抑制 | **部分成立、位点依赖、不可泛化** | 能否持久是"表观遗传双稳态"的结果：只有把位点推过临界核并完成 H3K9me3/HP1 异染色质"成熟"，抑制才可遗传；在 TET 擦除/维持不足的环境中，编辑会在约 10 代内回退（Fig.1A、Fig.2）。"永久"不是脉冲本身带来的性质 |
-| 2 | 甲基化严格限制于 250 bp gRNA 窗 | **不成立** | ① dCas9-甲基转移酶的 de novo 足迹本身跨越多个核小体（模型按 ~1 kb 窗口建模合理）；② 维持一旦建立，甲基化-H3K9 正反馈波前会沿染色质传播，**不存在"只维持、不扩散"的稳健参数窗**（Fig.2C）；③ WGBS 实测表明此类编辑器存在大量**远端非靶甲基化沉积**，且与 gRNA 结合位点仅弱相关——扩散来自催化域活性本身 |
-| 3 | 绝不扩散至相邻/远端基因，不改变构象 | **不成立** | ① 同 TAD 内线性相距 >50 kb 的启动子若与该岛有高频 3D 环碰撞，会在**第 2 代**即被"跳跃式"殖民（无环时线性波前需 ~18 代，Fig.3A）；② 波前约 7 代填满整个 TAD_A（Fig.1B）；③ CTCF 绝缘存在渗漏：绝缘强度 β<≈0.70 时约第 17 代突破边界、第 33 代全 TAD_B 沉默（Fig.1C、Fig.3B）。沉默本身就伴随染色质状态与拓扑接触的重排 |
+| #   | 声称                                | 判定                             | 依据（本报告/模拟）                                                                                                                                                                                                                                                                                                   |
+| --- | ----------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 短暂脉冲即可建立"永久"可遗传抑制    | **部分成立、位点依赖、不可泛化** | 能否持久是"表观遗传双稳态"的结果：只有把位点推过临界核并完成 H3K9me3/HP1 异染色质"成熟"，抑制才可遗传；在 TET 擦除/维持不足的环境中，编辑会在约 10 代内回退（Fig.1A、Fig.2）。"永久"不是脉冲本身带来的性质                                                                                                            |
+| 2   | 甲基化严格限制于 250 bp gRNA 窗     | **不成立**                       | ① dCas9-甲基转移酶的 de novo 足迹本身跨越多个核小体（模型按 ~1 kb 窗口建模合理）；② 维持一旦建立，甲基化-H3K9 正反馈波前会沿染色质传播，**不存在"只维持、不扩散"的稳健参数窗**（Fig.2C）；③ WGBS 实测表明此类编辑器存在大量**远端非靶甲基化沉积**，且与 gRNA 结合位点仅弱相关——扩散来自催化域活性本身                 |
+| 3   | 绝不扩散至相邻/远端基因，不改变构象 | **不成立**                       | ① 同 TAD 内线性相距 >50 kb 的启动子若与该岛有高频 3D 环碰撞，会在**第 2 代**即被"跳跃式"殖民（无环时线性波前需 ~18 代，Fig.3A）；② 波前约 7 代填满整个 TAD_A（Fig.1B）；③ CTCF 绝缘存在渗漏：绝缘强度 β<≈0.70 时约第 17 代突破边界、第 33 代全 TAD_B 沉默（Fig.1C、Fig.3B）。沉默本身就伴随染色质状态与拓扑接触的重排 |
 
 **一句话结论：** "精准、永久、封闭"三者共用同一条分子通路——甲基化→MBD→H3K9me3→HP1/UHRF1→DNMT1 的**自促正反馈**。让编辑**持久**所需的正是让它**扩散**的那套机器；因此现实结局只在两极之间摇摆：**要么回退失效，要么波前扩散并（依边界强度）演变为 TAD/跨 TAD 沉默**。
 
@@ -87,11 +87,13 @@
 ### 4.1 模型结构
 
 100 个串联染色质位点（bin，粗粒化 ~核小体尺度），含：
+
 - **TAD_A**：bin 0–65，其中 gRNA 靶 CpG 岛在 bin 46–55（按 dCas9-DNMT3A 足迹跨越 ~1 kb、约 5–9 个核小体尺度建模；250 bp 为 gRNA 识别窗，粗粒化后小于单 bin，模型把整段已编辑岛作为初始脉冲）；远端抑癌启动子（TSG）在 bin 14–22，与岛区间存在**强 3D 环接触**；
 - **CTCF 边界**在 bin 65/66 之间，绝缘强度 β（0=无，1=完全）统一缩放跨越边界的线性过程性与 3D 接触；
 - **TAD_B**：bin 66–99，其中管家基因启动子在 bin 80–89。
 
 每位点两个连续变量（均在 [0,1]）：
+
 - x_i：DNA CpG 甲基化密度；
 - y_i：H3K9me2/3"异染色质标志"密度（承载 HP1/UHRF1 招募与维持记忆）。
 
@@ -122,29 +124,29 @@ x_i  ←  x_i · { m_lo + (m_hi − m_lo) · Hill(y_i; m_thr) }
 
 ### 4.2 参数
 
-| 符号 | 含义 | 取值 |
-|---|---|---|
-| N | 晶格长度 | 100 |
-| w_self / w_nn / w_3d | 自身 / 近邻过程核(±3 bin, 权重 1/0.6/0.35/0.2) / 3D 接触通道权重 | 0.25 / 0.35 / 0.40 |
-| w_his0 | H3K9→DNMT1 反馈系数（×η） | 0.50 |
-| θx / θy / k_m | 甲基化驱动阈值 / H3K9 阈值 / 最大写入速率 | 0.66 / 0.34 / 2.2 (代⁻¹) |
-| τ_y | H3K9 成熟时间 | 3.0 代 |
-| m_lo / m_hi_max | 无 H3K9 / 有 H3K9 时每代维持存活率 | 0.72 / 0.985 |
-| γ_TET | TET 主动去甲基化（擦除） | 场景参数 |
-| η (gain) | 维持-反馈增益（×w_his、抬高 m_hi 上限） | 场景参数 |
-| β | CTCF 绝缘强度 | 场景参数 |
-| 环强度 / λ | TSG-岛环接触 / 3D 接触衰减长度 | 6.0 / 8 bins |
-| dt | 欧拉步长（每代 20 子步） | 0.05 |
+| 符号                 | 含义                                                             | 取值                     |
+| -------------------- | ---------------------------------------------------------------- | ------------------------ |
+| N                    | 晶格长度                                                         | 100                      |
+| w_self / w_nn / w_3d | 自身 / 近邻过程核(±3 bin, 权重 1/0.6/0.35/0.2) / 3D 接触通道权重 | 0.25 / 0.35 / 0.40       |
+| w_his0               | H3K9→DNMT1 反馈系数（×η）                                        | 0.50                     |
+| θx / θy / k_m        | 甲基化驱动阈值 / H3K9 阈值 / 最大写入速率                        | 0.66 / 0.34 / 2.2 (代⁻¹) |
+| τ_y                  | H3K9 成熟时间                                                    | 3.0 代                   |
+| m_lo / m_hi_max      | 无 H3K9 / 有 H3K9 时每代维持存活率                               | 0.72 / 0.985             |
+| γ_TET                | TET 主动去甲基化（擦除）                                         | 场景参数                 |
+| η (gain)             | 维持-反馈增益（×w_his、抬高 m_hi 上限）                          | 场景参数                 |
+| β                    | CTCF 绝缘强度                                                    | 场景参数                 |
+| 环强度 / λ           | TSG-岛环接触 / 3D 接触衰减长度                                   | 6.0 / 8 bins             |
+| dt                   | 欧拉步长（每代 20 子步）                                         | 0.05                     |
 
 所有速率无量纲，按"每细胞世代"计；粗粒化参数为机制示意而非湿实验标定。确定性 ODE（脚本含可选分裂噪声参数 `--noise`）。
 
 ### 4.3 标准场景与关键结果（T=70 代）
 
-| 场景 | γ_TET | η | β | 终态岛区 | 终态 TSG | 终态 TAD_A | 终态 TAD_B | t(TSG) | t(TAD_B) |
-|---|---|---|---|---|---|---|---|---|---|
-| **I 回退**（编辑失效） | 0.65 | 0.50 | 0.82 | 0.00 | 0.00 | 0.00 | 0.00 | — | — |
-| **II 域内波前**（TAD_A 全沉默+环伙伴失守） | 0.30 | 1.0 | 0.82 | 0.845 | 0.845 | 0.845 | 0.000 | 2 | ∞(>200) |
-| **III 跨边界**（全 TAD_B 延迟沉默） | 0.30 | 1.0 | 0.60 | 0.845 | 0.845 | 0.845 | 0.845 | 2 | 17 |
+| 场景                                       | γ_TET | η    | β    | 终态岛区 | 终态 TSG | 终态 TAD_A | 终态 TAD_B | t(TSG) | t(TAD_B) |
+| ------------------------------------------ | ----- | ---- | ---- | -------- | -------- | ---------- | ---------- | ------ | -------- |
+| **I 回退**（编辑失效）                     | 0.65  | 0.50 | 0.82 | 0.00     | 0.00     | 0.00       | 0.00       | —      | —        |
+| **II 域内波前**（TAD_A 全沉默+环伙伴失守） | 0.30  | 1.0  | 0.82 | 0.845    | 0.845    | 0.845      | 0.000      | 2      | ∞(>200)  |
+| **III 跨边界**（全 TAD_B 延迟沉默）        | 0.30  | 1.0  | 0.60 | 0.845    | 0.845    | 0.845      | 0.845      | 2      | 17       |
 
 补充关键数值（`simulation_metrics.json`）：
 
@@ -162,7 +164,7 @@ x_i  ←  x_i · { m_lo + (m_hi − m_lo) · Hill(y_i; m_thr) }
 ### 4.4 "何时塌陷、何时突破"的回答（任务 3 结论）
 
 - **塌陷回未甲基化**发生在两类情形：① **建立期竞争失利**——TET 擦除率相对高、且 H3K9 反馈增益不足（γ_TET 大、η 小），使岛区在异染色质成熟前被逐代稀释，约 10 代归零（Fig.1A/Fig.2A 的"回退"区）；② **亚临界脉冲**——初始被编辑核的宽度/甲基化密度不足以越过临界核，即使参数本身允许双稳，种子也只会收缩（Fig.2C）。等价表述：**双稳系统的"低吸引子"盆地**。
-- **突破绝缘边界、全 TAD 沉默**发生在维持-反馈占优（γ_TET 小、η≈1）且边界渗漏不可忽略时：波前约 7 代填满 TAD_A，环伙伴 2 代即被殖民，跨 TAD_B 边界在第 17 代起逐步填充至 33 代（Fig.1C）。**β*≈0.70** 是边界能否在 200 代内"暂时"封住灾难的分界；超过 β* 只是把灾难限制在 TAD_A 内（Fig.2B）。
+- **突破绝缘边界、全 TAD 沉默**发生在维持-反馈占优（γ_TET 小、η≈1）且边界渗漏不可忽略时：波前约 7 代填满 TAD_A，环伙伴 2 代即被殖民，跨 TAD_B 边界在第 17 代起逐步填充至 33 代（Fig.1C）。_*β*≈0.70_* 是边界能否在 200 代内"暂时"封住灾难的分界；超过 β* 只是把灾难限制在 TAD_A 内（Fig.2B）。
 - **双稳窗（Fig.2C 的本质）**：在 γ_TET ∈ (γ_down, γ_up) 区间，同一位点的最终结局取决于"是否被推过临界核 + 异染色质是否成熟"——即**同一种治疗在同一克隆群体中可能一部分细胞持久沉默、一部分回退**；这也是表观遗传药物/编辑常见的细胞异质性来源，应在安全性评估中显式建模。
 
 **图 2 · 结局相图与双稳/临界核曲线**（A：γ_TET × 维持增益 η（β=0.60）；B：γ_TET × CTCF 绝缘 β（η=1.0）；C：终态晶格甲基化 vs 初始脉冲宽度，竖虚线为临界核 w_c(γ)）：
@@ -215,28 +217,28 @@ x_i  ←  x_i · { m_lo + (m_hi − m_lo) · Hill(y_i; m_thr) }
 
 > **沉默强度**（要维持） ⟂ **扩散风险**（要抑制） ⟂ **边界/冗余**（承受面）——三者构成不可兼得的三角形。
 
-| 决策项 | 推荐 |
-|---|---|
+| 决策项   | 推荐                                                                    |
+| -------- | ----------------------------------------------------------------------- |
 | 靶点选址 | 仅选"与关键基因不同 TAD 且边界强 + 无高危环伙伴"者；Hi-C 审计前禁止入组 |
-| 效应器 | 单链 dCas9-DNMT3A-DNMT3L（低拷贝/短表达），先做 NTC 背景与扩散曲线 |
-| 边界 | 双侧 dCas9-TET1 反向围栏（可切换）；绝不编辑内源 CTCF |
-| 维持策略 | 接受"要么回退、要么域内沉默"的两极，不追求亚临界维持 |
-| 冗余 | 优先单倍型特异编辑保留功能拷贝 |
-| 监测 | 全 TAD WGBS/单细胞；出现扩散即触发 dTAG 清除 + DNMT 维持扰动 |
-| 审评指标 | 扩散半径（bp/代）、t(跨边界)、β 实测值 全部作为 PK/PD 终点 |
+| 效应器   | 单链 dCas9-DNMT3A-DNMT3L（低拷贝/短表达），先做 NTC 背景与扩散曲线      |
+| 边界     | 双侧 dCas9-TET1 反向围栏（可切换）；绝不编辑内源 CTCF                   |
+| 维持策略 | 接受"要么回退、要么域内沉默"的两极，不追求亚临界维持                    |
+| 冗余     | 优先单倍型特异编辑保留功能拷贝                                          |
+| 监测     | 全 TAD WGBS/单细胞；出现扩散即触发 dTAG 清除 + DNMT 维持扰动            |
+| 审评指标 | 扩散半径（bp/代）、t(跨边界)、β 实测值 全部作为 PK/PD 终点              |
 
 ---
 
 ## 6. 图件清单与渲染/审查说明
 
-| 文件 | 内容 |
-|---|---|
-| `fig1_methylation_heatmap.png` | 三行热图：纵轴 = 染色质位点 0–99，横轴 = dCas9 撤出后的细胞分裂代数；色彩 = CpG 甲基化密度（viridis, 0–1）。A：回退（~10 代崩解）；B：TAD_A 波前 + 远端 TSG 第 2 代环跳跃（β=0.82，TAD_B 受保护）；C：β=0.60 跨边界，第 17 代起 TAD_B 延迟沉默。彩色背景带标注靶岛/TSG/管家基因；虚线 = CTCF 边界 |
-| `fig2_regime_phase_diagram.png` | A：结局相图（γ_TET × 维持增益 η，β=0.60）；B：结局相图（γ_TET × CTCF 绝缘 β，η=1.0）；C：双稳态/临界核曲线——终态晶格甲基化 vs 初始脉冲宽度 w（不同 γ），竖虚线 = 临界核 w_c(γ) |
-| `fig3_spreading_timing.png` | A：远端 TSG 被殖民的时程——有环（跳跃，第 2 代）vs 无环（线性波前，第 18 代）；B：TAD_B 首次殖民时间 vs CTCF 绝缘 β（β*≈0.70 分界） |
-| `epigenetic_spreading_lattice_sim.py` | 独立可运行脚本（模型 + 场景 + 三图 + CLI），`python epigenetic_spreading_lattice_sim.py --outdir .` 全量复现 |
-| `scenario_trajectories.npz` | 三个标准场景 + 无环对照的逐代轨迹 |
-| `simulation_metrics.json` | 表 4.3 与 §4.3 的全部关键数值 |
+| 文件                                  | 内容                                                                                                                                                                                                                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fig1_methylation_heatmap.png`        | 三行热图：纵轴 = 染色质位点 0–99，横轴 = dCas9 撤出后的细胞分裂代数；色彩 = CpG 甲基化密度（viridis, 0–1）。A：回退（~10 代崩解）；B：TAD_A 波前 + 远端 TSG 第 2 代环跳跃（β=0.82，TAD_B 受保护）；C：β=0.60 跨边界，第 17 代起 TAD_B 延迟沉默。彩色背景带标注靶岛/TSG/管家基因；虚线 = CTCF 边界 |
+| `fig2_regime_phase_diagram.png`       | A：结局相图（γ_TET × 维持增益 η，β=0.60）；B：结局相图（γ_TET × CTCF 绝缘 β，η=1.0）；C：双稳态/临界核曲线——终态晶格甲基化 vs 初始脉冲宽度 w（不同 γ），竖虚线 = 临界核 w_c(γ)                                                                                                                    |
+| `fig3_spreading_timing.png`           | A：远端 TSG 被殖民的时程——有环（跳跃，第 2 代）vs 无环（线性波前，第 18 代）；B：TAD_B 首次殖民时间 vs CTCF 绝缘 β（β*≈0.70 分界）                                                                                                                                                                |
+| `epigenetic_spreading_lattice_sim.py` | 独立可运行脚本（模型 + 场景 + 三图 + CLI），`python epigenetic_spreading_lattice_sim.py --outdir .` 全量复现                                                                                                                                                                                      |
+| `scenario_trajectories.npz`           | 三个标准场景 + 无环对照的逐代轨迹                                                                                                                                                                                                                                                                 |
+| `simulation_metrics.json`             | 表 4.3 与 §4.3 的全部关键数值                                                                                                                                                                                                                                                                     |
 
 **图件渲染与科学性审查说明（透明性声明）**：本会话内 `figure_review` 审查端点因缺少运行上下文参数而不可用（RPC 报错）。作为替代，作者对全部图件执行了五项出版级检查并做了程序化渲染验证：(1) **数据保真**——各图均绘制完整 100-bin 模拟，无剔除行，汇总值（平台、区域均值）均取自同一完整数组，无被剔除数据泄漏；(2) **标注经济性**——所有坐标轴/colorbar/区域色带均有标注，版式自动重叠检测（文本 bbox 两两相交面积）显示面板内图注零重叠、无越界文字；(3) **色彩串接**——类别色（靶岛-橙 / 远端TSG-紫 / 管家-青 / CTCF-黑）在图 1 与图 3A 中一致复用；图 2C 的 γ 曲线色与图 3B 不承载类别语义；(4) **图型-数据匹配**——时间/位置演化用热图、参数扫描用相图、剂量-响应与时序用线图；(5) **渲染验证**——由于本会话模型无法直接目检像素，改用内存 Agg 画布按数据坐标逐点采样并与数据源数组经 colormap 映射比对（内部点错配 <1%，仅首末边界列存在轴线采样伪影），并核对无缺字字形（0 个 missing glyph）与各面板期望结构（回退/域内/跨边界）一致。结论：**五项检查通过**；作者已尽力在无法人眼目检的条件下以定量方式完成渲染核验。
 
@@ -246,22 +248,22 @@ x_i  ←  x_i · { m_lo + (m_hi − m_lo) · Hill(y_i; m_thr) }
 
 （为便于溯源给出作者-年份-期刊；页码/期号按通行版本，个别卷页请以数据库为准。）
 
-1. Liu XS, et al. *Editing DNA methylation in the mammalian genome.* Cell 2016;167:233–247.（dCas9-TET1 / dCas9-DNMT3A 工具开发）
-2. Halmai JANM, et al. *Artificial escape from X-chromosome inactivation by DNA methylation editing of the CDKL5 gene.* Nucleic Acids Res 2020;48:2372–2387. DOI 10.1093/nar/gkz1214.（dCas9-TET1 去甲基化/再激活）
-3. Kakhki-Rangani M, et al. *Systematic comparison of dCas9-based DNA methylation epimodifiers over time indicates efficient on-target and widespread off-target effects.* Genome Biology 2026. DOI 10.1186/s13059-026-03967-6.（dCas9 甲基化编辑器全基因组非靶/扩散；多价放大扩散）
-4. Vojta A, et al. *Repurposing the CRISPR-Cas9 system for targeted DNA methylation.* Nucleic Acids Res 2016;44:5615–5628.（dCas9-DNMT3A）
-5. Stepper P, et al. *Efficient targeted DNA methylation with chimeric dCas9-Dnmt3a-Dnmt3L methyltransferase.* Nucleic Acids Res 2017;45:1703–1713.（本方案所用融合体形式）
-6. Amabile A, et al. *Inheritable silencing of endogenous genes by hit-and-run targeted epigenetic editing.* Cell 2016;167:219–232.（脉冲后遗传性沉默）
-7. Bintu L, et al. *Dynamics of epigenetic regulation at the single-cell level.* Science 2016;351:720–724.（dCas9-DNMT3A 单细胞长期抑制与记忆/双稳）
-8. Ooi SKT, et al. *DNMT3L connects unmethylated lysine 4 of histone H3 to de novo methylation of DNA.* Nature 2007;448:714–717.（H3K4 门控 de novo 甲基化）
-9. Rothbart SB, et al. *Association of UHRF1 with methylated H3K9 directs the maintenance of DNA methylation.* Nat Struct Mol Biol 2012;19:1155–1160.（UHRF1-H3K9me3 → DNMT1）
-10. Fang J, et al. *Hemi-methylated DNA opens a closed conformation of UHRF1 to facilitate its histone recognition.* Nat Commun 2016;7:11197.（UHRF1 半甲基化 + H3K9me3 协同识别）
-11. Esteve P-O, et al. *Direct interaction between DNMT1 and G9a coordinates DNA and histone methylation during replication.* Genes Dev 2006;20:3089–3103.（DNMT1–G9a 互作）
-12. Hathaway NA, et al. *Dynamics and memory of heterochromatin in living cells.* Cell 2012;149:1447–1460.（异染色质扩散动力学与屏障）
-13. Dixon JR, et al. *Topological domains in mammalian genomes identified by analysis of chromatin interactions.* Nature 2012;485:376–380.（TAD）
-14. Fudenberg G, et al. *Formation of chromosomal domains by loop extrusion.* Cell Rep 2016;15:2038–2049.（环挤压）
-15. Sanborn AL, et al. *Chromatin extrusion explains key features of loop and domain formation in wild-type and engineered genomes.* PNAS 2015;112:E6456–E6465.（环挤压/CTCF）
+1. Liu XS, et al. _Editing DNA methylation in the mammalian genome._ Cell 2016;167:233–247.（dCas9-TET1 / dCas9-DNMT3A 工具开发）
+2. Halmai JANM, et al. _Artificial escape from X-chromosome inactivation by DNA methylation editing of the CDKL5 gene._ Nucleic Acids Res 2020;48:2372–2387. DOI 10.1093/nar/gkz1214.（dCas9-TET1 去甲基化/再激活）
+3. Kakhki-Rangani M, et al. _Systematic comparison of dCas9-based DNA methylation epimodifiers over time indicates efficient on-target and widespread off-target effects._ Genome Biology 2026. DOI 10.1186/s13059-026-03967-6.（dCas9 甲基化编辑器全基因组非靶/扩散；多价放大扩散）
+4. Vojta A, et al. _Repurposing the CRISPR-Cas9 system for targeted DNA methylation._ Nucleic Acids Res 2016;44:5615–5628.（dCas9-DNMT3A）
+5. Stepper P, et al. _Efficient targeted DNA methylation with chimeric dCas9-Dnmt3a-Dnmt3L methyltransferase._ Nucleic Acids Res 2017;45:1703–1713.（本方案所用融合体形式）
+6. Amabile A, et al. _Inheritable silencing of endogenous genes by hit-and-run targeted epigenetic editing._ Cell 2016;167:219–232.（脉冲后遗传性沉默）
+7. Bintu L, et al. _Dynamics of epigenetic regulation at the single-cell level._ Science 2016;351:720–724.（dCas9-DNMT3A 单细胞长期抑制与记忆/双稳）
+8. Ooi SKT, et al. _DNMT3L connects unmethylated lysine 4 of histone H3 to de novo methylation of DNA._ Nature 2007;448:714–717.（H3K4 门控 de novo 甲基化）
+9. Rothbart SB, et al. _Association of UHRF1 with methylated H3K9 directs the maintenance of DNA methylation._ Nat Struct Mol Biol 2012;19:1155–1160.（UHRF1-H3K9me3 → DNMT1）
+10. Fang J, et al. _Hemi-methylated DNA opens a closed conformation of UHRF1 to facilitate its histone recognition._ Nat Commun 2016;7:11197.（UHRF1 半甲基化 + H3K9me3 协同识别）
+11. Esteve P-O, et al. _Direct interaction between DNMT1 and G9a coordinates DNA and histone methylation during replication._ Genes Dev 2006;20:3089–3103.（DNMT1–G9a 互作）
+12. Hathaway NA, et al. _Dynamics and memory of heterochromatin in living cells._ Cell 2012;149:1447–1460.（异染色质扩散动力学与屏障）
+13. Dixon JR, et al. _Topological domains in mammalian genomes identified by analysis of chromatin interactions._ Nature 2012;485:376–380.（TAD）
+14. Fudenberg G, et al. _Formation of chromosomal domains by loop extrusion._ Cell Rep 2016;15:2038–2049.（环挤压）
+15. Sanborn AL, et al. _Chromatin extrusion explains key features of loop and domain formation in wild-type and engineered genomes._ PNAS 2015;112:E6456–E6465.（环挤压/CTCF）
 
 ---
 
-*本报告中的模拟用于机制推演与"no-go"筛查，不能替代湿实验、WGBS/Hi-C 校准与监管审评。若需对特定启动子给出定量预测，应移植该模型并用该位点的接触矩阵与分裂/擦除参数重标定。*
+_本报告中的模拟用于机制推演与"no-go"筛查，不能替代湿实验、WGBS/Hi-C 校准与监管审评。若需对特定启动子给出定量预测，应移植该模型并用该位点的接触矩阵与分裂/擦除参数重标定。_

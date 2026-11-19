@@ -26,11 +26,11 @@ export const OFFICIAL_MAC_TEAM_ID = '<另一位发布者的 Team ID>'
 
 ## 1. 改法（一个变量，两个消费者）
 
-| 文件 | 改动 |
-|---|---|
-| `scripts/ci/mac-signing-status.mjs` | 删除 `OFFICIAL_MAC_TEAM_ID`；新增 `MAC_TEAM_ID_ENV='PURESCIENCE_MAC_TEAM_ID'` 与 `expectedMacTeamId(env)`（与产品同一个变量名，空白即「未配置」）；`parseCodesignDescription` / `readMacBundleSignature` / `evaluateMacSignatureGate` / `macSignatureEvidence` 都接受 `expectedTeamId`，缺省取环境变量；`verify` 增加 `--team-id` 覆盖并在步骤摘要里打出「期望的团队」与它的未配置态 |
-| `scripts/macos-update-cache-drill.mjs` | 删掉自己那份副本，改从上面那个模块导入 `expectedMacTeamId()`；未配置时**具名停止**（「无法判断这两个包是否带本项目的签名」），不再与空串比较 |
-| `scripts/ci/release-certification-evidence.*`、`scripts/ci/mac-signing-status.test.ts` | 夹具改用中立 Team（`TESTTEAM01` / `OTHERTEAM1`），并把期望值显式传入，不依赖环境 |
+| 文件                                                                                   | 改动                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/ci/mac-signing-status.mjs`                                                    | 删除 `OFFICIAL_MAC_TEAM_ID`；新增 `MAC_TEAM_ID_ENV='PURESCIENCE_MAC_TEAM_ID'` 与 `expectedMacTeamId(env)`（与产品同一个变量名，空白即「未配置」）；`parseCodesignDescription` / `readMacBundleSignature` / `evaluateMacSignatureGate` / `macSignatureEvidence` 都接受 `expectedTeamId`，缺省取环境变量；`verify` 增加 `--team-id` 覆盖并在步骤摘要里打出「期望的团队」与它的未配置态 |
+| `scripts/macos-update-cache-drill.mjs`                                                 | 删掉自己那份副本，改从上面那个模块导入 `expectedMacTeamId()`；未配置时**具名停止**（「无法判断这两个包是否带本项目的签名」），不再与空串比较                                                                                                                                                                                                                                         |
+| `scripts/ci/release-certification-evidence.*`、`scripts/ci/mac-signing-status.test.ts` | 夹具改用中立 Team（`TESTTEAM01` / `OTHERTEAM1`），并把期望值显式传入，不依赖环境                                                                                                                                                                                                                                                                                                     |
 
 三条判据：
 
@@ -44,22 +44,30 @@ export const OFFICIAL_MAC_TEAM_ID = '<另一位发布者的 Team ID>'
 
 退出码一律 `cmd > /tmp/out.txt 2>&1; echo EXIT=$?` 取（不经过管道——`| tee` 会取到 tee 的状态）。
 
-| 场景 | reading 来源 | 期望团队 | 判决 | 退出码 |
-|---|---|---|---|---|
-| 凭据在、团队未配置 | 本机安装包（ad-hoc） | 未配置 | `FAIL — unsigned`：点名 `PURESCIENCE_MAC_TEAM_ID` | **1** |
-| 凭据在、团队已配置、包是 ad-hoc | 本机安装包（ad-hoc） | `TESTTEAM01` | `FAIL — unsigned`：`TeamIdentifier=not set, expected TESTTEAM01` | **1** |
-| 无凭据、包是 ad-hoc | 本机安装包（ad-hoc） | `TESTTEAM01` | `ok — unsigned`（只记录，不声称已签名） | 0 |
-| 凭据在、团队匹配 | 合成夹具（`synthetic-fixture`） | `TESTTEAM01` | `ok — signed` | 0 |
-| 凭据在、团队不匹配 | 合成夹具（`synthetic-fixture`） | `OTHERTEAM9` | `FAIL — unsigned`：两个 Team 都打在句子里 | **1** |
-| 无凭据、团队匹配 | 合成夹具（`synthetic-fixture`） | `TESTTEAM01` | `ok — signed`（凭据不是签名成立的前提，实测也不是） | 0 |
+| 场景                            | reading 来源                    | 期望团队     | 判决                                                             | 退出码 |
+| ------------------------------- | ------------------------------- | ------------ | ---------------------------------------------------------------- | ------ |
+| 凭据在、团队未配置              | 本机安装包（ad-hoc）            | 未配置       | `FAIL — unsigned`：点名 `PURESCIENCE_MAC_TEAM_ID`                | **1**  |
+| 凭据在、团队已配置、包是 ad-hoc | 本机安装包（ad-hoc）            | `TESTTEAM01` | `FAIL — unsigned`：`TeamIdentifier=not set, expected TESTTEAM01` | **1**  |
+| 无凭据、包是 ad-hoc             | 本机安装包（ad-hoc）            | `TESTTEAM01` | `ok — unsigned`（只记录，不声称已签名）                          | 0      |
+| 凭据在、团队匹配                | 合成夹具（`synthetic-fixture`） | `TESTTEAM01` | `ok — signed`                                                    | 0      |
+| 凭据在、团队不匹配              | 合成夹具（`synthetic-fixture`） | `OTHERTEAM9` | `FAIL — unsigned`：两个 Team 都打在句子里                        | **1**  |
+| 无凭据、团队匹配                | 合成夹具（`synthetic-fixture`） | `TESTTEAM01` | `ok — signed`（凭据不是签名成立的前提，实测也不是）              | 0      |
 
 本机安装包的真实读数是：
 
 ```json
-{"schemaVersion":1,"source":"installed-app","artifact":"PureScience.app",
- "bundle":"/Applications/PureScience.app","readable":true,
- "identifier":"com.zerolink.purescience","teamIdentifier":"not set",
- "signerTeam":null,"teamIdExpectation":"not-configured","signed":false}
+{
+  "schemaVersion": 1,
+  "source": "installed-app",
+  "artifact": "PureScience.app",
+  "bundle": "/Applications/PureScience.app",
+  "readable": true,
+  "identifier": "com.zerolink.purescience",
+  "teamIdentifier": "not set",
+  "signerTeam": null,
+  "teamIdExpectation": "not-configured",
+  "signed": false
+}
 ```
 
 环境变量这条路径也单独跑过：`PURESCIENCE_MAC_TEAM_ID=TESTTEAM01` + 合成签名 reading ⇒ `ok — signed`（EXIT=0）；

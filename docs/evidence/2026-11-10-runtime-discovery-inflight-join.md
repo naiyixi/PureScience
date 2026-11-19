@@ -10,13 +10,13 @@
 
 `ipc handler was slow` 里 `channel = notebook:list-runtimes` 共 **101 条**，落在 **45 个不同时间戳**上：
 
-| 形状 | 读数 |
-| --- | --- |
-| 时间戳上有 **多条** 的 | **20 / 45** |
-| 单条时间戳上的最大条数 | **7**（2026-11-04T15:33:24.001Z，七条 `durationMs` 全是 1,262） |
-| 其余多条的样例 | 5 条 @1,001–1,002 ms、5 条 @1,110–1,111 ms、5 条 @2,877–2,878 ms、5 条 @980–981 ms |
-| `attribution` | `inconclusive` 76 / `no-cpu-in-process` 23 / `cpu-bound-in-process` **2** |
-| `cpuShare` 中位 | **0.235** |
+| 形状                   | 读数                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| 时间戳上有 **多条** 的 | **20 / 45**                                                                        |
+| 单条时间戳上的最大条数 | **7**（2026-11-04T15:33:24.001Z，七条 `durationMs` 全是 1,262）                    |
+| 其余多条的样例         | 5 条 @1,001–1,002 ms、5 条 @1,110–1,111 ms、5 条 @2,877–2,878 ms、5 条 @980–981 ms |
+| `attribution`          | `inconclusive` 76 / `no-cpu-in-process` 23 / `cpu-bound-in-process` **2**          |
+| `cpuShare` 中位        | **0.235**                                                                          |
 
 **读法**：同一毫秒内 2–7 条、`durationMs` 只差 0–1 ms，是**一次爆发被合并**的形状（多条读等在同一个在飞结果上），
 不是「一条读很慢」。`attribution` 里只有 2 条是「本进程在算」，中位 cpuShare 0.235 ⇒ 那一大片慢不是这条通道自己
@@ -54,13 +54,13 @@ listRuntimes → sessionLifecycle.ensure（已按 sessionId 合流）
 
 ## 四 判据与自证
 
-| 环 | 读数 |
-| --- | --- |
-| `runtime-service.test.ts` | **189 passed**（新增 3 例） |
-| `src/main/notebook` 整目录 | **96 files passed / 9 skipped（105）· 1485 passed / 101 skipped（1586）**，exit 0 |
-| `tsc -p tsconfig.node.json --composite false` | exit 0 |
-| `tsc -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache`（本笔 2 文件） | 0 error / 0 warning |
+| 环                                            | 读数                                                                              |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `runtime-service.test.ts`                     | **189 passed**（新增 3 例）                                                       |
+| `src/main/notebook` 整目录                    | **96 files passed / 9 skipped（105）· 1485 passed / 101 skipped（1586）**，exit 0 |
+| `tsc -p tsconfig.node.json --composite false` | exit 0                                                                            |
+| `tsc -p tsconfig.web.json --composite false`  | exit 0                                                                            |
+| `eslint --no-cache`（本笔 2 文件）            | 0 error / 0 warning                                                               |
 
 新增三例：① 三条并发读只各枚举一遍（`['python','r']` 而不是六条）；② **下一次读重新枚举**（合流不是缓存）；
 ③ 一次爆发里两个会话共用枚举、但各自的 `bindings` 与 `bound` 标记仍描述自己的会话。

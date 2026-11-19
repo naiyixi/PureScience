@@ -1,6 +1,7 @@
 ---
 name: labarchive-integration
 description: Integrates with the official LabArchives ELN REST-like API and Inventory API v1. Supports regional endpoint selection, signed-request construction, user authorization and UID flows, local LA container validation, and verified LabArchives integration workflows.
+description-zh: 对接 LabArchives 电子实验记录的 REST 风格接口与 Inventory API v1：区域端点选择、签名请求构造、用户授权与 UID 流程。
 license: MIT
 compatibility: >-
   Requires Python 3.11+ and uv for bundled local tools, plus network access for

@@ -27,13 +27,13 @@ agent 若按文档去 filter，恒不命中。
 
 ## 二 改动
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/renderer/src/components/left-on-remote-reason.ts`（新） | 纯函数 `leftOnRemoteReasonLabel(reason, t)`：三个已知 reason → 字典键；**未知 reason 原样返回**（新版本收割写的第四种 reason、手写载荷、历史行都不许被一句笼统话盖掉） |
-| `src/renderer/src/components/FeaturedOutputs.tsx` | 列表里的 `entry.reason` 改为 `leftOnRemoteReasonLabel(entry.reason, t)`；文件、大小、顺序一律不变 |
-| `src/renderer/src/i18n/*.ts`（九份） | 新增 3 键 × 9 语，逐语言插在 `jobDetail.leftOnRemoteNotListed` 之后；zh 与 en 不同值 |
-| `resources/skills/remote-compute-ssh/SKILL.md` | 修正 `reason` 的真实取值并列出三个枚举（agent 侧 `reason` 仍是原样标识符，**只有渲染层翻译**） |
-| `src/renderer/src/components/left-on-remote-reason.test.ts`（新） | 三个 reason 全部译出且互不相同；未知 reason 与空串原样返回 |
+| 位置                                                              | 改动                                                                                                                                                                   |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/renderer/src/components/left-on-remote-reason.ts`（新）      | 纯函数 `leftOnRemoteReasonLabel(reason, t)`：三个已知 reason → 字典键；**未知 reason 原样返回**（新版本收割写的第四种 reason、手写载荷、历史行都不许被一句笼统话盖掉） |
+| `src/renderer/src/components/FeaturedOutputs.tsx`                 | 列表里的 `entry.reason` 改为 `leftOnRemoteReasonLabel(entry.reason, t)`；文件、大小、顺序一律不变                                                                      |
+| `src/renderer/src/i18n/*.ts`（九份）                              | 新增 3 键 × 9 语，逐语言插在 `jobDetail.leftOnRemoteNotListed` 之后；zh 与 en 不同值                                                                                   |
+| `resources/skills/remote-compute-ssh/SKILL.md`                    | 修正 `reason` 的真实取值并列出三个枚举（agent 侧 `reason` 仍是原样标识符，**只有渲染层翻译**）                                                                         |
+| `src/renderer/src/components/left-on-remote-reason.test.ts`（新） | 三个 reason 全部译出且互不相同；未知 reason 与空串原样返回                                                                                                             |
 
 三条设计判据：
 
@@ -45,13 +45,13 @@ agent 若按文档去 filter，恒不命中。
 
 ## 三 门禁（本机实跑，2026-11-15 00:1x CST）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/renderer/src/components/left-on-remote-reason.test.ts src/renderer/src/components/FeaturedOutputs.render.test.tsx --maxWorkers=1` | **2 files / 10 passed**，exit 0 |
-| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts` | **42 passed**，exit 0（九文件齐平、zh ≠ en、zh-Hant 无简体字） |
-| `npx tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `npx eslint --no-cache`（面板 + 新模块 + 两测试 + 九字典） | 0 problems |
-| `npx prettier --check`（同上） | 通过 |
+| 环                                                                                                                                                    | 读数                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `npx vitest run src/renderer/src/components/left-on-remote-reason.test.ts src/renderer/src/components/FeaturedOutputs.render.test.tsx --maxWorkers=1` | **2 files / 10 passed**，exit 0                                |
+| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts`                                                                                    | **42 passed**，exit 0（九文件齐平、zh ≠ en、zh-Hant 无简体字） |
+| `npx tsc --noEmit -p tsconfig.web.json --composite false`                                                                                             | exit 0                                                         |
+| `npx eslint --no-cache`（面板 + 新模块 + 两测试 + 九字典）                                                                                            | 0 problems                                                     |
+| `npx prettier --check`（同上）                                                                                                                        | 通过                                                           |
 
 新增渲染用例断言 **原始枚举不再出现**（`not.toContain('exceeds_max_file_mb')`）+ **两句话都在** + 文件与大小不变，
 所以把实现改回 `entry.reason` 会当场红——这条断言就是这个单元的守卫。

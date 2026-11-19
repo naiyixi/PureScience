@@ -13,21 +13,21 @@
 一条自己的线程不受此限：主线程被同步块挡住时，worker 的 tick 照常跑；主线程被操作系统整体停止
 （换页、`SIGSTOP`、磁盘换入）时，worker 也一起停。**这个差别本身就是一条读数**：
 
-| worker 的 timeline 在停顿里 | 能说什么 |
-| --- | --- |
-| 采样照常（`continuity: kept-sampling`） | 机器在跑，只有主线程被饿住 ⇒ 不是整机冻结 |
+| worker 的 timeline 在停顿里                              | 能说什么                                               |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| 采样照常（`continuity: kept-sampling`）                  | 机器在跑，只有主线程被饿住 ⇒ 不是整机冻结              |
 | 恰好停顿时宽一个洞（`continuity: gapped`、`samples: 0`） | 整个进程（所有线程）都没被调度 ⇒ 换页 / 整机停住的形状 |
 
 配上停顿窗口内的空闲内存、load 与换页计数，就是「机器侧」那一半。
 
 ## 2 交付
 
-| 文件 | 内容 |
-| --- | --- |
-| `src/main/diagnostics/host-stall-sampler.ts`（新） | worker 线程（`eval` 内联程序，无打包入口）：250 ms 取 `process.cpuUsage` 增量 + `freemem` + `loadavg` + `rss`；500 ms 取一次平台换页计数原文（darwin `vm_stat`、linux `/proc/vmstat`）。收到 `flush` 时**把缓冲整份回传**（不是靠逐条 postMessage 投递，避免主线程刚恢复时消息还没排到），主线程再按 `[停顿开始, 停顿结束]` 切片。平台换页原文的**解释**在主线程（`parsePagingCounters`），IO 与解释分开 ⇒ 解析规则只有一个家、可单测 |
-| 同名 `.test.ts`（新） | 4 条解析（真 `vm_stat` 原文、`/proc/vmstat` 形状、无此能力的平台返回空、文本不认识返回空）+ 5 条切片（窗口内读数、**整段冻结的洞**、只有一个锚点只能说 `unknown`、一个样本都没有、换页增量只认窗口内的读数）+ 2 条**真线程**（主线程忙等 600 ms 期间照常有 ≥2 个窗口内样本且 `cpuMs > 0`；worker 起不来时报 `unavailable` 而不是「什么都没看见」） |
-| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每条记录多一格 `host`（`window-armed` / `sampled` / `no-in-stall-samples` / `unavailable`）；窗口打开时同时起剖析器与采样线程，第二次停顿结束时两半一起收；另修一处**读错的墙钟**（见 §4） |
-| 同名 `.test.ts` | 既有 7 条注入式全部补上采样线程的桩（否则它们在假时钟下会起真线程）；新增 1 条「第一次停顿说 `window-armed`、第二次把窗口交给线程并报出它看见的读数」+ 2 条剖析器读数规则（真冻结 vs 真忙） |
+| 文件                                                | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/diagnostics/host-stall-sampler.ts`（新）  | worker 线程（`eval` 内联程序，无打包入口）：250 ms 取 `process.cpuUsage` 增量 + `freemem` + `loadavg` + `rss`；500 ms 取一次平台换页计数原文（darwin `vm_stat`、linux `/proc/vmstat`）。收到 `flush` 时**把缓冲整份回传**（不是靠逐条 postMessage 投递，避免主线程刚恢复时消息还没排到），主线程再按 `[停顿开始, 停顿结束]` 切片。平台换页原文的**解释**在主线程（`parsePagingCounters`），IO 与解释分开 ⇒ 解析规则只有一个家、可单测 |
+| 同名 `.test.ts`（新）                               | 4 条解析（真 `vm_stat` 原文、`/proc/vmstat` 形状、无此能力的平台返回空、文本不认识返回空）+ 5 条切片（窗口内读数、**整段冻结的洞**、只有一个锚点只能说 `unknown`、一个样本都没有、换页增量只认窗口内的读数）+ 2 条**真线程**（主线程忙等 600 ms 期间照常有 ≥2 个窗口内样本且 `cpuMs > 0`；worker 起不来时报 `unavailable` 而不是「什么都没看见」）                                                                                    |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每条记录多一格 `host`（`window-armed` / `sampled` / `no-in-stall-samples` / `unavailable`）；窗口打开时同时起剖析器与采样线程，第二次停顿结束时两半一起收；另修一处**读错的墙钟**（见 §4）                                                                                                                                                                                                                                            |
+| 同名 `.test.ts`                                     | 既有 7 条注入式全部补上采样线程的桩（否则它们在假时钟下会起真线程）；新增 1 条「第一次停顿说 `window-armed`、第二次把窗口交给线程并报出它看见的读数」+ 2 条剖析器读数规则（真冻结 vs 真忙）                                                                                                                                                                                                                                           |
 
 **刻意不做**：不开通道、不碰界面、不加 9 语键（读数进应用自己的日志）；不给「机器压力」另立一条阈值——
 那会是先编一个数字再让读数去凑；**不把 `host` 折进 `attribution`**：`attribution` 仍只回答
@@ -41,14 +41,38 @@
 ### 3.1 我们自己挡住事件循环（忙等 1.2 s）
 
 ```json
-{"windowMs":1299,"cpuMs":1213,"cpuShare":0.934,"attribution":"cpu-bound-in-process",
- "stack":{"status":"profiled","mainThreadMs":1350,"unobservedMs":0,
-          "frames":[{"frame":"block (tmp/wd2-driver-busy.mjs:734)","samples":112},
-                    {"frame":"(anonymous) (tmp/wd2-driver-busy.mjs:0)","samples":10}]},
- "host":{"status":"sampled","intervalMs":250,"stallMs":1299,"samples":5,"expectedSamples":4,
-         "maxGapMs":259,"continuity":"kept-sampling","cpuMs":1025,"cpuShare":0.789,
-         "freeMemMbMin":1165,"freeMemMbMax":1178,"loadAvg1mMax":5.02,"rssMbMax":71,
-         "pageouts":0,"swapouts":0}}
+{
+  "windowMs": 1299,
+  "cpuMs": 1213,
+  "cpuShare": 0.934,
+  "attribution": "cpu-bound-in-process",
+  "stack": {
+    "status": "profiled",
+    "mainThreadMs": 1350,
+    "unobservedMs": 0,
+    "frames": [
+      { "frame": "block (tmp/wd2-driver-busy.mjs:734)", "samples": 112 },
+      { "frame": "(anonymous) (tmp/wd2-driver-busy.mjs:0)", "samples": 10 }
+    ]
+  },
+  "host": {
+    "status": "sampled",
+    "intervalMs": 250,
+    "stallMs": 1299,
+    "samples": 5,
+    "expectedSamples": 4,
+    "maxGapMs": 259,
+    "continuity": "kept-sampling",
+    "cpuMs": 1025,
+    "cpuShare": 0.789,
+    "freeMemMbMin": 1165,
+    "freeMemMbMax": 1178,
+    "loadAvg1mMax": 5.02,
+    "rssMbMax": 71,
+    "pageouts": 0,
+    "swapouts": 0
+  }
+}
 ```
 
 `host.cpuShare 0.789` 是**另一条线程**量出来的进程 CPU 占比，与主线程自己算的 `0.934` 独立但一致
@@ -60,11 +84,28 @@
 第一次停顿只负责打开窗口；第二次停顿（也是 2 s）才有采样线：
 
 ```json
-{"windowMs":2049,"cpuMs":1,"cpuShare":0,"attribution":"process-not-scheduled",
- "stack":{"status":"profiled","mainThreadMs":73,"unobservedMs":2027,"frames":[]},
- "host":{"status":"sampled","intervalMs":250,"stallMs":2049,"samples":1,"expectedSamples":7,
-         "maxGapMs":2224,"continuity":"gapped","cpuMs":12,"cpuShare":0.006,
-         "freeMemMbMin":1043,"freeMemMbMax":1043,"loadAvg1mMax":4.33,"rssMbMax":65}}
+{
+  "windowMs": 2049,
+  "cpuMs": 1,
+  "cpuShare": 0,
+  "attribution": "process-not-scheduled",
+  "stack": { "status": "profiled", "mainThreadMs": 73, "unobservedMs": 2027, "frames": [] },
+  "host": {
+    "status": "sampled",
+    "intervalMs": 250,
+    "stallMs": 2049,
+    "samples": 1,
+    "expectedSamples": 7,
+    "maxGapMs": 2224,
+    "continuity": "gapped",
+    "cpuMs": 12,
+    "cpuShare": 0.006,
+    "freeMemMbMin": 1043,
+    "freeMemMbMax": 1043,
+    "loadAvg1mMax": 4.33,
+    "rssMbMax": 65
+  }
+}
 ```
 
 `continuity: gapped` + `samples: 1`（而按 250 ms 应有 7 个）+ `maxGapMs 2224` 合起来就是

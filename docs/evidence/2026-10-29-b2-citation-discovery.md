@@ -17,20 +17,20 @@
 
 ## 2 四个方向的读数
 
-| 记录 | 方向 | status | total（源自述） | examined（真读） | chinese | incomplete |
-| --- | --- | --- | --- | --- | --- | --- |
-| `10.1038/nature14539`（LeCun 2015，英文） | references | `found` | 53 | **49** | 0 | **true**（`this work lists 53 references; the walk reads the first 50`）|
-| 同上 | citations | `found` | **83,700** | 50 | 0 | false |
-| `10.53388/ccmr2022022`（TMR，中文出版方） | citations | `found` | 113 | 50 | **49** | false |
-| `10.53388/ccmr2021015` | citations | `found` | 89 | 50 | **50** | false |
-| `10.26549/yzlcyxzz.v4i3.6890`（协和医学） | citations | `found` | 116 | 50 | **50** | false |
-| 同上 | references | `found` | 7 | 7 | 0 | false |
-| `10.26549/yzlcyxzz.v3i4.3108` | citations | `found` | 163 | 50 | **47** | false |
-| 同上 | references | `empty` | 0 | 0 | 0 | false |
-| `10.12677/pm.2014.44021`（汉斯） | references | `empty` | 0 | 0 | 0 | false |
-| `10.12677/japc.2015.44013`（汉斯） | references | `found` | 32 | 32 | 0 | false |
-| `10.12677/japc.2015.44013` | citations | `found` | 249 | 50 | 0 | false |
-| `10.1001/jama.1968.03140320031009` | references | `empty` | 0 | 0 | 0 | false |
+| 记录                                      | 方向       | status  | total（源自述） | examined（真读） | chinese | incomplete                                                               |
+| ----------------------------------------- | ---------- | ------- | --------------- | ---------------- | ------- | ------------------------------------------------------------------------ |
+| `10.1038/nature14539`（LeCun 2015，英文） | references | `found` | 53              | **49**           | 0       | **true**（`this work lists 53 references; the walk reads the first 50`） |
+| 同上                                      | citations  | `found` | **83,700**      | 50               | 0       | false                                                                    |
+| `10.53388/ccmr2022022`（TMR，中文出版方） | citations  | `found` | 113             | 50               | **49**  | false                                                                    |
+| `10.53388/ccmr2021015`                    | citations  | `found` | 89              | 50               | **50**  | false                                                                    |
+| `10.26549/yzlcyxzz.v4i3.6890`（协和医学） | citations  | `found` | 116             | 50               | **50**  | false                                                                    |
+| 同上                                      | references | `found` | 7               | 7                | 0       | false                                                                    |
+| `10.26549/yzlcyxzz.v3i4.3108`             | citations  | `found` | 163             | 50               | **47**  | false                                                                    |
+| 同上                                      | references | `empty` | 0               | 0                | 0       | false                                                                    |
+| `10.12677/pm.2014.44021`（汉斯）          | references | `empty` | 0               | 0                | 0       | false                                                                    |
+| `10.12677/japc.2015.44013`（汉斯）        | references | `found` | 32              | 32               | 0       | false                                                                    |
+| `10.12677/japc.2015.44013`                | citations  | `found` | 249             | 50               | 0       | false                                                                    |
+| `10.1001/jama.1968.03140320031009`        | references | `empty` | 0               | 0                | 0       | false                                                                    |
 
 **四条读法（都不许读成更强）**
 
@@ -46,12 +46,12 @@
 
 把上面四个中文出版方记录的 `citations` 结果（各 50 行，合计 **200 行**）逐行按信号统计（同一条探针第二次跑）：
 
-| 判据 | 命中行数 |
-| --- | --- |
-| `doi-prefix`（出版方在中国） | **194** |
-| `title-han`（标题汉字占比过线） | **2** |
-| `journal-language`（期刊语种） | **0** |
-| 三条皆无 | 4 |
+| 判据                            | 命中行数 |
+| ------------------------------- | -------- |
+| `doi-prefix`（出版方在中国）    | **194**  |
+| `title-han`（标题汉字占比过线） | **2**    |
+| `journal-language`（期刊语种）  | **0**    |
+| 三条皆无                        | 4        |
 
 交叉核对（同一批 200 行）：
 
@@ -64,12 +64,12 @@
 
 ## 4 三态与拒答（同一轮读到的）
 
-| 输入 | 结果 |
-| --- | --- |
-| 未知方向 | `unavailable` + `unknown direction` |
-| 记录无 DOI（或 DOI 形状不合 `^10\.\d{4,9}/\S+$`） | `unavailable` + 具名原因，**一个请求都不发** |
-| 源回答了但集合为空 | `empty`（不是 `unavailable`） |
-| 源读不到 | `unavailable` + `error`（本轮由单测覆盖，未构造真实断网读数） |
+| 输入                                              | 结果                                                          |
+| ------------------------------------------------- | ------------------------------------------------------------- |
+| 未知方向                                          | `unavailable` + `unknown direction`                           |
+| 记录无 DOI（或 DOI 形状不合 `^10\.\d{4,9}/\S+$`） | `unavailable` + 具名原因，**一个请求都不发**                  |
+| 源回答了但集合为空                                | `empty`（不是 `unavailable`）                                 |
+| 源读不到                                          | `unavailable` + `error`（本轮由单测覆盖，未构造真实断网读数） |
 
 ## 5 边界（不许读成更强）
 

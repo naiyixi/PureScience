@@ -9,13 +9,13 @@
 
 ## 二 做法
 
-| 层 | 改动 |
-|---|---|
-| `src/shared/settings.ts` | `ConnectorTemplateDiagnostic` 增可选 `params`（该句需要的值，如 `expected`/`max`/`field`/`value`/`kind`）；规范英文 `message` 保留不动 |
-| `src/main/settings/connector-template.ts` | 34 处诊断构造点把值放进 `params`；句子本身一个字符没改 |
-| `src/renderer/src/pages/settings/connector-diagnostic-copy.ts`（新） | 码 → 字典键 + 值的映射；**缺参数或缺码返回 `undefined`**，调用方整句回落规范英文 |
-| `ConnectorImportView.tsx` / `ConnectorExportView.tsx` | 诊断行改读该映射并用 `t(key, values)` 渲染；导出预览里三处英文字面量（`Command`/`Server URL`/OAuth 与密文名提示）一并改读字典 |
-| 九语字典 | 新增 37 个 `connectorImport.diag.*` + 4 个 `connectorExport.*`/`common.*` 键，九语齐平 |
+| 层                                                                   | 改动                                                                                                                                   |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/settings.ts`                                             | `ConnectorTemplateDiagnostic` 增可选 `params`（该句需要的值，如 `expected`/`max`/`field`/`value`/`kind`）；规范英文 `message` 保留不动 |
+| `src/main/settings/connector-template.ts`                            | 34 处诊断构造点把值放进 `params`；句子本身一个字符没改                                                                                 |
+| `src/renderer/src/pages/settings/connector-diagnostic-copy.ts`（新） | 码 → 字典键 + 值的映射；**缺参数或缺码返回 `undefined`**，调用方整句回落规范英文                                                       |
+| `ConnectorImportView.tsx` / `ConnectorExportView.tsx`                | 诊断行改读该映射并用 `t(key, values)` 渲染；导出预览里三处英文字面量（`Command`/`Server URL`/OAuth 与密文名提示）一并改读字典          |
+| 九语字典                                                             | 新增 37 个 `connectorImport.diag.*` + 4 个 `connectorExport.*`/`common.*` 键，九语齐平                                                 |
 
 三条设计判据：
 
@@ -28,14 +28,14 @@
 
 ## 三 门禁（本机实跑）
 
-| 环 | 读数 |
-|---|---|
-| 定向 vitest（新表 + 两个面板的渲染套件 + 解析器 + 连接器设置） | **4 files / 67 passed** |
-| i18n 全套（含 `translation-quality.test.ts`） | **5 files / 57 passed** |
-| 双 typecheck（`--composite false`） | node **0** / web **0** |
-| `npx eslint --no-cache .`（全仓，同 CI 口径） | **0 error / 94 warning**（与本轮之前同数，本笔文件 0/0） |
-| 全量 vitest `--maxWorkers=4` | **1486 files passed**、31 skipped（1517）；**18647 passed**、228 skipped（18875），exit 0（上一笔 1484/18632 ⇒ +2 文件 +15 例） |
-| 真机认证 spec | `e2e/certification/connector-diagnostic-language.spec.ts` **1 passed (14.8 s)**，读数见 §四 |
+| 环                                                             | 读数                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 定向 vitest（新表 + 两个面板的渲染套件 + 解析器 + 连接器设置） | **4 files / 67 passed**                                                                                                         |
+| i18n 全套（含 `translation-quality.test.ts`）                  | **5 files / 57 passed**                                                                                                         |
+| 双 typecheck（`--composite false`）                            | node **0** / web **0**                                                                                                          |
+| `npx eslint --no-cache .`（全仓，同 CI 口径）                  | **0 error / 94 warning**（与本轮之前同数，本笔文件 0/0）                                                                        |
+| 全量 vitest `--maxWorkers=4`                                   | **1486 files passed**、31 skipped（1517）；**18647 passed**、228 skipped（18875），exit 0（上一笔 1484/18632 ⇒ +2 文件 +15 例） |
+| 真机认证 spec                                                  | `e2e/certification/connector-diagnostic-language.spec.ts` **1 passed (14.8 s)**，读数见 §四                                     |
 
 ## 四 真机读数（真窗口、真入口、真文件）
 

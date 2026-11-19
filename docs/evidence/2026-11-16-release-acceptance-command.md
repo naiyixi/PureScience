@@ -15,11 +15,11 @@
 
 ## 二 交付
 
-| 位置 | 改动 |
-|---|---|
-| `scripts/verify-release.mjs` | 新增。纯函数 `planRequiredAssets` / `parseSha256Sums` / `readCertification` / `evaluateRelease` + 一个 CLI（`gh release view` / `gh release download` / `git rev-parse` 取数） |
-| `scripts/verify-release.test.ts` | 新增 21 条：夹具用的是 **v2.26.0 真实资产名与真实记录形状**（`{schemaVersion, sourceSha, platforms[]}`） |
-| `package.json` | `release:verify` 入口：`npm run release:verify -- v2.27.0` |
+| 位置                             | 改动                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/verify-release.mjs`     | 新增。纯函数 `planRequiredAssets` / `parseSha256Sums` / `readCertification` / `evaluateRelease` + 一个 CLI（`gh release view` / `gh release download` / `git rev-parse` 取数） |
+| `scripts/verify-release.test.ts` | 新增 21 条：夹具用的是 **v2.26.0 真实资产名与真实记录形状**（`{schemaVersion, sourceSha, platforms[]}`）                                                                       |
+| `package.json`                   | `release:verify` 入口：`npm run release:verify -- v2.27.0`                                                                                                                     |
 
 判的十件事（每条都有名字，失败会点出具体资产名/具体文件）：
 
@@ -60,13 +60,13 @@ VERDICT: accepted (0 failure(s), 0 warning(s))
 
 ## 四 门禁
 
-| 环 | 读数 |
-|---|---|
-| `npx vitest run scripts/verify-release.test.ts` | **1 file / 21 passed** |
-| `npm run typecheck:node`（`NODE_OPTIONS=--max-old-space-size=8192`） | **0** |
-| `npm run typecheck:web` | **0** |
-| `npx eslint --no-cache scripts/verify-release.{mjs,test.ts}` | **0 error / 0 warning** |
-| 真机读数（真实发布页） | 见 §三，退出码 0 |
+| 环                                                                   | 读数                    |
+| -------------------------------------------------------------------- | ----------------------- |
+| `npx vitest run scripts/verify-release.test.ts`                      | **1 file / 21 passed**  |
+| `npm run typecheck:node`（`NODE_OPTIONS=--max-old-space-size=8192`） | **0**                   |
+| `npm run typecheck:web`                                              | **0**                   |
+| `npx eslint --no-cache scripts/verify-release.{mjs,test.ts}`         | **0 error / 0 warning** |
+| 真机读数（真实发布页）                                               | 见 §三，退出码 0        |
 
 ## 五 边界与具名未办
 

@@ -1,6 +1,7 @@
 ---
 name: model-merging
 description: Merge multiple fine-tuned models using mergekit to combine capabilities without retraining. Use when creating specialized models by blending domain-specific expertise (math + coding + chat), improving performance beyond single models, or experimenting rapidly with model variants. Covers SLERP, TIES-Merging, DARE, Task Arithmetic, linear merging, and production deployment strategies.
+description-zh: 用 mergekit 合并多个微调模型，在不重训的前提下融合能力（例如数学＋代码＋对话），得到专用模型。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

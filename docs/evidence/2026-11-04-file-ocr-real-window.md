@@ -61,12 +61,12 @@ not from a text layer."
 
 ## 六 车道判决（2026-11-04 12:xx 读，绑到 `bed955ef`）
 
-| 项 | 读数 |
-| --- | --- |
-| Run | `Nightly` run `41742969126`（`Windows Full Test` run `41742968969`：success） |
-| 作业 | `build / Verify` success、`Build windows-x64`/`linux-x64`/`macos-x64` success、**`Build macos-arm64` failure**、`publish` skipped |
-| 汇总行 | `1 failed` / `2 flaky` / `12 skipped` / `113 passed (35.7m)` |
-| 唯一失败 | `e2e/certification/file-ocr.spec.ts:51` —— `locator.click: Timeout 30000ms exceeded`，`element is not enabled` |
+| 项           | 读数                                                                                                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run          | `Nightly` run `41742969126`（`Windows Full Test` run `41742968969`：success）                                                                                                          |
+| 作业         | `build / Verify` success、`Build windows-x64`/`linux-x64`/`macos-x64` success、**`Build macos-arm64` failure**、`publish` skipped                                                      |
+| 汇总行       | `1 failed` / `2 flaky` / `12 skipped` / `113 passed (35.7m)`                                                                                                                           |
+| 唯一失败     | `e2e/certification/file-ocr.spec.ts:51` —— `locator.click: Timeout 30000ms exceeded`，`element is not enabled`                                                                         |
 | 另两条 flaky | `connector-custom-sign-out`（`Electron app never opened a window`，重试转绿）、`pdf-annotation-overlay-pane`（`the pane changed width between the two readings`，273 ≠ 423，重试转绿） |
 
 **实际分支不是「缺引擎」，而是根本没走到引擎**：失败截图里 `lab-scan.png` 与 `lab-notes.md` 两张上传磁贴都带
@@ -95,10 +95,10 @@ not from a text layer."
 
 ### 两向实跑（同一棵主树代码，只动被还原的那两个文件）
 
-| 场景 | 命令 | 读数 |
-| --- | --- | --- |
-| 带并行会话的上传修复 | `npx playwright test e2e/certification/file-ocr.spec.ts --reporter=list`（`✓ built in 30.85s`） | **1 passed (18.7s)**，`[ocr-cert] tile=ready`，`branch=text`，出处句 `in 108 ms`，正文含 `HEMOGLOBIN`/`12.4` |
-| 把 `src/main/ipc.ts` 与 `src/main/artifacts/ipc.ts` 还原到 `bed955ef` | 同上（`✓ built in 30.64s`） | **1 failed**，`[ocr-cert] tile=missing`，失败句即上面那条具名解释 —— 缺陷在本机也复现，**不是车道独有** |
+| 场景                                                                  | 命令                                                                                            | 读数                                                                                                         |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 带并行会话的上传修复                                                  | `npx playwright test e2e/certification/file-ocr.spec.ts --reporter=list`（`✓ built in 30.85s`） | **1 passed (18.7s)**，`[ocr-cert] tile=ready`，`branch=text`，出处句 `in 108 ms`，正文含 `HEMOGLOBIN`/`12.4` |
+| 把 `src/main/ipc.ts` 与 `src/main/artifacts/ipc.ts` 还原到 `bed955ef` | 同上（`✓ built in 30.64s`）                                                                     | **1 failed**，`[ocr-cert] tile=missing`，失败句即上面那条具名解释 —— 缺陷在本机也复现，**不是车道独有**      |
 
 ### 边界（不许读成更强）
 
@@ -107,15 +107,14 @@ not from a text layer."
 - `macos-arm64` 车道有没有 tesseract 仍未知：修复落地后才第一次真正到达引擎，届时看 `[ocr-cert] branch=` 那一行。
 - 两条 flaky 只按「重试转绿」记档，未做多遍 isolation 定性；它们与本笔无交集。
 
-
 ### 车道读数（2026-11-05 补：那条「未知」现在有答案了）
 
 上面「`macos-arm64` 车道有没有 tesseract 仍未知」这一条，按该轮写下的取法读到了：
 
-| 项 | 读数 |
-| --- | --- |
-| 车道 | `Nightly` run `41969799634` / 作业 `build / Build macos-arm64`（job `127059347603`），提交 `4a369a9e`，**success** |
-| 规格行 | `e2e/certification/file-ocr.spec.ts`：`✓` 通过，`117 passed / 1 flaky (29.9m)` |
+| 项       | 读数                                                                                                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 车道     | `Nightly` run `41969799634` / 作业 `build / Build macos-arm64`（job `127059347603`），提交 `4a369a9e`，**success**                                                                                                              |
+| 规格行   | `e2e/certification/file-ocr.spec.ts`：`✓` 通过，`117 passed / 1 flaky (29.9m)`                                                                                                                                                  |
 | 实际分支 | `[ocr-cert] tile=ready before the read` → `[ocr-cert] rendered=true branch=tool-missing dialog="Recognised text lab-scan.png × Reading images needs the tesseract program. Install it (brew install tesseract) and try again."` |
 
 ⇒ 三条都清楚了：① 车道**没有** tesseract，规格落到的是「缺引擎」那一支，属于**具名失败**而不是空框；

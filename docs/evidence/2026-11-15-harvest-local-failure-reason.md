@@ -17,10 +17,10 @@
 
 ## 2 根因（两处，同一形状）
 
-| 位置 | 旧形状 | 后果 |
-| --- | --- | --- |
-| 函数开头 `mkdir(featuredDir)` / `mkdir(hiddenDir)` | 在 `finalize` 助手**声明之前**，裸 `await` | 抛出即逃逸，无终态 |
-| 下载循环里 `mkdir(dirname(localPath))`（featured / hidden 各一处） | 裸 `await` | 一个怪文件名的父目录失败 ⇒ 整次收割中止，**其余产物一并丢失**，且同样无终态 |
+| 位置                                                               | 旧形状                                     | 后果                                                                        |
+| ------------------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------- |
+| 函数开头 `mkdir(featuredDir)` / `mkdir(hiddenDir)`                 | 在 `finalize` 助手**声明之前**，裸 `await` | 抛出即逃逸，无终态                                                          |
+| 下载循环里 `mkdir(dirname(localPath))`（featured / hidden 各一处） | 裸 `await`                                 | 一个怪文件名的父目录失败 ⇒ 整次收割中止，**其余产物一并丢失**，且同样无终态 |
 
 函数头注释原先写着「On any error: sets harvestError + harvestedAt (harvest_failed)」—— 对这两处**不成立**。
 同一文件里磁盘余量闸（`availableBytes` 读不出来）此前已按同一形状修过，`mkdir` 是漏掉的那两处。
@@ -62,22 +62,22 @@ Tests  1 failed (1)                                                ← 行没被
 
 ### 4.2 变异自证（用例真的会咬）
 
-| 变异 | 结果 |
-| --- | --- |
-| 目录创建退回裸 `await mkdir` | `records a skip reason …` 红 |
+| 变异                               | 结果                           |
+| ---------------------------------- | ------------------------------ |
+| 目录创建退回裸 `await mkdir`       | `records a skip reason …` 红   |
 | `ensureParentDir` 去掉 `try/catch` | `keeps the other outputs …` 红 |
 
 两次各只红对应那一条 ⇒ 两条用例分别钉住两处守卫，而不是被同一处偶然覆盖。
 
 ## 5 门禁
 
-| 环 | 读数 |
-| --- | --- |
+| 环                                                          | 读数                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `npx vitest run src/main/compute src/shared --maxWorkers=2` | **184 files passed / 1 skipped（185）**；**2270 passed / 5 skipped（2275）** |
-| `npx vitest run src/main/compute/harvest-engine.test.ts` | **21 passed**（新增 2 条） |
-| 双 typecheck（`--composite false`） | node 0 / web 0 |
-| `npx eslint --no-cache`（两个文件） | 0 problems |
-| `npx prettier --check`（两个文件） | 通过 |
+| `npx vitest run src/main/compute/harvest-engine.test.ts`    | **21 passed**（新增 2 条）                                                   |
+| 双 typecheck（`--composite false`）                         | node 0 / web 0                                                               |
+| `npx eslint --no-cache`（两个文件）                         | 0 problems                                                                   |
+| `npx prettier --check`（两个文件）                          | 通过                                                                         |
 
 （用例总数 2270 与本轮开始时那次的 2271 之差可逐项对上：那次含一份**已撤回**的 `job-poller` 试验 +3，
 本轮 `harvest-engine` +2 ⇒ 2271 − 3 + 2 = 2270。）

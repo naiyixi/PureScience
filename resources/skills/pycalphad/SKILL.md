@@ -1,6 +1,7 @@
 ---
 name: pycalphad
 description: Computes finite-temperature CALPHAD equilibria, phase fractions, and phase compositions from thermodynamic TDB databases using pycalphad. Use for alloy phase stability, equilibrium temperature sweeps, tie lines, lever-rule checks, or reproducible phase-fraction calculations with explicit components and mole-fraction conditions.
+description-zh: 用 pycalphad 从热力学 TDB 数据库计算有限温度的 CALPHAD 平衡、相分数与相成分：适用于合金相稳定性与平衡温度计算。
 license: MIT
 compatibility: Requires Python 3.12+, pycalphad 0.11.2, and NumPy. Installation needs network access; calculations run locally without credentials. Real-material predictions require a suitable licensed thermodynamic database.
 metadata:

@@ -23,17 +23,17 @@
 
 ### 1.1 注册信息:全部以"外消旋、未指定立体化学"登记
 
-| 属性 | Thalidomide | Lenalidomide | Pomalidomide |
-|---|---|---|---|
-| ChEMBL ID | CHEMBL468 | CHEMBL848 | CHEMBL43452 |
-| PubChem CID | 5426 | 216326 | 134780 |
-| 分子式 | C13H10N2O4 | C13H13N3O3 | C13H11N3O4 |
-| MW (g/mol) | 258.23 | 259.26 | 273.25 |
-| ChEMBL `chirality` 字段 | 0(无指定立体) | 0 | 0 |
-| 上市剂型 | 外消旋体 | 外消旋体 | 外消旋体 |
-| SMILES(注册外消旋体) | `C1CC(=O)NC(=O)C1N2C(=O)C3=CC=CC=C3C2=O` | `C1CC(=O)NC(=O)C1N2CC3=C(C2=O)C=CC=C3N` | `C1CC(=O)NC(=O)C1N2C(=O)C3=C(C2=O)C(=CC=C3)N` |
-| InChIKey(无立体) | UEJJHQNACJXSKW-… | GOTYRUGSSMKFNF-… | UVSMNLNDYGZFPF-… |
-| 上市最晚阶段 / ATC 属性 | 4(获批) | 4(获批) | 4(获批) |
+| 属性                    | Thalidomide                              | Lenalidomide                            | Pomalidomide                                  |
+| ----------------------- | ---------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| ChEMBL ID               | CHEMBL468                                | CHEMBL848                               | CHEMBL43452                                   |
+| PubChem CID             | 5426                                     | 216326                                  | 134780                                        |
+| 分子式                  | C13H10N2O4                               | C13H13N3O3                              | C13H11N3O4                                    |
+| MW (g/mol)              | 258.23                                   | 259.26                                  | 273.25                                        |
+| ChEMBL `chirality` 字段 | 0(无指定立体)                            | 0                                       | 0                                             |
+| 上市剂型                | 外消旋体                                 | 外消旋体                                | 外消旋体                                      |
+| SMILES(注册外消旋体)    | `C1CC(=O)NC(=O)C1N2C(=O)C3=CC=CC=C3C2=O` | `C1CC(=O)NC(=O)C1N2CC3=C(C2=O)C=CC=C3N` | `C1CC(=O)NC(=O)C1N2C(=O)C3=C(C2=O)C(=CC=C3)N` |
+| InChIKey(无立体)        | UEJJHQNACJXSKW-…                         | GOTYRUGSSMKFNF-…                        | UVSMNLNDYGZFPF-…                              |
+| 上市最晚阶段 / ATC 属性 | 4(获批)                                  | 4(获批)                                 | 4(获批)                                       |
 
 **关键点**:ChEMBL 与 PubChem 的"首选/母体"记录**不指定 C3′ 立体化学**(InChIKey 为 …-UHFFFAOYSA-N 型,即无立体层),这与三个药物**以消旋体上市、无单一对映体制剂**的事实一致。所谓"该分子有 1 个手性中心"来自结构本身:2,6-二氧代哌啶-3-基次甲基(C3′)。
 
@@ -41,11 +41,11 @@
 
 通过对 RCSB 坐标直接核对,凡 CRBN–IMiD 共晶结构中的配体化学组分均以**指定 (S)-构型**建模:
 
-| PDB 配体组分 | 分子 | PDB 立体 SMILES(取自配体组分) |
-|---|---|---|
-| LVY(4CI2, 4TZ4, 5FQD) | (S)-Lenalidomide | `c1cc2c(c(c1)N)CN(C2=O)[C@H]3CCC(=O)NC3=O` |
-| Y70(6H0F, 6UML) | (S)-Pomalidomide | `c1cc2c(c(c1)N)C(=O)N(C2=O)[C@H]3CCC(=O)NC3=O` |
-| —(本报告构建并经验证) | (S)-Thalidomide | `O=C1c2ccccc2C(=O)N1[C@H]3CCC(=O)NC3=O` |
+| PDB 配体组分          | 分子             | PDB 立体 SMILES(取自配体组分)                  |
+| --------------------- | ---------------- | ---------------------------------------------- |
+| LVY(4CI2, 4TZ4, 5FQD) | (S)-Lenalidomide | `c1cc2c(c(c1)N)CN(C2=O)[C@H]3CCC(=O)NC3=O`     |
+| Y70(6H0F, 6UML)       | (S)-Pomalidomide | `c1cc2c(c(c1)N)C(=O)N(C2=O)[C@H]3CCC(=O)NC3=O` |
+| —(本报告构建并经验证) | (S)-Thalidomide  | `O=C1c2ccccc2C(=O)N1[C@H]3CCC(=O)NC3=O`        |
 
 三种 (S)-SMILES 经 RDKit `FindMolChiralCenters` 核验,CIP 标记均为 **S**;翻转 `[C@H]`→`[C@@H]` 即得 (R)-对映体。**结晶学事实本身就是"CRBN 热力学选择 (S)"的证据**:外消旋配体在结合界面结晶时被拆分为 (S)-占据。
 
@@ -55,15 +55,15 @@
 
 ### 2.1 代表性 PDB 结构
 
-| PDB | 分辨率 | 复合物/配体 | 出处 |
-|---|---|---|---|
-| **4CI1** | 2.98 Å | DDB1–CRBN–**Thalidomide** | Chamberlain et al., *Nature* 2014, doi:10.1038/nature13527 |
-| **4CI2** | 2.95 Å | DDB1–CRBN–**Lenalidomide** | 同上 |
-| **4CI3** | 3.50 Å | DDB1–CRBN–**Pomalidomide** | 同上 |
-| 5FQD | 2.45 Å | DDB1–CRBN–Lenalidomide–**CK1α**(neo-substrate) | Petzold et al., *Nature* 2016, doi:10.1038/nature16979 |
-| 6H0F / 6H0G | 3.25 / 4.25 Å | DDB1–CRBN–Pomalidomide–**IKZF1 / ZNF**(neo-substrate) | *Science* 2018, doi:10.1126/science.aat0572 |
-| **6UML** | 3.58 Å | CRBN–Pomalidomide–**SALL4 锌指**(致畸相关) | Matyskiela et al., *Nat Struct Mol Biol* 2020, doi:10.1038/s41594-020-0405-9 |
-| 4TZ4 | 3.01 Å | CRBN–DDB1–(S)-Lenalidomide | RCSB(2020 前释放) |
+| PDB         | 分辨率        | 复合物/配体                                           | 出处                                                                         |
+| ----------- | ------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **4CI1**    | 2.98 Å        | DDB1–CRBN–**Thalidomide**                             | Chamberlain et al., _Nature_ 2014, doi:10.1038/nature13527                   |
+| **4CI2**    | 2.95 Å        | DDB1–CRBN–**Lenalidomide**                            | 同上                                                                         |
+| **4CI3**    | 3.50 Å        | DDB1–CRBN–**Pomalidomide**                            | 同上                                                                         |
+| 5FQD        | 2.45 Å        | DDB1–CRBN–Lenalidomide–**CK1α**(neo-substrate)        | Petzold et al., _Nature_ 2016, doi:10.1038/nature16979                       |
+| 6H0F / 6H0G | 3.25 / 4.25 Å | DDB1–CRBN–Pomalidomide–**IKZF1 / ZNF**(neo-substrate) | _Science_ 2018, doi:10.1126/science.aat0572                                  |
+| **6UML**    | 3.58 Å        | CRBN–Pomalidomide–**SALL4 锌指**(致畸相关)            | Matyskiela et al., _Nat Struct Mol Biol_ 2020, doi:10.1038/s41594-020-0405-9 |
+| 4TZ4        | 3.01 Å        | CRBN–DDB1–(S)-Lenalidomide                            | RCSB(2020 前释放)                                                            |
 
 ### 2.2 关键结合位点残基(人 CRBN,UniProt Q96SW2 编号)
 
@@ -100,13 +100,13 @@ CRBN(CHEMBL3763008)对沙利度胺的登记活性为**低微摩尔级**:IC50 ≈
 
 ### 3.2 实测消旋化半衰期:体内远快于给药间隔
 
-| 条件 | 手性反转/消旋速率 | 换算半衰期 | 来源 |
-|---|---|---|---|
-| 人血,37 ℃(体外,沙利度胺) | k_inv ≈ 0.30–0.31 h⁻¹ | **≈ 2.3 h** | Eriksson 1995, *Chirality* (PMID 7702998) |
-| 人体内(沙利度胺) | R→S 0.17 h⁻¹;S→R 0.12 h⁻¹ | ≈ 4 h / ≈ 6 h | 同上 |
-| 0.1 M 磷酸盐 pH 7.4,37 ℃(沙利度胺) | t50%ee (S)=3.2 h;(R)=2.9 h | — | Chem Sci 2025 引文 PMID 40443985 |
-| RPMI 培养基 37 ℃(来那度胺) | t50%ee (S)=4.2 h;(R)=4.3 h | — | PMID 40443985 |
-| >99% ee EM12 单一对映体,绒猴(致畸敏感灵长类) | 反面对映体 AUC 达总量的 24–30% | — | *Arch Toxicol* 1988 (PMID 3143339) |
+| 条件                                         | 手性反转/消旋速率              | 换算半衰期    | 来源                                      |
+| -------------------------------------------- | ------------------------------ | ------------- | ----------------------------------------- |
+| 人血,37 ℃(体外,沙利度胺)                     | k_inv ≈ 0.30–0.31 h⁻¹          | **≈ 2.3 h**   | Eriksson 1995, _Chirality_ (PMID 7702998) |
+| 人体内(沙利度胺)                             | R→S 0.17 h⁻¹;S→R 0.12 h⁻¹      | ≈ 4 h / ≈ 6 h | 同上                                      |
+| 0.1 M 磷酸盐 pH 7.4,37 ℃(沙利度胺)           | t50%ee (S)=3.2 h;(R)=2.9 h     | —             | Chem Sci 2025 引文 PMID 40443985          |
+| RPMI 培养基 37 ℃(来那度胺)                   | t50%ee (S)=4.2 h;(R)=4.3 h     | —             | PMID 40443985                             |
+| >99% ee EM12 单一对映体,绒猴(致畸敏感灵长类) | 反面对映体 AUC 达总量的 24–30% | —             | _Arch Toxicol_ 1988 (PMID 3143339)        |
 
 结论性推论:沙利度胺/来那度胺临床多为 **q24h 口服**,而单一对映体在血中约 2–4 h 即半消旋,**两次给药间隔内体系已接近外消旋稳态**。即便初始为 100% (R),一个剂量周期内 (S) 的累计 AUC 即达到显著水平——(S) 型致畸/SALL4 降解风险随之“自动复活”。
 
@@ -147,17 +147,17 @@ JPET 2014(PMID 24833703)对泊马度胺的 NONMEM 群体模型给出决定性结
 
 ### 4.1 策略总览(按对“翻转根源”的处置分类)
 
-| 策略 | 逻辑 | 近年代表性工作 |
-|---|---|---|
-| **① 氘代同位素锁(C3′–H→C3′–D)** | 提高 C–D 键断裂活化能,KIE 减缓烯醇化/消旋;不改变药效团 | DECS(PMID 33062153);Len-d3(Chem Sci,PMID 40443985) |
-| **② 立体中心改造为季碳(去 H)** | 无 α-H 则无烯醇化通道;构型永久锁定(单对映体可开发) | 综述性讨论见 ChemMedChem 2025 综述引文(PMID 40963416) |
-| **③ 无手性骨架替换(去除手性中心)** | 直接删除问题源(消旋/水解一并不存在) | 苯基二氢尿嘧啶 PDHU(PMID 36749666/36793425) |
-| **④ 氟化/环系限制(C*-CF3 等)** | sp³ 富集/逃逸平面、调溶解性与膜性质;但多数丢失 CRBN 结合 | CF3-哌啶酮(PMID 42415161);氟代 IMiD(PMID 38917956) |
-| **⑤ 领域级警示** | 氟代邻苯二甲酰亚胺类 IMiD 不再降解新底物(IKZF3/GSPT1/CK1α/SALL4) | PMID 38917956 |
+| 策略                               | 逻辑                                                             | 近年代表性工作                                        |
+| ---------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| **① 氘代同位素锁(C3′–H→C3′–D)**    | 提高 C–D 键断裂活化能,KIE 减缓烯醇化/消旋;不改变药效团           | DECS(PMID 33062153);Len-d3(Chem Sci,PMID 40443985)    |
+| **② 立体中心改造为季碳(去 H)**     | 无 α-H 则无烯醇化通道;构型永久锁定(单对映体可开发)               | 综述性讨论见 ChemMedChem 2025 综述引文(PMID 40963416) |
+| **③ 无手性骨架替换(去除手性中心)** | 直接删除问题源(消旋/水解一并不存在)                              | 苯基二氢尿嘧啶 PDHU(PMID 36749666/36793425)           |
+| _*④ 氟化/环系限制(C*-CF3 等)_*     | sp³ 富集/逃逸平面、调溶解性与膜性质;但多数丢失 CRBN 结合         | CF3-哌啶酮(PMID 42415161);氟代 IMiD(PMID 38917956)    |
+| **⑤ 领域级警示**                   | 氟代邻苯二甲酰亚胺类 IMiD 不再降解新底物(IKZF3/GSPT1/CK1α/SALL4) | PMID 38917956                                         |
 
 ### 4.2 代表论文 #1(策略①,直接改造手性中心):PMID 40443985
 
-**“The contribution of cyclic imide stereoisomers on cereblon-dependent activity”,*Chem Sci* 2025,16,doi:10.1039/d5sc01371b**
+**“The contribution of cyclic imide stereoisomers on cereblon-dependent activity”,_Chem Sci_ 2025,16,doi:10.1039/d5sc01371b**
 
 - 体外构型稳定性数据(37 ℃,非酶条件):
   - Thalidomide 体内消旋 t1/2 = 2.3 h(人血)/ 4–6 h(人体内);体外 t50%ee = 2.9–3.2 h(0.1 M 磷酸盐 pH 7.4)。
@@ -167,7 +167,7 @@ JPET 2014(PMID 24833703)对泊马度胺的 NONMEM 群体模型给出决定性结
 
 ### 4.3 代表论文 #2(策略③,无手性骨架替换):PMID 36749666
 
-**“Development of Substituted Phenyl Dihydrouracil as the Novel Achiral Cereblon Ligands for Targeted Protein Degradation”,*J Med Chem* 2023,66,doi:10.1021/acs.jmedchem.2c01941**
+**“Development of Substituted Phenyl Dihydrouracil as the Novel Achiral Cereblon Ligands for Targeted Protein Degradation”,_J Med Chem_ 2023,66,doi:10.1021/acs.jmedchem.2c01941**
 
 - 动因即消旋问题:戊二酰亚胺消旋快 → PROTAC 常以外消旋/非对映混合物存在,(R) 型无活性且拖累开发。苯基二氢尿嘧啶(PDHU)为**无手性**替代骨架。
 - 体外稳定性数据(与来那度胺同批对比):
@@ -189,22 +189,23 @@ JPET 2014(PMID 24833703)对泊马度胺的 NONMEM 群体模型给出决定性结
 
 本矩阵由 RDKit 2026.03.5 依据注册外消旋体 SMILES(手性未指定)计算;`(S)`-SMILES 依共晶配体建立并经 CIP 验证。完整 CSV 见附件 `imids_feature_matrix.csv`。
 
-| 特征 | Thalidomide | Lenalidomide | Pomalidomide |
-|---|---|---|---|
-| 分子式 | C13H10N2O4 | C13H13N3O3 | C13H11N3O4 |
-| MW (g/mol) | 258.23 | 259.26 | 273.25 |
-| **手性中心数(登记外消旋体,未指定)** | **1** | **1** | **1** |
-| 氢键供体 HBD | 1 | 2 | 2 |
-| 氢键受体 HBA | 4 | 4 | 5 |
-| 芳香环数 | 1 | 1 | 1 |
-| 脂肪环数 | 2 | 2 | 2 |
-| 可旋转键 | 1 | 1 | 1 |
-| TPSA (Å²) | 83.6 | 92.5 | 109.6 |
-| cLogP (Crippen) | 0.09 | 0.03 | −0.33 |
-| **水解敏感酰 C–N(亚胺/内酰胺)键数** | **4** | **3** | **4** |
-| SMILES ((S)-对映体,共晶位姿) | `O=C1c2ccccc2C(=O)N1[C@H]3CCC(=O)NC3=O` | `c1cc2c(c(c1)N)CN(C2=O)[C@H]3CCC(=O)NC3=O` | `c1cc2c(c(c1)N)C(=O)N(C2=O)[C@H]3CCC(=O)NC3=O` |
+| 特征                                | Thalidomide                             | Lenalidomide                               | Pomalidomide                                   |
+| ----------------------------------- | --------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
+| 分子式                              | C13H10N2O4                              | C13H13N3O3                                 | C13H11N3O4                                     |
+| MW (g/mol)                          | 258.23                                  | 259.26                                     | 273.25                                         |
+| **手性中心数(登记外消旋体,未指定)** | **1**                                   | **1**                                      | **1**                                          |
+| 氢键供体 HBD                        | 1                                       | 2                                          | 2                                              |
+| 氢键受体 HBA                        | 4                                       | 4                                          | 5                                              |
+| 芳香环数                            | 1                                       | 1                                          | 1                                              |
+| 脂肪环数                            | 2                                       | 2                                          | 2                                              |
+| 可旋转键                            | 1                                       | 1                                          | 1                                              |
+| TPSA (Å²)                           | 83.6                                    | 92.5                                       | 109.6                                          |
+| cLogP (Crippen)                     | 0.09                                    | 0.03                                       | −0.33                                          |
+| **水解敏感酰 C–N(亚胺/内酰胺)键数** | **4**                                   | **3**                                      | **4**                                          |
+| SMILES ((S)-对映体,共晶位姿)        | `O=C1c2ccccc2C(=O)N1[C@H]3CCC(=O)NC3=O` | `c1cc2c(c(c1)N)CN(C2=O)[C@H]3CCC(=O)NC3=O` | `c1cc2c(c(c1)N)C(=O)N(C2=O)[C@H]3CCC(=O)NC3=O` |
 
 **水解敏感键位标记说明**(见图 `imids_structures.png`,橙色键):
+
 - 每分子含 **1 个 C3′ 手性中心(绿色高亮)** + 戊二酰亚胺环内 2 个 C(=O)–N(亚胺键)+ 邻苯二甲酰亚胺(沙/泊)2 个或异吲哚啉酮内酰胺(来)1 个 C(=O)–N。这些**酰 C–N 键即体内水解(开环)位点**:血浆/碱性 pH 下戊二酰亚胺与邻苯二甲酰亚胺均可自发水解,沙利度胺在人血 37 ℃ 中降解速率常数 ≈0.17–0.18 h⁻¹(t1/2 ≈ 4 h,PMID 7702998),来那度胺 pH 7.4/24 h 仅余 39%、pH 8.8 归零(PMID 36749666)。**手性翻转与开环水解是两个独立但并存的不稳定来源**,逆向设计中应一并纳入“构型稳定性 + 化学稳定性”双重考量。
 - 芳香环:三者均为 1(苯环);沙/泊另含芳香不参与的邻苯二甲酰亚胺五元环,来为异吲哚啉酮五元环(均计入脂肪环 2)。
 
@@ -231,23 +232,23 @@ JPET 2014(PMID 24833703)对泊马度胺的 NONMEM 群体模型给出决定性结
 
 ## 参考文献(PMID / DOI)
 
-1. Eriksson T, et al. *Chirality* 1995. PMID 7702998 · doi:10.1002/chir.530070109(人血/体内消旋与 PK)
-2. *Eur J Clin Pharmacol* 2001(沙利度胺临床药理学综述). PMID 11599654 · doi:10.1007/s002280100320
-3. EM12 对映体/绒猴. *Arch Toxicol* 1988. PMID 3143339 · doi:10.1007/BF00570140
-4. Pomalidomide 对映体 PK 建模. *J Pharmacol Exp Ther* 2014. PMID 24833703 · doi:10.1124/jpet.114.215251
-5. Chamberlain PP, et al. DDB1-CRBN 结构. *Nature* 2014(PDB 4CI1/4CI2/4CI3). doi:10.1038/nature13527
-6. Petzold G, et al. Lenalidomide-CK1α. *Nature* 2016(PDB 5FQD). doi:10.1038/nature16979
-7. Sievers QL, et al. IKZF1/2. *Science* 2018(PDB 6H0F/6H0G). doi:10.1126/science.aat0572
-8. Matyskiela ME, et al. SALL4-硫利度胺致畸结构. *Nat Struct Mol Biol* 2020(PDB 6UML). doi:10.1038/s41594-020-0405-9
-9. Cyclic imide stereoisomers on CRBN activity(氘代 Len-d3;t50 数据). *Chem Sci* 2025. PMID 40443985 · doi:10.1039/d5sc01371b
-10. Deuterium-Enabled Chiral Switching (DECS). *ACS Med Chem Lett* 2020. PMID 33062153 · doi:10.1021/acsmedchemlett.0c00052
-11. Rapid thalidomide racemization / proton tunneling via water bridges. *J Phys Chem Lett* 2023. PMID 37976462 · doi:10.1021/acs.jpclett.3c02757
-12. Achiral phenyl dihydrouracil CRBN ligands(PHU 稳定性数据). *J Med Chem* 2023. PMID 36749666 · doi:10.1021/acs.jmedchem.2c01941
-13. Phenyl dihydrouracil as alternative cereblon binder. *ACS Med Chem Lett* 2023. PMID 36793425 · doi:10.1021/acsmedchemlett.2c00436
-14. Partial PROTAC library, achiral CRBN ligands. *ChemMedChem* 2025. PMID 40963416 · doi:10.1002/cmdc.202500209
-15. Fluorinated aminopiperidones (CF3,非结合警示). *ChemMedChem* 2026. PMID 42415161 · doi:10.1002/cmdc.70360
-16. Fluorinated thalidomide / neo-substrate. *Bioorg Med Chem Lett* 2024. PMID 38917956 · doi:10.1016/j.bmcl.2024.129858
-17. Pomalidomide 对映体结合(计算). *Chirality* 2026. PMID 42470200 · doi:10.1002/chir.70125
-18. SALL4–CRBN 结构/生物物理比较. *Sci Rep* 2023. PMID 38086859 · doi:10.1038/s41598-023-48606-3
+1. Eriksson T, et al. _Chirality_ 1995. PMID 7702998 · doi:10.1002/chir.530070109(人血/体内消旋与 PK)
+2. _Eur J Clin Pharmacol_ 2001(沙利度胺临床药理学综述). PMID 11599654 · doi:10.1007/s002280100320
+3. EM12 对映体/绒猴. _Arch Toxicol_ 1988. PMID 3143339 · doi:10.1007/BF00570140
+4. Pomalidomide 对映体 PK 建模. _J Pharmacol Exp Ther_ 2014. PMID 24833703 · doi:10.1124/jpet.114.215251
+5. Chamberlain PP, et al. DDB1-CRBN 结构. _Nature_ 2014(PDB 4CI1/4CI2/4CI3). doi:10.1038/nature13527
+6. Petzold G, et al. Lenalidomide-CK1α. _Nature_ 2016(PDB 5FQD). doi:10.1038/nature16979
+7. Sievers QL, et al. IKZF1/2. _Science_ 2018(PDB 6H0F/6H0G). doi:10.1126/science.aat0572
+8. Matyskiela ME, et al. SALL4-硫利度胺致畸结构. _Nat Struct Mol Biol_ 2020(PDB 6UML). doi:10.1038/s41594-020-0405-9
+9. Cyclic imide stereoisomers on CRBN activity(氘代 Len-d3;t50 数据). _Chem Sci_ 2025. PMID 40443985 · doi:10.1039/d5sc01371b
+10. Deuterium-Enabled Chiral Switching (DECS). _ACS Med Chem Lett_ 2020. PMID 33062153 · doi:10.1021/acsmedchemlett.0c00052
+11. Rapid thalidomide racemization / proton tunneling via water bridges. _J Phys Chem Lett_ 2023. PMID 37976462 · doi:10.1021/acs.jpclett.3c02757
+12. Achiral phenyl dihydrouracil CRBN ligands(PHU 稳定性数据). _J Med Chem_ 2023. PMID 36749666 · doi:10.1021/acs.jmedchem.2c01941
+13. Phenyl dihydrouracil as alternative cereblon binder. _ACS Med Chem Lett_ 2023. PMID 36793425 · doi:10.1021/acsmedchemlett.2c00436
+14. Partial PROTAC library, achiral CRBN ligands. _ChemMedChem_ 2025. PMID 40963416 · doi:10.1002/cmdc.202500209
+15. Fluorinated aminopiperidones (CF3,非结合警示). _ChemMedChem_ 2026. PMID 42415161 · doi:10.1002/cmdc.70360
+16. Fluorinated thalidomide / neo-substrate. _Bioorg Med Chem Lett_ 2024. PMID 38917956 · doi:10.1016/j.bmcl.2024.129858
+17. Pomalidomide 对映体结合(计算). _Chirality_ 2026. PMID 42470200 · doi:10.1002/chir.70125
+18. SALL4–CRBN 结构/生物物理比较. _Sci Rep_ 2023. PMID 38086859 · doi:10.1038/s41598-023-48606-3
 
-*(所有 PMID 由 PubMed 检索核验;DOI 与期刊/卷期来自 PubMed 元数据。结构生物学的残基结论为对 RCSB 坐标文件的直接计算输出,而非转述。)*
+_(所有 PMID 由 PubMed 检索核验;DOI 与期刊/卷期来自 PubMed 元数据。结构生物学的残基结论为对 RCSB 坐标文件的直接计算输出,而非转述。)_

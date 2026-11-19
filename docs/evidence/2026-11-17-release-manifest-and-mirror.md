@@ -48,13 +48,13 @@ run: |
 
 ## 二 改法
 
-| 位置 | 改动 |
-| --- | --- |
-| `scripts/generate-version-manifest.mjs` | `INSTALLERS['linux-x64-appimage']` 改成 `-linux-x86_64.AppImage`，并把「为什么是 x86_64 / 写错的后果是静默」写进注释 |
-| 同上 | 新增 `resolveManifestOptions()`：位置参数仍是 `<dir> [version]`，新增 `--out` / `--cdn-base` / `--s3-prefix`（缺省分别回落 `OUTPUT` / `CDN_BASE_URL` / `S3_PREFIX`）。带值 flag 的值**不会被当成 version**（旧写法 `args.find(!startsWith('--'))` 会） |
-| 同上 | 镜像模式（非 `--github`）**没有 base 就具名失败**：旧代码硬编码 GitHub URL 并在 prefix 为空时拼出 `…/download//releases/…`，等于给客户端一份指向不存在地址的清单 |
-| 同上 | `buildManifest` 的 URL 拼接在 prefix 为空时不再产生 `//` |
-| `.github/workflows/mirror-to-website.yml` | 按新契约调用：`"$DIST_DIR" "$VERSION" --cdn-base "$CDN_BASE_URL" --s3-prefix "$S3_PREFIX" --out "$OUTPUT"`；`CDN_BASE_URL` 为空时先打三行具名原因再 `exit 1`（不写指向空地址的清单） |
+| 位置                                      | 改动                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/generate-version-manifest.mjs`   | `INSTALLERS['linux-x64-appimage']` 改成 `-linux-x86_64.AppImage`，并把「为什么是 x86_64 / 写错的后果是静默」写进注释                                                                                                                                   |
+| 同上                                      | 新增 `resolveManifestOptions()`：位置参数仍是 `<dir> [version]`，新增 `--out` / `--cdn-base` / `--s3-prefix`（缺省分别回落 `OUTPUT` / `CDN_BASE_URL` / `S3_PREFIX`）。带值 flag 的值**不会被当成 version**（旧写法 `args.find(!startsWith('--'))` 会） |
+| 同上                                      | 镜像模式（非 `--github`）**没有 base 就具名失败**：旧代码硬编码 GitHub URL 并在 prefix 为空时拼出 `…/download//releases/…`，等于给客户端一份指向不存在地址的清单                                                                                       |
+| 同上                                      | `buildManifest` 的 URL 拼接在 prefix 为空时不再产生 `//`                                                                                                                                                                                               |
+| `.github/workflows/mirror-to-website.yml` | 按新契约调用：`"$DIST_DIR" "$VERSION" --cdn-base "$CDN_BASE_URL" --s3-prefix "$S3_PREFIX" --out "$OUTPUT"`；`CDN_BASE_URL` 为空时先打三行具名原因再 `exit 1`（不写指向空地址的清单）                                                                   |
 
 `release.yml` 的 `--github` 调用方式与产物形状**未变**（这一步没碰）。
 
@@ -99,23 +99,23 @@ PROBE verdict=PASS
 
 ## 四 变异自证（证明用例真的在守这两件事）
 
-| 变异 | 结果 |
-| --- | --- |
+| 变异                                                       | 结果                                                                                                                                                                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 把 `INSTALLERS` 里 AppImage 名字退回 `-linux-x64.AppImage` | 4 条用例红：`maps every installer…`、`keys the linux AppImage by the name electron-builder actually writes`、`produces a manifest the client can fall back…`、CLI 的镜像那一条 |
-| 把工作流里的 `--s3-prefix/--out` 去掉（只留 `--cdn-base`） | 1 条红：`passes the artifacts dir, the version and the mirror url flags to the CLI` |
+| 把工作流里的 `--s3-prefix/--out` 去掉（只留 `--cdn-base`） | 1 条红：`passes the artifacts dir, the version and the mirror url flags to the CLI`                                                                                            |
 
 第二组还顺带证明：YAML 断言读的是真实工作流文件（`process.cwd()` 下的 `.github/workflows/`），不是抄一份进来。
 
 ## 五 门禁（本机实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run scripts/generate-version-manifest.test.ts` | **1 file / 42 passed**（本笔 +11） |
-| `npx vitest run scripts/ --maxWorkers=4` | **43 files passed / 13 skipped**；**557 passed / 17 skipped** |
-| `npx eslint --no-cache`（两个文件） | 0 error / 0 warning |
-| `npx prettier --check`（两个文件） | 通过（只改到本笔新增行） |
-| `npm run typecheck:node`（`--composite false`） | 0（`NODE_OPTIONS=--max-old-space-size=8192`） |
-| `npm run typecheck:web` | 0 |
+| 环                                                         | 读数                                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------- |
+| `npx vitest run scripts/generate-version-manifest.test.ts` | **1 file / 42 passed**（本笔 +11）                            |
+| `npx vitest run scripts/ --maxWorkers=4`                   | **43 files passed / 13 skipped**；**557 passed / 17 skipped** |
+| `npx eslint --no-cache`（两个文件）                        | 0 error / 0 warning                                           |
+| `npx prettier --check`（两个文件）                         | 通过（只改到本笔新增行）                                      |
+| `npm run typecheck:node`（`--composite false`）            | 0（`NODE_OPTIONS=--max-old-space-size=8192`）                 |
+| `npm run typecheck:web`                                    | 0                                                             |
 
 ## 六 边界（不许读成更强）
 

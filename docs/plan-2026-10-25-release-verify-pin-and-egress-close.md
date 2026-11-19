@@ -15,12 +15,12 @@
 
 ## 二 主干三道红，同一个成因
 
-| 车道 | run | 提交 | 失败处 | 读数 |
-|---|---|---|---|---|
-| Nightly `build / Verify` | 40107474986 | `24f6281b` | Step 7 `Test (with coverage)` | `ipc-startup-attribution.test.ts:28` `expected …(11) to deeply equal …(10)`，多出的名字是 `load-probe-answers` |
-| `Windows Full Test (8/8)` | 40107474911 | `24f6281b` | 同一条用例 | `1 failed \| 1565 passed \| 12 skipped (1578)` |
-| Release v2.17.6 `build / Verify` | 40109691162 | `24f6281b` | Step 7 `Test (with coverage)` | 下游 `build / Build`、`publish`、`notarize-mac` **全 skipped** |
-| Release v2.17.4 `build / Verify` | 40105384598 | `b43f63dc` | 同上 | 同一形状 |
+| 车道                             | run         | 提交       | 失败处                        | 读数                                                                                                           |
+| -------------------------------- | ----------- | ---------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Nightly `build / Verify`         | 40107474986 | `24f6281b` | Step 7 `Test (with coverage)` | `ipc-startup-attribution.test.ts:28` `expected …(11) to deeply equal …(10)`，多出的名字是 `load-probe-answers` |
+| `Windows Full Test (8/8)`        | 40107474911 | `24f6281b` | 同一条用例                    | `1 failed \| 1565 passed \| 12 skipped (1578)`                                                                 |
+| Release v2.17.6 `build / Verify` | 40109691162 | `24f6281b` | Step 7 `Test (with coverage)` | 下游 `build / Build`、`publish`、`notarize-mac` **全 skipped**                                                 |
+| Release v2.17.4 `build / Verify` | 40105384598 | `b43f63dc` | 同上                          | 同一形状                                                                                                       |
 
 **成因**：`bf176437`（探测答案跨进程复用，22:14）在 `src/main/ipc.ts` 加了第 12 个被计时的装配阶段
 `await composeSteps.step('load-probe-answers', …)`，而那张「必须逐个点名、按装配顺序」的清单没跟着改。
@@ -28,14 +28,14 @@
 
 **这条红的代价不是一次 CI 失败，而是连着三版没发全资产**：
 
-| 版本 | 页上资产数 | 说明 |
-|---|---|---|
-| v2.17.0 | **21** | 引脚红之前 |
-| v2.17.1 | 3 | 另一成因（`readme-connector-count`，85 vs 282）：移动 tag 后 Verify 转绿，但 `macos-arm64` 停在 P0 认证步骤 ⇒ `publish` 同样没跑（上一轮记录） |
-| v2.17.2 | **21** | 救回后 |
-| v2.17.4 | 3 | 本成因 |
-| v2.17.5 | 3 | 本成因 |
-| v2.17.6 | 3 | 本成因（Release run 40109691162 于 00:18:21 结束为 failure） |
+| 版本    | 页上资产数 | 说明                                                                                                                                           |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| v2.17.0 | **21**     | 引脚红之前                                                                                                                                     |
+| v2.17.1 | 3          | 另一成因（`readme-connector-count`，85 vs 282）：移动 tag 后 Verify 转绿，但 `macos-arm64` 停在 P0 认证步骤 ⇒ `publish` 同样没跑（上一轮记录） |
+| v2.17.2 | **21**     | 救回后                                                                                                                                         |
+| v2.17.4 | 3          | 本成因                                                                                                                                         |
+| v2.17.5 | 3          | 本成因                                                                                                                                         |
+| v2.17.6 | 3          | 本成因（Release run 40109691162 于 00:18:21 结束为 failure）                                                                                   |
 
 页上那 3 个（`version.json` + mac-arm64 `dmg` + `blockmap`）是**本地补传**的；四平台那 19–21 个
 走的是 Release 的 `publish` 作业，而 `publish` 只在 Verify 绿时才跑。
@@ -68,9 +68,9 @@ Test Files  1 failed | 1384 passed | 18 skipped (1403)
 
 **A/B 读数**（本机，同一棵树背靠背，各 5 次，只跑「客户端终结」那两条用例）：
 
-| 臂 | 结果 |
-|---|---|
-| 带修复 | **5/5 通过** |
+| 臂                                                            | 结果                                                                                                                                             |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 带修复                                                        | **5/5 通过**                                                                                                                                     |
 | 去掉那一行（其余字节不变，事后逐字节还原、sha256 与改前相同） | **4/5**，唯一失败的是 `tears an established tunnel down when the client is **reset**d`，行是 `AssertionError: expected 'timeout' to be 'closed'` |
 
 ⇒ 2026-10-24 Release `build / Verify` 那条红（同名 + 同断言）可归到这一个触发点上：
@@ -81,15 +81,15 @@ Test Files  1 failed | 1384 passed | 18 skipped (1403)
 
 ## 四 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| `src/main/net` 整域 | **8 files / 92 passed** |
-| `egress.test.ts` 连跑 3 遍 | **31/31 × 3** |
-| 变异（去掉 close 收尾） | `1 failed \| 30 skipped`（恰是新用例） |
-| `ipc-startup-attribution.test.ts` | **5 passed** |
-| 双 typecheck（`--composite false`） | node **0**、web **0** |
-| `eslint --no-cache`（4 个改动文件） | **0** |
-| `scripts/pre-push-checks.sh` | ✓ |
+| 环                                  | 读数                                   |
+| ----------------------------------- | -------------------------------------- |
+| `src/main/net` 整域                 | **8 files / 92 passed**                |
+| `egress.test.ts` 连跑 3 遍          | **31/31 × 3**                          |
+| 变异（去掉 close 收尾）             | `1 failed \| 30 skipped`（恰是新用例） |
+| `ipc-startup-attribution.test.ts`   | **5 passed**                           |
+| 双 typecheck（`--composite false`） | node **0**、web **0**                  |
+| `eslint --no-cache`（4 个改动文件） | **0**                                  |
+| `scripts/pre-push-checks.sh`        | ✓                                      |
 
 ## 五 边界（不许读成更强）
 

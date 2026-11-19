@@ -41,24 +41,24 @@
 
 ## 三 交付（2 产品文件 + 1 新模块 + 1 测试文件）
 
-| 位置 | 改动 |
-| --- | --- |
+| 位置                                   | 改动                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/console-pipe-guard.ts`（新） | `createConsolePipeGuard({ stdout, stderr, onPipeClosed })`：给两条进程级流挂 `error` 监听；**每条流只报一次**（一串失败是一个事实，不是 N 个）；`code` 缺席时报 `no-code`（不静默丢）；`install()` 可重复调用（不叠监听器，两个 guard 是两个独立订阅者）；`isBroken()` 供调用方查询 |
-| `src/main/logger.ts` | 新增 `suppressConsoleMirror()`：此后**不再镜像到控制台**，文件记录照旧；只关不开（一条已经失败的流不值得再写，开回去等于把刚修掉的东西装回来） |
-| `src/main/index.ts` | 在已有的进程级失败捕获旁边装上 guard；回调里**先**关镜像、**再**记一条 `warn`：`console output pipe closed` + `stream` / `code` / `message` / `consequence: 'console-mirroring-disabled'` —— 一条关于死管道的记录，自己不能再写进那条死管道 |
+| `src/main/logger.ts`                   | 新增 `suppressConsoleMirror()`：此后**不再镜像到控制台**，文件记录照旧；只关不开（一条已经失败的流不值得再写，开回去等于把刚修掉的东西装回来）                                                                                                                                      |
+| `src/main/index.ts`                    | 在已有的进程级失败捕获旁边装上 guard；回调里**先**关镜像、**再**记一条 `warn`：`console output pipe closed` + `stream` / `code` / `message` / `consequence: 'console-mirroring-disabled'` —— 一条关于死管道的记录，自己不能再写进那条死管道                                         |
 
 **为什么不是「吞掉所有 uncaughtException」**：guard 只监听这两条流；其余任何来源的异常仍原样进 crash-diagnostics。
 **为什么保留一条日志**：读端消失是真实事件（可解释「为什么此后没有控制台输出」），但它不是故障。
 
 ## 四 门禁（全部实跑，读数取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| `vitest run src/main/console-pipe-guard.test.ts` | 1 文件 / **8 passed**，exit 0 |
-| 受影响簇 `src/main/logger.test.ts` + 本文件 + `crash-diagnostics.capture.test.ts` + `src/main/diagnostics` | **29 文件 / 294 passed**，exit 0 |
-| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 4096） | exit 0 |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache`（本批 4 文件） | **0 error / 0 warning**（先跑 `prettier --write` 本批两个新文件） |
+| 环                                                                                                         | 读数                                                              |
+| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `vitest run src/main/console-pipe-guard.test.ts`                                                           | 1 文件 / **8 passed**，exit 0                                     |
+| 受影响簇 `src/main/logger.test.ts` + 本文件 + `crash-diagnostics.capture.test.ts` + `src/main/diagnostics` | **29 文件 / 294 passed**，exit 0                                  |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 4096）                                          | exit 0                                                            |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                                                      | exit 0                                                            |
+| `eslint --no-cache`（本批 4 文件）                                                                         | **0 error / 0 warning**（先跑 `prettier --write` 本批两个新文件） |
 
 **变异自证（改完即还原，各跑一遍）**：
 

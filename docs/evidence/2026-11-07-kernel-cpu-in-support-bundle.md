@@ -8,12 +8,12 @@
 
 ## 一 交付（4 处，全部在主进程侧）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/notebook/kernel-idle-spin.ts` | 新增进程级环 `sharedKernelCpu`（`createKernelCpuRing` 可注入）：记录**每一个完成的采样窗**（不只是越线的），给 `observed` / `dropped` / `capacity`，另存**每内核最新一窗**（不受尾部轮转影响）；命名状态 `samples` / `no-samples` / `monitor-not-started` / `unsupported-platform` / `probe-failed` |
-| 同上（监控器） | `KernelIdleSpinMonitor` 写入该环：每窗 `record`、探针失败与 `win32` 各记一次具名 reason、`start`/`stop` 记监控器状态 |
-| `src/main/diagnostics/support-bundle.ts` | 新增**必填**段 `notebookKernelCpu` → 写成 `diagnostics/notebook-kernel-cpu.json`；`README.txt` 里加一节说明 |
-| `src/main/ipc.ts` | facts 里加一行 `notebookKernelCpu: sharedKernelCpu.summary()`（与 `sharedSlowOperations` / `sharedIpcChannelLatency` 同一装配点、同样的进程级单例） |
+| 位置                                     | 改动                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/notebook/kernel-idle-spin.ts`  | 新增进程级环 `sharedKernelCpu`（`createKernelCpuRing` 可注入）：记录**每一个完成的采样窗**（不只是越线的），给 `observed` / `dropped` / `capacity`，另存**每内核最新一窗**（不受尾部轮转影响）；命名状态 `samples` / `no-samples` / `monitor-not-started` / `unsupported-platform` / `probe-failed` |
+| 同上（监控器）                           | `KernelIdleSpinMonitor` 写入该环：每窗 `record`、探针失败与 `win32` 各记一次具名 reason、`start`/`stop` 记监控器状态                                                                                                                                                                                |
+| `src/main/diagnostics/support-bundle.ts` | 新增**必填**段 `notebookKernelCpu` → 写成 `diagnostics/notebook-kernel-cpu.json`；`README.txt` 里加一节说明                                                                                                                                                                                         |
+| `src/main/ipc.ts`                        | facts 里加一行 `notebookKernelCpu: sharedKernelCpu.summary()`（与 `sharedSlowOperations` / `sharedIpcChannelLatency` 同一装配点、同样的进程级单例）                                                                                                                                                 |
 
 三条设计取舍，都是被本仓既有教训逼出来的：
 
@@ -55,14 +55,14 @@ npx playwright test e2e/certification/support-bundle-export-readback.spec.ts --r
 
 ## 三 门禁（隔离工作树 `/tmp/ps-cron-kernelcpu` @ `af2e77e6` + 软链 node_modules）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向 vitest（环 + 监控器 + 诊断包 + 命令 owner） | 4 files / **50 passed**，exit 0 |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
-| `eslint --no-cache`（6 个改动文件 + 认证 spec） | **0 error / 0 warning**（新文件先跑 prettier 修掉 6 条格式 warning） |
-| `npm run build:e2e` | exit 0，`✓ built in 41.16s` |
-| 全量 vitest | 见汇报（本笔提交前跑的那一轮） |
+| 环                                                     | 读数                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------- |
+| 定向 vitest（环 + 监控器 + 诊断包 + 命令 owner）       | 4 files / **50 passed**，exit 0                                      |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0                                                               |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | exit 0                                                               |
+| `eslint --no-cache`（6 个改动文件 + 认证 spec）        | **0 error / 0 warning**（新文件先跑 prettier 修掉 6 条格式 warning） |
+| `npm run build:e2e`                                    | exit 0，`✓ built in 41.16s`                                          |
+| 全量 vitest                                            | 见汇报（本笔提交前跑的那一轮）                                       |
 
 ## 四 边界（不许读成更强）
 

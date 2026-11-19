@@ -17,26 +17,32 @@
    真机日志里那条"数据根被拒"的原文是：
 
    ```json
-   {"tool":"Bash","target":"/Users/totota/.purescience;","resolved":"/Users/totota/.purescience;","decision":"deny"}
+   {
+     "tool": "Bash",
+     "target": "/Users/totota/.purescience;",
+     "resolved": "/Users/totota/.purescience;",
+     "decision": "deny"
+   }
    ```
 
    ⇒ 真因是**分词器把 `;` 留在了 token 里**：`/…/.purescience;` 既不是根、也没有比它更深的已存在祖先，
    于是按"范围之外"拒绝。**按「加白名单」去修是对着症状修**——机制修法在分词。
+
 2. **工具注册名那半不在本单元**（它是 agent 面向身份的改名连锁，见 §六 立案），本单元不碰。
 
 ## 二 真机读数（用户自己的打包版围栏日志，不是压测）
 
 来源：`~/.purescience/claude/hooks/path-guard-decisions.jsonl`（mtime **2026-10-10 21:47**，**662 行**）。
 
-| 拒绝类别 | 条数 | 说明 |
-| --- | --- | --- |
-| 根 / 家目录本身 | 16 | 含 `/`（**刻意保留**）、`/tmp`（刻意保留）、`~`、`/Users/totota` |
-| 正则或通配 token | 6 | `/^`、`/^def`、`/^ATOM/{print}`、`/^ATOM\|^HETATM/{print}`、`/Users.*esm2.*`、`/Users/totota/*ProteinMPNN*` |
-| 模型权重缓存 | 6 | `~/.cache/torch/hub/checkpoints[/]`、`~/.cache/huggingface[/hub]` |
-| 其它 | 3 | `/tmp/v1_backup.py`、`~/.ssh/`、`~/.ssh/config` |
-| agent 自己的临时件 | 2 | `/private/tmp/claude-501/…/tasks/*.output`（读自己的后台任务输出） |
-| 标点粘连 | 2 | `/Users/totota/.purescience;`（**本单元的主症**） |
-| 工具链二进制 | 1 | `/Users/totota/.local/bin/python` |
+| 拒绝类别           | 条数 | 说明                                                                                                        |
+| ------------------ | ---- | ----------------------------------------------------------------------------------------------------------- |
+| 根 / 家目录本身    | 16   | 含 `/`（**刻意保留**）、`/tmp`（刻意保留）、`~`、`/Users/totota`                                            |
+| 正则或通配 token   | 6    | `/^`、`/^def`、`/^ATOM/{print}`、`/^ATOM\|^HETATM/{print}`、`/Users.*esm2.*`、`/Users/totota/*ProteinMPNN*` |
+| 模型权重缓存       | 6    | `~/.cache/torch/hub/checkpoints[/]`、`~/.cache/huggingface[/hub]`                                           |
+| 其它               | 3    | `/tmp/v1_backup.py`、`~/.ssh/`、`~/.ssh/config`                                                             |
+| agent 自己的临时件 | 2    | `/private/tmp/claude-501/…/tasks/*.output`（读自己的后台任务输出）                                          |
+| 标点粘连           | 2    | `/Users/totota/.purescience;`（**本单元的主症**）                                                           |
+| 工具链二进制       | 1    | `/Users/totota/.local/bin/python`                                                                           |
 
 三处原文命令（从会话转写里逐字取到，不是复原的）：
 
@@ -46,12 +52,12 @@
 
 ## 三 交付（`src/main/settings/path-guard-hook.ts` + 其用例）
 
-| 面 | 改法 |
-| --- | --- |
-| 分词 | token 现在按**空白与 shell 分隔符**（`; \| & ( ) < >`）切开，并去掉粘在尾巴上的 `,`；只判位置，不判标点。切分只会**增加**被判的 token，所以这是收紧而不是放宽 |
-| 正则程序 | 新增 `looksLikePattern()`：**首段**以 `(`、`^`、`{`、`\|`、`+` 之一开头 ⇒ 是模式、不是位置；Windows 盘符/UNC 路径显式排除 |
-| 权重缓存 | 新增 `RUNTIME_CACHE_PREFIXES`（`~/.cache/torch/hub/checkpoints`、`~/.cache/huggingface`）与 `underRuntimeCache()`，在系统前缀之后放行 |
-| 文件工具同一类 | `targets()` 里 `pattern` 字段同样过 `looksLikePattern`（Grep 的 `/^ATOM/` 以前也会被判成位置） |
+| 面             | 改法                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 分词           | token 现在按**空白与 shell 分隔符**（`; \| & ( ) < >`）切开，并去掉粘在尾巴上的 `,`；只判位置，不判标点。切分只会**增加**被判的 token，所以这是收紧而不是放宽 |
+| 正则程序       | 新增 `looksLikePattern()`：**首段**以 `(`、`^`、`{`、`\|`、`+` 之一开头 ⇒ 是模式、不是位置；Windows 盘符/UNC 路径显式排除                                     |
+| 权重缓存       | 新增 `RUNTIME_CACHE_PREFIXES`（`~/.cache/torch/hub/checkpoints`、`~/.cache/huggingface`）与 `underRuntimeCache()`，在系统前缀之后放行                         |
+| 文件工具同一类 | `targets()` 里 `pattern` 字段同样过 `looksLikePattern`（Grep 的 `/^ATOM/` 以前也会被判成位置）                                                                |
 
 ## 四 提权论证（放宽之前先写成可复查的，三条）
 
@@ -71,17 +77,17 @@
   （仅把它内嵌的两个路径改到隔离目录，其余字节不动）。
 - **after** = 本仓 `writePathGuard()` **现在写出来的**那份（由应用自己的 writer 生成，不是手抄）。
 
-| payload（真机原文） | before | after |
-| --- | --- | --- |
-| `cd /Users/totota/.purescience; …; ls -la` | **deny** | **allow** |
-| `du -sh ~/.cache/torch/hub/checkpoints/ …` | **deny** | **allow** |
-| `awk '/^ATOM\|^HETATM/{print}' receptor.pdb > clean.pdb` | **deny** | **allow** |
-| `Read ~/.cache/huggingface/hub/models--x/config.json` | **deny** | **allow** |
-| `cat /Users/totota/.ssh/id_rsa` | deny | deny |
-| `find / -iname "egfr_t790m_merged.csv"` | deny | deny |
-| `ls -la /Users/totota/*ProteinMPNN*` | deny | deny |
-| `Read ~/.cache/other-tool/data.csv`（同父目录的兄弟缓存） | deny | deny |
-| `ls /tmp`（临时目录刻意不在 roots） | deny | deny |
+| payload（真机原文）                                       | before   | after     |
+| --------------------------------------------------------- | -------- | --------- |
+| `cd /Users/totota/.purescience; …; ls -la`                | **deny** | **allow** |
+| `du -sh ~/.cache/torch/hub/checkpoints/ …`                | **deny** | **allow** |
+| `awk '/^ATOM\|^HETATM/{print}' receptor.pdb > clean.pdb`  | **deny** | **allow** |
+| `Read ~/.cache/huggingface/hub/models--x/config.json`     | **deny** | **allow** |
+| `cat /Users/totota/.ssh/id_rsa`                           | deny     | deny      |
+| `find / -iname "egfr_t790m_merged.csv"`                   | deny     | deny      |
+| `ls -la /Users/totota/*ProteinMPNN*`                      | deny     | deny      |
+| `Read ~/.cache/other-tool/data.csv`（同父目录的兄弟缓存） | deny     | deny      |
+| `ls /tmp`（临时目录刻意不在 roots）                       | deny     | deny      |
 
 before 的决策日志里那条中标点粘连的记录是
 `{"tool":"Bash","target":"/Users/totota/.purescience;","resolved":"/Users/totota/.purescience;","decision":"deny"}` ——
@@ -108,7 +114,7 @@ before 的决策日志里那条中标点粘连的记录是
    `mcp__purescience_plan__update_step_status`（下划线）**报 No such tool available**；反向也发生过
    （`mcp__purescience-notebook__…` 报不存在，而 notebook 服务名本来就是下划线）。
    即：**同一个应用里两套命名约定并存**（`purescience_notebook` 下划线，`purescience-plan/-figure/-artifacts/
-   -activity/-skills` 连字符），模型只能靠猜。改法就是该文件自己注释里写的方向（连字符清零，`legacyNames`
+-activity/-skills` 连字符），模型只能靠猜。改法就是该文件自己注释里写的方向（连字符清零，`legacyNames`
    兜旧拼写），**计数：`src` + `e2e` 里这 5 个名字共 164 行 / 44 个文件**（另有 96 行 `mcp__purescience_*`
    的转义形态）⇒ 属改名连锁 + agent 面向身份变更，**单独立项**，不掺进本单元。
 

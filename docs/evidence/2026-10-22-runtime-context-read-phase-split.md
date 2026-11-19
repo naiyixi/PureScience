@@ -18,10 +18,10 @@
 
 ## 2 交付
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/session-persistence/coordinator.ts` | 新增 `SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS = 200`；`readSessionRuntimeContext` 在 `enqueue` **之前**取 `requestedAt`，出队取 `startedAt`、读后取 `readAt`、返回前取 `finishedAt`；新增 `reportSlowRuntimeContextRead` 打**一行** `session runtime context read was slow`，字段 `sessionId / queuedMs / loadMs / cloneMs / totalMs / hasPlan` |
-| `src/main/session-persistence/coordinator.test.ts` | 新增 `describe('session runtime context read diagnostics')` 2 条 |
+| 位置                                               | 改动                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/session-persistence/coordinator.ts`      | 新增 `SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS = 200`；`readSessionRuntimeContext` 在 `enqueue` **之前**取 `requestedAt`，出队取 `startedAt`、读后取 `readAt`、返回前取 `finishedAt`；新增 `reportSlowRuntimeContextRead` 打**一行** `session runtime context read was slow`，字段 `sessionId / queuedMs / loadMs / cloneMs / totalMs / hasPlan` |
+| `src/main/session-persistence/coordinator.test.ts` | 新增 `describe('session runtime context read diagnostics')` 2 条                                                                                                                                                                                                                                                                               |
 
 **三条设计判据**
 
@@ -38,10 +38,10 @@
 
 ## 3 变异证明（两条，各自只红它该红的那一条）
 
-| 变异 | 结果 |
-|---|---|
+| 变异                                               | 结果                                                                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | 时钟起点落在任务体内（`requestedAt` 在出队后才取） | **2 条都红**：`expected "vi.fn()" to be called 1 times, but got 0 times` —— 排队一跨阈值就一行都不报，正是「把等待藏起来」的形状 |
-| `hasPlan` 写死 `true` | **只红**「says when the Session had nothing to project」：`expected true to be false`；另一条保持绿 |
+| `hasPlan` 写死 `true`                              | **只红**「says when the Session had nothing to project」：`expected true to be false`；另一条保持绿                              |
 
 第一条变异是这一段的**必需性证明**：换个起点，同一份代码在慢读上一个字都不说。第二条证明 `hasPlan`
 不是装饰——它把「没有计划」与「有计划但慢」这两种情况在日志里分开了。
@@ -65,6 +65,7 @@
    ```
 
    **本文件不写这条读数**，也不许把「仪器已就位」写成「3.8 秒已治」。
+
 2. **慢行只覆盖 `readSessionRuntimeContext` 这一条读**，`patchSessionRuntimeContext` 与其它 `enqueue` 调用点没有加，
    别把这一行当「队列整体」的画像。
 3. **阈值 200 ms 以下的慢读不报**：能不能判「这条通道其实大多很快」要靠 IPC 通道那条 50 ms 的报告，不在本行。

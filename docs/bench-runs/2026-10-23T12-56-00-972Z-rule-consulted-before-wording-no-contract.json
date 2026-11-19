@@ -17,14 +17,8 @@
     "numbers": false,
     "citations": false
   },
-  "toolCallNames": [
-    "execute",
-    "other",
-    "read"
-  ],
-  "skillsRead": [
-    "os-evidence-grading"
-  ],
+  "toolCallNames": ["execute", "other", "read"],
+  "skillsRead": ["os-evidence-grading"],
   "toolCallCount": 4,
   "manipulation": {
     "arm": "no-contract",

@@ -9,6 +9,7 @@
 新增通道 **`project-files:list-kinds`**：一次调用返回**多个项目各自的文件类型**。
 
 ### ✅ 已完成（`4aef17b`，测试全绿，无行为变化）
+
 1. **共享类型与规则**：`ListProjectFileKindsRequest` / `ProjectFileKindsSummary` 已加入 `src/shared/project-files.ts`；`src/shared/project-file-kinds.ts` 提供 `PROJECT_FILE_KIND_LIMIT` + `deriveProjectFileKinds`（**单一实现**，`HomePage` 已改为引用它，本地副本已删），并有自己的用例（最新优先、去重、上限 4、无法识别的扩展名）。
 2. **主进程批量读**：`ProjectFilesQueryOwner.listProjectFileKinds` —— **一次往返**，窗口函数 `ROW_NUMBER() OVER (PARTITION BY projectId ORDER BY sortAtMs DESC, seq DESC)` 取每项目最新 **30** 条（`$queryRawUnsafe` + `?` 占位，**不拼字符串**；`≤100` 项目、空数组早返回、非字符串入参过滤、逐个 `requireIdentifier`），kinds 用共享规则推导，≥50 ms 记 `project file kinds read was slow`。
    - `ProjectFilesClient` 已补 `$queryRawUnsafe`；架构测试（钉住查询 owner 公开方法清单）已更新并写明该方法存在的理由。
@@ -19,29 +20,35 @@
 > **已做完（`6720299`）+ 实测见 `docs/evidence/2026-09-19-u14-fanout-batched-verified.md`**：五处接线全落，真机 A/B（同语料、同驱动、同仪器）证得**每次 Home 挂载的扇出 52 → 1**（启动窗内 `list-files` 52→0、`list-kinds` 0→1）、chip 相关慢读条目归零、chip 逐项一致（177 元素 / 16 种）；`dbCanaryMs` 判据是**空结果**（本轮无 >100 ms 样本，不是「消掉了」）。
 
 > **一次未完成尝试的实测记录（2026-09-19，已回退、未提交）**：接线做到一半时被三处守卫拦下，这些**具体位置与数字**下次直接照用，别再摸索：
+>
 > 1. **Web 面也要注册这条命令** —— `src/main/application-command-composition.test.ts` 有 7 个用例失败，它们按生成表核对**本地 Web 视图**实际安装的命令集合。结论：`project-files:*` 不只走 Electron IPC，还必须是 Web 安装的命令（与 `project-files:list-files` 同样处理），**光加 `ipcMainHandle` 不够**。
 > 2. **契约计数（全部 +1）**：`renderer-contract-catalog.test.ts` 的 `RENDERER_CONTRACT_CATALOG` 417→**418**、`projection.invoke` 315→**316**、另一个 345→**346**；`renderer-surface-inventory.test.ts` 的 `electronPaths` 417→**418** 与 `).toHaveLength(315)`→**316**；`preload/index.test.ts` 的 `coreContracts` 191→**192**、`requestContracts` 153→**154**、边界集合 `{requests:153,…}`→**154**，并在"pins every callable path"清单里 `'projectFiles.listFiles',` 之后加 `'projectFiles.listKinds',`。
 > 3. **主进程两个端口与 facade 的公开方法清单**：`ProjectFilesQueryRepository`、`ProjectFilesHandlers` 都要加 `listKinds`；`repository.architecture.test.ts` 的"keeps the established public repository interface"清单（11→12）与"one query owner"清单（4→5）都要加；`ipc.test.ts` 里 **8 处**假 repository/handlers 字面量需要 `listKinds: vi.fn(async () => []),`（按行插容易重复/遗漏，建议直接改成工厂函数）。
 > 4. `npm run gen:web-api-map` 会在目录加好后自动生成 `'projectFiles.listKinds': 'project-files:list-kinds'`（不要手改生成文件）。
 > 5. 渲染层用例：`HomePage.render.test.tsx` 的 chip 用例要改成 mock `listKinds` 并断言 `{ projectIds: ['proj-file-kinds'] }`。
 
-
 ### 1. 共享类型（`src/shared/project-files.ts`）
+
 ```ts
 export type ListProjectFileKindsRequest = { projectIds: string[] }
 export type ProjectFileKindsSummary = { projectId: string; kinds: string[] }
 ```
+
 并把**类型推导规则**放到 shared（**单一实现**，避免主进程与渲染层各写一份而漂移）：
 
 ```ts
 export const PROJECT_FILE_KIND_LIMIT = 4
 export const deriveProjectFileKinds = (
   items: ReadonlyArray<{ name: string; sortAtMs: number }>
-): string[] => { /* 逐字搬 HomePage.tsx:108-121 的现有实现 */ }
+): string[] => {
+  /* 逐字搬 HomePage.tsx:108-121 的现有实现 */
+}
 ```
+
 搬完删掉 `HomePage.tsx` 里的本地副本（`src/shared` 有独立测试目录，加一条用例）。
 
 ### 2. 主进程查询（`src/main/project-files/query-owner.ts`）
+
 新增 `listProjectFileKinds(request)`，**一次往返**取回"每项目最新 K 条"：
 
 ```sql
@@ -52,16 +59,19 @@ SELECT projectId, displayName, sortAtMs FROM (
   WHERE projectId IN (?, ?, ...) AND deletedAt IS NULL
 ) WHERE rn <= 30
 ```
+
 - 经 `$queryRawUnsafe(sql, ...ids)` 传参（placeholders `?`，**不要拼字符串**）；`projectIds` 逐个 `requireIdentifier`，并设上限（建议 **≤100**），空数组直接返回 `[]`。
 - `sortAtMs` 可能以 BigInt/string 回来 ⇒ 映射时 `Number(...)`；kinds 用共享的 `deriveProjectFileKinds`（每项目 30 条 → 取最新、去重、上限 4，与旧语义一致）。
 - 记一条慢报告（同一套仪器：`projectFilesBatchLog`，含 `projects`、`rows`、`ms`，阈值 50 ms），便于与"48 次慢读"直接对比。
 
 ### 3. IPC 与桥（**契约测试会拦，必须同步**）
+
 - `src/main/project-files/ipc.ts`：新增 `ipcMainHandle('project-files:list-kinds', ...)` + `ProjectFilesHandlers.listKinds`。
 - preload：`src/preload/index.ts` 的 `projectFiles` 桥新增 `listKinds`（沿用 `electronRendererContracts.invoke('projectFiles.listKinds', request)`）。
 - **渲染层契约目录**：`electronRendererContracts` 的通道清单与 wrapped 集合要加这一条 —— 仓库有**计数断言**（本批已遇到：`data-content-application-commands.test.ts` 的"51 channels"清单、`renderer-contract-catalog`/`renderer-surface-matrix`）。51 → **52**，并补 wrapped key。
 
 ### 4. 渲染层（`HomePage.tsx` 的 chip effect）
+
 ```ts
 const listKinds = window.api?.projectFiles?.listKinds
 if (!listKinds || activeProjects.length === 0) return

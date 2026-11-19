@@ -1,6 +1,7 @@
 ---
 name: molecular-dynamics
 description: Runs and analyzes molecular dynamics simulations with OpenMM and MDAnalysis. Sets up protein/small molecule systems, defines force fields, runs energy minimization and production MD, and analyzes trajectories (RMSD, RMSF, contact maps, free energy surfaces). For structural biology, drug binding, and biophysics.
+description-zh: 用 OpenMM 与 MDAnalysis 运行并分析分子动力学模拟：搭建蛋白/小分子体系、定义力场、做能量最小化与生产模拟。
 license: MIT
 compatibility: Requires Python 3.11+ with OpenMM and MDAnalysis; matplotlib for plots. Optional PDBFixer and OpenFF need separate installation. Network access for installation; local simulation and analysis run offline.
 metadata:

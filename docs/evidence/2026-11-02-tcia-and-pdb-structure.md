@@ -26,13 +26,13 @@ LIVE tcia_series_search 4D-Lung {"n_series":3,
 
 三轮实验把 payload 与端点钉死（每一轮都是一次 CI 运行，不是猜）：
 
-| 尝试 | 服务原话 |
-| --- | --- |
-| multipart 字段 `database` | `400 Key: 'JobRequest.Job.Database' Error:Field validation for 'Database' failed on the 'required' tag` |
-| 字段 `database[]` | **200** `{"id":"BBRMB9P…","status":"PENDING"}` |
-| `/api/result/<id>` / `?format=json` / `.json` | 全部 `404 page not found` |
-| `/api/ticket/<id>` | 200，只有 `{id,status}` |
-| **`/api/result/<id>/0`** | **200**，主体 `{"type":"structuresearch","queries":[…],"mode":"3diaa","results":[{"db":"afdb50","alignments":[[…]]}]}` |
+| 尝试                                          | 服务原话                                                                                                               |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| multipart 字段 `database`                     | `400 Key: 'JobRequest.Job.Database' Error:Field validation for 'Database' failed on the 'required' tag`                |
+| 字段 `database[]`                             | **200** `{"id":"BBRMB9P…","status":"PENDING"}`                                                                         |
+| `/api/result/<id>` / `?format=json` / `.json` | 全部 `404 page not found`                                                                                              |
+| `/api/ticket/<id>`                            | 200，只有 `{id,status}`                                                                                                |
+| **`/api/result/<id>/0`**                      | **200**，主体 `{"type":"structuresearch","queries":[…],"mode":"3diaa","results":[{"db":"afdb50","alignments":[[…]]}]}` |
 
 最终读数（1CBS 作为查询，afdb50 + pdb100）：**`status=COMPLETE, hits=1000`**，首条
 `AF-A0A9X9LGA4-F1-model_v6 Cytosolic fatty-acid binding proteins domain-containing protein (Fragment)`，

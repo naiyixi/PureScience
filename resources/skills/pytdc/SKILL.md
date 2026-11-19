@@ -1,6 +1,7 @@
 ---
 name: pytdc
 description: Provides Therapeutics Data Commons workflows through PyTDC for registry discovery, dataset access, task-aware splits, evaluator metrics, benchmark groups, and bounded molecular-oracle scoring. Use when working with TDC therapeutic ML datasets or benchmarks.
+description-zh: 通过 PyTDC 使用 Therapeutics Data Commons 的工作流：注册表发现、数据集访问、按任务划分、评估指标、基准组，以及有边界的分子 oracle 查询。
 license: MIT
 allowed-tools: Read Write Edit Bash
 compatibility: Requires uv, CPython 3.11, PyTDC 1.1.15, and setuptools 80.9.0 for its legacy pkg_resources runtime import. Network access and disk space are needed for dataset, benchmark, and checkpoint downloads; optional oracles require their service or docking dependencies.

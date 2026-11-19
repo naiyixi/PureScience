@@ -2,16 +2,16 @@
 
 2026-10-26，两次冷启动的完整分段（`performance.now()` 同一时钟，打包版）：
 
-| 分段 | 第一次 | 第二次 |
-|---|---|---|
-| `register-start` | 1646 | 1569 |
-| `composition-start` | +3 | +2 |
-| **`after-timed-steps`（12 个已计时的 compose 步骤）** | **+516** | **+412** |
-| MCP client manager + agent runtime | +12 | +15 |
-| screening model | +57 | — |
-| code reconstruction / 权限授权投影 / settings / session / runtime-selection / office-preview / notebook-env / storage / artifact / conversation-export / remote-structure / search-evidence / reviewer / auto-review / electron-sender / command-dependencies / shutdown / command-composition / subagent | 合计 **+10** | 合计 **+9** |
-| surface 安装 + 收尾 | +11 | +13 |
-| **`runtime-composed`（= registerIpcHandlers 结束）** | **2256（610 ms）** | **2086（517 ms）** |
+| 分段                                                                                                                                                                                                                                                                                                      | 第一次             | 第二次             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------ |
+| `register-start`                                                                                                                                                                                                                                                                                          | 1646               | 1569               |
+| `composition-start`                                                                                                                                                                                                                                                                                       | +3                 | +2                 |
+| **`after-timed-steps`（12 个已计时的 compose 步骤）**                                                                                                                                                                                                                                                     | **+516**           | **+412**           |
+| MCP client manager + agent runtime                                                                                                                                                                                                                                                                        | +12                | +15                |
+| screening model                                                                                                                                                                                                                                                                                           | +57                | —                  |
+| code reconstruction / 权限授权投影 / settings / session / runtime-selection / office-preview / notebook-env / storage / artifact / conversation-export / remote-structure / search-evidence / reviewer / auto-review / electron-sender / command-dependencies / shutdown / command-composition / subagent | 合计 **+10**       | 合计 **+9**        |
+| surface 安装 + 收尾                                                                                                                                                                                                                                                                                       | +11                | +13                |
+| **`runtime-composed`（= registerIpcHandlers 结束）**                                                                                                                                                                                                                                                      | **2256（610 ms）** | **2086（517 ms）** |
 
 ## 结论
 

@@ -17,11 +17,11 @@
 
 两个**内核进程**各占近一个核，已跑 15–16 小时。宿主侧同时读到的量（同一分钟）：
 
-| 读数 | 值 |
-|---|---|
-| `vm.loadavg` | 12.87 / 13.38 / 11.88（日志里同一现象的最大值 `loadAvg1mMax` = **142.66**） |
-| `vm.swapusage` | 已用 **8,655 MB** / 10,240 MB |
-| `vm_stat` 空闲页 | 4,070 页 ≈ **65 MB**（页大小 16 KB） |
+| 读数             | 值                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `vm.loadavg`     | 12.87 / 13.38 / 11.88（日志里同一现象的最大值 `loadAvg1mMax` = **142.66**）          |
+| `vm.swapusage`   | 已用 **8,655 MB** / 10,240 MB                                                        |
+| `vm_stat` 空闲页 | 4,070 页 ≈ **65 MB**（页大小 16 KB）                                                 |
 | 内核进程物理占用 | `sample` 报 physical footprint **471.9 MB**（峰值 731.2 MB），父进程 = `PureScience` |
 
 日志面（同一窗口）另有 1,156 次事件循环停摆、`sessions:save-session` 慢 2,607 次（p50 108 ms / p95 1,535 ms /
@@ -59,12 +59,12 @@ macOS 上不支持，所以这一侧只能由我们兜。
 探针：`resources/notebook/python_loop.py` 起一个真内核（用应用运行时那支 `default-python/bin/python`），
 灌一个 cell，然后用 `ps -o cputime` 的**增量**除以墙钟算利用率（macOS 的 `ps -o %cpu` 是生命周期平均，不可用）。
 
-| 场景（cell 内容） | 空闲窗口 | CPU 增量 | 利用率 |
-|---|---|---|---|
-| `import pymol; pymol.finish_launching(['pymol','-cq'])` | 5.0 s | 4.94 s | **97.6%** |
-| 同上，随后清 `keep_thread_alive` | 5.0 s | 0.00 s | 0.0% |
-| 同上，随后只把 `pymol2.SingletonPyMOL.draw` 封顶 20 Hz | 5.0 s | 0.01 s | 0.2% |
-| 对照：`pymol2.PyMOL()` + `start()` + `stop()`（包推荐的进程内用法） | 5.0 s | 0.00 s | 0.0% |
+| 场景（cell 内容）                                                   | 空闲窗口 | CPU 增量 | 利用率    |
+| ------------------------------------------------------------------- | -------- | -------- | --------- |
+| `import pymol; pymol.finish_launching(['pymol','-cq'])`             | 5.0 s    | 4.94 s   | **97.6%** |
+| 同上，随后清 `keep_thread_alive`                                    | 5.0 s    | 0.00 s   | 0.0%      |
+| 同上，随后只把 `pymol2.SingletonPyMOL.draw` 封顶 20 Hz              | 5.0 s    | 0.01 s   | 0.2%      |
+| 对照：`pymol2.PyMOL()` + `start()` + `stop()`（包推荐的进程内用法） | 5.0 s    | 0.00 s   | 0.0%      |
 
 第四条说明这不是「PyMOL 一定慢」，而是**那一条启动分支**的问题；前两条说明两种兜法都能把 CPU 拿回来。
 
@@ -91,11 +91,11 @@ IDLE util=0.0%  (delta=0.00s over 8.0s)         ← 修前同一场景 97.6%
 
 ## 六 门禁
 
-| 环 | 读数 |
-|---|---|
-| 新增源码契约用例 `src/main/notebook/kernel-idle-loop-guard.test.ts` | 3 passed（防「守卫被静默删掉/挪出请求路径」） |
-| 真内核集成用例（`RUN_KERNEL=1 PURESCIENCE_TEST_PY_ENV=…`） | 6 passed（含新增 1 例：桩包设标志 ⇒ 下一条请求读到 `KEEP 0` / `CAPPED True`） |
-| 定向 + 全量 vitest / 双 typecheck / eslint | 见提交信息与 §八 读数 |
+| 环                                                                  | 读数                                                                          |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 新增源码契约用例 `src/main/notebook/kernel-idle-loop-guard.test.ts` | 3 passed（防「守卫被静默删掉/挪出请求路径」）                                 |
+| 真内核集成用例（`RUN_KERNEL=1 PURESCIENCE_TEST_PY_ENV=…`）          | 6 passed（含新增 1 例：桩包设标志 ⇒ 下一条请求读到 `KEEP 0` / `CAPPED True`） |
+| 定向 + 全量 vitest / 双 typecheck / eslint                          | 见提交信息与 §八 读数                                                         |
 
 顺带修了这条集成套件自己的仪器错：内核早先加了「执行已开始」的首帧（同一个 `req_id`、没有结果字段），
 而测试的 `startLine` 助手按 `req_id` 直接 resolve ⇒ **6 条用例全部读到首帧、`error` 是 `undefined`**。

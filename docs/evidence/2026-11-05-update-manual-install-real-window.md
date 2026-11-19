@@ -14,26 +14,26 @@
 
 ## 一 被替换的缝，与留下的真路径
 
-| 项 | 是真的 | 唯一被替换的 |
-| --- | --- | --- |
+| 项              | 是真的                                                                                                 | 唯一被替换的                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | 更新检查 / 下载 | `UpdateService`、`downloader`（流式写入 + 逐块 sha256）、状态广播、update store、对话框、Chromium 布局 | Electron `net.fetch` 收到的**字节**：`version.json` 与安装包本体都由夹具按路径名应答 |
-| 保存位置 | 应用自己算默认文件名、自己走保存对话框 | 原生保存对话框（没有任何测试能操作它）——`stubSaveDialog` 指到隔离目录 |
+| 保存位置        | 应用自己算默认文件名、自己走保存对话框                                                                 | 原生保存对话框（没有任何测试能操作它）——`stubSaveDialog` 指到隔离目录                |
 
 安装包字节是规格自己造的 64 KiB 确定性数据，清单里的 `sha256` 由规格现算；**应用仍按清单摘要校验**，
 摘要不对就是一次失败的下载（见第三节的变异自证）。所以「到达 `ready`」这件事本身证明了字节对得上。
 
 ## 二 读数（本机真窗口）
 
-| 项 | 读数 |
-| --- | --- |
-| 命令 | `npx playwright test e2e/certification/update-manual-install.spec.ts e2e/update-release-notes.spec.ts --reporter=list`（先 `npm run build:e2e`，`✓ built in 21.30s`） |
-| 判决 | **2 passed (12.0s)**，`EXIT=0`；本支 `1 passed (5.3s)` |
-| 规格自己的读数 | `[update-cert] state=ready artifact=PureScience-3.0.0-arm64.dmg bytes=65536 sha256=755682d23142 installer=yes` |
-| 主进程日志 | `[update] operation started { operation: 'update-download', strategy: 'manifest' }` → 四个阶段 `validate-source=1ms select-target=1ms prepare-target=1ms transfer=2ms` → `completed { result: 'ready' }` |
-| 出网那一行 | `[http-request] req-86b3d206 …/releases/download/v3.0.0/PureScience-3.0.0-arm64.dmg -> 200` |
-| 磁盘 | 目标文件 65 536 字节，摘要与清单逐字符相等；`.part` 兄弟文件不存在（流式写入收尾干净） |
-| 上屏的三句 | 「Downloaded — click “Open installer” to finish updating.」+「Quit PureScience before installing — a running app cannot be replaced.」+「macOS builds are ad-hoc signed for now, so macOS refuses to replace a running app in place — download the installer and replace it by hand.」 |
-| 动作按钮 | `Open installer` 在屏，`Restart to update` **恰好 0 个**（安装包路线不承诺原地重启） |
+| 项             | 读数                                                                                                                                                                                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 命令           | `npx playwright test e2e/certification/update-manual-install.spec.ts e2e/update-release-notes.spec.ts --reporter=list`（先 `npm run build:e2e`，`✓ built in 21.30s`）                                                                                                                  |
+| 判决           | **2 passed (12.0s)**，`EXIT=0`；本支 `1 passed (5.3s)`                                                                                                                                                                                                                                 |
+| 规格自己的读数 | `[update-cert] state=ready artifact=PureScience-3.0.0-arm64.dmg bytes=65536 sha256=755682d23142 installer=yes`                                                                                                                                                                         |
+| 主进程日志     | `[update] operation started { operation: 'update-download', strategy: 'manifest' }` → 四个阶段 `validate-source=1ms select-target=1ms prepare-target=1ms transfer=2ms` → `completed { result: 'ready' }`                                                                               |
+| 出网那一行     | `[http-request] req-86b3d206 …/releases/download/v3.0.0/PureScience-3.0.0-arm64.dmg -> 200`                                                                                                                                                                                            |
+| 磁盘           | 目标文件 65 536 字节，摘要与清单逐字符相等；`.part` 兄弟文件不存在（流式写入收尾干净）                                                                                                                                                                                                 |
+| 上屏的三句     | 「Downloaded — click “Open installer” to finish updating.」+「Quit PureScience before installing — a running app cannot be replaced.」+「macOS builds are ad-hoc signed for now, so macOS refuses to replace a running app in place — download the installer and replace it by hand.」 |
+| 动作按钮       | `Open installer` 在屏，`Restart to update` **恰好 0 个**（安装包路线不承诺原地重启）                                                                                                                                                                                                   |
 
 ## 三 反向对照与变异自证
 
@@ -65,11 +65,11 @@
 
 读数（本机真窗口；`npm run build:e2e` 后 `npx playwright test e2e/certification/update-manual-install.spec.ts`）：
 
-| 项 | 读数 |
-| --- | --- |
-| 规格自己打印 | `[update-cert] state=ready … manifestRequests=1 updateFailures=0` |
-| 判决 | **1 passed (7.9 s)**，退出码 0 |
-| 变异自证 | 把增量断言改成 `toBe(2)` 后重跑：`Expected: 2 / Received: 1` ⇒ 计数器确实只读到一次请求，断言不是恒真 |
+| 项           | 读数                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| 规格自己打印 | `[update-cert] state=ready … manifestRequests=1 updateFailures=0`                                     |
+| 判决         | **1 passed (7.9 s)**，退出码 0                                                                        |
+| 变异自证     | 把增量断言改成 `toBe(2)` 后重跑：`Expected: 2 / Received: 1` ⇒ 计数器确实只读到一次请求，断言不是恒真 |
 
 **冷启动那一半（2026-11-06 补测）**：判据写的是「冷启动一次更新检查」，而上面那张表数的是读者点的那一次。
 `scheduler.ts` 在启动时就 `void strategy.check()` 一次 ⇒ 冷启动自己那次也要数。同一支规格现在在点 `Check now`

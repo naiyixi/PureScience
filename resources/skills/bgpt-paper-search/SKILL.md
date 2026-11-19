@@ -1,6 +1,7 @@
 ---
 name: bgpt-paper-search
 description: Searches BGPT scientific papers by topic or DOI and retrieves claim-level evidence extracted from full text, including experiments, reported statistics, scope, limitations, and provenance. Use for literature reviews, evidence synthesis, and finding experimental details beyond abstracts.
+description-zh: 按主题或 DOI 检索 BGPT 科学论文，并取回从全文抽取的论断级证据，含实验、报告的统计量、范围、局限与来源。用于文献回顾与论断核对。
 license: MIT
 compatibility: Requires a configured remote BGPT MCP connection and internet access to bgpt.pro. A stdio bridge additionally needs Node.js/npm. Paid access requires a BGPT API key configured as an Authorization header.
 metadata:

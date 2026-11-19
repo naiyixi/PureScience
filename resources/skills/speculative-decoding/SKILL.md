@@ -1,6 +1,7 @@
 ---
 name: speculative-decoding
 description: Accelerate LLM inference using speculative decoding, Medusa multiple heads, and lookahead decoding techniques. Use when optimizing inference speed (1.5-3.6× speedup), reducing latency for real-time applications, or deploying models with limited compute. Covers draft models, tree-based attention, Jacobi iteration, parallel token generation, and production deployment strategies.
+description-zh: 用投机解码、Medusa 多头与前瞻解码加速大模型推理（约 1.5–3.6 倍），降低延迟。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

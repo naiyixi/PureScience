@@ -8,13 +8,13 @@
 
 上一轮缺的是一条可控实例上的读数，本轮没有重启任何实例，直接用了已经在跑的隔离实例：
 
-| 读数 | 值 | 取法 |
-| --- | --- | --- |
-| 隔离实例的配置根 | `/tmp/ps-verify23-config` | `ps -Eww -p 24528` 的 `PURESCIENCE_STORAGE_ROOT`（进程 `--serve=44222`） |
-| 该根里的登记 | `{"pid":24530,"port":44222,"startedAt":"2026-11-18T17:43:03.750Z","appVersion":"2.30.2","attached":false,"configRoot":"/tmp/ps-verify23-config"}` | 直接读文件 |
-| 端口在听 | `Electron 24530 … TCP 127.0.0.1:44222 (LISTEN)` | `lsof -nP -p 24530` |
-| CLI 发现 | `PureScience is running (PID 24530, port 44222).` | `PURESCIENCE_STORAGE_ROOT=/tmp/ps-verify23-config node packages/purescience/cli.mjs status` |
-| 对照（用户实例） | `~/.purescience-project/web-service.json` 不存在，而同目录的 `web-token` 在；44100 仍在听 | `ls -la ~/.purescience-project` + 端口 |
+| 读数             | 值                                                                                                                                                | 取法                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 隔离实例的配置根 | `/tmp/ps-verify23-config`                                                                                                                         | `ps -Eww -p 24528` 的 `PURESCIENCE_STORAGE_ROOT`（进程 `--serve=44222`）                    |
+| 该根里的登记     | `{"pid":24530,"port":44222,"startedAt":"2026-11-18T17:43:03.750Z","appVersion":"2.30.2","attached":false,"configRoot":"/tmp/ps-verify23-config"}` | 直接读文件                                                                                  |
+| 端口在听         | `Electron 24530 … TCP 127.0.0.1:44222 (LISTEN)`                                                                                                   | `lsof -nP -p 24530`                                                                         |
+| CLI 发现         | `PureScience is running (PID 24530, port 44222).`                                                                                                 | `PURESCIENCE_STORAGE_ROOT=/tmp/ps-verify23-config node packages/purescience/cli.mjs status` |
+| 对照（用户实例） | `~/.purescience-project/web-service.json` 不存在，而同目录的 `web-token` 在；44100 仍在听                                                         | `ls -la ~/.purescience-project` + 端口                                                      |
 
 结论分两层：**写侧没坏**（无窗口实例确实发布了登记，CLI 也能读到）；**坏的是「登记会被别人删掉」**。
 
@@ -37,15 +37,16 @@ not running」，与「从来没写过」完全同形。全仓只有这一处会
 
 ## 四 门禁与变异自证
 
-| 项 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/web-service` | 10 文件 **83 passed** |
-| `npx vitest run src/main/application-command-wiring.test.ts` | 5 passed（装配面源码断言未受影响） |
-| `typecheck:node` / `typecheck:web` | exit 0 / exit 0（0 诊断） |
-| `npx eslint --no-cache`（四个改动文件） | 0 problem |
-| 变异：把认主判据改成恒真（等价旧行为） | 新增两条用例 **2 failed**，恢复后全绿 |
+| 项                                                           | 读数                                  |
+| ------------------------------------------------------------ | ------------------------------------- |
+| `npx vitest run src/main/web-service`                        | 10 文件 **83 passed**                 |
+| `npx vitest run src/main/application-command-wiring.test.ts` | 5 passed（装配面源码断言未受影响）    |
+| `typecheck:node` / `typecheck:web`                           | exit 0 / exit 0（0 诊断）             |
+| `npx eslint --no-cache`（四个改动文件）                      | 0 problem                             |
+| 变异：把认主判据改成恒真（等价旧行为）                       | 新增两条用例 **2 failed**，恢复后全绿 |
 
 新增用例两条：
+
 - `state-file.test.ts`「只删仍然写着调用者 pid 的登记」+「读不出来的登记不在此处删」；
 - `controller.test.ts`「旧一代关停不删新一代刚发布的登记」——两代控制器共用一个临时根，跑的是**真的**
   `writeWebServiceState` / `removeWebServiceStateIfOwned`（不是替身），断言旧一代 close 之后文件里是新一代的

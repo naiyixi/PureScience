@@ -23,12 +23,12 @@ node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs
 判据：每条失败行里的**猜测名**，与「应用今天为同一个工具渲染的名字」逐字比较。
 分类结果（脚本原样输出）：
 
-| 类 | 条数 | 判读 |
-| --- | --- | --- |
-| **`callable-now`** 猜测名 = 应用今天渲染的名字 | **12** | 本改动**直接修**：同一次猜测今后能解析到真工具 |
-| `wrong-separator` 只差分隔符、但渲染名本来就没有连字符 | 6 | 本改动**不修**（见 §四.1） |
-| `no-such-leaf` 叶子名不在目录里（模型编的） | 5 | 与本单元无关 |
-| `not-app-server` 不是本应用的服务 | 8 | 与本单元无关 |
+| 类                                                     | 条数   | 判读                                           |
+| ------------------------------------------------------ | ------ | ---------------------------------------------- |
+| **`callable-now`** 猜测名 = 应用今天渲染的名字         | **12** | 本改动**直接修**：同一次猜测今后能解析到真工具 |
+| `wrong-separator` 只差分隔符、但渲染名本来就没有连字符 | 6      | 本改动**不修**（见 §四.1）                     |
+| `no-such-leaf` 叶子名不在目录里（模型编的）            | 5      | 与本单元无关                                   |
+| `not-app-server` 不是本应用的服务                      | 8      | 与本单元无关                                   |
 
 `callable-now` 的 12 条逐字是：
 
@@ -47,14 +47,14 @@ node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs
 
 ## 二、交付内容（42 文件）
 
-| 面 | 内容 |
-| --- | --- |
-| 命名模块 | `app-mcp-names.ts`：`activity`/`artifacts`/`skills`/`plan`/`memory` 五个服务的 `canonicalName` 去连字符（notebook 此前已是），旧拼写进 `legacyNames`；**未在此声明的服务**（figure、用户自建）也继续应答旧连字符拼写（`hyphenatedMcpServerName`） |
-| 注册名常量 | `shared/activity-groups.ts`、`shared/skill-import.ts`、`shared/memory-mcp.ts`、`shared/figure.ts`、`main/artifacts/mcp-server.ts`、`main/session-plan/plan-mcp-server.ts` |
-| 身份与权限 | `permission-grants/identity-catalog.ts`（预登记身份）、`acp/permission-policy.ts`（含 Codex 叶子别名表与产物保存判据）、`main/notebook/mcp-server.ts` 的 agent 文案、`acp/session-presentation-policy.ts` 与 `session-plan/guidance.ts` 的 agent 文案 |
-| 渲染层 | `permission-request-presentation.ts`、`workspace-tool-activity-details.ts`：分隔符归一比较（历史记录与旧活动条目仍能识别） |
-| 夹具 | `e2e/fixtures/fake-opencode.mjs` 的 MCP 客户端名 |
-| 回归守卫（新增 4 条） | `app-mcp-names.test.ts`：① 所有声明服务的名字**不含连字符**；② 各服务**注册常量等于声明值**（把「两份名字漂移」这件事钉在测试上）；③ 旧拼写仍解析到**同一身份**；④ 未声明的服务保留旧拼写 |
+| 面                    | 内容                                                                                                                                                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 命名模块              | `app-mcp-names.ts`：`activity`/`artifacts`/`skills`/`plan`/`memory` 五个服务的 `canonicalName` 去连字符（notebook 此前已是），旧拼写进 `legacyNames`；**未在此声明的服务**（figure、用户自建）也继续应答旧连字符拼写（`hyphenatedMcpServerName`）     |
+| 注册名常量            | `shared/activity-groups.ts`、`shared/skill-import.ts`、`shared/memory-mcp.ts`、`shared/figure.ts`、`main/artifacts/mcp-server.ts`、`main/session-plan/plan-mcp-server.ts`                                                                             |
+| 身份与权限            | `permission-grants/identity-catalog.ts`（预登记身份）、`acp/permission-policy.ts`（含 Codex 叶子别名表与产物保存判据）、`main/notebook/mcp-server.ts` 的 agent 文案、`acp/session-presentation-policy.ts` 与 `session-plan/guidance.ts` 的 agent 文案 |
+| 渲染层                | `permission-request-presentation.ts`、`workspace-tool-activity-details.ts`：分隔符归一比较（历史记录与旧活动条目仍能识别）                                                                                                                            |
+| 夹具                  | `e2e/fixtures/fake-opencode.mjs` 的 MCP 客户端名                                                                                                                                                                                                      |
+| 回归守卫（新增 4 条） | `app-mcp-names.test.ts`：① 所有声明服务的名字**不含连字符**；② 各服务**注册常量等于声明值**（把「两份名字漂移」这件事钉在测试上）；③ 旧拼写仍解析到**同一身份**；④ 未声明的服务保留旧拼写                                                             |
 
 ## 三、可复核读数
 
@@ -89,11 +89,11 @@ node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs
 （本节数字在门禁跑完后就地填入；运行方式为本技能自带的 `scripts/release-gate.sh <提交>`：
 建隔离工作树 → 显式 `eslint --no-cache .` + 双 typecheck + 全量 vitest `--maxWorkers=4` + 仓规五查。）
 
-| 环 | 读数 |
-| --- | --- |
-| eslint（全仓、CI 同口径） | 待填 |
-| typecheck:node / typecheck:web | 待填 |
-| 全量 vitest | 待填 |
+| 环                                     | 读数 |
+| -------------------------------------- | ---- |
+| eslint（全仓、CI 同口径）              | 待填 |
+| typecheck:node / typecheck:web         | 待填 |
+| 全量 vitest                            | 待填 |
 | pre-push-checks.sh（单独跑、读退出码） | 待填 |
 
 ## 六、版本位点
@@ -118,28 +118,28 @@ Latest 仍为 **v1.102.0**（未动）。本单元是**运行时行为改动**�
 
 **本单元交付**（不改任何用户可见交互，改的是「交给框架的名字」与「身份键」）：
 
-| 面 | 内容 |
-| --- | --- |
-| 注册名常量（8 个） | `shared/pdf.ts`、`shared/endpoint.ts`、`shared/goal.ts`、`shared/annotation.ts`、`shared/context-summary-mcp.ts`、`shared/host-query.ts`、`shared/routine.ts`、`shared/reviewer.ts`：`purescience-pdf` → `purescience_pdf`（余同） |
-| 命名模块目录 | `app-mcp-names.ts` 新增 **7 条**声明（canonical 无分隔符 + `legacyNames` 保留连字符拼写 + 各自工具表）；**reviewer 不进目录**（它的身份**必须**不进「可被记住的权限目录」，见 `identity-catalog.test.ts` 的 `does not expose internal Reviewer MCP identities`），旧拼写仍由未声明服务的回退别名应答 |
-| 记住的权限目录 | `identity-catalog.ts` 的 `mcp_tool` **18 → 44**、总数 **35 → 61**；两条目录由 `app-mcp-names.test.ts` 的 `keeps the app MCP inventory aligned with the remembered-permission catalog` 强制相等 |
-| **守卫本身** | `keeps every app-owned MCP server name separator-free` 现在**枚举全部 15 个应用自有服务常量**（不再只枚举目录），并**钉住列表长度 15**（少一个就红）＋ 反向断言「figure / reviewer 必须在目录之外」（防后来者「干脆全都声明进去」把可达面悄悄放宽） |
-| 审计脚本 | `scripts/audit-mcp-tool-name-failures.mjs` 把 reviewer 的服务名与工具（与 figure 同法）纳入 `identities`，旧失败行不再被误归到 `not-app-server` |
-| reviewer 会话校验 | `acp/reviewer-session-owner.ts`：改名后**旧连字符配置会被拒**（`Reviewer sessions require exactly one app-owned …`）⇒ 该校验收敛为「**两种拼写都折到规范名再比**」，并把这台服务器答的三种拼写（规范 / 框架安全 / 旧连字符）用于 codex 与 claude 的**已记录标题**识别（改名前它只用 `[名称, 框架安全名]` 这一对，改名会让旧标题不再被认成 reviewer 调用 —— 属「改名悄悄丢掉了旧拼写」，正是本模块警告的那件事） |
+| 面                 | 内容                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 注册名常量（8 个） | `shared/pdf.ts`、`shared/endpoint.ts`、`shared/goal.ts`、`shared/annotation.ts`、`shared/context-summary-mcp.ts`、`shared/host-query.ts`、`shared/routine.ts`、`shared/reviewer.ts`：`purescience-pdf` → `purescience_pdf`（余同）                                                                                                                                                                              |
+| 命名模块目录       | `app-mcp-names.ts` 新增 **7 条**声明（canonical 无分隔符 + `legacyNames` 保留连字符拼写 + 各自工具表）；**reviewer 不进目录**（它的身份**必须**不进「可被记住的权限目录」，见 `identity-catalog.test.ts` 的 `does not expose internal Reviewer MCP identities`），旧拼写仍由未声明服务的回退别名应答                                                                                                            |
+| 记住的权限目录     | `identity-catalog.ts` 的 `mcp_tool` **18 → 44**、总数 **35 → 61**；两条目录由 `app-mcp-names.test.ts` 的 `keeps the app MCP inventory aligned with the remembered-permission catalog` 强制相等                                                                                                                                                                                                                  |
+| **守卫本身**       | `keeps every app-owned MCP server name separator-free` 现在**枚举全部 15 个应用自有服务常量**（不再只枚举目录），并**钉住列表长度 15**（少一个就红）＋ 反向断言「figure / reviewer 必须在目录之外」（防后来者「干脆全都声明进去」把可达面悄悄放宽）                                                                                                                                                             |
+| 审计脚本           | `scripts/audit-mcp-tool-name-failures.mjs` 把 reviewer 的服务名与工具（与 figure 同法）纳入 `identities`，旧失败行不再被误归到 `not-app-server`                                                                                                                                                                                                                                                                 |
+| reviewer 会话校验  | `acp/reviewer-session-owner.ts`：改名后**旧连字符配置会被拒**（`Reviewer sessions require exactly one app-owned …`）⇒ 该校验收敛为「**两种拼写都折到规范名再比**」，并把这台服务器答的三种拼写（规范 / 框架安全 / 旧连字符）用于 codex 与 claude 的**已记录标题**识别（改名前它只用 `[名称, 框架安全名]` 这一对，改名会让旧标题不再被认成 reviewer 调用 —— 属「改名悄悄丢掉了旧拼写」，正是本模块警告的那件事） |
 
 **真机读数（同一批用户日志，逐条同一口径，只读）**：`node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs`
 在**本机 `~/Library/Logs/PureScience`** 上，改前 / 改后各跑一次：
 
-| 类 | 改前（`origin/main`） | 改后（本单元） |
-| --- | --- | --- |
-| `identities`（脚本读到的应用自有身份数） | 19 | **51** |
-| `callable-now` 猜测名 = 应用今天渲染的名字 | 12 | **19** |
-| ├ 其中 `mcp__purescience_pdf__pdf_open` | — （落在 `not-app-server`） | **6** |
-| ├ 其中 `mcp__purescience_endpoints__endpoint_list` | — （落在 `not-app-server`） | **1** |
-| `not-app-server` 不是本应用的服务 | 9 | **2** |
-| `wrong-separator` | 1（notebook） | 1（notebook） |
-| `no-such-leaf` | 6 | 6 |
-| 失败行总数 / 窗口 | 28 / `2026-10-02T14:26Z … 2026-10-16T13:25Z` | 同（同一批行） |
+| 类                                                 | 改前（`origin/main`）                        | 改后（本单元） |
+| -------------------------------------------------- | -------------------------------------------- | -------------- |
+| `identities`（脚本读到的应用自有身份数）           | 19                                           | **51**         |
+| `callable-now` 猜测名 = 应用今天渲染的名字         | 12                                           | **19**         |
+| ├ 其中 `mcp__purescience_pdf__pdf_open`            | — （落在 `not-app-server`）                  | **6**          |
+| ├ 其中 `mcp__purescience_endpoints__endpoint_list` | — （落在 `not-app-server`）                  | **1**          |
+| `not-app-server` 不是本应用的服务                  | 9                                            | **2**          |
+| `wrong-separator`                                  | 1（notebook）                                | 1（notebook）  |
+| `no-such-leaf`                                     | 6                                            | 6              |
+| 失败行总数 / 窗口                                  | 28 / `2026-10-02T14:26Z … 2026-10-16T13:25Z` | 同（同一批行） |
 
 ⇒ **7 条真机失败**（`pdf_open` ×6 与 `endpoint_list` ×1）从「不是本应用的服务」变成「**模型猜的名字就是应用今天渲染的名字**」：
 这 7 次调用在本改动之后**会解析到真工具**，而改前它们必然失败（应用当时把 `purescience-pdf` 交给框架）。

@@ -15,12 +15,12 @@ shasum -a 256 /tmp/a /tmp/b
 
 ## 读数
 
-| 对 | 原始端点 | 候选端点 | 判决 |
-|---|---|---|---|
-| **RCSB 结构** | `files.rcsb.org/download/1CRN.pdb` → **200 / 49,491 B** / sha `42199a30…` | `ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb1crn.ent.gz` → **HTTP 000，`curl: (6) Could not resolve host: ftp.wwpdb.org`** | **候选在本机不可用**（DNS 直接解析不了）⇒ **不构成回退** |
-| **HuggingFace 文件** | `huggingface.co/bert-base-uncased/resolve/main/config.json` → **HTTP 000，`(28) Connection timed out after 25006 ms`** | `hf-mirror.com/...` → **200 / 570 B** / sha `7160e155…` | **回退有效**：原始超时、镜像拿到数据 |
-| **GitHub raw** | `raw.githubusercontent.com/naiyixi/PureScience/main/package.json` → **HTTP 000，超时 25 s** | `cdn.jsdelivr.net/gh/naiyixi/PureScience@main/package.json` → **200 / 6,318 B** / sha `1133f4a8…` | **回退有效且可证同一性**：镜像 sha 与本机工作副本 **逐字符相同**（`1133f4a8…`） |
-| **NCBI** | `eutils.ncbi.nlm.nih.gov/.../efetch.fcgi?db=pubmed&id=31452104` → **200 / 6,081 B** | `ftp.ncbi.nlm.nih.gov/pubmed/` → **200**（目录可访问） | **不构成内容等价回退**：一侧是 API 返回的 XML、一侧是文件目录，**服务不同** |
+| 对                   | 原始端点                                                                                                               | 候选端点                                                                                                                         | 判决                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **RCSB 结构**        | `files.rcsb.org/download/1CRN.pdb` → **200 / 49,491 B** / sha `42199a30…`                                              | `ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb1crn.ent.gz` → **HTTP 000，`curl: (6) Could not resolve host: ftp.wwpdb.org`** | **候选在本机不可用**（DNS 直接解析不了）⇒ **不构成回退**                        |
+| **HuggingFace 文件** | `huggingface.co/bert-base-uncased/resolve/main/config.json` → **HTTP 000，`(28) Connection timed out after 25006 ms`** | `hf-mirror.com/...` → **200 / 570 B** / sha `7160e155…`                                                                          | **回退有效**：原始超时、镜像拿到数据                                            |
+| **GitHub raw**       | `raw.githubusercontent.com/naiyixi/PureScience/main/package.json` → **HTTP 000，超时 25 s**                            | `cdn.jsdelivr.net/gh/naiyixi/PureScience@main/package.json` → **200 / 6,318 B** / sha `1133f4a8…`                                | **回退有效且可证同一性**：镜像 sha 与本机工作副本 **逐字符相同**（`1133f4a8…`） |
+| **NCBI**             | `eutils.ncbi.nlm.nih.gov/.../efetch.fcgi?db=pubmed&id=31452104` → **200 / 6,081 B**                                    | `ftp.ncbi.nlm.nih.gov/pubmed/` → **200**（目录可访问）                                                                           | **不构成内容等价回退**：一侧是 API 返回的 XML、一侧是文件目录，**服务不同**     |
 
 ## 由此推翻的三条设计判断
 

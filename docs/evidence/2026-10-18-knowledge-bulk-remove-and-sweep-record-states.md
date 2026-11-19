@@ -20,13 +20,13 @@ preload / 目录 / 计数一个字节没动。
 
 交互闭环：
 
-| 步骤 | 行为 | 为什么 |
-| --- | --- | --- |
+| 步骤 | 行为                                                         | 为什么                                                   |
+| ---- | ------------------------------------------------------------ | -------------------------------------------------------- |
 | 勾选 | 每行一个复选框；页头「全选本页」只作用于**当前页看得见的行** | 勾选别的页上没人看过的行再删，等于替读者决定他没看过的事 |
-| 上膛 | 第一次点击只把按钮换成「确认移除 N 个来源」+ 取消 | 批量删是这个面板里唯一一个「看屏幕撤回不了」的动作 |
-| 执行 | 逐条调用、逐条记账；成功数与随之清理的副本数相加后如实报出 | 不把部分成功说成一次干净的清空 |
-| 失败 | 被拒的那一条**仍在列表里、仍然勾着**，句子点名它和拒绝码 | 可以直接对那一条重试 |
-| 收尾 | 重新读一遍来源清单（不假设结果），并把已不存在的勾选丢掉 | 上膛的集合里不能留着没有对应行的 id |
+| 上膛 | 第一次点击只把按钮换成「确认移除 N 个来源」+ 取消            | 批量删是这个面板里唯一一个「看屏幕撤回不了」的动作       |
+| 执行 | 逐条调用、逐条记账；成功数与随之清理的副本数相加后如实报出   | 不把部分成功说成一次干净的清空                           |
+| 失败 | 被拒的那一条**仍在列表里、仍然勾着**，句子点名它和拒绝码     | 可以直接对那一条重试                                     |
+| 收尾 | 重新读一遍来源清单（不假设结果），并把已不存在的勾选丢掉     | 上膛的集合里不能留着没有对应行的 id                      |
 
 ## 三、清扫记录三态
 
@@ -41,14 +41,14 @@ preload / 目录 / 计数一个字节没动。
 
 ## 四、读数（都实跑，非推断）
 
-| 门 | 命令 | 读数 |
-| --- | --- | --- |
-| 定向单测 | `npx vitest run src/main/knowledge src/renderer/src/pages/settings src/renderer/src/i18n` | **82 文件 / 816 passed / 1 skipped** |
-| 类型（web） | `npx tsc --noEmit -p tsconfig.web.json --composite false` | 0 错 |
-| 类型（node） | `NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit -p tsconfig.node.json --composite false` | 0 错 |
-| 改动面 lint | `npx eslint --no-cache <改动路径>` | 0 |
-| 真机（批量移除） | `npx playwright test e2e/certification/knowledge-bulk-remove.spec.ts`（先 `npm run build:e2e`） | **1 passed (4.2s)** |
-| 真机（清扫记录三态） | `npx playwright test e2e/certification/knowledge-copy-sweep.spec.ts` | **1 passed (2.8s)** |
+| 门                   | 命令                                                                                              | 读数                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 定向单测             | `npx vitest run src/main/knowledge src/renderer/src/pages/settings src/renderer/src/i18n`         | **82 文件 / 816 passed / 1 skipped** |
+| 类型（web）          | `npx tsc --noEmit -p tsconfig.web.json --composite false`                                         | 0 错                                 |
+| 类型（node）         | `NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit -p tsconfig.node.json --composite false` | 0 错                                 |
+| 改动面 lint          | `npx eslint --no-cache <改动路径>`                                                                | 0                                    |
+| 真机（批量移除）     | `npx playwright test e2e/certification/knowledge-bulk-remove.spec.ts`（先 `npm run build:e2e`）   | **1 passed (4.2s)**                  |
+| 真机（清扫记录三态） | `npx playwright test e2e/certification/knowledge-copy-sweep.spec.ts`                              | **1 passed (2.8s)**                  |
 
 真机读数里的证据不是面板自己的句子：
 

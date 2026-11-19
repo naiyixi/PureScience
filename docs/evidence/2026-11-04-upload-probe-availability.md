@@ -27,10 +27,10 @@ every action on it. The probe has to resolve uploads through the upload reposito
 
 ## 3. 修法（产品行为只改这一处路由）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/artifacts/ipc.ts` | `ArtifactHandlerDependencies` 新增 `resolveUploadPath`；`source === 'upload'` 的条目走它，不再进 artifact 根解析器。解析失败仍按「不可用」这一**答案**处理（调用方问的就是它在不在），不向上抛。 |
-| `src/main/ipc.ts` | 组合根接线：`resolveUploadPath: (request, scope) => uploadRepository.resolveManagedUploadPath(request, scope)`（上传仓库本来就是唯一能对 `uploads/` 根作答的那一层）。 |
+| 位置                                            | 改动                                                                                                                                                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/artifacts/ipc.ts`                     | `ArtifactHandlerDependencies` 新增 `resolveUploadPath`；`source === 'upload'` 的条目走它，不再进 artifact 根解析器。解析失败仍按「不可用」这一**答案**处理（调用方问的就是它在不在），不向上抛。   |
+| `src/main/ipc.ts`                               | 组合根接线：`resolveUploadPath: (request, scope) => uploadRepository.resolveManagedUploadPath(request, scope)`（上传仓库本来就是唯一能对 `uploads/` 根作答的那一层）。                             |
 | `src/main/artifacts/probe-availability.test.ts` | 新增一条「上传走上传仓库、且不碰 artifact 解析器」的用例；既有用例里三条把 managed 路径标成 `source:'upload'` 的条目更正为 `source:'artifact'`（它们本来就是 artifact 根下的路径，标错的是夹具）。 |
 
 提交：`cf477225`（`fix(artifacts): 上传件的可用性探针改问上传仓库`）。这处修复最早由并行会话写在工作区里
@@ -38,23 +38,23 @@ every action on it. The probe has to resolve uploads through the upload reposito
 
 ## 4. 门禁读数（隔离工作树 `/tmp/ps-ocr-rb` @ `cf477225`）
 
-| 环 | 读数 |
-| --- | --- |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **0 error**，exit 0 |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **0 error**，exit 0 |
-| 全量 `npx vitest run --maxWorkers=4`（堆 8192） | **1452 文件 / 18212 passed / 227 skipped**，`EXIT=0` |
-| `npx eslint --no-cache .` | **0 error**（96 条既有 prettier warning，全仓口径） |
-| `bash scripts/pre-push-checks.sh` | 通过（品牌扫描零命中、双语 README 一致、60 个脚本入口可解析、本次 3 个文件 lint 0） |
-| `src/main/artifacts`（定向） | 20 文件 / 287 例全绿 |
+| 环                                                     | 读数                                                                                |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **0 error**，exit 0                                                                 |
+| `tsc --noEmit -p tsconfig.web.json --composite false`  | **0 error**，exit 0                                                                 |
+| 全量 `npx vitest run --maxWorkers=4`（堆 8192）        | **1452 文件 / 18212 passed / 227 skipped**，`EXIT=0`                                |
+| `npx eslint --no-cache .`                              | **0 error**（96 条既有 prettier warning，全仓口径）                                 |
+| `bash scripts/pre-push-checks.sh`                      | 通过（品牌扫描零命中、双语 README 一致、60 个脚本入口可解析、本次 3 个文件 lint 0） |
+| `src/main/artifacts`（定向）                           | 20 文件 / 287 例全绿                                                                |
 
 **真机读数（同一棵提交上的隔离工作树）**：
 
-| 项 | 读数 |
-| --- | --- |
-| 命令 | `npm run build:e2e`（`✓ built in 22.93s`）→ `npx playwright test e2e/certification/file-ocr.spec.ts --reporter=list` |
-| 判决 | **1 passed (18.9s)**，`EXIT=0` |
-| 磁贴 | `[ocr-cert] tile=ready before the read`（修复前同一句读作 `tile=missing`） |
-| 实际分支 | `[ocr-cert] rendered=true branch=text` |
+| 项         | 读数                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 命令       | `npm run build:e2e`（`✓ built in 22.93s`）→ `npx playwright test e2e/certification/file-ocr.spec.ts --reporter=list`                                   |
+| 判决       | **1 passed (18.9s)**，`EXIT=0`                                                                                                                         |
+| 磁贴       | `[ocr-cert] tile=ready before the read`（修复前同一句读作 `tile=missing`）                                                                             |
+| 实际分支   | `[ocr-cert] rendered=true branch=text`                                                                                                                 |
 | 正文与出处 | `Read with eng.traineddata (tesseract eng) in 95 ms. This text came from an image, not from a text layer.` + `HEMOGLOBIN 12.4 g/dL PLATELETS 210 K/uL` |
 
 ## 5. 取证陷阱：共享工作树里的全量读数会被**未提交的 schema**污染

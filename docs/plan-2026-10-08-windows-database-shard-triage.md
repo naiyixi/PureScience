@@ -6,13 +6,13 @@
 
 ## 一、已有读数（不要重做）
 
-| 读数 | 依据 |
-| --- | --- |
-| 该分片**本来就是串行**的 | `.github/workflows/windows-full-test.yml:73` — `npm test -- --shard=<n>/8 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 …` |
-| 仓里的口径：**能顶到天花板是一条待查的发现，不是要调小的数字** | 同文件第 70–73 行注释逐字 |
-| 同一份代码：`c15bbc1c` **success** / `db06590c` failure（`provenance-migration-validation` 30s + `EBUSY: resource busy or locked, unlink '…purescience.db'`）/ `e3b1da0f` failure（**换成** `reviewer/repository` 的 **120s** 超时） | 各提交的 `Windows Full Test` run + 作业级注解 |
-| 超时那条文件在 macOS 上 **27 passed / 3.13s** | 本机实测（`src/main/reviewer/repository.test.ts`） |
-| `commitFindingDispositions` 是**单个 `$transaction`**，**没有重试循环/退避** | `src/main/reviewer/repository.ts:721` |
+| 读数                                                                                                                                                                                                                                 | 依据                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 该分片**本来就是串行**的                                                                                                                                                                                                             | `.github/workflows/windows-full-test.yml:73` — `npm test -- --shard=<n>/8 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 …` |
+| 仓里的口径：**能顶到天花板是一条待查的发现，不是要调小的数字**                                                                                                                                                                       | 同文件第 70–73 行注释逐字                                                                                                             |
+| 同一份代码：`c15bbc1c` **success** / `db06590c` failure（`provenance-migration-validation` 30s + `EBUSY: resource busy or locked, unlink '…purescience.db'`）/ `e3b1da0f` failure（**换成** `reviewer/repository` 的 **120s** 超时） | 各提交的 `Windows Full Test` run + 作业级注解                                                                                         |
+| 超时那条文件在 macOS 上 **27 passed / 3.13s**                                                                                                                                                                                        | 本机实测（`src/main/reviewer/repository.test.ts`）                                                                                    |
+| `commitFindingDispositions` 是**单个 `$transaction`**，**没有重试循环/退避**                                                                                                                                                         | `src/main/reviewer/repository.ts:721`                                                                                                 |
 
 ⇒ 已排除：并行争用（本来就是 1 worker）、重试风暴、以及「某条断言写错」。
 
@@ -72,8 +72,9 @@
 失败在 `src/main/agents/completion-gate.execute-control.integration.test.ts` 等「审批请求被发出」的
 `vi.waitFor`：**vitest 4 的默认窗是 1000 ms**（`node_modules/vitest/dist/chunks/test.DNmyFkvJ.js:3361`），
 本仓 `vitest.config.ts` 从未设过它。收法是文件内单一来源常量 `APPROVAL_REQUEST_BUDGET_MS = 10_000`
-+ 两处 `vi.waitFor` 带上它，**断言一字未改**。⚠️ **这条必须由 Windows 车道验收**：若同一处在 10 s 窗下仍红，
-读数指向真缺陷（Windows 特有停顿），届时按作业级日志再定性，**不得再加窗**。
+
+- 两处 `vi.waitFor` 带上它，**断言一字未改**。⚠️ **这条必须由 Windows 车道验收**：若同一处在 10 s 窗下仍红，
+  读数指向真缺陷（Windows 特有停顿），届时按作业级日志再定性，**不得再加窗**。
 
 ### 6.2 仍然待定的一支（片 `4/8`，本轮只归属、不改）
 
@@ -94,14 +95,13 @@ Error: Hook timed out in 60000ms.
 - **本机不能给出分片成员**：`vitest list --shard=4/8` 在本机给出 149 个文件、目标文件**不在其中**
   ⇒ 分片成员以 **CI 作业名**为准，不要按本机 list 推断邻居。判决仍只能由 Windows 车道给，N ≥ 3。
 
-
 ## 七、2026-10-09 结案：两支文件的 Windows 判据都达到 **N ≥ 3**（实取 **N=4**）
 
 本单 §五 的验收判据是「该分片连续 N 次全绿，N ≥ 3」。自片 `5/8` 的修法落树（`395d3e17`）与片 `4/8` 的归属
 （`cfdb8aff` 之后）起，`Windows Full Test` 已连续 **4 次**全绿，且 **8/8 分片全部 success**——读数按完整 40 位 SHA 取：
 
-| 提交（完整 40 位） | Windows run | 分片判决 |
-| --- | --- | --- |
+| 提交（完整 40 位）                         | Windows run | 分片判决                       |
+| ------------------------------------------ | ----------- | ------------------------------ |
 | `395d3e17c527c03270612b1ea6ad76481c6f0b61` | 37825846029 | 8/8 success（含 `4/8`、`5/8`） |
 | `9a3bfef7fcc96ef29b435b655e3e8d35c7da2e88` | 37866542307 | 8/8 success（含 `4/8`、`5/8`） |
 | `e2590ab065a2f21c7e015e66bd711c645c03d665` | 37867733052 | 8/8 success（含 `4/8`、`5/8`） |

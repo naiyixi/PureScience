@@ -26,25 +26,25 @@
 
 ## 二 改动
 
-| 面 | 改动 |
-| --- | --- |
-| `src/shared/citation/types.ts` | 新增 `citationStyleLabel(style, language)`：中文界面（`zh`/`zh-Hant`）取 `labelZh`，其余（含没有语言提供者的渲染）取 `label` |
-| `ReferencesLibraryDialog.tsx` | 语言从 `useLanguage()` 取；样式名收敛成一份 `styleLabelById` 映射，**选择器 / 导出按钮 / 复制引用的 tooltip / 并排比较** 四处都读它（原来三处各读各的字段，一处漏就成了这次的缺陷） |
-| `ReferencesScreeningPanel.tsx` | 纳排面板自己的样式选择器同样改走 `citationStyleLabel` |
-| 两个认证 spec | 按钮定位改成产品真名（`Export as …`），并把「按钮名点出所选样式」变成断言；比较面板的两条断言收窄到列表容器（新 `data-testid="citation-style-comparison"`）—— 因为选择器现在也带同样的英文名，不收窄就会命中它 |
-| `references-citation-styles.spec.ts` | 新增**样式选择器讲界面语言**的真机断言：英文窗口里 `APA 7th` / `GB/T 7714-2015 (numeric)` 各恰一条，`APA 第 7 版` 一条都没有 |
-| `src/shared/citation/types.test.ts` | 新用例 4 条：中文两语取中文名、其余七语取英文名、没有语言时回英文、导入样式两名同值 |
+| 面                                   | 改动                                                                                                                                                                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/citation/types.ts`       | 新增 `citationStyleLabel(style, language)`：中文界面（`zh`/`zh-Hant`）取 `labelZh`，其余（含没有语言提供者的渲染）取 `label`                                                                                   |
+| `ReferencesLibraryDialog.tsx`        | 语言从 `useLanguage()` 取；样式名收敛成一份 `styleLabelById` 映射，**选择器 / 导出按钮 / 复制引用的 tooltip / 并排比较** 四处都读它（原来三处各读各的字段，一处漏就成了这次的缺陷）                            |
+| `ReferencesScreeningPanel.tsx`       | 纳排面板自己的样式选择器同样改走 `citationStyleLabel`                                                                                                                                                          |
+| 两个认证 spec                        | 按钮定位改成产品真名（`Export as …`），并把「按钮名点出所选样式」变成断言；比较面板的两条断言收窄到列表容器（新 `data-testid="citation-style-comparison"`）—— 因为选择器现在也带同样的英文名，不收窄就会命中它 |
+| `references-citation-styles.spec.ts` | 新增**样式选择器讲界面语言**的真机断言：英文窗口里 `APA 7th` / `GB/T 7714-2015 (numeric)` 各恰一条，`APA 第 7 版` 一条都没有                                                                                   |
+| `src/shared/citation/types.test.ts`  | 新用例 4 条：中文两语取中文名、其余七语取英文名、没有语言时回英文、导入样式两名同值                                                                                                                            |
 
 ## 三 读数
 
-| 项 | 读数 |
-| --- | --- |
-| 修复前（CI 快照）英文窗口的九个样式名 | 全中文（见上） |
-| 修复后（真机读数 `[ic38]`，英文窗口） | `GB/T 7714-2015 (numeric)`、`APA 7th`、`Vancouver (NLM)`、`IEEE 11th`、`Nature`、`AMA 11th`、`Harvard (Cite Them Right 12th)`、`Chicago 18th (author-date)`、`MLA 9th` |
-| 本地真机跑这两条 spec（`npx playwright test`，`--workers=1`） | **2 passed (20.8 s)** —— 含新增的语言断言与 `Export as PureScience Acceptance Style` 那条导出 |
-| 全量单测 | `1339 passed / 16 skipped`（1355 文件）、`17035 passed / 207 skipped`（17242 例）、exit 0；比上一轮基线 **+1 文件 / +4 例**（正是本批新增的那份用例） |
-| 双 typecheck | node `0`、web `0`（`--composite false`） |
-| eslint（改动文件，`--no-cache`） | 0 error、0 warning |
+| 项                                                            | 读数                                                                                                                                                                   |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 修复前（CI 快照）英文窗口的九个样式名                         | 全中文（见上）                                                                                                                                                         |
+| 修复后（真机读数 `[ic38]`，英文窗口）                         | `GB/T 7714-2015 (numeric)`、`APA 7th`、`Vancouver (NLM)`、`IEEE 11th`、`Nature`、`AMA 11th`、`Harvard (Cite Them Right 12th)`、`Chicago 18th (author-date)`、`MLA 9th` |
+| 本地真机跑这两条 spec（`npx playwright test`，`--workers=1`） | **2 passed (20.8 s)** —— 含新增的语言断言与 `Export as PureScience Acceptance Style` 那条导出                                                                          |
+| 全量单测                                                      | `1339 passed / 16 skipped`（1355 文件）、`17035 passed / 207 skipped`（17242 例）、exit 0；比上一轮基线 **+1 文件 / +4 例**（正是本批新增的那份用例）                  |
+| 双 typecheck                                                  | node `0`、web `0`（`--composite false`）                                                                                                                               |
+| eslint（改动文件，`--no-cache`）                              | 0 error、0 warning                                                                                                                                                     |
 
 ## 四 边界
 

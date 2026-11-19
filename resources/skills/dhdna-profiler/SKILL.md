@@ -1,6 +1,7 @@
 ---
 name: dhdna-profiler
 description: Applies the DHDNA framework as an exploratory rubric for reasoning and writing patterns in supplied text. Used for explicit requests for DHDNA, cognitive-style reflection, a thinking-pattern profile, or comparisons of textual reasoning. Scores describe evidence in the sample, not validated psychological traits or personal identity.
+description-zh: 把 DHDNA 框架当作探索性量表，用来描述所给文本中的推理与写作模式。适用于明确要求 DHDNA、认知风格反思、思维模式画像或对比的场景。
 allowed-tools: Read Write
 license: MIT license
 metadata:

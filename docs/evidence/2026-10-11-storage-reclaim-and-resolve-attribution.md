@@ -20,14 +20,14 @@
 （三份轮转，5.2 MB / 5.2 MB / 3.4 MB，最新 2026-10-10 21:56），grep `artifact version resolve was slow`
 共 **273 条**（87 / 175 / 11）。逐条把埋点字段摊开：
 
-| 字段 | 条数 | 中位 | 最大 |
-| --- | --- | --- | --- |
-| `queryMs`（解析那条主键查询） | 273 | **78 ms** | 1,172 ms |
-| `readMs`（读内容） | 273 | **31 ms** | 3,062 ms |
-| `clientMs`（调用方） | 273 | **0 ms** | 145 ms（合计 1,358 ms） |
-| `bytes`（读到的内容大小） | 273 | 22,255 B | 746,842 B（**≥1 MB 的 0 条**） |
-| `queryEventLoopMaxMs` | 273 | 0 | 140 ms |
-| `readEventLoopMaxMs` | 273 | 0 | 2,317 ms |
+| 字段                          | 条数 | 中位      | 最大                           |
+| ----------------------------- | ---- | --------- | ------------------------------ |
+| `queryMs`（解析那条主键查询） | 273  | **78 ms** | 1,172 ms                       |
+| `readMs`（读内容）            | 273  | **31 ms** | 3,062 ms                       |
+| `clientMs`（调用方）          | 273  | **0 ms**  | 145 ms（合计 1,358 ms）        |
+| `bytes`（读到的内容大小）     | 273  | 22,255 B  | 746,842 B（**≥1 MB 的 0 条**） |
+| `queryEventLoopMaxMs`         | 273  | 0         | 140 ms                         |
+| `readEventLoopMaxMs`          | 273  | 0         | 2,317 ms                       |
 
 - **主导段**（按每条最大的那一段计）：`queryMs` 208 条 / `readMs` 65 条 / `clientMs` 0 条。
 - **事件循环占比**：Σ`readEventLoopMaxMs` 16,430 / Σ`readMs` 33,173 = **49.5%**；
@@ -54,14 +54,14 @@
 
 ## 三 交付（P0-10 前半：按需回收）
 
-| 面 | 内容 |
-| --- | --- |
-| 共享类型 | `DuplicateSweepResult` / `DuplicateSweepOutcome`：回收字节、链接数、扫描数、已共享数、不可读数、未链成数、耗时；注释写明「与面板读数同一根、同一批字节」 |
+| 面           | 内容                                                                                                                                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 共享类型     | `DuplicateSweepResult` / `DuplicateSweepOutcome`：回收字节、链接数、扫描数、已共享数、不可读数、未链成数、耗时；注释写明「与面板读数同一根、同一批字节」                                                                 |
 | 主进程 owner | `sweepDuplicateContent()`：扫**数据根**（与面板总量同一根）、**同一时刻只允许一次**（第二次点击并入在跑的那次）、**成功且真有字节移动**时才 `usageCache.clear()`、失败按 `{ok:false,error}` 作答而不是裸拒、成败都落日志 |
-| 通道 | `storage:sweep-duplicate-content`（LOCAL、**无参数** ⇒ 渲染端点不了目标），契约目录 + 前载 + 应用命令 + 生成物一并改齐 |
-| 面板 | 按钮（盘面读数之下、与它要改的那个数字同屏）+ 确认对话框 + 「检查中」态 + 结果行（**回收 N 字节 / 无可回收 / 未能回收**）+ 真有字节移动时重读读数 |
-| 文案 | 9 个键 × 9 语种（`zh ≠ en`、`zh-Hant` 全繁体，用技能自带 `scripts/add-i18n-keys.py` 批量插入，脚本自带九文件齐平预检） |
-| 归位 | 启动维护的根由配置根改为数据根（与面板一致） |
+| 通道         | `storage:sweep-duplicate-content`（LOCAL、**无参数** ⇒ 渲染端点不了目标），契约目录 + 前载 + 应用命令 + 生成物一并改齐                                                                                                   |
+| 面板         | 按钮（盘面读数之下、与它要改的那个数字同屏）+ 确认对话框 + 「检查中」态 + 结果行（**回收 N 字节 / 无可回收 / 未能回收**）+ 真有字节移动时重读读数                                                                        |
+| 文案         | 9 个键 × 9 语种（`zh ≠ en`、`zh-Hant` 全繁体，用技能自带 `scripts/add-i18n-keys.py` 批量插入，脚本自带九文件齐平预检）                                                                                                   |
+| 归位         | 启动维护的根由配置根改为数据根（与面板一致）                                                                                                                                                                             |
 
 ### 3.1 为什么回收**只在同一个类目内**成组
 
@@ -78,16 +78,16 @@
 一次性探针（跑完即删）：真内容树（2 MB 重复对、1.5 MB 重复对、64 KB 同大小不同内容对、0 B 重复对、跨类目同内容一份）
 → 生产 walker → **应用自己的读数**前后各一次 → `du -sk` 从外部对照 → 链接计数与逐字节回读。
 
-| 读数 | 值 |
-| --- | --- |
-| `du -sk`（前 → 后） | 11,392 KB → 7,808 KB（**Δ 3,584 KB**） |
-| 面板读数 `totalBytes`（前 → 后） | 11,665,408 → 7,995,392 |
-| 面板读数 `sharedBytes`（前 → 后） | 0 → 3,670,016 |
-| `sweep` | scanned **8** / linked **3** / bytes **3,670,016** / distinct 5 / alreadyShared 0 / unreadable 0 / unlinked 0 |
-| **三个相等** | `totalDelta` = `sharedDelta` = `sweep.bytes` = `duΔ × 1024` = **3,670,016** |
-| 负向对照 | 同大小不同内容 `artifacts/unique.bin` nlink = 1；跨类目重复 `artifacts/a-1.bin` nlink = 1 |
-| 内容回读 | 被替换的 `uploads/u-2.bin`、`artifacts/art-2.bin`、未动的 `artifacts/a-1.bin` 逐字节等于原内容（三处 true） |
-| 0 字节重复 | `uploads/empty-u2.bin` nlink = 2（**链了但不移动字节** ⇒ 判据用字节而不是链接数，见 §六.3） |
+| 读数                              | 值                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `du -sk`（前 → 后）               | 11,392 KB → 7,808 KB（**Δ 3,584 KB**）                                                                        |
+| 面板读数 `totalBytes`（前 → 后）  | 11,665,408 → 7,995,392                                                                                        |
+| 面板读数 `sharedBytes`（前 → 后） | 0 → 3,670,016                                                                                                 |
+| `sweep`                           | scanned **8** / linked **3** / bytes **3,670,016** / distinct 5 / alreadyShared 0 / unreadable 0 / unlinked 0 |
+| **三个相等**                      | `totalDelta` = `sharedDelta` = `sweep.bytes` = `duΔ × 1024` = **3,670,016**                                   |
+| 负向对照                          | 同大小不同内容 `artifacts/unique.bin` nlink = 1；跨类目重复 `artifacts/a-1.bin` nlink = 1                     |
+| 内容回读                          | 被替换的 `uploads/u-2.bin`、`artifacts/art-2.bin`、未动的 `artifacts/a-1.bin` 逐字节等于原内容（三处 true）   |
+| 0 字节重复                        | `uploads/empty-u2.bin` nlink = 2（**链了但不移动字节** ⇒ 判据用字节而不是链接数，见 §六.3）                   |
 
 **本单元没有 Electron 窗口读数**，也不假装有：探针跑的是主进程的真实模块 + 真实文件系统 + 应用自己的读数函数；
 界面那一半的证据是渲染套件（点开确认 → 调用 → 结果行 → 重读），不是窗口。
@@ -96,12 +96,12 @@
 
 全部在**我自己的最后一个改动之后**跑（口径：CI 同版），逐环取各自的汇总行：
 
-| 环 | 读数 |
-| --- | --- |
-| 定向单测（storage / host-application-commands / application-command-composition / 契约目录 / 面清单 / preload / StoragePanel 渲染 / i18n 质量门） | **Test Files 22 passed (22)** / **Tests 447 passed (447)**，`VITEST_EXIT=0` |
-| `eslint --no-cache .`（全仓，CI 同口径） | **exit 0**，`0 errors / 122 warnings`（前几轮基线 140 —— 差额来自 prettier 把 i18n 里**既有的**超长行折行，**不是本单元修掉的告警**） |
-| 双 `tsc`（`typecheck:node` / `typecheck:web`，均 `--composite false`） | **exit 0 / exit 0**，两份日志各只含 npm 横幅（94 / 92 字节，零诊断） |
-| `bash scripts/pre-push-checks.sh` | **exit 0**（`[pre-push] 全部通过。`，五查逐条 ✓） |
+| 环                                                                                                                                                | 读数                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向单测（storage / host-application-commands / application-command-composition / 契约目录 / 面清单 / preload / StoragePanel 渲染 / i18n 质量门） | **Test Files 22 passed (22)** / **Tests 447 passed (447)**，`VITEST_EXIT=0`                                                           |
+| `eslint --no-cache .`（全仓，CI 同口径）                                                                                                          | **exit 0**，`0 errors / 122 warnings`（前几轮基线 140 —— 差额来自 prettier 把 i18n 里**既有的**超长行折行，**不是本单元修掉的告警**） |
+| 双 `tsc`（`typecheck:node` / `typecheck:web`，均 `--composite false`）                                                                            | **exit 0 / exit 0**，两份日志各只含 npm 横幅（94 / 92 字节，零诊断）                                                                  |
+| `bash scripts/pre-push-checks.sh`                                                                                                                 | **exit 0**（`[pre-push] 全部通过。`，五查逐条 ✓）                                                                                     |
 
 **Windows 车道抓到一处我漏跑的 pin**（`3f1fa7e1` 的 `Windows full test (8/8)`：`expected …396… to have a length of 396
 but got 397`；已就地修，`cd865873`）：本仓的**本地 Web 可调用面**在 `src/renderer/web/renderer-argument-shape-characterization.test.ts`

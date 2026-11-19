@@ -9,12 +9,12 @@
 `logs/headless.out.log`（用户自己的数据根，dev 实例的真实启动）里同一份代码的六次启动：
 
 | 启动 | `compose runtime steps` 的 `totalMs` | 其中 `restore-notification-inbox` | 到 `install-lifecycle` 完成的 `durationMs` |
-|---|---|---|---|
-| ① | 713 | **573** | — |
-| ② | 983 | **844** | 5,701 |
-| ③ | 1,860 | **1,724** | — |
-| ④ | 3,184 | **2,892** | 11,532 |
-| ⑤ | 7,834 | **7,672** | **26,960** |
+| ---- | ------------------------------------ | --------------------------------- | ------------------------------------------ |
+| ①    | 713                                  | **573**                           | —                                          |
+| ②    | 983                                  | **844**                           | 5,701                                      |
+| ③    | 1,860                                | **1,724**                         | —                                          |
+| ④    | 3,184                                | **2,892**                         | 11,532                                     |
+| ⑤    | 7,834                                | **7,672**                         | **26,960**                                 |
 
 同一份代码、同一个数据根，同一段工作从 573 ms 走到 7,672 ms。埋点只记了 4 步，而整窗最长 26,960 ms
 ⇒ **19 秒没有任何归因**，而这 19 秒过去只能靠猜。
@@ -37,14 +37,14 @@
 于是把库**复制**到 `/tmp` 再量（真实库只读，副本 87,851,008 字节；`Project` 56 行、`NotificationInboxItem`
 86 行、`UnreadTaskSession` **0 行**），用的是产品自己的 `node_modules/.prisma/client`：
 
-| 段 | 五次数值（ms） |
-|---|---|
-| 构造客户端 | 2.0 / 2.2 / 2.8 / 3.6 / 4.6 |
-| 首次查询（起引擎 + 连接 + schema 守卫） | 17.5 / 32.4 / 45.8 / 56.2 / 80.5 |
-| 66 条 `CREATE TABLE/INDEX IF NOT EXISTS` 重放 | 34.4 / 65.1 / 107.3 / 29.0 / 117.4 |
-| 30 次列探测（`addColumnIfMissing` 那类） | 8.1 / 10.1 / 28.7 / 36.3 / 125.9 |
-| 收件箱查询 | **0.2 / 0.3 / 0.4 / 0.8 / 0.1** |
-| 合计 | **95.8 / 98.6 / 121.4 / 214.9 / 281.4** |
+| 段                                            | 五次数值（ms）                          |
+| --------------------------------------------- | --------------------------------------- |
+| 构造客户端                                    | 2.0 / 2.2 / 2.8 / 3.6 / 4.6             |
+| 首次查询（起引擎 + 连接 + schema 守卫）       | 17.5 / 32.4 / 45.8 / 56.2 / 80.5        |
+| 66 条 `CREATE TABLE/INDEX IF NOT EXISTS` 重放 | 34.4 / 65.1 / 107.3 / 29.0 / 117.4      |
+| 30 次列探测（`addColumnIfMissing` 那类）      | 8.1 / 10.1 / 28.7 / 36.3 / 125.9        |
+| 收件箱查询                                    | **0.2 / 0.3 / 0.4 / 0.8 / 0.1**         |
+| 合计                                          | **95.8 / 98.6 / 121.4 / 214.9 / 281.4** |
 
 裸 sqlite3 交叉核对同一量级（`measure.py`）：`sqlite_master` 首读 1.6 ms、66 条 DDL **8.8 ms**、70 次
 `PRAGMA table_info` 0.7 ms、legacy `findMany` 0.02 ms、裁剪扫描 0.03 ms、重开连接后重放 4.9 ms。
@@ -62,10 +62,10 @@
 
 ## 四 本笔改动
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/ipc.ts` | 新增独立步 `open-project-db`（`getProjectDbClient` 自己就做建目录 + 起引擎 + schema 守卫），`restore-notification-inbox` 从此**只量收件箱自己**；并把 compose 里剩下会慢的 await 补进同一张账（`application-events`、`permission-grant-registry`、`notebook-application`、`specialist-skill-catalog`、`specialist-package-snapshot`、`builtin-catalog-ready`）⇒ 记账从 4 步到 **11 步** |
-| `src/main/ipc-startup-attribution.test.ts` | 新增 pin：读真实源码，断言 11 个步名的**有序清单**、`open-project-db` 必须排在 `restore-notification-inbox` **之前**、每个 `step(` 都必须 `await`（未被 await 的步会记 0 ms 且什么也没围住）、`createComposeStepRecorder(` 恰好一次、`logSummary()` 恰好一次，外加「源码长度 > 100k」的自检（截断的读法会让上面每一条空过） |
+| 位置                                       | 改动                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/ipc.ts`                          | 新增独立步 `open-project-db`（`getProjectDbClient` 自己就做建目录 + 起引擎 + schema 守卫），`restore-notification-inbox` 从此**只量收件箱自己**；并把 compose 里剩下会慢的 await 补进同一张账（`application-events`、`permission-grant-registry`、`notebook-application`、`specialist-skill-catalog`、`specialist-package-snapshot`、`builtin-catalog-ready`）⇒ 记账从 4 步到 **11 步** |
+| `src/main/ipc-startup-attribution.test.ts` | 新增 pin：读真实源码，断言 11 个步名的**有序清单**、`open-project-db` 必须排在 `restore-notification-inbox` **之前**、每个 `step(` 都必须 `await`（未被 await 的步会记 0 ms 且什么也没围住）、`createComposeStepRecorder(` 恰好一次、`logSummary()` 恰好一次，外加「源码长度 > 100k」的自检（截断的读法会让上面每一条空过）                                                             |
 
 ## 五 边界（不许把本档读成更强的东西）
 
@@ -105,11 +105,11 @@ grep -A5 "compose runtime steps" logs/headless.out.log | tail -20
 pin 的价值在于「把面改小/改松时它会红」。用隔离工作树（`git worktree add --detach /tmp/ps-mut-03d2d3c8 03d2d3c8` +
 软链 `node_modules`）逐条施加变异，再跑同一支 pin：
 
-| 变异 | 结果 | 变红的断言 |
-|---|---|---|
-| M0 未变异（基线） | **5 passed** | — |
-| M1 把一个 `await composeSteps.step(` 改成 `void composeSteps.step(` | **1 failed / 4 passed** | `awaits every timed step` |
-| M2 把 `specialist-package-snapshot` 改名成 `specialist-packages` | **1 failed / 4 passed** | `times exactly the inventory … in composition order` |
+| 变异                                                                                   | 结果                    | 变红的断言                                                       |
+| -------------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| M0 未变异（基线）                                                                      | **5 passed**            | —                                                                |
+| M1 把一个 `await composeSteps.step(` 改成 `void composeSteps.step(`                    | **1 failed / 4 passed** | `awaits every timed step`                                        |
+| M2 把 `specialist-package-snapshot` 改名成 `specialist-packages`                       | **1 failed / 4 passed** | `times exactly the inventory … in composition order`             |
 | M3 把 `open-project-db` 挪到 `restore-notification-inbox` **之后**（合并数字的那一版） | **2 failed / 3 passed** | 有序清单 + `measures the first database touch as its own step …` |
 
 三次变异各自只打断它该打断的那一条（M3 打断两条，正是因为它同时改了清单顺序与先后关系），

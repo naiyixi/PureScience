@@ -16,10 +16,7 @@
     "numbers": false,
     "citations": false
   },
-  "toolCallNames": [
-    "execute",
-    "other"
-  ],
+  "toolCallNames": ["execute", "other"],
   "toolCallCount": 6,
   "manipulation": {
     "arm": "full-contract",

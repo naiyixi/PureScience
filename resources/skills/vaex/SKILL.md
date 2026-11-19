@@ -1,6 +1,7 @@
 ---
 name: vaex
 description: Processes large tabular scientific datasets with Vaex expressions, filtered views, streamed statistics, binned visualizations, and file conversion. Use for larger-than-RAM HDF5, Arrow, CSV, or Parquet analysis, virtual feature engineering, or Vaex ML preprocessing; distinguishes these operations from estimators and conversions that materialize data.
+description-zh: 用 Vaex 处理大表格科学数据：表达式、过滤视图、流式统计、分箱可视化与文件转换。适用于超出内存的 HDF5、Arrow 等数据。
 allowed-tools: Read Write Edit Bash Grep Glob
 license: MIT license
 compatibility: Requires Python 3.9-3.12 for vaex-core 4.19.0; tested on Python 3.12. Install vaex-core plus vaex-hdf5, vaex-viz, or vaex-ml as needed. Package installation and remote data need network access; local workflows need no credentials.

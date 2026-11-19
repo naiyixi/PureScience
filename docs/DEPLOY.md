@@ -4,12 +4,12 @@
 
 ## 系统要求
 
-| 项目 | 要求 |
-|---|---|
+| 项目     | 要求                                                 |
+| -------- | ---------------------------------------------------- |
 | 操作系统 | macOS 12 (Monterey) 及以上（Apple Silicon 或 Intel） |
-| 内存 | 8 GB 及以上（推荐 16 GB，分子模拟/大数据分析更从容） |
-| 磁盘 | 5 GB 可用空间 |
-| 网络 | 访问模型 API（DeepSeek/Anthropic/OpenAI 兼容） |
+| 内存     | 8 GB 及以上（推荐 16 GB，分子模拟/大数据分析更从容） |
+| 磁盘     | 5 GB 可用空间                                        |
+| 网络     | 访问模型 API（DeepSeek/Anthropic/OpenAI 兼容）       |
 
 ## 安装（3 步）
 
@@ -51,21 +51,23 @@ xattr -dr com.apple.quarantine /Applications/PureScience.app
 
 打开 PureScience，在设置中选择你的模型提供商并填入 API Key：
 
-| 提供商 | 说明 | 获取 Key |
-|---|---|---|
-| DeepSeek | 性价比高，国内直连快（推荐） | platform.deepseek.com |
-| Anthropic Claude | 科学推理强 | console.anthropic.com |
-| OpenAI 兼容 | 任意兼容端点 | 各厂商控制台 |
+| 提供商           | 说明                         | 获取 Key              |
+| ---------------- | ---------------------------- | --------------------- |
+| DeepSeek         | 性价比高，国内直连快（推荐） | platform.deepseek.com |
+| Anthropic Claude | 科学推理强                   | console.anthropic.com |
+| OpenAI 兼容      | 任意兼容端点                 | 各厂商控制台          |
 
 > 支持在设置中添加多个提供商，会话中随时切换。
 
 ## 使用入门
 
 ### 创建研究项目
+
 - 点击 **New project** 创建项目（如"分子对接研究"、"文献综述"）
 - 每个项目有独立的数据目录、文件区和会话历史
 
 ### 对话式研究
+
 - 在会话中直接用自然语言描述研究任务：
   - "检索 2024 年以来 RAG 的综述文献"
   - "对 SARS-CoV-2 Mpro 与 nirmatrelvir 做分子对接"
@@ -73,11 +75,13 @@ xattr -dr com.apple.quarantine /Applications/PureScience.app
 - Agent 会自动规划、调用工具（文献检索/代码执行/数据分析）、产出报告
 
 ### 科学计算环境（自动管理）
+
 - Python 科学计算环境由应用自动创建和管理（内置 micromamba）
 - 常用科学包（numpy/scipy/pandas/matplotlib/rdkit/OpenMM 等）可通过会话中的包管理直接安装
 - 每个项目的 Notebook 独立运行，支持代码 + 文本 + 图表
 
 ### 内置科学数据连接器
+
 PubMed、OpenAlex、arXiv（含全文）、ChemSpider、PDB（蛋白质结构）、UniProt 等 24 个数据源，会话中直接调用。
 
 ## 高级部署：服务器模式（可选）
@@ -120,12 +124,12 @@ launchctl load ~/Library/LaunchAgents/com.zerolink.purescience.plist
 
 ## 故障排查
 
-| 问题 | 解决 |
-|---|---|
+| 问题                             | 解决                                                           |
+| -------------------------------- | -------------------------------------------------------------- |
 | Gatekeeper 提示"已损坏/无法打开" | `xattr -dr com.apple.quarantine /Applications/PureScience.app` |
-| 模型连接失败 | 检查网络 + 设置中确认 API Key 与端点 |
-| Python 环境初始化慢 | 首次创建环境需下载包（国内可用清华镜像加速），耐心等待 |
-| 会话中断 | 服务会自动恢复，打开应用后点 Resume 继续 |
+| 模型连接失败                     | 检查网络 + 设置中确认 API Key 与端点                           |
+| Python 环境初始化慢              | 首次创建环境需下载包（国内可用清华镜像加速），耐心等待         |
+| 会话中断                         | 服务会自动恢复，打开应用后点 Resume 继续                       |
 
 ## 从源码构建（开发者）
 

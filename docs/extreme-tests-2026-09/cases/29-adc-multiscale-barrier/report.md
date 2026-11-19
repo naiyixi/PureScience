@@ -8,7 +8,7 @@
 耐药/耐药性微区**。
 
 **本报告结论（先行给出）**：该假说在非线性反应–扩散传输物理上被否决。
-结合位点屏障把**自由抗体的有效捕获长度**锁定在血管壁外 ~2 个细胞直径（~≤20 µm），
+结合位点屏障把**自由抗体的有效捕获长度**锁定在血管壁外 ~~2 个细胞直径（~~≤20 µm），
 并把**直接内吞杀伤可达深度**限制在 ~90 µm（72 h 单剂量）之内；同时，超高效载荷
 造成的**血管周第一层同步坏死**在给药后 ~20 h 即触发局灶微血栓 + 机械塌陷（血管自毁），
 其中 **10 pM 抗体因 k_off≈1e-6 s⁻¹ 而永久“镀”在坏死残骸上，形成不可再通的慢性闭塞**，
@@ -22,14 +22,14 @@
 
 ## 0. 交付物
 
-| 交付物 | 文件 |
-|---|---|
-| 主脚本（多尺度连续统求解器） | `adc_multiscale_biotransport_barrier_sim.py` |
-| 图 1：径向–时间药物浓度等高线（168 h 单剂量） | `fig01_conc_contour_168h.png` |
-| 图 2：径向–时间细胞存活率热图（168 h 单剂量） | `fig02_survival_heatmap_168h.png` |
-| 图 3：微血管通畅率/残留病灶随治疗轮次退化 | `fig03_patency_residual_vs_rounds.png` |
-| 原始结果（可复现） | `results_high.npz`, `results_med.npz` |
-| 本研报 | 本文件 |
+| 交付物                                        | 文件                                         |
+| --------------------------------------------- | -------------------------------------------- |
+| 主脚本（多尺度连续统求解器）                  | `adc_multiscale_biotransport_barrier_sim.py` |
+| 图 1：径向–时间药物浓度等高线（168 h 单剂量） | `fig01_conc_contour_168h.png`                |
+| 图 2：径向–时间细胞存活率热图（168 h 单剂量） | `fig02_survival_heatmap_168h.png`            |
+| 图 3：微血管通畅率/残留病灶随治疗轮次退化     | `fig03_patency_residual_vs_rounds.png`       |
+| 原始结果（可复现）                            | `results_high.npz`, `results_med.npz`        |
+| 本研报                                        | 本文件                                       |
 
 复现：`python adc_multiscale_biotransport_barrier_sim.py --case high --outdir .`
 及 `--case med`（每臂完整 4 轮约需数分钟）。数值环境：Python 3.12, numpy/scipy/matplotlib。
@@ -42,7 +42,7 @@
 
 在 Krogh 筒几何下，自由 ADC（浓度 $C$)沿径向的稳态方程为
 
-$$\underbrace{\frac{1}{r}\frac{d}{dr}\Big(r D_{\text{eff}}\frac{dC}{dr}\Big)}_{\text{弥散}}
+$$ \underbrace{\frac{1}{r}\frac{d}{dr}\Big(r D_{\text{eff}}\frac{dC}{dr}\Big)}_{\text{弥散}}
 \;-\;\underbrace{k_{\rm on}\,B\,C}_{\text{抗原捕获}}
 \;-\;\underbrace{k_{\rm int}\frac{k_{\rm on}}{k_{\rm off}+k_{\rm int}}\,B\,C}_{\text{结合后内吞消耗}}
 \;-\;k_{\rm cl}\,C\;=\;0$$
@@ -238,3 +238,4 @@ $$\dot q=k_{\rm rel}A_{bi}(1-f_{\rm leak})\,8\,M_{\mu M}+k_{\rm up}v\,Pay\,M_{\m
 - Ogitani Y, et al. DS-8201a (T-DXd): bystander killing mechanism. *Clin Cancer Res* 2016;22:5097.
 - Dvorak HF, et al. Fibrin and tumor stroma (fibrin deposition / coagulation in tumors). *JNCI* / *Am J Pathol* (方向性引用凝血-肿瘤微环境).
 - 附注：Krogh A. 圆柱几何由 Krogh 1919 提出；Starling 渗流为其经典平衡。
+$$

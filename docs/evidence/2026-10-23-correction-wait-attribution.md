@@ -14,13 +14,13 @@
 
 ## 1 语料与窗口
 
-| 项 | 值 |
-|---|---|
-| 日志 | `~/Library/Logs/PureScience (DEV)/main.{2,1,}.log` |
-| 行数 / 体积 | **37,715** 条 JSON 行 / 14.9 MB（21,442 + 722 + 15,551） |
-| 窗口 | **2026-10-21T14:16:14Z → 2026-10-23T13:45:17Z** |
-| `app starting` 按版本 | 2.15.3 **59** 次 / 2.16.0 **8** 次 |
-| 四张表的取数窗口 | **≥ 2026-10-23T11:30:49Z**（`f2bfd5dd` 的提交时刻；此后起的实例都带着那四行） |
+| 项                    | 值                                                                            |
+| --------------------- | ----------------------------------------------------------------------------- |
+| 日志                  | `~/Library/Logs/PureScience (DEV)/main.{2,1,}.log`                            |
+| 行数 / 体积           | **37,715** 条 JSON 行 / 14.9 MB（21,442 + 722 + 15,551）                      |
+| 窗口                  | **2026-10-21T14:16:14Z → 2026-10-23T13:45:17Z**                               |
+| `app starting` 按版本 | 2.15.3 **59** 次 / 2.16.0 **8** 次                                            |
+| 四张表的取数窗口      | **≥ 2026-10-23T11:30:49Z**（`f2bfd5dd` 的提交时刻；此后起的实例都带着那四行） |
 
 > 本轮的读数**全部是只读**：dev 实例由桌面会话自己重启（最近一次 `13:42:53Z`，版本 2.16.0），我没有重启、
 > 没有起新实例。新日志行之所以有数，是因为新构建已经在跑；这不是「我为了取证重启了实例」。
@@ -29,12 +29,12 @@
 
 ### 2.1 表一 `OpenCode permission input wait outcome` 按 `outcome`
 
-| outcome | 次数 |
-|---|---|
+| outcome         | 次数                   |
+| --------------- | ---------------------- |
 | `input-present` | **1**（`waitedMs: 0`） |
-| `resolved` | 0 |
-| `timeout` | 0 |
-| `cancelled` | 0 |
+| `resolved`      | 0                      |
+| `timeout`       | 0                      |
+| `cancelled`     | 0                      |
 
 **等待请求的账目是闭合的**：窗口内 `permission request received` **95** 条 = **63** 条 MCP + **32** 条非 MCP；
 63 条 MCP 里 **62** 条走了 `skipping OpenCode input wait`（`reason: identity-only-decision`，复查会话，`f2bfd5dd` 之前那笔的修复），
@@ -45,8 +45,8 @@
 
 ### 2.2 表二 `permission decision` 按 `decision`
 
-| decision | isMcp | profile | rawInput |
-|---|---|---|---|
+| decision           | isMcp          | profile       | rawInput         |
+| ------------------ | -------------- | ------------- | ---------------- |
 | `automatic` **32** | `false` **32** | `full` **32** | `present` **32** |
 
 ⇒ 这 32 条**全部是非 MCP 工具**（所以它们根本没进等待路径，见 2.1 的账目），全部由 `full` 档**自动放行**、
@@ -60,11 +60,11 @@
 
 上一单元 §6 把「`not-an-mcp-title` + 裸工具名」写成「成因 B：**我们的判据丢了入参**」。**本窗口的数据说明那条判据要收紧**：
 
-| 检查 | 值 |
-|---|---|
-| 65 条里，`toolCallId` 同时出现在 `permission request received` 的 | **53** |
-| 其中被应用自己标成 `isMcp: true` 的 | **0** —— 53/53 都是 `isMcp: false` |
-| 属于 MCP 权限请求却被丢弃的 | **0** |
+| 检查                                                              | 值                                 |
+| ----------------------------------------------------------------- | ---------------------------------- |
+| 65 条里，`toolCallId` 同时出现在 `permission request received` 的 | **53**                             |
+| 其中被应用自己标成 `isMcp: true` 的                               | **0** —— 53/53 都是 `isMcp: false` |
+| 属于 MCP 权限请求却被丢弃的                                       | **0**                              |
 
 ⇒ 这些更新本来就是**非 MCP 原生工具**（读文件、跑 shell、加载 skill）的 `tool_call`，它们不会、也不该被当成 MCP
 权限入参。**不是成因 B**。判据的正确写法是：**同 `toolCallId` 是 MCP 权限请求、而入参被判不可用** 才是我们丢了东西；
@@ -81,17 +81,17 @@
 
 ## 3 同一个语料里的另一件事：修复轮 28 次进入、0 次重审
 
-| 读数（全语料） | 值 |
-|---|---|
-| `review triggered` / `runReview started` / `review created` | 117 / 117 / 117 |
-| `review complete` | **101** |
-| `review protocol incomplete`（error） | 15 |
-| `submit_findings evidence access validation failed` | **54** |
+| 读数（全语料）                                                                    | 值                  |
+| --------------------------------------------------------------------------------- | ------------------- |
+| `review triggered` / `runReview started` / `review created`                       | 117 / 117 / 117     |
+| `review complete`                                                                 | **101**             |
+| `review protocol incomplete`（error）                                             | 15                  |
+| `submit_findings evidence access validation failed`                               | **54**              |
 | 其中**重试后成功提交**（同 run 内随后 `submit_findings received by MCP handler`） | **54 / 54**，丢失 0 |
-| `injecting [Auditor] message into main session` | **28** |
-| `[Auditor] correction turn complete` | **28** |
-| `correction turn did not reach durable session storage; refusing stale re-review` | **28** |
-| `fix loop: running re-review`（真正重审） | **0** |
+| `injecting [Auditor] message into main session`                                   | **28**              |
+| `[Auditor] correction turn complete`                                              | **28**              |
+| `correction turn did not reach durable session storage; refusing stale re-review` | **28**              |
+| `fix loop: running re-review`（真正重审）                                         | **0**               |
 
 两条结论：
 
@@ -104,34 +104,34 @@
 
 　　**这句话以前只有一句**：「修正回合没进持久层」。它对下面三种情况**同样成立**，而三种的修法完全不同：
 
-| 形状 | 含义 | 修法方向 |
-|---|---|---|
-| `session-missing` | 等待期间**一次都没读到**这个 Session（根本没有写入方 / 根不对） | 写入方或根的问题，与「慢」无关 |
-| `no-new-agent-message` | Session 读到了、也长了，但**没有新的 agent 消息**（只有用户消息或根本没长） | 修正轮本身没有产出，或快照比它新 |
-| `agent-message-incomplete` | 新的 agent 消息**在**，`status` 却不是 `complete`（`streaming` / `error`） | 落盘时机或状态机的问题，等待再久也没用 |
+| 形状                       | 含义                                                                        | 修法方向                               |
+| -------------------------- | --------------------------------------------------------------------------- | -------------------------------------- |
+| `session-missing`          | 等待期间**一次都没读到**这个 Session（根本没有写入方 / 根不对）             | 写入方或根的问题，与「慢」无关         |
+| `no-new-agent-message`     | Session 读到了、也长了，但**没有新的 agent 消息**（只有用户消息或根本没长） | 修正轮本身没有产出，或快照比它新       |
+| `agent-message-incomplete` | 新的 agent 消息**在**，`status` 却不是 `complete`（`streaming` / `error`）  | 落盘时机或状态机的问题，等待再久也没用 |
 
 ## 4 交付（可见性，不是行为改动）
 
-| 位置 | 改动 |
-|---|---|
-| `src/main/reviewer/orchestrator.ts` | `waitForCorrectionAgentMessage` 的返回从 `{…} \| undefined` 改成**具名五态**：`found` / `aborted` / `session-missing` / `no-new-agent-message`（带 `newMessages` 与最后一条的 `role`/`status`）/ `agent-message-incomplete`（带 `messageId` 与 `messageStatus`），每个都带 `polls` 与 `elapsedMs`；新增 `waitDiagnostics()` 把非 `found` 的态映射成日志字段 |
-| 同上 | 拒绝那一行**消息文本不变**（`correction turn did not reach …; refusing stale re-review`，这样语料里的计数仍然可比），新增 `reason` + 上面那些字段；abort 分支改成按返回态判定，语义不变 |
-| `orchestrator-correction-wait.test.ts`（新） | 6 条：找到（含 `polls`/`elapsedMs`）、`session-missing`、只有用户消息（`newMessages: 1`、`lastRole: 'user'`）、**根本没长**（`newMessages: 0`）、**`streaming` 的 agent 消息不被接受**（报 `messageStatus: 'streaming'`）、已 abort 时**不去问 provider** |
+| 位置                                         | 改动                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/reviewer/orchestrator.ts`          | `waitForCorrectionAgentMessage` 的返回从 `{…} \| undefined` 改成**具名五态**：`found` / `aborted` / `session-missing` / `no-new-agent-message`（带 `newMessages` 与最后一条的 `role`/`status`）/ `agent-message-incomplete`（带 `messageId` 与 `messageStatus`），每个都带 `polls` 与 `elapsedMs`；新增 `waitDiagnostics()` 把非 `found` 的态映射成日志字段 |
+| 同上                                         | 拒绝那一行**消息文本不变**（`correction turn did not reach …; refusing stale re-review`，这样语料里的计数仍然可比），新增 `reason` + 上面那些字段；abort 分支改成按返回态判定，语义不变                                                                                                                                                                     |
+| `orchestrator-correction-wait.test.ts`（新） | 6 条：找到（含 `polls`/`elapsedMs`）、`session-missing`、只有用户消息（`newMessages: 1`、`lastRole: 'user'`）、**根本没长**（`newMessages: 0`）、**`streaming` 的 agent 消息不被接受**（报 `messageStatus: 'streaming'`）、已 abort 时**不去问 provider**                                                                                                   |
 
 **没动的**：等待预算 10 s、「要不要等」的判据、拒绝后把未处理项标 `unaddressed` 的行为、用户可见文案
 （disposition 的 note 仍是 `The correction turn did not reach durable storage.`）。本轮只让下一次出现时**能归因**。
 
 ## 5 门禁（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 新用例单独 | **1 file / 6 passed**，exit 0 |
-| 变异 ①：把「非 complete 的 agent 消息」并进 `no-new-agent-message` | `streaming` 那条**红**（1 failed / 5 passed），恢复后全绿 |
-| 变异 ②：把「从没读到 Session」并进通用分支 | `session-missing` 那条**红**（1 failed / 5 passed），恢复后全绿 |
-| `src/main/reviewer` 整域 | **27 files / 306 passed**，exit 0（本单元 +1 file / +6 tests） |
-| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
-| `eslint --no-cache`（2 文件） | 见 §5.1 |
-| `prettier --check`（2 文件） | 全过 |
+| 环                                                                 | 读数                                                            |
+| ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| 新用例单独                                                         | **1 file / 6 passed**，exit 0                                   |
+| 变异 ①：把「非 complete 的 agent 消息」并进 `no-new-agent-message` | `streaming` 那条**红**（1 failed / 5 passed），恢复后全绿       |
+| 变异 ②：把「从没读到 Session」并进通用分支                         | `session-missing` 那条**红**（1 failed / 5 passed），恢复后全绿 |
+| `src/main/reviewer` 整域                                           | **27 files / 306 passed**，exit 0（本单元 +1 file / +6 tests）  |
+| 双 typecheck（`--composite false`，堆 8192）                       | node **0**；web **0**                                           |
+| `eslint --no-cache`（2 文件）                                      | 见 §5.1                                                         |
+| `prettier --check`（2 文件）                                       | 全过                                                            |
 
 ### 5.1 门禁读数取法
 

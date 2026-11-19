@@ -1,6 +1,7 @@
 ---
 name: autogpt-agents
 description: Autonomous AI agent platform for building and deploying continuous agents. Use when creating visual workflow agents, deploying persistent autonomous agents, or building complex multi-step AI automation systems.
+description-zh: 自主 AI agent 平台，用于构建与部署持续运行的 agent：可视化工作流 agent、常驻自主 agent，以及复杂的多步 AI 自动化系统。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

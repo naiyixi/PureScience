@@ -1,6 +1,7 @@
 ---
 name: weights-and-biases
 description: Track ML experiments with automatic logging, visualize training in real-time, optimize hyperparameters with sweeps, and manage model registry with W&B - collaborative MLOps platform
+description-zh: 用 W&B 跟踪机器学习实验：自动记录、实时可视化训练、用超参搜索做优化，并管理模型注册表——协作式 MLOps 平台。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

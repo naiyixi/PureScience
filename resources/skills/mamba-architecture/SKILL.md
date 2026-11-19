@@ -1,6 +1,7 @@
 ---
 name: mamba-architecture
 description: State-space model with O(n) complexity vs Transformers' O(n²). 5× faster inference, million-token sequences, no KV cache. Selective SSM with hardware-aware design. Mamba-1 (d_state=16) and Mamba-2 (d_state=128, multi-head). Models 130M-2.8B on HuggingFace.
+description-zh: 状态空间模型，复杂度 O(n)（transformer 是 O(n²)）：推理快 5 倍、可处理百万级 token 序列、无需 KV 缓存，采用硬件感知的选择性 SSM 设计；含 Mamba-1 与 Mamba-2。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

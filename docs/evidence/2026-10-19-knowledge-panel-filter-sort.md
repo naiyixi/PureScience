@@ -11,12 +11,12 @@
 
 ## 二 交付
 
-| 面 | 内容 |
-| --- | --- |
-| 纯函数 | `src/renderer/src/pages/settings/knowledge-source-view.ts`：`filterAndSortKnowledgeSources()` + `isNarrowed()`，无 import 依赖 |
-| 面板 | `KnowledgePanel.tsx`：文字筛选（`type=search`）、类型筛选（全部/文件/网址）、排序（登记顺序/名称/体积从大到小）、筛选时的 `Showing {shown} of {total}`、`No sources match this filter.` 独立一句 |
-| 文案 | 九语言各 10 键（脚本自证九文件齐平、zh ≠ en、zh-Hant 无简体字） |
-| 测试 | 纯函数 8 条 + 渲染 7 条 + 真机认证 spec `e2e/certification/knowledge-panel-filter-sort.spec.ts` |
+| 面     | 内容                                                                                                                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 纯函数 | `src/renderer/src/pages/settings/knowledge-source-view.ts`：`filterAndSortKnowledgeSources()` + `isNarrowed()`，无 import 依赖                                                                   |
+| 面板   | `KnowledgePanel.tsx`：文字筛选（`type=search`）、类型筛选（全部/文件/网址）、排序（登记顺序/名称/体积从大到小）、筛选时的 `Showing {shown} of {total}`、`No sources match this filter.` 独立一句 |
+| 文案   | 九语言各 10 键（脚本自证九文件齐平、zh ≠ en、zh-Hant 无简体字）                                                                                                                                  |
+| 测试   | 纯函数 8 条 + 渲染 7 条 + 真机认证 spec `e2e/certification/knowledge-panel-filter-sort.spec.ts`                                                                                                  |
 
 ### 三处取舍（都能被读源复核）
 
@@ -35,16 +35,16 @@
 
 ## 三 读数（全部实跑）
 
-| 门 | 读数 |
-| --- | --- |
-| 纯函数用例 | `knowledge-source-view.test.ts` **8 passed** |
-| 渲染用例 | `KnowledgePanel.filter.render.test.tsx` **7 passed**（含「页 2 上改筛选要回到第 1 页」与「计数归零但不借用空寄存器那句话」） |
-| 定向 | `src/renderer/src/pages/settings` + `src/renderer/src/i18n` ⇒ **73 文件 / 773 passed / 1 skipped** |
-| 全量 | `npx vitest run --maxWorkers=4` ⇒ **1342 文件通过 / 16 skipped（1358）**、**17152 例通过 / 207 skipped**、**exit 0**（206.38s，完整输出 `/tmp/full-vitest-sort.log`） |
-| 类型 | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0** |
-| lint | `npx eslint --no-cache` 改动面 14 文件 ⇒ **0 error / 0 warning**（i18n 九文件里插入块留下的 9 条尾逗号 warning 已 `prettier --write` 清零，`git diff` 只多 9 增 9 删） |
-| 推前钩子 | `bash scripts/pre-push-checks.sh` ⇒ **exit 0** |
-| **真机认证** | `e2e/certification/knowledge-panel-filter-sort.spec.ts`（先 `npm run build:e2e`）⇒ **1 passed (4.9s)** |
+| 门           | 读数                                                                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 纯函数用例   | `knowledge-source-view.test.ts` **8 passed**                                                                                                                           |
+| 渲染用例     | `KnowledgePanel.filter.render.test.tsx` **7 passed**（含「页 2 上改筛选要回到第 1 页」与「计数归零但不借用空寄存器那句话」）                                           |
+| 定向         | `src/renderer/src/pages/settings` + `src/renderer/src/i18n` ⇒ **73 文件 / 773 passed / 1 skipped**                                                                     |
+| 全量         | `npx vitest run --maxWorkers=4` ⇒ **1342 文件通过 / 16 skipped（1358）**、**17152 例通过 / 207 skipped**、**exit 0**（206.38s，完整输出 `/tmp/full-vitest-sort.log`）  |
+| 类型         | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0**                                                          |
+| lint         | `npx eslint --no-cache` 改动面 14 文件 ⇒ **0 error / 0 warning**（i18n 九文件里插入块留下的 9 条尾逗号 warning 已 `prettier --write` 清零，`git diff` 只多 9 增 9 删） |
+| 推前钩子     | `bash scripts/pre-push-checks.sh` ⇒ **exit 0**                                                                                                                         |
+| **真机认证** | `e2e/certification/knowledge-panel-filter-sort.spec.ts`（先 `npm run build:e2e`）⇒ **1 passed (4.9s)**                                                                 |
 
 真机那一条不是断言组件自己说的话：三个**真文件**（`alpha-small.md` / `beta-medium.md` / `gamma-large.md`、
 体积刻意与名字顺序错开）由应用自己登记并指纹，然后

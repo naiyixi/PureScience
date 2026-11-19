@@ -21,10 +21,10 @@ blobPathFor(storageRoot, digest)               // 摘要命名位置（不用存
 
 ## 2. 写点接线（按风险从低到高）
 
-| 序 | 写点 | 改动 | 为什么先做 |
-|---|---|---|---|
-| 1 | `src/main/uploads/storage-helpers.ts:107` `moveToUniqueUploadFile`（**已 link 优先**）与 `uploads/repository.ts:579`（仅 `preserveSource` 修复分支） | 发布不再需要改；改的是**"同一份内容第二次到达"**：入口处先 `digestOfFile`，命中库内同摘要 → 直接 `link` 到目标名（连暂存副本都不需要） | 改动面最小、语义最清晰：不改变已有链接行为，只把"同内容再来一份"从复制变成链接 |
-| 2 | `src/main/artifacts/provenance-repository.ts:1559/1887` `copyFile(pendingFile.path, stagingContentPath)` | 同上；版本记录已有 `checksum` 字段语义，复用同一摘要口径 | 版本是不可变内容，天然适合内容寻址 |
+| 序  | 写点                                                                                                                                                 | 改动                                                                                                                                   | 为什么先做                                                                     |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | `src/main/uploads/storage-helpers.ts:107` `moveToUniqueUploadFile`（**已 link 优先**）与 `uploads/repository.ts:579`（仅 `preserveSource` 修复分支） | 发布不再需要改；改的是**"同一份内容第二次到达"**：入口处先 `digestOfFile`，命中库内同摘要 → 直接 `link` 到目标名（连暂存副本都不需要） | 改动面最小、语义最清晰：不改变已有链接行为，只把"同内容再来一份"从复制变成链接 |
+| 2   | `src/main/artifacts/provenance-repository.ts:1559/1887` `copyFile(pendingFile.path, stagingContentPath)`                                             | 同上；版本记录已有 `checksum` 字段语义，复用同一摘要口径                                                                               | 版本是不可变内容，天然适合内容寻址                                             |
 
 **读路径不改**：所有读取方按路径读（`storageKey` 语义不变），因此去重对上层透明。
 

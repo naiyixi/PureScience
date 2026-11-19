@@ -23,7 +23,6 @@
 - **处置**：撤除该层（`ProjectFilesView` 恢复 `Promise.all(missingTargets.map(previewReader))`，并在原处留注释写明"键控读取器已经有上限 + 实测峰值 4"）。`lib/request-limiter` 与其 5 条用例**保留**（文件索引 hook 仍在用它，且它此前零用例）。
 - **教训（写进技能）**：给"扇出"加闸之前先确认**它是不是已经有闸**（找读取器/队列层），否则会加出纯耦合的第二层。
 
-
 ## 四、面板 `pending` 的其余消费者（已核对，无遗留）
 
 - `StoragePanel`：三处字节数（on disk 行、总计行、迁移"将移动 X"）+ 用量条形区全部按 `pending` 显示等待文案，并有渲染用例断言**不出现 `0 B`**。
@@ -34,13 +33,13 @@
 
 **先更正一个错误结论**：我在事故排查中一度判定"打包版读到了真实数据根"，该判断**被后续证据推翻**。证据如下：
 
-| 证据 | 读数 |
-|---|---|
-| 第一次打包运行日志里出现真实配置根 `/Users/totota/.purescience-project` | **0 次** |
-| 同日志里出现沙箱语料根 `/tmp/ps-corpus-pkg/...` | **12 次** |
-| 第二次（假 HOME）日志里真实配置根 | **0 次**；沙箱 `/tmp/ps-home-pkg` **12 次** |
-| 常驻实例进程树启动时刻 | **19:21:57 / 19:22:00**（在我的运行窗口内） |
-| `web-service.json` 内容 | **port 44100 / pid 911**（= 该新常驻进程），不是我的 44106 |
+| 证据                                                                    | 读数                                                       |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 第一次打包运行日志里出现真实配置根 `/Users/totota/.purescience-project` | **0 次**                                                   |
+| 同日志里出现沙箱语料根 `/tmp/ps-corpus-pkg/...`                         | **12 次**                                                  |
+| 第二次（假 HOME）日志里真实配置根                                       | **0 次**；沙箱 `/tmp/ps-home-pkg` **12 次**                |
+| 常驻实例进程树启动时刻                                                  | **19:21:57 / 19:22:00**（在我的运行窗口内）                |
+| `web-service.json` 内容                                                 | **port 44100 / pid 911**（= 该新常驻进程），不是我的 44106 |
 
 **结论**：`PURESCIENCE_E2E_STORAGE_ROOT` 对打包版**同样生效**，两次打包运行都只在沙箱内读写（日志路径可证）。`[storage] data root resolved { location: 'default' }` 是**解析规则标签**，不是路径，不能当作"命中真实根"的证据 —— 这是我先前误判的根源。
 
@@ -57,5 +56,3 @@
 4. 打包版要复测**存储用量**，语料必须按打包布局构造：打包版找 `<root>/PureScience/{artifacts,notebooks,…}`，而我的构建脚本给的是 dev 布局 `<root>/PureScience-DEV/…` ⇒ 五个类别目录存在但计 0 字节（这也是打包版 store 读数为何是 0）。
 
 **打包版已取得的有效观测**：chip **177 元素 / 16 种**（与 dev 逐项一致）；其自身日志里 `listFiles segments were slow`、`project file kinds read was slow`、`project files read was slow`、`artifact version resolve was slow` **全部为 0**。
-
-

@@ -4,10 +4,10 @@
 
 ## 一 读数（两轮 Release，同一处红）
 
-| 车道 | run | 作业 | 失败步骤 | 读数 |
-| --- | --- | --- | --- | --- |
+| 车道                                        | run           | 作业                                              | 失败步骤                         | 读数                                            |
+| ------------------------------------------- | ------------- | ------------------------------------------------- | -------------------------------- | ----------------------------------------------- |
 | Release（`v2.27.0` = `b8dd679a`，手动派发） | `43384543262` | `build / Build macos-arm64`（job `131761548959`） | `Enforce platform certification` | `P0_OUTCOME: failure` ⇒ `p0 ended with failure` |
-| Release（同 SHA，重跑） | `43394830799` | `build / Build macos-arm64`（job `131793833882`） | 同上 | 同上 |
+| Release（同 SHA，重跑）                     | `43394830799` | `build / Build macos-arm64`（job `131793833882`） | 同上                             | 同上                                            |
 
 两轮的 P0 明细完全一致：
 
@@ -54,11 +54,11 @@ v2.26.0 及更早的 Release 也是绿的，因为那时还没有签名。
 
 不做「把断言改成 0 就绿」这种事——那是把认证撤掉。改法是把**两条路各自钉住**：
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/main/update/create-strategy.ts` | 新增具名开关 `PURESCIENCE_UPDATE_FLOW`（`UPDATE_FLOW_ENV`）：值恰为 `installer` 时在 mac 上直接给 `UpdateService`，**先于签名探测**；其余任何值（含空、含拼错）一律走既有默认策略。win32/linux 不受影响（它们的车道认证的就是原地更新） |
-| `src/main/update/create-strategy.test.ts` | 三条：具名请求在**签名稳定版**上赢过签名探测（且探测未被调用）；`in-place` 这类其它值不生效；空白值不生效。16 passed |
-| `e2e/certification/update-manual-install.spec.ts` | 模块级设 `PURESCIENCE_UPDATE_FLOW = 'installer'` 并在 `test.afterAll` 清掉（夹具把 `process.env` 原样传给被测进程），断言一条不改 |
+| 位置                                              | 改动                                                                                                                                                                                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/update/create-strategy.ts`              | 新增具名开关 `PURESCIENCE_UPDATE_FLOW`（`UPDATE_FLOW_ENV`）：值恰为 `installer` 时在 mac 上直接给 `UpdateService`，**先于签名探测**；其余任何值（含空、含拼错）一律走既有默认策略。win32/linux 不受影响（它们的车道认证的就是原地更新） |
+| `src/main/update/create-strategy.test.ts`         | 三条：具名请求在**签名稳定版**上赢过签名探测（且探测未被调用）；`in-place` 这类其它值不生效；空白值不生效。16 passed                                                                                                                    |
+| `e2e/certification/update-manual-install.spec.ts` | 模块级设 `PURESCIENCE_UPDATE_FLOW = 'installer'` 并在 `test.afterAll` 清掉（夹具把 `process.env` 原样传给被测进程），断言一条不改                                                                                                       |
 
 为什么用开关而不是改断言：手动安装流程**仍在产品里**（nightly、ad-hoc 包、以及「装的是别家签的包/签名读不出来」
 的全部回落路径），它值得保留一条端到端的认证；而原地更新那条路要一条**自己的**真机读数，见下节。
@@ -76,10 +76,10 @@ v2.26.0 及更早的 Release 也是绿的，因为那时还没有签名。
 
 ## 五 门禁（本机实跑）
 
-| 环 | 读数 |
-| --- | --- |
-| `npx vitest run src/main/update/create-strategy.test.ts` | 16 passed（含新增 3 条） |
-| `npx vitest run src/main/update` | 见提交信息 |
-| 双 typecheck（`--composite false`，`NODE_OPTIONS=--max-old-space-size=8192`） | node 0 / web 0 |
-| `npx eslint --no-cache`（三文件） | 0 error / 0 warning |
-| `bash scripts/pre-push-checks.sh` | 推送前实跑 |
+| 环                                                                            | 读数                     |
+| ----------------------------------------------------------------------------- | ------------------------ |
+| `npx vitest run src/main/update/create-strategy.test.ts`                      | 16 passed（含新增 3 条） |
+| `npx vitest run src/main/update`                                              | 见提交信息               |
+| 双 typecheck（`--composite false`，`NODE_OPTIONS=--max-old-space-size=8192`） | node 0 / web 0           |
+| `npx eslint --no-cache`（三文件）                                             | 0 error / 0 warning      |
+| `bash scripts/pre-push-checks.sh`                                             | 推送前实跑               |

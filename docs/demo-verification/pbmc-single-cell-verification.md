@@ -8,25 +8,25 @@
 
 ## 1. 独立核对（原始数据层）✅
 
-| 项 | agent 报告 | 独立读取 h5ad | 结果 |
-|---|---|---|---|
-| 细胞数 | 700（QC 后 700） | n_obs = **700** | ✅ |
-| 基因数 | 765（HVG 500） | n_vars = **765** | ✅ |
-| 注释列 | bulk_labels（粗分） | 存在，10 类（Dendritic/CD14+ Mono/CD19+ B/CD4+ T Reg/CD8+ Cytotoxic T…） | ✅ |
-| mito 比例 | 分数形式 0.5%–4% | percent_mito ∈ [0.0048, 0.0400] | ✅ |
-| 数据形态 | 已归一化/缩放（非原始 count） | X 稠密 float32 负值、raw 为 log1p 稀疏——**确认 agent 判断正确** | ✅ |
+| 项        | agent 报告                    | 独立读取 h5ad                                                            | 结果 |
+| --------- | ----------------------------- | ------------------------------------------------------------------------ | ---- |
+| 细胞数    | 700（QC 后 700）              | n_obs = **700**                                                          | ✅   |
+| 基因数    | 765（HVG 500）                | n_vars = **765**                                                         | ✅   |
+| 注释列    | bulk_labels（粗分）           | 存在，10 类（Dendritic/CD14+ Mono/CD19+ B/CD4+ T Reg/CD8+ Cytotoxic T…） | ✅   |
+| mito 比例 | 分数形式 0.5%–4%              | percent_mito ∈ [0.0048, 0.0400]                                          | ✅   |
+| 数据形态  | 已归一化/缩放（非原始 count） | X 稠密 float32 负值、raw 为 log1p 稀疏——**确认 agent 判断正确**          | ✅   |
 
 ## 2. 独立重跑（脚本可复现性）— 关键数字逐位一致 ✅
 
 在 `/tmp/p3a-verify` 干净目录用 default-python 重跑 `pbmc_pipeline.py`：
 
-| 指标 | agent 报告 | 独立重跑 | 结果 |
-|---|---|---|---|
-| QC 前后细胞数 | 700 → 700（removed=0） | **700 -> 700 (removed=0)** | ✅ 逐位一致 |
-| 基因数 / HVG | 765 / 500 | **765 (HVG: 500)** | ✅ |
-| Leiden 聚类数 | 8（resolution=1.0, seed=42） | **8 (resolution=1.0)** | ✅ |
-| 批次混合度（同批邻居比例） | 0.507 → 0.471 | **pre=0.507 post=0.471** | ✅ 逐位一致 |
-| 注释一致率 / ARI | 74.4% / 0.631 | **74.4% ARI=0.631** | ✅ 逐位一致 |
+| 指标                       | agent 报告                   | 独立重跑                   | 结果        |
+| -------------------------- | ---------------------------- | -------------------------- | ----------- |
+| QC 前后细胞数              | 700 → 700（removed=0）       | **700 -> 700 (removed=0)** | ✅ 逐位一致 |
+| 基因数 / HVG               | 765 / 500                    | **765 (HVG: 500)**         | ✅          |
+| Leiden 聚类数              | 8（resolution=1.0, seed=42） | **8 (resolution=1.0)**     | ✅          |
+| 批次混合度（同批邻居比例） | 0.507 → 0.471                | **pre=0.507 post=0.471**   | ✅ 逐位一致 |
+| 注释一致率 / ARI           | 74.4% / 0.631                | **74.4% ARI=0.631**        | ✅ 逐位一致 |
 
 **结论：脚本从原始 h5ad 可完整重跑，全部输出数字稳定——可复现性要求（P3 系列核心）实测通过。**
 
@@ -39,17 +39,21 @@
 5. **确定性验证自证**：agent 删输出→重跑→关键数字逐位一致（与本次独立重跑互相印证）。
 
 ## 4. 交付物（6 个）
+
 `pbmc_pipeline.py`（单文件可重跑，参数集中 PARAMS）、`pbmc_qc_summary.csv`（分节：overview/过滤统计/阈值敏感性×8/主流程参数/批次混合度/每群标记+注释对照）、`pbmc_analysis.md`（含独立"已核实"与"限制"章节）、`qc_distributions.png`、`umap_batch_before_after.png`、`umap_annotation.png`
 
 ## 5. 运行状态说明（诚实记录）
+
 - 会话技术状态 failed（隔离实例的已知模式：产物停留 .pending 未固化为不可变版本）；内容与方法学经本次独立重跑完全验证。正式环境重跑可完整固化。
 
 ## 6. 复现指引
+
 新建会话 → 上传/引用 h5ad（scanpy 内置 `10x_pbmc68k_reduced`）→ 粘贴题目 → 绑定含 scanpy 1.12.3 + harmonypy 的环境 → 预计 10–20 分钟。
 
 ---
 
 ## 附录：证据
+
 - 数据文件：`…/scanpy/datasets/10x_pbmc68k_reduced.h5ad`（scanpy 官方内置数据集，公开）
 - 独立重跑目录：`/tmp/p3a-verify/`（脚本 + out/ 输出，可复现）
 - scanpy 文档关于该数据集预处理的说明：https://scanpy.readthedocs.io/en/stable/generated/scanpy.datasets.pbmc68k_reduced.html

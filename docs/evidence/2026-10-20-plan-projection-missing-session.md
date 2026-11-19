@@ -7,12 +7,12 @@
 
 日志：`~/Library/Logs/PureScience/main.log`（JSONL，17,306 行，窗口到 2026-10-20 06:38）。
 
-| 读数 | 值 |
-| --- | --- |
-| `ipc / ipc handler rejected`，通道 `acp:get-plan-projection` | **85 次**（2026-10-16T13:15Z → 10-19T13:35Z，6 个应用运行） |
-| 其中能读出「为什么被拒」的条数 | **0** —— 85 条的 `data` 逐字相同，除了 `durationMs`：`{channel, surface, location, principalKind, actionOrigin, errorCategory:"error"}` |
-| 拒绝耗时 | 1–9 ms（同步抛出，不是等超时） |
-| 同一通道的慢记录 | **173 次**，中位 **273 ms**、p95 **11.0 s**、max **67.4 s**，其中 **47 次 >1 s** |
+| 读数                                                         | 值                                                                                                                                      |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ipc / ipc handler rejected`，通道 `acp:get-plan-projection` | **85 次**（2026-10-16T13:15Z → 10-19T13:35Z，6 个应用运行）                                                                             |
+| 其中能读出「为什么被拒」的条数                               | **0** —— 85 条的 `data` 逐字相同，除了 `durationMs`：`{channel, surface, location, principalKind, actionOrigin, errorCategory:"error"}` |
+| 拒绝耗时                                                     | 1–9 ms（同步抛出，不是等超时）                                                                                                          |
+| 同一通道的慢记录                                             | **173 次**，中位 **273 ms**、p95 **11.0 s**、max **67.4 s**，其中 **47 次 >1 s**                                                        |
 
 两组读数合起来说明两件事：这条读被问得很频繁（打开会话就问一次），而**一半是拒绝、另一半在排队**。
 拒绝那一半在日志里是 85 行一模一样、只写着 `error` 的告警 —— 看不出是「会话还没落盘」还是「会话 JSON 坏了」。
@@ -42,14 +42,14 @@
 
 ## 三 交付
 
-| 文件 | 改动 |
-| --- | --- |
-| `src/main/session-persistence/coordinator.ts` | 新增并导出 `SessionRuntimeContextMissingError`（`code:'session-missing'`），`loadRuntimeContextSession` 的 `missing` 分支改抛它。**`name` 故意保持 `Error`**：被拒 IPC 的诊断把错误名映射成类别，改名会把这些行从 `error` 静默挪到 `object` |
-| `src/main/session-plan/plan-service.ts` | `getProjection` 只在这一种错误上回答 `null`（＝「没有计划」，就是实话）；`unreadable` 与其它任何失败照旧抛出 |
-| `src/main/session-plan/production-plan-service.ts` | 按既有 `isRevisionConflict` 的同一形状注入 `isMissingRuntimeContext` |
-| `src/main/session-plan/plan-service.test.ts` | +3：缺会话 ⇒ `null` 且不再去读文档；JSON 不可读 ⇒ 仍拒；其它失败 ⇒ 仍拒 |
-| `src/main/session-plan/production-plan-service.test.ts`（新） | +2：**按应用的方式装配**真实 service，喂 coordinator 真会抛的那个类 ⇒ `null`；喂 `unreadable` ⇒ 仍拒（证明判据是窄的） |
-| `src/main/session-persistence/coordinator.test.ts` | +1：钉住这个错误的三件事 —— 身份（`instanceof`）、`code`、以及 `name === 'Error'`（日志类别不会静默变化） |
+| 文件                                                          | 改动                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/session-persistence/coordinator.ts`                 | 新增并导出 `SessionRuntimeContextMissingError`（`code:'session-missing'`），`loadRuntimeContextSession` 的 `missing` 分支改抛它。**`name` 故意保持 `Error`**：被拒 IPC 的诊断把错误名映射成类别，改名会把这些行从 `error` 静默挪到 `object` |
+| `src/main/session-plan/plan-service.ts`                       | `getProjection` 只在这一种错误上回答 `null`（＝「没有计划」，就是实话）；`unreadable` 与其它任何失败照旧抛出                                                                                                                                |
+| `src/main/session-plan/production-plan-service.ts`            | 按既有 `isRevisionConflict` 的同一形状注入 `isMissingRuntimeContext`                                                                                                                                                                        |
+| `src/main/session-plan/plan-service.test.ts`                  | +3：缺会话 ⇒ `null` 且不再去读文档；JSON 不可读 ⇒ 仍拒；其它失败 ⇒ 仍拒                                                                                                                                                                     |
+| `src/main/session-plan/production-plan-service.test.ts`（新） | +2：**按应用的方式装配**真实 service，喂 coordinator 真会抛的那个类 ⇒ `null`；喂 `unreadable` ⇒ 仍拒（证明判据是窄的）                                                                                                                      |
+| `src/main/session-persistence/coordinator.test.ts`            | +1：钉住这个错误的三件事 —— 身份（`instanceof`）、`code`、以及 `name === 'Error'`（日志类别不会静默变化）                                                                                                                                   |
 
 单元测试用的是「消息匹配」的替身，它只证明分支、证明不了接线（导入写错一处，全部用例照样绿而产品照旧拒绝），
 所以另加了一支按产品装配路径走的文件。**变异证明**：把 `isMissingRuntimeContext` 改成恒 `false`
@@ -57,12 +57,12 @@
 
 ## 四 门禁读数（全部实跑）
 
-| 项 | 读数 |
-| --- | --- |
-| `src/main/session-persistence` + `src/main/session-plan` + `src/main/acp` | **105 文件 / 1717 passed** |
-| 变异证明（判据恒 false） | 1 failed / 1 passed，只红缺会话那条；已还原 |
-| `eslint --no-cache`（改动 5 文件） | **0 error**，2 warning（新文件的 prettier 折行，已 `--fix`） |
-| 双 typecheck | 本机各 **5 条红，全部在 `src/main/references/repository.ts`**；对**基线提交**（把本轮文件 stash 掉）跑出**同样 5 条** ⇒ 与本轮无关，根因是本机共享的生成客户端比 schema 旧（缺 `citedAt`/`citedSessionId`），CI 侧 `prisma generate` 用带列的 schema |
+| 项                                                                        | 读数                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/session-persistence` + `src/main/session-plan` + `src/main/acp` | **105 文件 / 1717 passed**                                                                                                                                                                                                                           |
+| 变异证明（判据恒 false）                                                  | 1 failed / 1 passed，只红缺会话那条；已还原                                                                                                                                                                                                          |
+| `eslint --no-cache`（改动 5 文件）                                        | **0 error**，2 warning（新文件的 prettier 折行，已 `--fix`）                                                                                                                                                                                         |
+| 双 typecheck                                                              | 本机各 **5 条红，全部在 `src/main/references/repository.ts`**；对**基线提交**（把本轮文件 stash 掉）跑出**同样 5 条** ⇒ 与本轮无关，根因是本机共享的生成客户端比 schema 旧（缺 `citedAt`/`citedSessionId`），CI 侧 `prisma generate` 用带列的 schema |
 
 ## 五 顺带立案（本轮不动）
 

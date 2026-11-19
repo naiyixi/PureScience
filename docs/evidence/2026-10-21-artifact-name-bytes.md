@@ -25,16 +25,16 @@
 `getArtifactMetadataPath()` 把**整个**产物名百分号编码成一个文件名：
 
 ```ts
-join(directory, METADATA_DIR, `${encodeURIComponent(filename)}.json`)   // 改前
+join(directory, METADATA_DIR, `${encodeURIComponent(filename)}.json`) // 改前
 ```
 
 一个 CJK 字符是 3 字节 UTF-8，`encodeURIComponent` 把它变成 9 个 ASCII 字符（`%E5%9B%BA`）。
 于是**文件名本身合法**的中文标题，其侧车名会膨胀到三倍：
 
-| 名字 | 字节（UTF-8） | 侧车名长度 | 结果 |
-|---|---|---|---|
-| `plot.png` | 8 | 13 | 正常（改前改后都正常） |
-| 30 字中文标题 | 84 | **270** | 超过单段 255 字节上限 ⇒ `ENAMETOOLONG` |
+| 名字          | 字节（UTF-8） | 侧车名长度 | 结果                                   |
+| ------------- | ------------- | ---------- | -------------------------------------- |
+| `plot.png`    | 8             | 13         | 正常（改前改后都正常）                 |
+| 30 字中文标题 | 84            | **270**    | 超过单段 255 字节上限 ⇒ `ENAMETOOLONG` |
 
 ⇒ 改之前，**约 27 个中文字**（83 字节）就是死线；而 27 个字在科研场景里连半个标题都不到。
 
@@ -56,12 +56,12 @@ join(directory, METADATA_DIR, `${encodeURIComponent(filename)}.json`)   // 改�
 
 ## 四 修法（三处，默认路径逐字节不变）
 
-| 位置 | 改动 |
-|---|---|
+| 位置                                   | 改动                                                                                                                                                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main/artifacts/storage-access.ts` | 侧车名分两套：编码后**能放下**（≤ 214 字节 = 255 − 41 的临时名后缀）就仍用**原来那个名字**，一个字节不变；放不下改用 `@long-<sha256 前 32 位>.json`（有界、按内容定址）。`@` 不可能出现在编码名开头（`encodeURIComponent('@')` 是 `%40`），两套永不撞名 |
-| 同上 | `readArtifactMetadata()` 按同一顺序读**两个候选名**（先首选、缺了再看另一套），磁盘上老侧车照旧解析；不是「缺文件」的错（损坏、权限）仍然抛 |
-| 同上 | `assertSafeFilename()` 增加**字节上限 191**（= 255 − 64 的事务后缀预留），超限抛具名错误：报字节数、报上限、并带上（截断的）名字 —— 替掉一次只报临时路径的 `ENAMETOOLONG` |
-| `src/main/artifacts/mcp-server.ts` | `write_artifact_file` 的 `filename` 描述补一句「191 字节以内（中文约 60 字）」——让模型在**提交前**就收住，而不是失败后重试 |
+| 同上                                   | `readArtifactMetadata()` 按同一顺序读**两个候选名**（先首选、缺了再看另一套），磁盘上老侧车照旧解析；不是「缺文件」的错（损坏、权限）仍然抛                                                                                                             |
+| 同上                                   | `assertSafeFilename()` 增加**字节上限 191**（= 255 − 64 的事务后缀预留），超限抛具名错误：报字节数、报上限、并带上（截断的）名字 —— 替掉一次只报临时路径的 `ENAMETOOLONG`                                                                               |
+| `src/main/artifacts/mcp-server.ts`     | `write_artifact_file` 的 `filename` 描述补一句「191 字节以内（中文约 60 字）」——让模型在**提交前**就收住，而不是失败后重试                                                                                                                              |
 
 **为什么阈值是 191 / 214 而不是 255**：一次产物写入会在真实文件旁边写下 `.<epochMs>-<uuid>.backup`（57 字节），
 一次元数据写入会写 `.<uuid>.tmp`（41 字节）。把接受上限卡在 255，只会把失败推迟到事务中间，
@@ -69,13 +69,13 @@ join(directory, METADATA_DIR, `${encodeURIComponent(filename)}.json`)   // 改�
 
 ## 五 读数（全部实跑，取自最后一次改动之后）
 
-| 环 | 读数 |
-|---|---|
-| 定向 `src/main/artifacts/storage-access.test.ts` | 改前 **4 failed / 6 passed**（RED，含场内 `ENAMETOOLONG`）→ 改后 **11 passed** |
-| `src/main/artifacts` 全套 | **20 文件 / 282 passed**，exit 0 |
-| `mcp-server.test.ts` | **26 passed** |
-| 真实文件系统事务（不是纯单测替身） | `runPendingFileTransaction` + 30 字中文标题 + 真实目录：产物落地、`.metadata` 侧车 1 个且 ≤255 字节、无 `.tmp`/`.backup` 残留 |
-| 兼容 | 手写一份改前 scheme 的侧车（`résumé — 终稿.csv.json`），改后仍能读回 |
+| 环                                               | 读数                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 定向 `src/main/artifacts/storage-access.test.ts` | 改前 **4 failed / 6 passed**（RED，含场内 `ENAMETOOLONG`）→ 改后 **11 passed**                                                |
+| `src/main/artifacts` 全套                        | **20 文件 / 282 passed**，exit 0                                                                                              |
+| `mcp-server.test.ts`                             | **26 passed**                                                                                                                 |
+| 真实文件系统事务（不是纯单测替身）               | `runPendingFileTransaction` + 30 字中文标题 + 真实目录：产物落地、`.metadata` 侧车 1 个且 ≤255 字节、无 `.tmp`/`.backup` 残留 |
+| 兼容                                             | 手写一份改前 scheme 的侧车（`résumé — 终稿.csv.json`），改后仍能读回                                                          |
 
 「真实文件系统事务」这一条用**产品自己的函数**（`runPendingFileTransaction` ＋ `ArtifactStorageAccess`）跑，
 不是替身；但它**不是窗口读数**：没有起 Electron。

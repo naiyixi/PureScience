@@ -8,12 +8,12 @@
 
 `Nightly` `41788542097`（提交 `cf477225`）：
 
-| 作业 | 结论 |
-| --- | --- |
-| `build / Verify (lint + typecheck + test + package)` | success |
-| `build / Build windows-x64` / `linux-x64` | success |
-| `build / Build macos-x64` | **failure**（`macos_smoke`：DMG 挂载后的成品 60 s 内没有宣告 web 端点） |
-| `build / Build macos-arm64` | **failure**（认证规格 `e2e/certification/file-ocr.spec.ts:203`） |
+| 作业                                                 | 结论                                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| `build / Verify (lint + typecheck + test + package)` | success                                                                 |
+| `build / Build windows-x64` / `linux-x64`            | success                                                                 |
+| `build / Build macos-x64`                            | **failure**（`macos_smoke`：DMG 挂载后的成品 60 s 内没有宣告 web 端点） |
+| `build / Build macos-arm64`                          | **failure**（认证规格 `e2e/certification/file-ocr.spec.ts:203`）        |
 
 arm64 作业日志里规格自己打印的分支是：
 
@@ -45,11 +45,11 @@ needs the tesseract program. Install it (brew install tesseract) and try again."
 
 ## 3. 本地读数（能做到的部分）
 
-| 环 | 读数 |
-| --- | --- |
-| 隔离工作树 `npx tsc --noEmit -p tsconfig.node.json --composite false`（`/tmp/ocr-fix-check` @ `cf477225` + 本笔） | **0 error**，exit 0 |
-| `npx eslint --no-cache e2e/certification/file-ocr.spec.ts` | **0 problem**，exit 0 |
-| `bash scripts/pre-push-checks.sh`（提交后） | 全部通过（品牌零命中 / 双语 README 一致 / 60 入口可解析 / 本笔 1 文件 lint 0） |
+| 环                                                                                                                | 读数                                                                           |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 隔离工作树 `npx tsc --noEmit -p tsconfig.node.json --composite false`（`/tmp/ocr-fix-check` @ `cf477225` + 本笔） | **0 error**，exit 0                                                            |
+| `npx eslint --no-cache e2e/certification/file-ocr.spec.ts`                                                        | **0 problem**，exit 0                                                          |
+| `bash scripts/pre-push-checks.sh`（提交后）                                                                       | 全部通过（品牌零命中 / 双语 README 一致 / 60 入口可解析 / 本笔 1 文件 lint 0） |
 
 **未取到的真机读数（具名，不当成通过）**：本机 `vm_stat` 空闲页 4,182（约 65 MB）、
 `swap used = 6,854 MB / 8,192 MB`，同机还有一条在跑的 dev 实例与会话；此时 `npm run build:e2e` +

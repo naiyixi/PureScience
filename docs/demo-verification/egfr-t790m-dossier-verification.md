@@ -8,17 +8,17 @@
 
 ## 1. 运行概况
 
-| 项目 | 详情 |
-|---|---|
-| 会话 ID | `cmsyv2e130000wfsno0lwr3e4` / 消息文件 `268812d1-2b45-461b-9a54-188715f937e6` |
-| 运行时间 | 2026-08-19 00:12:39 → 00:24:06（约 **11.4 分钟**） |
-| 最终状态 | `idle`（正常完成） |
-| Agent 框架 / 模型 | claude-code / **deepseek-v4-flash**（非旗舰模型，更能说明工具编排力） |
-| 权限模式 | auto |
-| 对话规模 | 1 条用户消息 + 38 条 agent 消息；49 项活动（48 完成 / 1 失败后自恢复） |
-| Notebook 执行 | 34 个 cell（JS 取数 → handoff JSON → Python 合并画图） |
-| 连接器调用 | **19 次**（ChEMBL ×13、ClinicalTrials.gov ×5、PubMed ×6，经 `host.mcp()` 调用） |
-| 交付产物 | **3 个**：`egfr_t790m_dossier.md`（5.4 KB）、`egfr_t790m_merged.csv`、`egfr_t790m_ic50.png`（1350×750） |
+| 项目              | 详情                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| 会话 ID           | `cmsyv2e130000wfsno0lwr3e4` / 消息文件 `268812d1-2b45-461b-9a54-188715f937e6`                           |
+| 运行时间          | 2026-08-19 00:12:39 → 00:24:06（约 **11.4 分钟**）                                                      |
+| 最终状态          | `idle`（正常完成）                                                                                      |
+| Agent 框架 / 模型 | claude-code / **deepseek-v4-flash**（非旗舰模型，更能说明工具编排力）                                   |
+| 权限模式          | auto                                                                                                    |
+| 对话规模          | 1 条用户消息 + 38 条 agent 消息；49 项活动（48 完成 / 1 失败后自恢复）                                  |
+| Notebook 执行     | 34 个 cell（JS 取数 → handoff JSON → Python 合并画图）                                                  |
+| 连接器调用        | **19 次**（ChEMBL ×13、ClinicalTrials.gov ×5、PubMed ×6，经 `host.mcp()` 调用）                         |
+| 交付产物          | **3 个**：`egfr_t790m_dossier.md`（5.4 KB）、`egfr_t790m_merged.csv`、`egfr_t790m_ic50.png`（1350×750） |
 
 ### 演示题目（原样）
 
@@ -41,15 +41,15 @@ Build a drug-discovery intelligence dossier for EGFR T790M (non-small cell lung 
 
 ## 2. 连接器调用矩阵（来自 notebook run log，19 次）
 
-| 连接器 | 工具 | 次数 | 用途 |
-|---|---|---|---|
-| ChEMBL | `target_search` | 4 | 定位 EGFR 靶点（CHEMBL203） |
-| ChEMBL | `compound_search` | 2 | 解析候选化合物 ChEMBL ID |
-| ChEMBL | `get_mechanism` | 1 | osimertinib 作用机制确认 |
-| ChEMBL | `get_bioactivity` | 6 | 全量 IC50 活性数据（含 T790M assay 过滤） |
-| ClinicalTrials.gov | `search_trials` | 5 | 每个候选药的活跃 NSCLC 试验 |
-| PubMed | `search_articles` | 3 | 按化合物检索文献 |
-| PubMed | `get_article_metadata` | 3 | 解析 PMID / DOI / 期刊 / 年份 |
+| 连接器             | 工具                   | 次数 | 用途                                      |
+| ------------------ | ---------------------- | ---- | ----------------------------------------- |
+| ChEMBL             | `target_search`        | 4    | 定位 EGFR 靶点（CHEMBL203）               |
+| ChEMBL             | `compound_search`      | 2    | 解析候选化合物 ChEMBL ID                  |
+| ChEMBL             | `get_mechanism`        | 1    | osimertinib 作用机制确认                  |
+| ChEMBL             | `get_bioactivity`      | 6    | 全量 IC50 活性数据（含 T790M assay 过滤） |
+| ClinicalTrials.gov | `search_trials`        | 5    | 每个候选药的活跃 NSCLC 试验               |
+| PubMed             | `search_articles`      | 3    | 按化合物检索文献                          |
+| PubMed             | `get_article_metadata` | 3    | 解析 PMID / DOI / 期刊 / 年份             |
 
 数据流水线：`host.mcp(connector, tool, params)`（JS cell）→ `handoff/egfr_t790m_dataset.json` → Python（pandas 合并 + matplotlib 出图）→ 3 个 artifact 经 `write_artifact_file` 交付。
 
@@ -61,13 +61,13 @@ Build a drug-discovery intelligence dossier for EGFR T790M (non-small cell lung 
 
 ### 3.1 ChEMBL — 5/5 化合物 IC50 全部复验通过 ✅
 
-| 化合物 | ChEMBL ID | 报告 IC50 | 公开 API 复查（最小 T790M 记录） | 证据（assay 记录） |
-|---|---|---|---|---|
-| Osimertinib | CHEMBL3353410 | 0.002 nM（=） | **0.002 nM**（2018）✅ | CHEMBL4721173 |
-| Aumolertinib | CHEMBL4761468 | 0.18 nM（=） | **0.18 nM**（2021）✅ | CHEMBL4714437 |
-| Lazertinib | CHEMBL4558324 | <0.3 nM | **<0.3 nM**（2022）✅ | CHEMBL5737904 |
-| Olmutinib | CHEMBL3786343 | 0.9 nM（=） | **0.9 nM**（2020）✅ | CHEMBL4770070 |
-| Rociletinib | CHEMBL3545308 | <1.0 nM | **<1.0 nM**（2015）✅ | CHEMBL3706050 |
+| 化合物       | ChEMBL ID     | 报告 IC50     | 公开 API 复查（最小 T790M 记录） | 证据（assay 记录） |
+| ------------ | ------------- | ------------- | -------------------------------- | ------------------ |
+| Osimertinib  | CHEMBL3353410 | 0.002 nM（=） | **0.002 nM**（2018）✅           | CHEMBL4721173      |
+| Aumolertinib | CHEMBL4761468 | 0.18 nM（=）  | **0.18 nM**（2021）✅            | CHEMBL4714437      |
+| Lazertinib   | CHEMBL4558324 | <0.3 nM       | **<0.3 nM**（2022）✅            | CHEMBL5737904      |
+| Olmutinib    | CHEMBL3786343 | 0.9 nM（=）   | **0.9 nM**（2020）✅             | CHEMBL4770070      |
+| Rociletinib  | CHEMBL3545308 | <1.0 nM       | **<1.0 nM**（2015）✅            | CHEMBL3706050      |
 
 复查方法：分页拉取每个化合物全部 `standard_type=IC50` 活性记录（`offset` 分页——注意 ChEMBL 公共 API 的 `page` 参数无效，返回固定首页），过滤 assay 描述含 T790M 的记录后取最小值。Osimertinib 共扫 **701 条** IC50 记录。
 
@@ -75,13 +75,13 @@ Build a drug-discovery intelligence dossier for EGFR T790M (non-small cell lung 
 
 ### 3.2 ClinicalTrials.gov — 代表试验复验通过 ✅
 
-| 化合物 | 报告 NCT | 公开 API 复查 |
-|---|---|---|
+| 化合物      | 报告 NCT                                                    | 公开 API 复查                                                                                                   |
+| ----------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Osimertinib | NCT04035486 / Phase 3 / ACTIVE_NOT_RECRUITING / AstraZeneca | ✅ **FLAURA2**（osimertinib ± 化疗一线 EGFR 突变 NSCLC），Phase 3，ACTIVE_NOT_RECRUITING，AstraZeneca，完全一致 |
 
 ### 3.3 PubMed — 文献三连复验通过 ✅
 
-Osimertinib 三篇（报告标注）：PMID 24893891（Cross 2014，*Cancer Discov*，AZD9291 发现论文）、PMID 27959700（Mok 2017，AURA3，NEJM）、PMID 29151359（Soria 2018，FLAURA，NEJM）——均为该药最经典的文献，PMID 与 DOI 对应关系正确。
+Osimertinib 三篇（报告标注）：PMID 24893891（Cross 2014，_Cancer Discov_，AZD9291 发现论文）、PMID 27959700（Mok 2017，AURA3，NEJM）、PMID 29151359（Soria 2018，FLAURA，NEJM）——均为该药最经典的文献，PMID 与 DOI 对应关系正确。
 
 ---
 
@@ -109,15 +109,15 @@ Osimertinib 三篇（报告标注）：PMID 24893891（Cross 2014，*Cancer Disc
 
 ## 附录：证据链接
 
-| 数据源 | 链接 |
-|---|---|
-| ChEMBL 分子记录（osimertinib） | https://www.ebi.ac.uk/chembl/api/data/molecule/CHEMBL3353410.json |
+| 数据源                                       | 链接                                                                                                                       |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| ChEMBL 分子记录（osimertinib）               | https://www.ebi.ac.uk/chembl/api/data/molecule/CHEMBL3353410.json                                                          |
 | ChEMBL 全部 IC50 活性（701 条，offset 分页） | https://www.ebi.ac.uk/chembl/api/data/activity.json?molecule_chembl_id=CHEMBL3353410&standard_type=IC50&limit=100&offset=0 |
-| ChEMBL 0.002 nM 记录所属 assay | https://www.ebi.ac.uk/chembl/api/data/assay/CHEMBL4721173.json |
-| ClinicalTrials.gov v2（FLAURA2） | https://clinicaltrials.gov/api/v2/studies/NCT04035486 |
-| PubMed（Cross 2014） | https://pubmed.ncbi.nlm.nih.gov/24893891/ |
-| PubMed（AURA3, Mok 2017） | https://pubmed.ncbi.nlm.nih.gov/27959700/ |
-| PubMed（FLAURA, Soria 2018） | https://pubmed.ncbi.nlm.nih.gov/29151359/ |
-| 会话产物（本地） | `~/PureScience-DEV/notebooks/cmsyv2e130000wfsno0lwr3e4/268812d1-2b45-461b-9a54-188715f937e6/{data,handoff}/` |
+| ChEMBL 0.002 nM 记录所属 assay               | https://www.ebi.ac.uk/chembl/api/data/assay/CHEMBL4721173.json                                                             |
+| ClinicalTrials.gov v2（FLAURA2）             | https://clinicaltrials.gov/api/v2/studies/NCT04035486                                                                      |
+| PubMed（Cross 2014）                         | https://pubmed.ncbi.nlm.nih.gov/24893891/                                                                                  |
+| PubMed（AURA3, Mok 2017）                    | https://pubmed.ncbi.nlm.nih.gov/27959700/                                                                                  |
+| PubMed（FLAURA, Soria 2018）                 | https://pubmed.ncbi.nlm.nih.gov/29151359/                                                                                  |
+| 会话产物（本地）                             | `~/PureScience-DEV/notebooks/cmsyv2e130000wfsno0lwr3e4/268812d1-2b45-461b-9a54-188715f937e6/{data,handoff}/`               |
 
-*校验执行：2026-08-19 · 校验者：Hermes Agent（独立复查，未复用会话内结果）*
+_校验执行：2026-08-19 · 校验者：Hermes Agent（独立复查，未复用会话内结果）_

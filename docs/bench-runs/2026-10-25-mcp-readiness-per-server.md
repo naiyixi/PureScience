@@ -14,22 +14,22 @@ servers: …`），随后 `createSession: first attempt failed, retrying once` �
 - `session capabilities built`：`count=14`、`groups="5 core,9 deferred"`、**`buildMs=5`**
 - 探针两遍（serial 一个一个起 / burst 14 个一起起），**14/14 全部 ready，无失败**
 
-| 服务 | spawn(burst) | initialize | tools/list 到达 | 工具数 |
-|---|---|---|---|---|
-| purescience_artifacts | 15 | 2042 | 2059 | 3 |
-| purescience_notebook | 14 | 2299 | 2335 | 12 |
-| purescience_skills | 12 | 2142 | 2150 | 6 |
-| purescience_plan | 12 | 2383 | 2394 | 2 |
-| purescience_memory | 11 | 2369 | 2380 | 3 |
-| purescience_context_summary | 10 | 2242 | 2255 | 2 |
-| purescience_routine | 8 | 2193 | 2207 | 3 |
-| purescience_goal | 7 | 2087 | 2093 | 3 |
-| purescience_endpoints | 6 | 2303 | 2359 | 7 |
-| purescience_annotations | 5 | 2439 | 2442 | 3 |
-| purescience_pdf | 4 | 2357 | 2373 | 7 |
-| purescience_knowledge | 4 | 1890 | 1903 | 5 |
-| purescience_figure | 3 | 2266 | 2277 | 1 |
-| purescience_host_query | 1 | 1215 | 1359 | 1 |
+| 服务                        | spawn(burst) | initialize | tools/list 到达 | 工具数 |
+| --------------------------- | ------------ | ---------- | --------------- | ------ |
+| purescience_artifacts       | 15           | 2042       | 2059            | 3      |
+| purescience_notebook        | 14           | 2299       | 2335            | 12     |
+| purescience_skills          | 12           | 2142       | 2150            | 6      |
+| purescience_plan            | 12           | 2383       | 2394            | 2      |
+| purescience_memory          | 11           | 2369       | 2380            | 3      |
+| purescience_context_summary | 10           | 2242       | 2255            | 2      |
+| purescience_routine         | 8            | 2193       | 2207            | 3      |
+| purescience_goal            | 7            | 2087       | 2093            | 3      |
+| purescience_endpoints       | 6            | 2303       | 2359            | 7      |
+| purescience_annotations     | 5            | 2439       | 2442            | 3      |
+| purescience_pdf             | 4            | 2357       | 2373            | 7      |
+| purescience_knowledge       | 4            | 1890       | 1903            | 5      |
+| purescience_figure          | 3            | 2266       | 2277            | 1      |
+| purescience_host_query      | 1            | 1215       | 1359            | 1      |
 
 serial 一遍：`initialize` 299–568 ms（最慢 artifacts 568）。burst 一遍：最慢 2,442 ms。
 **`tools/list` 只比 `initialize` 多 8–150 ms** ⇒ 工具清单不是成本，握手本身就是成本。
@@ -39,10 +39,10 @@ serial 一遍：`initialize` 299–568 ms（最慢 artifacts 568）。burst 一�
 子进程的真实形状是「二进制 + 主入口 + MCP 参数」。下面这条量的是「spawn → 模块加载完 → 因缺
 RPC 环境退出」，即启动成本本身（不含握手）。
 
-| 组 | serial 中位 | serial 最大 | burst 中位 | burst 最大 |
-|---|---|---|---|---|
-| 开发树 `Electron.app` | 319 | 505 | 1,858 | 2,043 |
-| 安装版 `PureScience.app`（app.asar） | 405 | 808 | 2,635 | 2,729 |
+| 组                                   | serial 中位 | serial 最大 | burst 中位 | burst 最大 |
+| ------------------------------------ | ----------- | ----------- | ---------- | ---------- |
+| 开发树 `Electron.app`                | 319         | 505         | 1,858      | 2,043      |
+| 安装版 `PureScience.app`（app.asar） | 405         | 808         | 2,635      | 2,729      |
 
 两轮 `load average`：14.4 / 17.3 / 24.6（macOS，`sysctl -n vm.loadavg`）。
 
@@ -80,18 +80,18 @@ purescience run --project <id> --prompt "只回复两个字符：ok" --wait --po
 
 同一个二进制、同一台机器（load ≈ 14），各 7 次取中位：
 
-| 组 | 开发树 | 安装版 |
-|---|---|---|
-| `-e ""`（只引导 node，不加载我们的代码） | 132 | **123** |
-| `<主入口> --…-mcp`（引导 + 主入口 + 服务模块） | 266 | **305** |
-| 差值 | 134 | 182 |
+| 组                                             | 开发树 | 安装版  |
+| ---------------------------------------------- | ------ | ------- |
+| `-e ""`（只引导 node，不加载我们的代码）       | 132    | **123** |
+| `<主入口> --…-mcp`（引导 + 主入口 + 服务模块） | 266    | **305** |
+| 差值                                           | 134    | 182     |
 
 差值一开始被我判成「app 入口模块图」。**做完薄入口才证伪**：新增一个只 import `node:` 内建与
 argv 常量的 `mcp-entry.ts`（构建 6.88 kB，对比主入口 121 kB），子进程改指它之后
 
-| 组 | 中位 |
-|---|---|
-| 主入口 `out/main/index.js` + memory 服务参数 | 317 |
+| 组                                                   | 中位    |
+| ---------------------------------------------------- | ------- |
+| 主入口 `out/main/index.js` + memory 服务参数         | 317     |
 | **薄入口 `out/main/mcp-entry.js` + memory 服务参数** | **329** |
 
 没有收益、甚至略慢 ⇒ 那 182 ms 不是 app 入口图（它本来就在应用分支里动态加载，5 MB 的 ipc
@@ -108,9 +108,14 @@ claude-agent-acp 的 `initialize` 结果里 `mcpCapabilities: { http: true, sse:
 真机会话的读数：
 
 ```json
-{"framework":"claude-code","transport":"http","count":4,
- "servers":"purescience_artifacts,purescience_notebook,purescience_plan,purescience_skills",
- "groups":"5 core,1 deferred","buildMs":1}
+{
+  "framework": "claude-code",
+  "transport": "http",
+  "count": 4,
+  "servers": "purescience_artifacts,purescience_notebook,purescience_plan,purescience_skills",
+  "groups": "5 core,1 deferred",
+  "buildMs": 1
+}
 ```
 
 **count 只有 4**：`buildHttpServers()` 里只有 artifacts / notebook / skillImport / plan 四段
@@ -161,7 +166,3 @@ required`），所以「工具真能调通」只在传输层被证明（initiali
 
 这一步把「HTTP 宿主 → 十类真实 server → 工具执行 → RPC 网关」这条链钉住了；仍然缺的只有
 「**模型**决定去调工具」这一段，它与传输无关，留装机验收。
-
-
-
-

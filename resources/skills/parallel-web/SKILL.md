@@ -1,6 +1,7 @@
 ---
 name: parallel-web
 description: "Uses Parallel CLI for web search, URL extraction, deep research, structured data enrichment, entity discovery, and recurring web monitoring. Best for requests that explicitly need current web evidence, academic-source discovery, repeated entity lookups, exhaustive reports, or ongoing change tracking."
+description-zh: 用 Parallel 命令行做网页检索、URL 抽取、深度研究、结构化数据补全、实体发现与周期性网页监控。最适用于明确需要当前网页信息的请求。
 license: MIT
 compatibility: Requires parallel-cli 0.9.3, internet access, and a Parallel API key or CLI login. Python package installation requires Python 3.10+.
 metadata:

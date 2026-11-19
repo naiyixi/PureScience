@@ -1,6 +1,7 @@
 ---
 name: neuropixels-analysis
 description: Analyzes Neuropixels extracellular recordings end-to-end with SpikeInterface. Covers loading SpikeGLX/Open Ephys/NWB data, preprocessing, drift/motion correction, Kilosort4 (and CPU) spike sorting, quality metrics, and unit curation (threshold-based, model-based UnitRefine, and AI-assisted visual review). Use when working with Neuropixels 1.0/2.0 recordings, spike sorting, or extracellular electrophysiology analysis.
+description-zh: 用 SpikeInterface 端到端分析 Neuropixels 胞外记录：加载 SpikeGLX/Open Ephys/NWB 数据、预处理、漂移与运动校正、Kilosort4（含 CPU）尖峰排序。
 license: MIT license
 compatibility: Requires Python 3.10+ with SpikeInterface, ProbeInterface, Neo, NumPy, SciPy, pandas, matplotlib, numba and scikit-learn. Optional sorters and models need separate dependencies and network access.
 metadata:

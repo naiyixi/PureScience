@@ -23,7 +23,7 @@
 
 细菌在指数期维持近似恒定的蛋白密度与有限的核糖体/RNAP 投资。Scott–Hwa 增长定律（[Scott et al., 2010](#ref5); [Klumpp & Hwa, 2014](#ref6)）的平衡增长表述是：
 
-λ = κt · φR,active,   （1）
+λ = κt · φR,active, （1）
 
 其中 φR,active 是"投入生长相关（管家）蛋白合成的活性核糖体份额"。设回路（外源）蛋白总质量为 ε = A + B + C，管家蛋白质量份额为 1 − ε（按蛋白组份额归一）。核糖体必须在管家需求 H 与回路 mRNA 需求 D=Σ(RBS·mRNA) 之间分配；分配后
 
@@ -80,17 +80,18 @@ sR_target(ε) = 1/(1+(ε/e50)^k)                 ε=A+B+C
 
 ### 3.1 一个**有界**的振荡窗口（图 1a、图 1b；见脚本输出的 regime 表）
 
-| 驱动 G | 行为        | 周期(h) | 振幅包络 A | ⟨λ⟩ (h⁻¹) | 备注 |
-|---|---|---|---|---|---|
-| <0.65 | 冻结(固定点) | – | – | ~1.3 | 尚未越过 Hopf 起点 |
-| 1.0   | 极限环      | 3.5  | [0.32, 2.2] | 1.20 | "健康"弱启动子设计（≈86% λmax） |
-| 2.0   | 极限环      | 5.2  | [0.33, 8.7] | 0.78 | 负荷显现 |
-| 4.0   | 极限环      | 7.7  | [0.72, 20.8] | 0.42 | 强负荷：生长率较 λmax 已损失 ~70% |
-| ≈5.6–5.7 | **振荡死亡** | – | →0(冻结) | 0.8（冻结低 ε 支） | 逆 Hopf：极限环并入稳定不动点 |
-| 8–12  | 冻结        | – | A_ss=4.5→7.7 | 0.64→0.38 | 冻结态蛋白质量随 G 继续累积 |
-| ≥18   | 冻结        | – | 更大 | <0.2 | 逼近生长停滞 |
+| 驱动 G   | 行为         | 周期(h) | 振幅包络 A   | ⟨λ⟩ (h⁻¹)          | 备注                              |
+| -------- | ------------ | ------- | ------------ | ------------------ | --------------------------------- |
+| <0.65    | 冻结(固定点) | –       | –            | ~1.3               | 尚未越过 Hopf 起点                |
+| 1.0      | 极限环       | 3.5     | [0.32, 2.2]  | 1.20               | "健康"弱启动子设计（≈86% λmax）   |
+| 2.0      | 极限环       | 5.2     | [0.33, 8.7]  | 0.78               | 负荷显现                          |
+| 4.0      | 极限环       | 7.7     | [0.72, 20.8] | 0.42               | 强负荷：生长率较 λmax 已损失 ~70% |
+| ≈5.6–5.7 | **振荡死亡** | –       | →0(冻结)     | 0.8（冻结低 ε 支） | 逆 Hopf：极限环并入稳定不动点     |
+| 8–12     | 冻结         | –       | A_ss=4.5→7.7 | 0.64→0.38          | 冻结态蛋白质量随 G 继续累积       |
+| ≥18      | 冻结         | –       | 更大         | <0.2               | 逼近生长停滞                      |
 
 要点：
+
 - **极限环只存在于有界驱动区间**。低端约 G=0.65 为超临界 Hopf 起点（周期轨从固定点长出），高端约 Gc≈5.6 为**逆 Hopf/振荡死亡**（periodic orbit merges into stable fixed point）。团队假设"驱动→∞，极限环越稳"在高端直接被逆 Hopf 击穿。
 - 越过 Gc 后系统"阻尼阻遏停滞"：三个阻遏蛋白互相抑制到一个对称高表达不动点，**时钟停止**（无节律→药物释放节奏消失），同时回路质量继续随 G 上升，生长率一路走低——既"停表"又"拖垮宿主"。
 - 分岔扫描（图 1a 中灰色方块）与 λ₁ 判据（图 3）互相印证：G>Gc 后最大李雅普诺夫指数从 0 骤降为负（−0.19→−1.25 h⁻¹），说明冻结不动点是强吸引子；**没有**任何一个 G 出现 λ₁>0（见 §4）。
@@ -152,13 +153,13 @@ sR_target(ε) = 1/(1+(ε/e50)^k)                 ε=A+B+C
 
 ## 8. 交付物清单
 
-| 文件 | 内容 |
-|---|---|
-| `repressilator_metabolic_load_sim.py` | 自包含 Python 脚本：Model S ODE、G 扫描、LVA 对比、Wolf λ₁、三张图、可选混沌搜索函数 `survey_chaos()` |
-| `fig1_drive_landscape.png` | (a) 有界振荡窗口与冻结支；(b) 生长负荷塌缩 vs G（含 LVA 存活窗）；(c) 周期 vs 生长（LVA 去耦） |
-| `fig2_regimes.png` | G=1/4/8 时间序列（A 与 λ）与三维相空间吸引子（闭合环→大环→螺旋入不动点） |
-| `fig3_lyapunov.png` | 最大李雅普诺夫指数 λ₁ vs G：无正指数 ⇒ 无混沌 |
-| `regime_scan.json` / `lyapunov_scan.json` | 数值数据（每 G 包络/周期/⟨λ⟩ 及 λ₁） |
+| 文件                                      | 内容                                                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `repressilator_metabolic_load_sim.py`     | 自包含 Python 脚本：Model S ODE、G 扫描、LVA 对比、Wolf λ₁、三张图、可选混沌搜索函数 `survey_chaos()` |
+| `fig1_drive_landscape.png`                | (a) 有界振荡窗口与冻结支；(b) 生长负荷塌缩 vs G（含 LVA 存活窗）；(c) 周期 vs 生长（LVA 去耦）        |
+| `fig2_regimes.png`                        | G=1/4/8 时间序列（A 与 λ）与三维相空间吸引子（闭合环→大环→螺旋入不动点）                              |
+| `fig3_lyapunov.png`                       | 最大李雅普诺夫指数 λ₁ vs G：无正指数 ⇒ 无混沌                                                         |
+| `regime_scan.json` / `lyapunov_scan.json` | 数值数据（每 G 包络/周期/⟨λ⟩ 及 λ₁）                                                                  |
 
 复现：`python repressilator_metabolic_load_sim.py`（约 1 分钟，输出上述 json 与三张 PNG）。
 
@@ -166,17 +167,18 @@ sR_target(ε) = 1/(1+(ε/e50)^k)                 ε=A+B+C
 
 ## 参考文献（作者自负准确性，标准文献）
 
-1. Elowitz, M. B., Leibler, S. A synthetic oscillatory network of transcriptional regulators. *Nature* **403**, 335–338 (2000).  <a name="ref1"></a>
-2. Gardner, T. S., Cantor, C. R., Collins, J. J. Construction of a genetic toggle switch in *Escherichia coli*. *Nature* **403**, 339–342 (2000).
-3. Hopf, E. Abzweigung einer periodischen Lösung von einer stationären Lösung eines Differentialsystems. *Ber. Math.-Phys. Kl. Sachs. Akad. Wiss. Leipzig* **94**, 1–22 (1942).
-4. Strogatz, S. H. *Nonlinear Dynamics and Chaos*. 2nd ed., Westview (2015).
-5. Scott, M., Gedeon, T., Hwa, T. Bacterial growth laws and their applications. *Curr. Opin. Biotechnol.* **21**, 545–552 (2010).  <a name="ref5"></a>
-6. Klumpp, S., Hwa, T. Bacterial growth: global effects on gene expression, growth feedback and proteome partition. *Curr. Opin. Biotechnol.* **28**, 96–102 (2014).  <a name="ref6"></a>
-7. Tan, C., Marguet, P., You, L. Emergent bistability by a growth-modulating positive feedback circuit. *Nat. Chem. Biol.* **5**, 842–848 (2009).  <a name="ref7"></a>
-8. Andersen, J. B., Sternberg, C., Poulsen, L. K., Bjørn, S. P., Givskov, M., Molin, S. New unstable variants of green fluorescent protein for studies of transient gene expression in bacteria. *Appl. Environ. Microbiol.* **64**, 2240–2246 (1998).  <a name="ref8"></a>
-9. Ceroni, F., Algar, R., Stan, G.-B., Ellis, T. Quantifying cellular capacity identifies gene expression designs with reduced burden. *Nat. Methods* **12**, 415–418 (2015).  <a name="ref9"></a>
-10. Weiße, A. Y., Oyarzún, D. A., Danos, V., Swain, P. S. Mechanistic links between cellular trade-offs, gene expression, and growth. *Proc. Natl Acad. Sci. USA* **112**, E1038–E1047 (2015).
-11. Zaslaver, A., et al. Just-in-time transcription program in metabolic pathways. *Nat. Genet.* **36**, 486–491 (2004). （用于"管家 vs 诱导蛋白分配"背景）
+1. Elowitz, M. B., Leibler, S. A synthetic oscillatory network of transcriptional regulators. _Nature_ **403**, 335–338 (2000). <a name="ref1"></a>
+2. Gardner, T. S., Cantor, C. R., Collins, J. J. Construction of a genetic toggle switch in _Escherichia coli_. _Nature_ **403**, 339–342 (2000).
+3. Hopf, E. Abzweigung einer periodischen Lösung von einer stationären Lösung eines Differentialsystems. _Ber. Math.-Phys. Kl. Sachs. Akad. Wiss. Leipzig_ **94**, 1–22 (1942).
+4. Strogatz, S. H. _Nonlinear Dynamics and Chaos_. 2nd ed., Westview (2015).
+5. Scott, M., Gedeon, T., Hwa, T. Bacterial growth laws and their applications. _Curr. Opin. Biotechnol._ **21**, 545–552 (2010). <a name="ref5"></a>
+6. Klumpp, S., Hwa, T. Bacterial growth: global effects on gene expression, growth feedback and proteome partition. _Curr. Opin. Biotechnol._ **28**, 96–102 (2014). <a name="ref6"></a>
+7. Tan, C., Marguet, P., You, L. Emergent bistability by a growth-modulating positive feedback circuit. _Nat. Chem. Biol._ **5**, 842–848 (2009). <a name="ref7"></a>
+8. Andersen, J. B., Sternberg, C., Poulsen, L. K., Bjørn, S. P., Givskov, M., Molin, S. New unstable variants of green fluorescent protein for studies of transient gene expression in bacteria. _Appl. Environ. Microbiol._ **64**, 2240–2246 (1998). <a name="ref8"></a>
+9. Ceroni, F., Algar, R., Stan, G.-B., Ellis, T. Quantifying cellular capacity identifies gene expression designs with reduced burden. _Nat. Methods_ **12**, 415–418 (2015). <a name="ref9"></a>
+10. Weiße, A. Y., Oyarzún, D. A., Danos, V., Swain, P. S. Mechanistic links between cellular trade-offs, gene expression, and growth. _Proc. Natl Acad. Sci. USA_ **112**, E1038–E1047 (2015).
+11. Zaslaver, A., et al. Just-in-time transcription program in metabolic pathways. _Nat. Genet._ **36**, 486–491 (2004). （用于"管家 vs 诱导蛋白分配"背景）
 
 ---
-*审查范围：非线性动力学 + 全细胞资源分配的理论与数值反证；不构成任何体外/体内实验建议。数值均在确定性 ODE 下可复现。*
+
+_审查范围：非线性动力学 + 全细胞资源分配的理论与数值反证；不构成任何体外/体内实验建议。数值均在确定性 ODE 下可复现。_

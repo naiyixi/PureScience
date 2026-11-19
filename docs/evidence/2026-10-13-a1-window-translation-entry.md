@@ -13,32 +13,32 @@
 
 ## 二 交付（24 个路径，1 笔提交）
 
-| 层 | 落点 | 要点 |
-| --- | --- | --- |
-| 主进程缝 | `src/main/translation/window-translation.ts`（新） | 读与跑同一处；文件按**路径**寻址、主进程 `ensureDoc` 解析成稳定 doc id（doc id 由 `path + time` 铸出 ⇒ 每次按下重新注册会让「已翻段落会被复用」无声失真）；答复的段落**来自盘上记录**，不来自本次跑的记账 |
-| 判定共用 | `checkpoint-store.ts` 新增 `resolveCheckpointLoad()` | 跑与读共用同一判定 ⇒ 窗口不会显示一次运行拒绝复用的译文；四态具名：从未存过 / 文档变了 / 文件读不出 / 可用记录 |
-| 一句话共用 | `run-translation.ts` 新增 `TRANSLATION_TARGET_UNCONFIGURED_DETAIL` + `translationTargetLookup()` | 窗口面与 agent 工具面对同一个缺失设置必须说同一句话 |
-| 通道 | `settings/pdf-ipc.ts`、`src/main/ipc.ts`、装配 | handler 由装配处给；**缺省按名拒绝**（`pdf:translation is not configured.`），不静默回「0 段已翻译」 |
-| 渲染器桥 | `preload/index.ts`、`preload/renderer-api.d.ts` | `pdf.translation(request)` |
-| 面板 | `renderers/PdfTranslationPanel.tsx`（新） | **打开只读**（`run` 缺省不出现 ⇒ 打开文件不产生付费调用）；三拒绝各上各的屏且都不出现运行报告；报告带真模型与复用段数；导出走既有 `file:save-blob` |
-| 工具栏 | `renderers/PdfPreview.tsx` | `Languages` 图标 + `data-slot="pdf-translation-toggle"`；能翻的条件只要「在项目里看着一个 PDF」 |
-| 契约计数级联 | `application-command-composition.ts(+test)`、`host-application-commands.ts(+test)`、`preload/index.test.ts`、`renderer-contract-catalog.test.ts`、`renderer-surface-inventory.test.ts`、`renderer-argument-shape-characterization.test.ts`、`web-api-map.generated.ts` | 生产常量 363/361/128 不改会在启动时 `failInventory` fail-fast（那是产品缺陷，不是测试问题） |
-| 用例 | `PdfTranslationPanel.test.tsx`（新，5 例） | 只读→按下两条调用的形状、行来自真构建器 `buildTranslationViewModel`、拒绝具名、无桥具名、导出文件名与被拒各一句 |
+| 层           | 落点                                                                                                                                                                                                                                                                   | 要点                                                                                                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 主进程缝     | `src/main/translation/window-translation.ts`（新）                                                                                                                                                                                                                     | 读与跑同一处；文件按**路径**寻址、主进程 `ensureDoc` 解析成稳定 doc id（doc id 由 `path + time` 铸出 ⇒ 每次按下重新注册会让「已翻段落会被复用」无声失真）；答复的段落**来自盘上记录**，不来自本次跑的记账 |
+| 判定共用     | `checkpoint-store.ts` 新增 `resolveCheckpointLoad()`                                                                                                                                                                                                                   | 跑与读共用同一判定 ⇒ 窗口不会显示一次运行拒绝复用的译文；四态具名：从未存过 / 文档变了 / 文件读不出 / 可用记录                                                                                            |
+| 一句话共用   | `run-translation.ts` 新增 `TRANSLATION_TARGET_UNCONFIGURED_DETAIL` + `translationTargetLookup()`                                                                                                                                                                       | 窗口面与 agent 工具面对同一个缺失设置必须说同一句话                                                                                                                                                       |
+| 通道         | `settings/pdf-ipc.ts`、`src/main/ipc.ts`、装配                                                                                                                                                                                                                         | handler 由装配处给；**缺省按名拒绝**（`pdf:translation is not configured.`），不静默回「0 段已翻译」                                                                                                      |
+| 渲染器桥     | `preload/index.ts`、`preload/renderer-api.d.ts`                                                                                                                                                                                                                        | `pdf.translation(request)`                                                                                                                                                                                |
+| 面板         | `renderers/PdfTranslationPanel.tsx`（新）                                                                                                                                                                                                                              | **打开只读**（`run` 缺省不出现 ⇒ 打开文件不产生付费调用）；三拒绝各上各的屏且都不出现运行报告；报告带真模型与复用段数；导出走既有 `file:save-blob`                                                        |
+| 工具栏       | `renderers/PdfPreview.tsx`                                                                                                                                                                                                                                             | `Languages` 图标 + `data-slot="pdf-translation-toggle"`；能翻的条件只要「在项目里看着一个 PDF」                                                                                                           |
+| 契约计数级联 | `application-command-composition.ts(+test)`、`host-application-commands.ts(+test)`、`preload/index.test.ts`、`renderer-contract-catalog.test.ts`、`renderer-surface-inventory.test.ts`、`renderer-argument-shape-characterization.test.ts`、`web-api-map.generated.ts` | 生产常量 363/361/128 不改会在启动时 `failInventory` fail-fast（那是产品缺陷，不是测试问题）                                                                                                               |
+| 用例         | `PdfTranslationPanel.test.tsx`（新，5 例）                                                                                                                                                                                                                             | 只读→按下两条调用的形状、行来自真构建器 `buildTranslationViewModel`、拒绝具名、无桥具名、导出文件名与被拒各一句                                                                                           |
 
 9 语字典的 14 个 `pdfTranslation.*` 键不在本片：它们由会话的 `4ab09f2b` 落盘（该提交同时退掉了
 与我并行的重复面板），本片的用例断言的就是那批键。
 
 ## 三 门禁读数（本次运行，取在最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
+| 环                                                                           | 读数                                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | 定向 `vitest`（translation/settings/preload/shared/renderer-web/两条命令面） | **225 文件 passed｜1 skipped**、**2933 passed｜3 skipped**，exit 0 |
-| 面板簇 `previews/renderers` | 18 文件 / 163 passed |
-| `typecheck:node` / `typecheck:web`（`--composite false`） | 两环原文各**零条 `error TS`**，exit 0 |
-| `npx eslint --no-cache .` | **0 error / 120 warning**，exit 0；本片 24 个路径单独跑零输出 |
-| `npx prettier --check`（24 路径） | All matched files use Prettier code style |
-| `npm run check:web-api-map` | 无差异 |
-| `scripts/pre-push-checks.sh` | exit 0（敏感词扫描：git 跟踪范围零命中） |
+| 面板簇 `previews/renderers`                                                  | 18 文件 / 163 passed                                               |
+| `typecheck:node` / `typecheck:web`（`--composite false`）                    | 两环原文各**零条 `error TS`**，exit 0                              |
+| `npx eslint --no-cache .`                                                    | **0 error / 120 warning**，exit 0；本片 24 个路径单独跑零输出      |
+| `npx prettier --check`（24 路径）                                            | All matched files use Prettier code style                          |
+| `npm run check:web-api-map`                                                  | 无差异                                                             |
+| `scripts/pre-push-checks.sh`                                                 | exit 0（敏感词扫描：git 跟踪范围零命中）                           |
 
 ## 四 两条修法记录（都不是「放宽门禁」）
 

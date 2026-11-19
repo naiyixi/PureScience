@@ -29,7 +29,7 @@ single-cell analysis, environment reconstruction, and drug-evidence cross-checks
 
 ![The 13-project acceptance suite](capability-2026-09/acceptance-13-projects.png)
 
-*Screenshots from real local sessions on PureScience v1.37.*
+_Screenshots from real local sessions on PureScience v1.37._
 
 ## Selected verified runs
 
@@ -40,11 +40,11 @@ databases (ChEMBL, ClinicalTrials.gov, PubMed — 19 connector calls), executed 
 (Python + pandas + matplotlib), caught and fixed two of its own bugs, and delivered three artifacts
 with provenance:
 
-| Deliverable | File |
-|---|---|
-| One-page dossier with citations and a verified-vs-not-found statement | [demo-verification/egfr_t790m_dossier.md](demo-verification/egfr_t790m_dossier.md) |
+| Deliverable                                                              | File                                                                               |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| One-page dossier with citations and a verified-vs-not-found statement    | [demo-verification/egfr_t790m_dossier.md](demo-verification/egfr_t790m_dossier.md) |
 | Merged table (compound · target · IC50 · trial phase · status · sponsor) | [demo-verification/egfr_t790m_merged.csv](demo-verification/egfr_t790m_merged.csv) |
-| Potency figure (log scale; green = active trials, grey = none) | [demo-verification/egfr_t790m_ic50.png](demo-verification/egfr_t790m_ic50.png) |
+| Potency figure (log scale; green = active trials, grey = none)           | [demo-verification/egfr_t790m_ic50.png](demo-verification/egfr_t790m_ic50.png)     |
 
 **Independent re-check after the run:** 5/5 ChEMBL IC50 values, the representative FLAURA2 trial
 (NCT04035486) on ClinicalTrials.gov, and the cited PMIDs on PubMed all match. Full report:
@@ -123,11 +123,11 @@ are not used.
 `skillsRead` — the skill files a run actually opened, taken from the structured `path` argument of
 tool calls, counting only `<…>/skills/<name>/…`.
 
-| Case | Arm | n | Mean atomic | Skills opened |
-|---|---|---|---|---|
-| `claim-calibrated-to-evidence` | full / no | 10 / 10 | 0.33 / 0.33 | 0/10 / 0/10 |
-| `figure-axis-discipline` | full / no | 5 / 5 | 1.00 / 0.87 | 0/5 / 0/5 |
-| `rule-consulted-before-wording` | full / no | 6 / 6 | 1.00 / 1.00 | 6/6 / 6/6 |
+| Case                            | Arm       | n       | Mean atomic | Skills opened |
+| ------------------------------- | --------- | ------- | ----------- | ------------- |
+| `claim-calibrated-to-evidence`  | full / no | 10 / 10 | 0.33 / 0.33 | 0/10 / 0/10   |
+| `figure-axis-discipline`        | full / no | 5 / 5   | 1.00 / 0.87 | 0/5 / 0/5     |
+| `rule-consulted-before-wording` | full / no | 6 / 6   | 1.00 / 1.00 | 6/6 / 6/6     |
 
 Three readings worth separating:
 
@@ -163,12 +163,12 @@ would be an arm no user can be in.
 
 What that leaves, honestly:
 
-| Planned arm | Reachable? |
-|---|---|
-| `baseline` (no skills) | **No** — always-on policy refuses it |
-| `doc-only` (body, no contract) | Yes — this is `no-contract` |
+| Planned arm                     | Reachable?                                                                                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseline` (no skills)          | **No** — always-on policy refuses it                                                                                                           |
+| `doc-only` (body, no contract)  | Yes — this is `no-contract`                                                                                                                    |
 | `named-no-contract` (name only) | No distinct mechanism: the materializer either writes the file with its contract or strips the contract; there is no "name without body" state |
-| `full-contract` | Yes |
+| `full-contract`                 | Yes                                                                                                                                            |
 
 So the measured comparison is the only one the product can express: **declaration present vs
 stripped**. If a genuine no-skill arm is required, it needs a product change (a research-mode
@@ -194,12 +194,12 @@ it, and produce an artifact whose numbers can be checked independently.**
 
 ### What was verified, and how
 
-| # | Claim | Evidence |
-|---|---|---|
-| 1 | The install materialises the Skill | `/tmp/ps-e2e-pyfastx/opencode/config/opencode/skills/os-pyfastx-sequence-stats/` exists after session creation |
-| 2 | The session ran **that** copy, not the repo one | the session transcript contains the command `…/opencode/config/opencode/skills/os-pyfastx-sequence-stats/scripts/sequence-stats.sh` |
-| 3 | The numbers are the tool's and are correct | reported `seqCounts=10`, `totalBases=2070`, `GC%=51.787`; an independent Python pass over the same file gives 10 / 2070 / 51.79, and a **second, unrelated third-party tool** (`seqkit 2.14.0`) gives `num_seqs=10`, `sum_len=2070`, `N50=240`, `GC(%)=51.79` |
-| 4 | An artifact was registered, not just narrated | run payload carries `demo.fa.stats.tsv`, `versionNumber: 1`, `checksum: 2dee9da7…`; the file is copied to `docs/evidence/pyfastx-skill-e2e/artifact-demo.fa.stats.tsv` |
+| #   | Claim                                           | Evidence                                                                                                                                                                                                                                                      |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The install materialises the Skill              | `/tmp/ps-e2e-pyfastx/opencode/config/opencode/skills/os-pyfastx-sequence-stats/` exists after session creation                                                                                                                                                |
+| 2   | The session ran **that** copy, not the repo one | the session transcript contains the command `…/opencode/config/opencode/skills/os-pyfastx-sequence-stats/scripts/sequence-stats.sh`                                                                                                                           |
+| 3   | The numbers are the tool's and are correct      | reported `seqCounts=10`, `totalBases=2070`, `GC%=51.787`; an independent Python pass over the same file gives 10 / 2070 / 51.79, and a **second, unrelated third-party tool** (`seqkit 2.14.0`) gives `num_seqs=10`, `sum_len=2070`, `N50=240`, `GC(%)=51.79` |
+| 4   | An artifact was registered, not just narrated   | run payload carries `demo.fa.stats.tsv`, `versionNumber: 1`, `checksum: 2dee9da7…`; the file is copied to `docs/evidence/pyfastx-skill-e2e/artifact-demo.fa.stats.tsv`                                                                                        |
 
 Artifact contents (verbatim):
 
@@ -243,11 +243,11 @@ snapshotted at the moment an HTTP client can first get a 200).
 Three sandboxed launches, same build, same machine, load 56–64 throughout (so the absolute values are
 inflated — the structure is the point):
 
-| run | ready (probe) | electron-ready | compose-runtime | web-service-started | HTTP 200 |
-|---|---|---|---|---|---|
-| 1 | 4,830 ms | 1,510 ms | 2,059 ms | 3,279 ms | +1,551 ms |
-| 2 | 2,637 ms | 728 ms | 809 ms | 1,853 ms | +784 ms |
-| 3 | 4,785 ms | 738 ms | 822 ms | 3,766 ms | +1,019 ms |
+| run | ready (probe) | electron-ready | compose-runtime | web-service-started | HTTP 200  |
+| --- | ------------- | -------------- | --------------- | ------------------- | --------- |
+| 1   | 4,830 ms      | 1,510 ms       | 2,059 ms        | 3,279 ms            | +1,551 ms |
+| 2   | 2,637 ms      | 728 ms         | 809 ms          | 1,853 ms            | +784 ms   |
+| 3   | 4,785 ms      | 738 ms         | 822 ms          | 3,766 ms            | +1,019 ms |
 
 What that says:
 

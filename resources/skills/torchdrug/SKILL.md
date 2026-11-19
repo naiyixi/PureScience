@@ -1,6 +1,7 @@
 ---
 name: torchdrug
 description: Builds and troubleshoots TorchDrug 0.2.1 workflows for molecular graphs, property prediction, self-supervised pretraining, molecule generation, retrosynthesis, protein representation learning, and knowledge graph reasoning. Use when code imports torchdrug or needs its datasets, models, tasks, or Engine.
+description-zh: 构建并排查 TorchDrug 0.2.1 的流程：分子图、性质预测、自监督预训练、分子生成、逆合成、蛋白表征学习。
 license: Apache-2.0 license
 compatibility: Requires Python 3.7-3.10, PyTorch 1.8-2.0, compatible torch-scatter/torch-cluster, RDKit, and fair-esm. Apple Silicon is CPU-only and requires native builds; MPS is unsupported. Network access is needed for uncached datasets and weights.
 allowed-tools: Read Write Edit Bash

@@ -2,7 +2,7 @@
 
 **报告编号**：IS-MECH-2026-01
 **推演对象**：将 scFv 亲和力从 Kd = 10 nM 提升 1000 倍至 Kd = 0.01 nM 的超高亲和力 CAR-T（针对实体瘤表面 <500 拷贝/细胞的超低密度肿瘤相关抗原 TAA-Low）
-**团队主张（待驳斥命题）**：*"依据化学平衡质量作用定律，超高亲和力完全可弥补抗原密度不足，使每一个稀有靶抗原近乎 100% 被 CAR 捕获锚定，从而在超低抗原阈值下组装强烈免疫突触、实现精准高效杀伤，且不损伤 T 细胞在连续肿瘤细胞间的迭代杀伤能力。"*
+**团队主张（待驳斥命题）**：_"依据化学平衡质量作用定律，超高亲和力完全可弥补抗原密度不足，使每一个稀有靶抗原近乎 100% 被 CAR 捕获锚定，从而在超低抗原阈值下组装强烈免疫突触、实现精准高效杀伤，且不损伤 T 细胞在连续肿瘤细胞间的迭代杀伤能力。"_
 
 **裁决结论**：**主张不成立——属于把"结合占有率（occupancy）"误当作"信号转导触发（triggering）"的维度混淆错误。** 免疫突触触发受**空间（临界局域密度）+ 时序（proofreading / serial）+ 机械力（catch–slip）**三重门控，三者均与"热力学意义上的结合强度"解耦。将 Kd 降低 1000 倍几乎不改变首个靶细胞的杀伤时间（模拟中二者首杀潜伏期相等），但通过极小化 k_off 引入**动力学卡死（kinetic trapping）**、**受体沉没（receptor sink）**与**持续抗原刺激导致的耗竭**，使迭代杀伤能力下降约 2 倍、单细胞杀伤驻留时间延长约 3 倍；在 <500 拷贝的密度下限以下，无论何种亲和力均无法组装信号型微簇（动力学分离模型的"空间下限"不可被亲和力穿透）。
 
@@ -25,20 +25,22 @@
 
 ## 1. 核心裁决：三个层次
 
-| 层 | 团队命题的错误 | 物理反驳 | 模拟印证 |
-|---|---|---|---|
-| **L1 空间** | "亲和力提升→稀有抗原被捕获→突触组装" | 捕获 ≠ 组装。CD45/CD148 巨型胞外域（~30–40 nm）vs CAR-TAA 结合间距（~10–15 nm）的尺寸排斥需要**成簇的、同时结合的**复合体把膜"压"成持续 <CD45 尺度的紧密接触区；孤立单键无法对抗膜热弯曲与 CD45 再入 → 需要**临界局域密度**，亲和力不能提供密度 | <~600 拷贝/细胞时两者杀伤分数 ≈0（见 §5 表 3） |
-| **L2 时序** | "近 100% 占位 → 持续强信号" | 占位饱和点以上，继续提高亲和力不再增加首个靶细胞的近端信号；有效信号取决于**每次结合的存续 ≥ 校验时间**与**能否高频换手（serial）**以招募新信号体 | KMC 首杀潜伏期：10 nM 与 0.01 nM 相等（§5 表 4） |
-| **L3 力学/病理** | "不影响迭代杀伤" | k_off→0 把 CAR "焊接"在靶上：无法脱离、受体以内吞方式耗散、持续保护性刺激累积耗竭。机械力（~10 pN）只能延长天然 TCR 类 catch 键寿命，却无法拯救零力寿命已 >10⁴ s 的超高亲和复合体 | 单靶驻留 0.01 nM ≈ 3× 长于 10 nM；6 h 序列杀伤 2.0 vs 4.0 轮（§5） |
+| 层               | 团队命题的错误                       | 物理反驳                                                                                                                                                                                                                                        | 模拟印证                                                           |
+| ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **L1 空间**      | "亲和力提升→稀有抗原被捕获→突触组装" | 捕获 ≠ 组装。CD45/CD148 巨型胞外域（~30–40 nm）vs CAR-TAA 结合间距（~10–15 nm）的尺寸排斥需要**成簇的、同时结合的**复合体把膜"压"成持续 <CD45 尺度的紧密接触区；孤立单键无法对抗膜热弯曲与 CD45 再入 → 需要**临界局域密度**，亲和力不能提供密度 | <~600 拷贝/细胞时两者杀伤分数 ≈0（见 §5 表 3）                     |
+| **L2 时序**      | "近 100% 占位 → 持续强信号"          | 占位饱和点以上，继续提高亲和力不再增加首个靶细胞的近端信号；有效信号取决于**每次结合的存续 ≥ 校验时间**与**能否高频换手（serial）**以招募新信号体                                                                                               | KMC 首杀潜伏期：10 nM 与 0.01 nM 相等（§5 表 4）                   |
+| **L3 力学/病理** | "不影响迭代杀伤"                     | k_off→0 把 CAR "焊接"在靶上：无法脱离、受体以内吞方式耗散、持续保护性刺激累积耗竭。机械力（~10 pN）只能延长天然 TCR 类 catch 键寿命，却无法拯救零力寿命已 >10⁴ s 的超高亲和复合体                                                               | 单靶驻留 0.01 nM ≈ 3× 长于 10 nM；6 h 序列杀伤 2.0 vs 4.0 轮（§5） |
 
 ---
 
 ## 2. 机理驳斥 A：动力学分离模型与临界局域密度
 
 ### 2.1 尺寸不对称是触发的前提
-T 细胞近端信号本质是**酪氨酸激酶（Lck）/ 酪氨酸磷酸酶（CD45、CD148）之间的动力学竞争**。CD45 类磷酸酶以极大胞外域（糖基化后 ~30–40 nm）刺入膜间间隙；CAR–TAA 复合体（scFv 结合口袋 + 跨膜）形成的膜间距离仅 ~10–15 nm。当且仅当膜被压缩到 <CD45 可容纳的间隙时，CD45 被**空间排除**，Lck 磷酸化的 ITAM 才免于瞬时去磷酸化，ZAP70/LAT 信号体才能积累。实验上，这一"紧密接触（close contacts）"与 CD45 排斥即足以启动 TCR 样信号（Chang et al., 2016, *Nat Immunol*）；TCR 触发的尺寸依赖也被维度嵌合法直接证明（Choudhuri et al., 2005, *Nature*）。
+
+T 细胞近端信号本质是**酪氨酸激酶（Lck）/ 酪氨酸磷酸酶（CD45、CD148）之间的动力学竞争**。CD45 类磷酸酶以极大胞外域（糖基化后 ~30–40 nm）刺入膜间间隙；CAR–TAA 复合体（scFv 结合口袋 + 跨膜）形成的膜间距离仅 ~10–15 nm。当且仅当膜被压缩到 <CD45 可容纳的间隙时，CD45 被**空间排除**，Lck 磷酸化的 ITAM 才免于瞬时去磷酸化，ZAP70/LAT 信号体才能积累。实验上，这一"紧密接触（close contacts）"与 CD45 排斥即足以启动 TCR 样信号（Chang et al., 2016, _Nat Immunol_）；TCR 触发的尺寸依赖也被维度嵌合法直接证明（Choudhuri et al., 2005, _Nature_）。
 
 ### 2.2 为什么需要"临界局域密度"：膜弯曲涨落下的尺寸排斥
+
 一个关键事实是：**单个分子键只能在其钉扎点处局部压缩膜，无法在整个信号脚区维持紧密间隙**。理由如下：
 
 - 膜有弯曲弹性（κ ~ 10–20 k_BT）并在细胞尺度上受热涨落与肌动蛋白驱动起伏。键之间未被钉扎的膜段会在弯曲涨落下"鼓包"，回到 >CD45 尺度的间隙，从而让**可流动、极丰富（~10⁵/细胞）**的 CD45 从微簇边界"渗回"到复合体近旁。
@@ -46,6 +48,7 @@ T 细胞近端信号本质是**酪氨酸激酶（Lck）/ 酪氨酸磷酸酶（CD
 - 因此微簇信号体存在**临界局域密度 ρ_c**：ρ < ρ_c 时，即便每个键都"锁死"，CD45 仍以近平衡态覆盖 ITAM → 磷酸化-去磷酸化化学平衡被磷酸酶主导 → 近端 Lck/ZAP70 信号在数秒内自熄灭。
 
 ### 2.3 推论：<500 拷贝/细胞的 TAA-Low 处于空间逃逸区
+
 若 TAA 均匀分布于 ~500 µm² 细胞表面，则 <500 拷贝/细胞对应的表面密度 <1 个/µm²。即使把整个 ~20 µm² 突触接触区都"让给"抗原（对团队最有利的假设），突触内也仅 ~数–20 个抗原，且彼此平均间距 ≫ 微簇相关半径；它们以**单键、空间孤立**状态存在。孤立单键的排除概率在本模型中约 0.01（模拟参数下），不足以在 T_enc 时间窗内积分出达到杀伤阈值的近端信号。**这解释了为何该下限对亲和力"无感"**：把 Kd 从 10 nM 降到 0.01 nM 仅把单抗原占位从 0.98 提升到 ~1.00，而占位本就不是瓶颈——瓶颈是"一个键能否撑起一块持续排除 CD45 的紧密区"，这由键的**数量与排布**决定，不由单个键的 k_off 决定。
 
 > **一句话裁决（L1）**：质量作用定律描述的是"键是否存在"的平衡；免疫突触门控的是"键是否以超阈值局域密度、在排除磷酸酶的空间中被转导"。前者由亲和力决定，后者由密度与几何决定——**把 Kd 推入皮摩尔范围，不能制造出一个本来就不存在的微簇**。
@@ -55,10 +58,12 @@ T 细胞近端信号本质是**酪氨酸激酶（Lck）/ 酪氨酸磷酸酶（CD
 ## 3. 机理驳斥 B：catch–slip 机械力生物学
 
 ### 3.1 生理杀伤不是"一拉一锁"，而是"命中即离"（hit-and-run）
-天然 TCR–pMHC 是**低亲和（µM 级）、快解离（k_off ~ 0.1–1 s⁻¹）**的相互作用；生理信号依赖**串联触发（serial triggering）**：单个 pMHC 在其存续期内依序激活 ~10–200 个 TCR（Valitutti et al., 1995, *Nature*）。每个 TCR 在结合后必须：完成多次酪氨酸磷酸化 → 招募 ZAP70/LAT → 被下游负反馈/胞吞"复位"，随后**释放并寻找下一位点**。这一"高周转、逐点激活"的模式是免疫突触把少量 pMHC 放大成可观近端信号的根本机制。
+
+天然 TCR–pMHC 是**低亲和（µM 级）、快解离（k_off ~ 0.1–1 s⁻¹）**的相互作用；生理信号依赖**串联触发（serial triggering）**：单个 pMHC 在其存续期内依序激活 ~10–200 个 TCR（Valitutti et al., 1995, _Nature_）。每个 TCR 在结合后必须：完成多次酪氨酸磷酸化 → 招募 ZAP70/LAT → 被下游负反馈/胞吞"复位"，随后**释放并寻找下一位点**。这一"高周转、逐点激活"的模式是免疫突触把少量 pMHC 放大成可观近端信号的根本机制。
 
 ### 3.2 机械力下的 catch–slip：亲和力改造"失真"之所在
-TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白回缩流与微簇向心转运）下寿命被延长并在 ~10 pN 处达到最大，超过最优力后转为 slip 键迅速解离（Liu et al., 2014, *Cell*）。机械力在天然系统中扮演**判别与计时器**：它把激动剂/拮抗剂的细微热力学差放大为"能否存活足够久的持续积累"。
+
+TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白回缩流与微簇向心转运）下寿命被延长并在 ~10 pN 处达到最大，超过最优力后转为 slip 键迅速解离（Liu et al., 2014, _Cell_）。机械力在天然系统中扮演**判别与计时器**：它把激动剂/拮抗剂的细微热力学差放大为"能否存活足够久的持续积累"。
 
 对 scFv 型 CAR 做 1000× 亲和力改造则完全"失真"：
 
@@ -76,7 +81,7 @@ TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白�
 
 1. **动力学卡死与穿孔素方向性耗竭**：杀伤单个靶细胞后，结合到死亡细胞膜上的 CAR 因 k_off≈0 无法解离，只能等待胞吞（~240 s/键）或膜破裂。模拟中单靶"驻留/承诺时间"（首杀潜伏 + 颗粒释放 + 键释放）在 10⁴ 拷贝/细胞时：**10 nM ≈ 484 s vs 0.01 nM ≈ 1497 s（约 3.1×）**。T 细胞被"胶"在已死靶上，无法及时转向下一个靶，定向递送的颗粒酶/穿孔素在无效驻留中被耗竭。
 2. **受体沉没（receptor sink）**：持续保护性结合几乎必然触发 CAR 内吞/下调。受体内吞-回收动力学显示 0.01 nM 受体单位保护性信号产出仅为 10 nM 的 ~1/4（240 s vs 1002 s），表面 CAR 池被更快掏空，**后续靶细胞的结合供给下降**。
-3. **持续抗原诱导的耗竭（exhaustion）与 AICD**：锁死状态把"一次性强激活"变成"持续性、不可中断的抗原刺激"。这正对应临床/实验观察到的"tonic signaling → PD-1/TIM-3/LAG-3 上调、增殖受损、功能衰竭"（Long et al., 2015, *Nat Med*），以及超亲和力 CAR 更易发生激活诱导细胞死亡（AICD）与正常组织"on-target/off-tumor"误伤。
+3. **持续抗原诱导的耗竭（exhaustion）与 AICD**：锁死状态把"一次性强激活"变成"持续性、不可中断的抗原刺激"。这正对应临床/实验观察到的"tonic signaling → PD-1/TIM-3/LAG-3 上调、增殖受损、功能衰竭"（Long et al., 2015, _Nat Med_），以及超亲和力 CAR 更易发生激活诱导细胞死亡（AICD）与正常组织"on-target/off-tumor"误伤。
 
 模拟的 6 h 序列杀伤给出：高抗原密度下 **10 nM ≈ 4.0 轮 vs 0.01 nM ≈ 2.0 轮**，即迭代杀伤能力对折。
 
@@ -85,60 +90,62 @@ TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白�
 ## 5. 机理模型与模拟
 
 ### 5.1 模型结构（代码：`immune_synapse_mechanobiology_sim.py`）
+
 混合了**解析 ODE 期望**（快速相图/曲线）与**事件驱动动力学蒙特卡洛（Gillespie KMC）**（单突触逐键验证）。五类微观过程均被显式建模：
 
-| 过程 | 建模方式 | 关键参数 |
-|---|---|---|
-| 膜上抗原几何与微簇 | 在突触补片（A_SYN=20 µm²）内均匀撒布 N_ag=Poisson(N_tot·A_SYN/A_CELL) 个抗原，按 r_mc=220 nm 连通成分分簇 | 对应肿瘤 500 µm² 表面均匀分布（对团队有利） |
-| 结合/解离 | 每个抗原独立两态马尔可夫：free→bound 速率 K_B=0.5 s⁻¹；bound→free 速率 k_off=k_on·Kd（k_on=1e6 M⁻¹s⁻¹） | 2D 伪一级处理 |
-| 尺寸排斥/CD45 排除 | Hill 门控 p_ex(e)=eⁿ/(e₁/₂ⁿ+eⁿ)，n=4，e₁/₂=2.2（"临界局域密度"） | 空间下限 |
-| 校验（proofreading） | 每次结合贡献须存活 ≥τ_pr=5 s：乘子 exp(−k_off·τ_pr) | 时序下限 |
-| 信号积分与杀伤 | 保护性近端信号（有效保护 CAR）时间积分 ≥Θ=4200 CAR·s → 触发脱颗粒（潜伏期 T_kill=30 s 组装下限 + Θ/Φ）；不能达到者 T_enc=900 s 后放弃 | 触发/杀伤判据 |
-| 机械力/catch–slip | k_off(F)=k_off0·[slip(e^{F·x_s/KT}) + (catch 高斯窗口 −1)]（Evans 双通路） | 力学时间表 |
-| 迭代杀伤 | 顺序遭遇相同抗原拷贝数的新靶；跟踪 CAR 池沉没（每结合以 p_hold=e^{−k_off·τ_int} 概率内吞丢失，τ_int=240 s）、键释放时间 T_rel=ln(N_bound+1)/(k_off+1/τ_int)、以及卡在靶上累积的 tonic 耗竭 EX | 串联 / 耗竭 |
+| 过程                 | 建模方式                                                                                                                                                                                      | 关键参数                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 膜上抗原几何与微簇   | 在突触补片（A_SYN=20 µm²）内均匀撒布 N_ag=Poisson(N_tot·A_SYN/A_CELL) 个抗原，按 r_mc=220 nm 连通成分分簇                                                                                     | 对应肿瘤 500 µm² 表面均匀分布（对团队有利） |
+| 结合/解离            | 每个抗原独立两态马尔可夫：free→bound 速率 K_B=0.5 s⁻¹；bound→free 速率 k_off=k_on·Kd（k_on=1e6 M⁻¹s⁻¹）                                                                                       | 2D 伪一级处理                               |
+| 尺寸排斥/CD45 排除   | Hill 门控 p_ex(e)=eⁿ/(e₁/₂ⁿ+eⁿ)，n=4，e₁/₂=2.2（"临界局域密度"）                                                                                                                              | 空间下限                                    |
+| 校验（proofreading） | 每次结合贡献须存活 ≥τ_pr=5 s：乘子 exp(−k_off·τ_pr)                                                                                                                                           | 时序下限                                    |
+| 信号积分与杀伤       | 保护性近端信号（有效保护 CAR）时间积分 ≥Θ=4200 CAR·s → 触发脱颗粒（潜伏期 T_kill=30 s 组装下限 + Θ/Φ）；不能达到者 T_enc=900 s 后放弃                                                         | 触发/杀伤判据                               |
+| 机械力/catch–slip    | k_off(F)=k_off0·[slip(e^{F·x_s/KT}) + (catch 高斯窗口 −1)]（Evans 双通路）                                                                                                                    | 力学时间表                                  |
+| 迭代杀伤             | 顺序遭遇相同抗原拷贝数的新靶；跟踪 CAR 池沉没（每结合以 p_hold=e^{−k_off·τ_int} 概率内吞丢失，τ_int=240 s）、键释放时间 T_rel=ln(N_bound+1)/(k_off+1/τ_int)、以及卡在靶上累积的 tonic 耗竭 EX | 串联 / 耗竭                                 |
 
 ### 5.2 表 1：零力与力学键动力学（k_on = 1e6 M⁻¹s⁻¹）
 
-| Kd (M) | k_off (s⁻¹) | 零力寿命 (s) | 10 pN 寿命 (s) | 占位率 |
-|---|---|---|---|---|
-| **1e-8（10 nM）** | 1.0e-2 | 100 | 55 | 0.98 |
-| **1e-11（0.01 nM）** | 1.0e-5 | 100,000 | 54,800 | ~1.00 |
-| 3e-8 | 3.0e-2 | 33 | 18 | 0.94 |
-| 1e-7 | 1.0e-1 | 10 | 5.5 | 0.83 |
+| Kd (M)               | k_off (s⁻¹) | 零力寿命 (s) | 10 pN 寿命 (s) | 占位率 |
+| -------------------- | ----------- | ------------ | -------------- | ------ |
+| **1e-8（10 nM）**    | 1.0e-2      | 100          | 55             | 0.98   |
+| **1e-11（0.01 nM）** | 1.0e-5      | 100,000      | 54,800         | ~1.00  |
+| 3e-8                 | 3.0e-2      | 33           | 18             | 0.94   |
+| 1e-7                 | 1.0e-1      | 10           | 5.5            | 0.83   |
 
 > 10 pN 的生理牵拉力**无法**把 0.01 nM 键从 10⁴ s 级寿命"减"回可用尺度——这正是 catch–slip "失真"的数字表现。
 
 ### 5.3 表 2：受体沉没——单 CAR 丢失前递送的保护性信号（renewal 模型）
 
-| Kd | 单 CAR 保护性寿命 (s) |
-|---|---|
-| 3e-9 | 351 |
-| **1e-8** | **1002** |
-| 3e-8 | 4.5×10⁴（高回收，但受下游与胞吞以外因素限制）|
-| **1e-11** | **240** |
+| Kd        | 单 CAR 保护性寿命 (s)                         |
+| --------- | --------------------------------------------- |
+| 3e-9      | 351                                           |
+| **1e-8**  | **1002**                                      |
+| 3e-8      | 4.5×10⁴（高回收，但受下游与胞吞以外因素限制） |
+| **1e-11** | **240**                                       |
 
 > 10 nM CAR 的受体内吞-回收效率约为 0.01 nM 的 **4.2×**。
 
 ### 5.4 表 3：单靶与序列行为（40 次蒙特卡洛，均值）
 
 | 拷贝/细胞 | 6 h 序列杀伤（10 nM / 0.01 nM） | 单靶驻留承诺时间 s（10 nM / 0.01 nM） | 单靶杀伤分数（10 nM / 0.01 nM） |
-|---|---|---|---|
-| 500 | 0.2 / 0.6 | 906 / 918 | **0.03 / 0.03** |
-| 1000 | 4.0 / 3.0 | 921 / 1286 | 0.53 / 0.62 |
-| 3000 | 4.0 / 2.0 | 486 / 1287 | 1.00 / 1.00 |
-| 10000 | 4.0 / 2.0 | 484 / 1497 | 1.00 / 1.00 |
+| --------- | ------------------------------- | ------------------------------------- | ------------------------------- |
+| 500       | 0.2 / 0.6                       | 906 / 918                             | **0.03 / 0.03**                 |
+| 1000      | 4.0 / 3.0                       | 921 / 1286                            | 0.53 / 0.62                     |
+| 3000      | 4.0 / 2.0                       | 486 / 1287                            | 1.00 / 1.00                     |
+| 10000     | 4.0 / 2.0                       | 484 / 1497                            | 1.00 / 1.00                     |
 
 **三个关键读出**：
+
 1. **密度下限不可亲和力穿透**：500 拷贝/细胞时两亲和力杀伤分数均为 0.03（≈0），<400 拷贝时均为 0 —— TAA-Low 主张区（<500 拷贝）两亲和力均处于空间逃逸区；
 2. **首个靶细胞无差异**：一旦跨越下限，0.01 nM 并不比 10 nM 更快杀伤（见表 4 KMC）；
 3. **超亲和力的代价全部集中在"串行"上**：驻留时间 3× 拉长、6 h 序列杀伤 2.0 vs 4.0。
 
 ### 5.5 表 4：事件驱动 KMC（Gillespie）首杀潜伏期验证
 
-| 拷贝/细胞 | 10 nM | 0.01 nM |
-|---|---|---|
-| 3000 | 94 s（25/25） | 100 s（25/25） |
-| 10000 | 15 s（25/25） | 14 s（25/25） |
+| 拷贝/细胞 | 10 nM         | 0.01 nM        |
+| --------- | ------------- | -------------- |
+| 3000      | 94 s（25/25） | 100 s（25/25） |
+| 10000     | 15 s（25/25） | 14 s（25/25）  |
 
 > KMC 与解析期望在 ~15–30% 内一致（解析含 30 s 突触组装下限），并独立证实：**首杀潜伏期对 1000× 亲和力提升不敏感**。
 
@@ -147,11 +154,13 @@ TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白�
 ## 6. 相图与曲线解读
 
 ### 6.1 图 1（`fig1_signal_output_phase_diagram.png`）——"有效信号输出相图"
+
 - 横轴 Kd（10⁻¹¹–10⁻⁶ M，对数），纵轴抗原拷贝/细胞（10²–10⁴，对数），颜色= 6 h 窗口内成功序列杀伤轮数的均值（有效输出）。
 - **竖向颜色突变**即动力学分离"空间下限"：约 <600–1000 拷贝/细胞以下，任何亲和力的有效输出 ≈ 0（图中最深色带）。**该带对亲和力列不敏感**——红虚线（Kd=1e-11 M）与蓝虚线（Kd=1e-8 M）在下限以下输出相同 → 1000× 亲和力无法"降低下限"。
 - **横向（亲和力）结构**来自三条曲线叠加：proofreading/占位在低亲和端压制输出（µM 级占位不足），**serial 换手在 ~1e-8–1e-7 M 一带给出最大输出**，而极左端（1e-11 M，红虚线列）因动力学卡死 + tonic 耗竭 + 受体沉没，即使在高密度区输出也被压低（高密度下 ~2 轮 vs ~4–6 轮）。
 
 ### 6.2 图 2（`fig2_residence_and_serial_killing.png`）——"单细胞杀伤驻留耗时曲线"与迭代杀伤
+
 - **(a) 单靶驻留/承诺时间 vs 拷贝数**：蓝线（10 nM）与红线（0.01 nM）。灰带（<~700 拷贝）为"空间下限区"——两线在此均被识别失败主导（≈900 s 无效接触后放弃），重叠、无亲和力差别；密度升高后两线分离，0.01 nM 因键释放缓慢持续高于 10 nM（10⁴ 拷贝时 ~1497 s vs ~484 s）。
 - **(b) 迭代杀伤吞吐**：6 h 序列杀伤轮数，0.01 nM 在整个可杀伤密度区约为 10 nM 的 1/2。
 - **(c) 代表性串行杀伤时间线（10⁴ 拷贝/细胞）**：细线为单个蒙特卡洛细胞的阶梯，粗线为 30 次平均——蓝线斜率持续、红线在首杀后明显"平台化/卡死"。
@@ -179,32 +188,33 @@ TCR–pMHC 是**catch 键**：在中低拉力（~5–15 pN，来自肌动蛋白�
 
 ## 9. 主要参考文献
 
-1. Chang VT, Fernandes RA, et al. *Initiation of T cell signaling by CD45 segregation at 'close contacts'.* Nat Immunol 2016;17(5):574–582. DOI 10.1038/ni.3392. PMID 26998761.
-2. Liu B, Chen W, Evavold BD, Zhu C. *Accumulation of dynamic catch bonds between TCR and agonist peptide-MHC triggers T cell signaling.* Cell 2014;157(2):357–368. DOI 10.1016/j.cell.2014.02.053.
-3. Choudhuri K, Wiseman D, van der Merwe PA, et al. *T-cell receptor triggering is critically dependent on the dimensions of its peptide-MHC ligand.* Nature 2005;436:578–582.
-4. Davis SJ, van der Merwe PA. *The kinetic-segregation model: TCR triggering and beyond.* Nat Immunol 2006;7:803–809.
-5. van der Merwe PA, Dushek O. *Mechanisms for T cell receptor triggering.* Nat Rev Immunol 2011;11:47–55.
-6. Valitutti S, Müller S, Cella M, Padovan E, Lanzavecchia A. *Serial triggering of many T-cell receptors by a few peptide-MHC complexes.* Nature 1995;375:148–151.
-7. Kalergis AM, et al. *Efficient T cell activation requires an optimal dwell-time of interaction between the TCR and the pMHC complex.* Nat Immunol 2001;2:229–234.
+1. Chang VT, Fernandes RA, et al. _Initiation of T cell signaling by CD45 segregation at 'close contacts'._ Nat Immunol 2016;17(5):574–582. DOI 10.1038/ni.3392. PMID 26998761.
+2. Liu B, Chen W, Evavold BD, Zhu C. _Accumulation of dynamic catch bonds between TCR and agonist peptide-MHC triggers T cell signaling._ Cell 2014;157(2):357–368. DOI 10.1016/j.cell.2014.02.053.
+3. Choudhuri K, Wiseman D, van der Merwe PA, et al. _T-cell receptor triggering is critically dependent on the dimensions of its peptide-MHC ligand._ Nature 2005;436:578–582.
+4. Davis SJ, van der Merwe PA. _The kinetic-segregation model: TCR triggering and beyond._ Nat Immunol 2006;7:803–809.
+5. van der Merwe PA, Dushek O. _Mechanisms for T cell receptor triggering._ Nat Rev Immunol 2011;11:47–55.
+6. Valitutti S, Müller S, Cella M, Padovan E, Lanzavecchia A. _Serial triggering of many T-cell receptors by a few peptide-MHC complexes._ Nature 1995;375:148–151.
+7. Kalergis AM, et al. _Efficient T cell activation requires an optimal dwell-time of interaction between the TCR and the pMHC complex._ Nat Immunol 2001;2:229–234.
 8. Holler PD, et al. (affinity-enhanced TCR; bell-shaped affinity–response window). J Exp Med 2001;194:299–306.
-9. Long AH, Haso WM, Shern JF, et al. *4-1BB costimulation ameliorates T cell exhaustion induced by tonic signaling of chimeric antigen receptors.* Nat Med 2015;21:581–590.
-10. Caruso HG, et al. *Tuning sensitivity of CAR to EGFR density limits recognition of normal tissue while maintaining antitumor activity.* Cancer Res 2015;75:3505–3518. (低亲和/快解离 EGFR-CAR 保护正常低密度组织)
-11. 针对 CD38/CD20 的亲和力梯度与"最适亲和力窗口"研究（见 *Balancing the efficacy and safety of chimeric antigen receptor T-cell therapy by affinity combination*, Nat Commun 2026, DOI 10.1038/s41467-026-71354-7 及其中引用）。
+9. Long AH, Haso WM, Shern JF, et al. _4-1BB costimulation ameliorates T cell exhaustion induced by tonic signaling of chimeric antigen receptors._ Nat Med 2015;21:581–590.
+10. Caruso HG, et al. _Tuning sensitivity of CAR to EGFR density limits recognition of normal tissue while maintaining antitumor activity._ Cancer Res 2015;75:3505–3518. (低亲和/快解离 EGFR-CAR 保护正常低密度组织)
+11. 针对 CD38/CD20 的亲和力梯度与"最适亲和力窗口"研究（见 _Balancing the efficacy and safety of chimeric antigen receptor T-cell therapy by affinity combination_, Nat Commun 2026, DOI 10.1038/s41467-026-71354-7 及其中引用）。
 
-*注：部分经典文献按作者-年份-期刊惯例引用，页码以正式检索为准。*
+_注：部分经典文献按作者-年份-期刊惯例引用，页码以正式检索为准。_
 
 ---
 
 ## 10. 交付清单
 
-| 文件 | 说明 |
-|---|---|
-| `immune_synapse_mechanobiology_sim.py` | 独立可运行的 KMC/ODE 机理模拟脚本（含参数表、控制台报告与两张图生成函数） |
-| `fig1_signal_output_phase_diagram.png` | 抗原密度 × 亲和力双变量"有效信号输出相图" |
-| `fig2_residence_and_serial_killing.png` | 单细胞杀伤驻留耗时曲线 + 迭代杀伤吞吐 + 串行杀伤时间线 |
-| `immune_synapse_adjudication_report.md` | 本裁决报告 |
+| 文件                                    | 说明                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `immune_synapse_mechanobiology_sim.py`  | 独立可运行的 KMC/ODE 机理模拟脚本（含参数表、控制台报告与两张图生成函数） |
+| `fig1_signal_output_phase_diagram.png`  | 抗原密度 × 亲和力双变量"有效信号输出相图"                                 |
+| `fig2_residence_and_serial_killing.png` | 单细胞杀伤驻留耗时曲线 + 迭代杀伤吞吐 + 串行杀伤时间线                    |
+| `immune_synapse_adjudication_report.md` | 本裁决报告                                                                |
 
 **复现代码命令**（在应用托管 Python 运行时内）：
+
 ```bash
 python immune_synapse_mechanobiology_sim.py .   # 输出控制台定量总结 + 两张图
 ```

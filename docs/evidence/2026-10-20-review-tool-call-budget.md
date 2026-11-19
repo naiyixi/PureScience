@@ -8,10 +8,10 @@
 
 审查回合已有的两道闸都**不管成本**：
 
-| 既有闸 | 值 | 它拦什么 | 它不拦什么 |
-| --- | --- | --- | --- |
-| `DEFAULT_REVIEWER_TIMEOUT_MS` | 900 000 ms | 挂住不动的会话 | 一直有进展、但一直烧调用的会话（每来一次更新就把窗口往后推不完，墙钟最终会到，但那是一条 15 分钟的等待） |
-| `DEFAULT_REVIEWER_MAX_UPDATES` | 1000 | 帧级疯转（同一调用反复刷状态也算帧） | **成本**：1000 帧可以是 12 次调用，也可以是 900 次调用 |
+| 既有闸                         | 值         | 它拦什么                             | 它不拦什么                                                                                               |
+| ------------------------------ | ---------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `DEFAULT_REVIEWER_TIMEOUT_MS`  | 900 000 ms | 挂住不动的会话                       | 一直有进展、但一直烧调用的会话（每来一次更新就把窗口往后推不完，墙钟最终会到，但那是一条 15 分钟的等待） |
+| `DEFAULT_REVIEWER_MAX_UPDATES` | 1000       | 帧级疯转（同一调用反复刷状态也算帧） | **成本**：1000 帧可以是 12 次调用，也可以是 900 次调用                                                   |
 
 也就是说：一个「每次调用都很便宜、但一秒钟能发起好几次」的审查回合，在面板上表现为**正常跑着**，
 直到墙钟到点才以 `reviewer session timed out before stopping` 收场 —— 而那句错误对读者没有信息量：
@@ -21,14 +21,14 @@
 
 不照「审计里说见过 200 次」直接抄一个上限，先量**打包版真实库**（`~/.purescience/purescience.db`，只读打开）：
 
-| 读数 | 值 |
-| --- | --- |
-| 有工具调用的 Review 条数 | **151**（库内 Review 共 154 条：148 complete / 5 error / 1 running） |
-| 单次审查的工具调用数 | min **2**、median **25**、p90 **90**、p99 **164**、max **202** |
-| 超过 240 的 | **0** 条；超过 300 的 **0** 条 |
-| 最重那次（202 次）的构成 | **186 次 `query_execution_log`**（一次只查一个 activity）+ 7 次 `submit_findings` + 5 次 `read_artifact` + 3 次 `read_turn` + 1 次 `read_turn_history` |
-| 每次调用耗时（96 条 ≥20 次调用且时长可信的审查） | median **5.22 s**、p90 **10.38 s**、max **21.42 s** |
-| 整次审查耗时 | median **264 s**、p90 **412 s**、max **856 s** |
+| 读数                                             | 值                                                                                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 有工具调用的 Review 条数                         | **151**（库内 Review 共 154 条：148 complete / 5 error / 1 running）                                                                                   |
+| 单次审查的工具调用数                             | min **2**、median **25**、p90 **90**、p99 **164**、max **202**                                                                                         |
+| 超过 240 的                                      | **0** 条；超过 300 的 **0** 条                                                                                                                         |
+| 最重那次（202 次）的构成                         | **186 次 `query_execution_log`**（一次只查一个 activity）+ 7 次 `submit_findings` + 5 次 `read_artifact` + 3 次 `read_turn` + 1 次 `read_turn_history` |
+| 每次调用耗时（96 条 ≥20 次调用且时长可信的审查） | median **5.22 s**、p90 **10.38 s**、max **21.42 s**                                                                                                    |
+| 整次审查耗时                                     | median **264 s**、p90 **412 s**、max **856 s**                                                                                                         |
 
 **计数的口径**：取自 `Review.reviewerLog` 里 `kind = 'tool'` 的条目数 —— 捕获日志里一次调用落一条
 （`tool_call_update` 是同一个条目收尾，不另起一条）。这是**调用**的代理量，不是帧数；也正是新代码
@@ -49,14 +49,14 @@
 
 ## 3 交付（4 处代码 + 2 个用例文件）
 
-| # | 文件 | 内容 |
-| --- | --- | --- |
-| ① | `src/main/reviewer/orchestrator.ts` | `DEFAULT_REVIEWER_MAX_TOOL_CALLS = 300`（注释带 §2 的实测分布与「本预算不拦慢审查」的边界）；`driveReviewerToStop` 按 **distinct `toolCallId`** 计工具调用（同一 id 的 `tool_call_update` 只算收尾；无 id 的调用照计；流式 chunk 不计），到上限抛 `reviewer session exceeded tool-call budget (N) — review stopped without a verdict. …`；80%（240）处 `warn` 一次；正常停下打一行 `reviewer drive stopped {stopReason, toolCalls, toolBudget}` |
-| ② | `src/main/reviewer/orchestrator.ts` 接线 | `reviewerMaxToolCalls` 沿 **`RunReviewOptions` → `runFixLoop` → `runScopedReview` → 两处 `driveReviewerToStop`** 共 10 个点接齐 |
-| ③ | `src/renderer/src/lib/reviewer-error-copy.ts` | 新增第八族 **`budget`**（`needles: ['exceeded tool-call budget', 'tool-call budget']`），并保留「persistence 判定先于 timeout」的既有顺序契约 |
-| ④ | `src/renderer/src/i18n/*.ts`（9 语言） | `reviewer.error.budget` + `reviewer.errorShort.budget` 共 18 行；用本技能自带的 `scripts/add-i18n-keys.py` 写入（九文件齐平预检 + 写后自证），zh / zh-Hant 值均不等于 en |
-| ⑤ | `src/main/reviewer/orchestrator-tool-budget.test.ts`（新） | 7 条：到上限即停、消息带面板匹配短语、未超预算照常返回 stopReason、同一调用的 update 不自耗预算、无 id 调用照计、流式 chunk 不计、缺省走 300 |
-| ⑥ | `src/main/reviewer/orchestrator.test.ts`（改） | 1 条**集成**用例：`runReview({ reviewerMaxToolCalls: 2 })` 走完整编排（真 ACP 夹具、真 SQLite），断言 Review 行 `lifecycle='error'`、`errorMessage` 含 `exceeded tool-call budget (2)`、`checks` 为空，并**回读库里那一行**再断言一次 |
+| #   | 文件                                                       | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ①   | `src/main/reviewer/orchestrator.ts`                        | `DEFAULT_REVIEWER_MAX_TOOL_CALLS = 300`（注释带 §2 的实测分布与「本预算不拦慢审查」的边界）；`driveReviewerToStop` 按 **distinct `toolCallId`** 计工具调用（同一 id 的 `tool_call_update` 只算收尾；无 id 的调用照计；流式 chunk 不计），到上限抛 `reviewer session exceeded tool-call budget (N) — review stopped without a verdict. …`；80%（240）处 `warn` 一次；正常停下打一行 `reviewer drive stopped {stopReason, toolCalls, toolBudget}` |
+| ②   | `src/main/reviewer/orchestrator.ts` 接线                   | `reviewerMaxToolCalls` 沿 **`RunReviewOptions` → `runFixLoop` → `runScopedReview` → 两处 `driveReviewerToStop`** 共 10 个点接齐                                                                                                                                                                                                                                                                                                                 |
+| ③   | `src/renderer/src/lib/reviewer-error-copy.ts`              | 新增第八族 **`budget`**（`needles: ['exceeded tool-call budget', 'tool-call budget']`），并保留「persistence 判定先于 timeout」的既有顺序契约                                                                                                                                                                                                                                                                                                   |
+| ④   | `src/renderer/src/i18n/*.ts`（9 语言）                     | `reviewer.error.budget` + `reviewer.errorShort.budget` 共 18 行；用本技能自带的 `scripts/add-i18n-keys.py` 写入（九文件齐平预检 + 写后自证），zh / zh-Hant 值均不等于 en                                                                                                                                                                                                                                                                        |
+| ⑤   | `src/main/reviewer/orchestrator-tool-budget.test.ts`（新） | 7 条：到上限即停、消息带面板匹配短语、未超预算照常返回 stopReason、同一调用的 update 不自耗预算、无 id 调用照计、流式 chunk 不计、缺省走 300                                                                                                                                                                                                                                                                                                    |
+| ⑥   | `src/main/reviewer/orchestrator.test.ts`（改）             | 1 条**集成**用例：`runReview({ reviewerMaxToolCalls: 2 })` 走完整编排（真 ACP 夹具、真 SQLite），断言 Review 行 `lifecycle='error'`、`errorMessage` 含 `exceeded tool-call budget (2)`、`checks` 为空，并**回读库里那一行**再断言一次                                                                                                                                                                                                           |
 
 **为什么一定要这条集成用例**：单元用例直接驱 `driveReviewerToStop`，只证明「函数会停」。
 本仓有过的教训是「一个参数沿每一层签名都接上了、却没走到真正的循环」（已建但无人调用的同族形状）。
@@ -64,27 +64,27 @@
 
 ## 4 读数（全部实跑）
 
-| 项 | 读数 |
-| --- | --- |
-| `orchestrator-tool-budget.test.ts`（7 条） | **7 passed** |
-| `orchestrator.test.ts`（既有 13 + 新增 1） | **14 passed** |
-| 反向门 ①：把 `reviewerMaxToolCalls` 的两处 drive 传参摘成 `undefined` | `orchestrator.test.ts` **1 failed / 13 passed**，红的恰是那条集成用例（不接线的旋钮 = 等于没有旋钮） |
-| 反向门 ②：整个 `orchestrator.ts` 换回基点 `5b0ebd49` | `orchestrator-tool-budget.test.ts` **3 failed / 4 passed**（三条「必须有预算」的用例红） |
-| 受影响簇 `src/main/reviewer` | **24 files / 277 passed**，exit 0 |
-| i18n + 卡片簇 | **6 files / 122 passed** |
-| 双 typecheck | `tsc -p tsconfig.node.json --composite false` **exit 0**；`-p tsconfig.web.json --composite false` **exit 0** |
-| lint | `npx eslint --no-cache .`：本笔新增/改动文件 **0 error**（全仓 warning 数为既有基线） |
-| 全量 vitest `--maxWorkers=4` | 三次：`1346 files / 17206 passed` exit 0（连跑两次）；换用与 `origin/main` 同 schema 重新生成的本地 Prisma 客户端后 **1 failed / 17205 passed**，红在与本批无关的 `SessionPlanSurfaces.test.tsx`，**单文件隔离复跑 3 遍 21/21 全绿** ⇒ 按负载抖动记档（当时 load ~15、机器上另有一条全量在跑），最终判决以上 CI 为准 |
+| 项                                                                    | 读数                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `orchestrator-tool-budget.test.ts`（7 条）                            | **7 passed**                                                                                                                                                                                                                                                                                                         |
+| `orchestrator.test.ts`（既有 13 + 新增 1）                            | **14 passed**                                                                                                                                                                                                                                                                                                        |
+| 反向门 ①：把 `reviewerMaxToolCalls` 的两处 drive 传参摘成 `undefined` | `orchestrator.test.ts` **1 failed / 13 passed**，红的恰是那条集成用例（不接线的旋钮 = 等于没有旋钮）                                                                                                                                                                                                                 |
+| 反向门 ②：整个 `orchestrator.ts` 换回基点 `5b0ebd49`                  | `orchestrator-tool-budget.test.ts` **3 failed / 4 passed**（三条「必须有预算」的用例红）                                                                                                                                                                                                                             |
+| 受影响簇 `src/main/reviewer`                                          | **24 files / 277 passed**，exit 0                                                                                                                                                                                                                                                                                    |
+| i18n + 卡片簇                                                         | **6 files / 122 passed**                                                                                                                                                                                                                                                                                             |
+| 双 typecheck                                                          | `tsc -p tsconfig.node.json --composite false` **exit 0**；`-p tsconfig.web.json --composite false` **exit 0**                                                                                                                                                                                                        |
+| lint                                                                  | `npx eslint --no-cache .`：本笔新增/改动文件 **0 error**（全仓 warning 数为既有基线）                                                                                                                                                                                                                                |
+| 全量 vitest `--maxWorkers=4`                                          | 三次：`1346 files / 17206 passed` exit 0（连跑两次）；换用与 `origin/main` 同 schema 重新生成的本地 Prisma 客户端后 **1 failed / 17205 passed**，红在与本批无关的 `SessionPlanSurfaces.test.tsx`，**单文件隔离复跑 3 遍 21/21 全绿** ⇒ 按负载抖动记档（当时 load ~15、机器上另有一条全量在跑），最终判决以上 CI 为准 |
 
 ### 4.1 真进程探针（生产代码 esbuild 打包后由真 `node` 跑，五种脚本化会话）
 
-| 场景 | 读数 |
-| --- | --- |
-| 失控 + 预算 300 | `threw`、**恰在第 300 次**停下、240 处 `warn` 一次、消息与面板匹配短语逐字一致 |
-| 失控 + **不给选项**（验生产缺省） | 同样 **300** 停下 ⇒ 缺省值真的生效，不是只活在用例里 |
-| 一个调用刷 500 次状态 | `resolved`、`toolCalls: 1` ⇒ 同一调用收尾不自耗预算 |
-| 299 次后正常结束（预算 300） | `resolved`、`stopReason: "end_turn"`、`toolCalls: 299` |
-| 4 万条流式 chunk（预算 2） | `resolved`、`toolCalls: 0` ⇒ chunk 不误计 |
+| 场景                              | 读数                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| 失控 + 预算 300                   | `threw`、**恰在第 300 次**停下、240 处 `warn` 一次、消息与面板匹配短语逐字一致 |
+| 失控 + **不给选项**（验生产缺省） | 同样 **300** 停下 ⇒ 缺省值真的生效，不是只活在用例里                           |
+| 一个调用刷 500 次状态             | `resolved`、`toolCalls: 1` ⇒ 同一调用收尾不自耗预算                            |
+| 299 次后正常结束（预算 300）      | `resolved`、`stopReason: "end_turn"`、`toolCalls: 299`                         |
+| 4 万条流式 chunk（预算 2）        | `resolved`、`toolCalls: 0` ⇒ chunk 不误计                                      |
 
 探针脚本是本轮临时件（`/tmp` 下，不进仓）：它把 `orchestrator.ts` 单独打包成 CJS，喂一个**假的
 DrivableSession**（按脚本吐出 `tool_call` / `tool_call_update` / chunk / stop），读返回值与抛出的消息。

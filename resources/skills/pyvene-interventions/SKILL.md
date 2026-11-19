@@ -1,6 +1,7 @@
 ---
 name: pyvene-interventions
 description: Provides guidance for performing causal interventions on PyTorch models using pyvene's declarative intervention framework. Use when conducting causal tracing, activation patching, interchange intervention training, or testing causal hypotheses about model behavior.
+description-zh: 用 pyvene 的声明式干预框架对 PyTorch 模型做因果干预：因果追踪、激活修补等实验。
 version: 1.0.0
 author: Orchestra Research
 license: MIT

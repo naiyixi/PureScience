@@ -31,12 +31,12 @@
 
 ## 三 改了什么
 
-| 文件 | 改动 |
-| --- | --- |
-| `src/main/diagnostics/cpu-attribution.ts`（新） | 唯一一份词汇：`cpuMillisecondsBetween` / `cpuShareOf` / `classifyCpuShare` / `attributionSuffix`。两档带名阈值（≥0.60 `cpu-bound-in-process`，≤0.15 `process-not-scheduled`，其间 `inconclusive`）。**零长度窗口判 `inconclusive` 而不是「没在跑」**：立刻返回的步是日志里最不值得怀疑的东西 |
-| `src/main/diagnostics/compose-steps.ts` | 每步记 `cpuMs / cpuShare / attribution`；`slow` 行与 `failed` 行都带上；摘要里那类步带 `(not-scheduled)`；`steps()` 的公开形状不变（`ComposeStep` 不动，避免契约涟漪） |
-| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 删掉自己那对阈值常量，改引用同一模块 —— 不再是第二套判断 |
-| `src/main/settings/service.ts` | 密钥迁移的每个阶段改为 `{ ms, attribution }`，`phases` 逐项可带 `(not-scheduled)`；整段也带 `cpuMs / cpuShare / attribution`；新增注入缝 `clock` / `cpuUsage`（默认 `Date.now` / `process.cpuUsage`） |
+| 文件                                                | 改动                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/diagnostics/cpu-attribution.ts`（新）     | 唯一一份词汇：`cpuMillisecondsBetween` / `cpuShareOf` / `classifyCpuShare` / `attributionSuffix`。两档带名阈值（≥0.60 `cpu-bound-in-process`，≤0.15 `process-not-scheduled`，其间 `inconclusive`）。**零长度窗口判 `inconclusive` 而不是「没在跑」**：立刻返回的步是日志里最不值得怀疑的东西 |
+| `src/main/diagnostics/compose-steps.ts`             | 每步记 `cpuMs / cpuShare / attribution`；`slow` 行与 `failed` 行都带上；摘要里那类步带 `(not-scheduled)`；`steps()` 的公开形状不变（`ComposeStep` 不动，避免契约涟漪）                                                                                                                       |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 删掉自己那对阈值常量，改引用同一模块 —— 不再是第二套判断                                                                                                                                                                                                                                     |
+| `src/main/settings/service.ts`                      | 密钥迁移的每个阶段改为 `{ ms, attribution }`，`phases` 逐项可带 `(not-scheduled)`；整段也带 `cpuMs / cpuShare / attribution`；新增注入缝 `clock` / `cpuUsage`（默认 `Date.now` / `process.cpuUsage`）                                                                                        |
 
 ## 四 真机读数（产品自己的 recorder + 真 Electron 运行时 + 真信号去调度）
 
@@ -68,15 +68,15 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 
 ## 六 门禁读数（实跑）
 
-| 门 | 读数 |
-| --- | --- |
-| 定向用例（`cpu-attribution` 6 + `compose-steps` 新增 2 + `service.key-migration-attribution` 2，另含既有 7 条） | `Test Files 3 passed` / `Tests 17 passed` |
-| 整域 `vitest run src/main/diagnostics src/main/settings --maxWorkers=4` | `Test Files 112 passed \| 1 skipped (113)`；`Tests 1589 passed \| 3 skipped (1592)`；`EXIT=0` |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | `EXIT=0`（无输出=通过） |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | `EXIT=0` |
-| `npx eslint --no-cache .` | `0 errors, 127 warnings` |
-| `prettier --check`（本单元 7 个文件） | `All matched files use Prettier code style!` |
-| `bash scripts/pre-push-checks.sh` | `全部通过`（含 v2.18.0 已发布核对、README 双语一致、`model-weights` 清单、53 个脚本入口、新增文件 lint） |
+| 门                                                                                                              | 读数                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 定向用例（`cpu-attribution` 6 + `compose-steps` 新增 2 + `service.key-migration-attribution` 2，另含既有 7 条） | `Test Files 3 passed` / `Tests 17 passed`                                                                |
+| 整域 `vitest run src/main/diagnostics src/main/settings --maxWorkers=4`                                         | `Test Files 112 passed \| 1 skipped (113)`；`Tests 1589 passed \| 3 skipped (1592)`；`EXIT=0`            |
+| `tsc --noEmit -p tsconfig.node.json --composite false`                                                          | `EXIT=0`（无输出=通过）                                                                                  |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                                                           | `EXIT=0`                                                                                                 |
+| `npx eslint --no-cache .`                                                                                       | `0 errors, 127 warnings`                                                                                 |
+| `prettier --check`（本单元 7 个文件）                                                                           | `All matched files use Prettier code style!`                                                             |
+| `bash scripts/pre-push-checks.sh`                                                                               | `全部通过`（含 v2.18.0 已发布核对、README 双语一致、`model-weights` 清单、53 个脚本入口、新增文件 lint） |
 
 本轮 lint 中途红过一次：`service.key-migration-attribution.test.ts:72` 的 `let cpu` 应为 `const`（error 级），
 改后全仓归零；同时 `prettier` 对两个新文件报了折行，已 `--write`，未夹带其他文件的格式漂移（本单元只碰

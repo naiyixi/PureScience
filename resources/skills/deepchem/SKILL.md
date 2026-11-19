@@ -1,6 +1,7 @@
 ---
 name: deepchem
 description: Builds molecular property prediction and MoleculeNet workflows with DeepChem, including SMILES featurization, scaffold or grouped holdouts, masked labels, graph models and explicit pretrained encoder transfer. Used for ADMET, toxicity, solubility and chemistry ML when DeepChem data/model contracts and scientific validation are needed.
+description-zh: 用 DeepChem 构建分子性质预测与 MoleculeNet 流程：SMILES 特征化、骨架或分组留出、标签掩码、图模型，以及显式的预训练编码器迁移。
 license: MIT license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.11 for the tested DeepChem 2.8.0 stack. Molecular workflows need RDKit. Torch, Transformers, torch-geometric or DGL/DGL-LifeSci depend on the chosen model. Network is needed only for package, benchmark or model downloads.

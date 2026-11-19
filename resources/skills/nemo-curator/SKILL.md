@@ -1,6 +1,7 @@
 ---
 name: nemo-curator
 description: GPU-accelerated data curation for LLM training. Supports text/image/video/audio. Features fuzzy deduplication (16× faster), quality filtering (30+ heuristics), semantic deduplication, PII redaction, NSFW detection. Scales across GPUs with RAPIDS. Use for preparing high-quality training datasets, cleaning web data, or deduplicating large corpora.
+description-zh: 面向大模型训练的 GPU 加速数据清洗：文本/图像/视频/音频，含模糊去重（快 16 倍）、30 多种启发式质量过滤、语义去重等。
 version: 1.0.0
 author: Orchestra Research
 license: MIT
