@@ -20294,3 +20294,26 @@ issue #20 第 1 条（AppImage 进不了清单）在 `97b34007` 已修。本轮�
   1.4 的「`running` 未实机观察到」与 4.3 都由它推进。
 - ③ issue #20 已在本轮附读数并结案（AppImage 半截=真实资产核验，镜像半截=脚本实跑 + 明确未启用）；
   下一个候选单元：v3.2 的第三方技能集合引入（需先核许可与来源清单，属跨轮大件）。
+
+## 三百五十八、同一轮追加（主修红）—— 两读相等量的不是「卷」而是「机器此刻还剩多少」
+
+`cec559d2` 的 Nightly（run `44439065402`）红在 `build / Verify`，逐作业读到唯一失败：
+
+```
+FAIL src/main/storage/usage.test.ts > availableBytes > walks up more than one missing segment and never invents a number
+AssertionError: expected 45410861056 to be 45410869248
+```
+
+差 8,192 字节 = 两个 4 KiB 块 —— 两次 `availableBytes(tmpdir())` 之间磁盘自己动了。归因：**不是本轮改过的文件**
+（本轮只动 `scripts/generate-version-manifest.*`），是 `usage.test.ts` 用「两次读同一个卷必须逐字节相等」来证明
+「找不到的路径沿祖先上溯」，而**可用空间是易变量**：这个断言量的是机器，不是那段 walk。`6ce0ed11` 的 Nightly 被
+本轮推送取消，所以对照读数取 Windows 车道（`cec559d2` success）与「同一文件上一版 Nightly 绿」两处。
+
+修法（收紧而不是放宽）：把 probe 注入进去（`availableBytes` 早已有 `statfsOf` 注入缝），让用例断言
+**walk 的形状**——单段缺失时探针依次被问到 `…/PureScience`、`…/purescience-not-created-yet`、`tmpdir()` 三处；
+多段缺失时问 5 处且最后一处是 `tmpdir()`；读到的数字**恰好等于**探针给的那份 `bavail * bsize`（不编、不折中）。
+「同一卷同一答案」那半改用同一个探针，于是相等是 walk 的性质而不是磁盘的心情。
+
+变异证明断言仍然活着：把实现里的 `current = parent` 改成跳一级 `dirname(parent)`，新增/改写的两条当场 2 failed；
+恢复后 20 passed。读数为本机实跑：`vitest run src/main/storage/usage.test.ts` **20 passed**、eslint 0 problem、
+双 typecheck 0。

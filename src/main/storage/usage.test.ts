@@ -26,6 +26,30 @@ const writeSized = async (path: string, bytes: number): Promise<void> => {
 // root means the same thing on every platform the suite runs on.
 const volumeRootOf = (path: string): string => parse(resolve(path)).root
 
+// A volume probe that answers for exactly one path and reports ENOENT for everything else, the way statfs
+// answers only for paths that exist. It records every path it was asked about, so a test can assert the
+// shape of the walk instead of comparing two volatile readings of the live volume (free space moves while
+// the suite runs, so that comparison would be an assertion about the machine).
+type ProbeReading = { bavail: number; bsize: number }
+const probeStoppingAt = (
+  existingPath: string,
+  reading: ProbeReading = { bavail: 2048, bsize: 4096 }
+): {
+  paths: string[]
+  reading: ProbeReading
+  statfsOf: (path: string) => Promise<ProbeReading>
+} => {
+  const paths: string[] = []
+  const statfsOf = async (path: string): Promise<ProbeReading> => {
+    paths.push(path)
+    if (path === existingPath) return reading
+    throw Object.assign(new Error(`ENOENT: no such file or directory, statfs '${path}'`), {
+      code: 'ENOENT'
+    })
+  }
+  return { paths, reading, statfsOf }
+}
+
 describe('computeStorageUsage', () => {
   it('sums per-category bytes and gives runtime a sorted children breakdown', async () => {
     await writeSized(join(dataRoot, 'artifacts', 'a.bin'), 100)
@@ -253,24 +277,51 @@ describe('availableBytes', () => {
 
   // The field shape this exists for: a default data root that nothing has written into yet. Free space
   // belongs to the volume, so the answer is the one the nearest existing ancestor gives — not a failure.
+  //
+  // The walk is measured on a probe this test owns rather than twice on the live volume: free space moves
+  // while anything else uses the disk (a CI runner lost 8 KB between two back-to-back readings), so "the
+  // two readings are equal" is an assertion about the machine. What the walk promises is the shape of the
+  // walk — ask from the target upward, stop at the nearest ancestor that answers — and that is checkable.
   it('measures the volume through the nearest existing ancestor when the path does not exist yet', async () => {
     const missing = join(tmpdir(), 'purescience-not-created-yet', 'PureScience')
+    const probe = probeStoppingAt(resolve(tmpdir()))
 
-    const bytes = await availableBytes(missing)
-    const viaAncestor = await availableBytes(tmpdir())
+    const bytes = await availableBytes(missing, { statfsOf: probe.statfsOf })
 
-    expect(Number.isFinite(bytes)).toBe(true)
-    expect(bytes).toBeGreaterThan(0)
-    // Same volume, same answer: the extra path segment must not change the reading.
-    expect(bytes).toBe(viaAncestor)
+    expect(bytes).toBe(probe.reading.bavail * probe.reading.bsize)
+    expect(probe.paths).toEqual([
+      resolve(missing),
+      resolve(join(tmpdir(), 'purescience-not-created-yet')),
+      resolve(tmpdir())
+    ])
+  })
+
+  // Same volume, same answer: the extra path segment must not change the reading. Asserted through the
+  // same owned probe, so the equality is a property of the walk rather than of the disk's mood.
+  it('gives a path that does not exist the reading of the ancestor that does', async () => {
+    const probe = probeStoppingAt(resolve(tmpdir()))
+
+    const viaAncestor = await availableBytes(tmpdir(), { statfsOf: probe.statfsOf })
+    const viaMissing = await availableBytes(join(tmpdir(), 'not-created', 'PureScience'), {
+      statfsOf: probe.statfsOf
+    })
+
+    expect(viaAncestor).toBeGreaterThan(0)
+    expect(viaMissing).toBe(viaAncestor)
   })
 
   it('walks up more than one missing segment and never invents a number', async () => {
     const deep = join(tmpdir(), 'a-missing', 'b-missing', 'c-missing', 'PureScience')
+    const probe = probeStoppingAt(resolve(tmpdir()))
 
-    const bytes = await availableBytes(deep)
+    const bytes = await availableBytes(deep, { statfsOf: probe.statfsOf })
 
-    expect(bytes).toBe(await availableBytes(tmpdir()))
+    // Every segment above the target is missing, so the walk asks about each one and stops at the first
+    // that answers — the temp dir. The number is exactly that answer: nothing is fabricated for the
+    // segments that were not there.
+    expect(probe.paths.length).toBe(5)
+    expect(probe.paths.at(-1)).toBe(resolve(tmpdir()))
+    expect(bytes).toBe(probe.reading.bavail * probe.reading.bsize)
   })
 
   // The honest branch: no ancestor can be read. That must stay an error the caller turns into "no reading",
