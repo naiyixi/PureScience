@@ -115,3 +115,20 @@
 数据根下。两处都改成由宿主决定语义（`node:path` 的 `isAbsolute`/`basename` 与 `shared/local-fs` 的
 `isAbsoluteLocalPath`），PDF 那条收成单一实现 `resolvePdfSourcePath`，两处调用同一份。
 1.3 的其余读数与判据不变；**没有** Windows 真机 ⇒ 该平台上的实际效果只由 Windows 车道证明。
+
+## 4.3 开工单（执行器，2026-11-19 立，未开工）
+
+**为什么还没开工**：开工前置是「`src/shared/ro-crate.ts`、`SettingsPage.tsx`、`i18n/*` 三条干净」，
+2026-11-19 中午这三条里有两条正被并发会话改（`src/shared/ro-crate.ts` 在读侧校验上做 1.x 兼容），
+按排期自己的前置条件不动手。下面是定好型的施工单，下一次拿到干净窗口照单执行。
+
+| 项 | 内容 |
+| --- | --- |
+| 现状读数（已逐行核） | 写入器**早就支持**：`src/main/ro-crate/export.ts` 的 `RoCrateExportInput` 有可选 `creators` / `license` / `publisher`（约 216–223 行），`buildRoCrateMetadata` 空就不写（约 278–280 行，`...(input.creators?.length ? {creators} : {})` 这类展开）。缺口在**导出处理器**：`src/main/ro-crate/ipc.ts` 的 `exportCrate({...})` 只传 `projectId/projectName/description/app/generatedAt`，三个可选分支从不生效 ⇒ 包内没有 `author`、没有 `license`。 |
+| 数据来源 | 应用里没有任何一处记录过用户或机构名 ⇒ 不许编。加 `StoredSettings.crateIdentity?: { authorName?, authorType?（'person' 或 'organization'）, licenseId?, licenseName? }`（`src/main/settings/types.ts`，四个字段全可选，空即不写）。 |
+| 读路径（**不新开通道**） | `settingsService.getSettingsView()` 已经把 `preferences`（`toSettingsPreferencesSnapshot`）交给窗口（`src/main/settings/service.ts:420` 起）——把 crateIdentity 并进那份 preferences 即可，渲染层读它不需要任何新命令。 |
+| 写路径（**只开一条**） | 新增一条 `settings:set-crate-identity`（契约目录 `src/main/settings/application-commands.ts` + `web-api-map.generated.ts` 生成物 + preload 实现与 d.ts + 组合根登记与三处计数 + 其余计数 pin），按 8 处清单逐一登记；能并进既有命令就不新开，但既有命令集里没有通用 setter（`settings:set-memory` 一类都是专用命令）。 |
+| 注入点 | `src/main/ipc.ts:3790-3810` 的 `createRoCrateExportOwner({...})` 里加 `loadExportIdentity: () => settingsService.getCrateIdentity()`（`settingsService` 在该作用域内已在用，652 行组装）；`src/main/ro-crate/ipc.ts` 的 `RoCrateExportOwnerDeps` 加同名可选依赖，缺省 = 不传（旧行为逐字不变）。 |
+| 界面 | 设置页一个「导出身份」小节：作者/机构名（文本）+ 类型（个人/机构二选一）+ 默认许可（SPDX 标识符文本，如 `CC-BY-4.0`；`name` 不猜，缺省与 id 同字）。放在离导出最近的面板里，新文案 5–6 键 × 9 语（zh 值不得等于 en，跑 translation-quality）。 |
+| 验收判据（三条，缺一不算完） | ① **没设过** ⇒ crate 里这两个字段**不存在**（不是空串、不是 `null`，且既有断言逐条不动）；② 设置成「某机构 + CC-BY-4.0」后导出 ⇒ `rocrate` 与 `pyld` 两个第三方读者**都**读出非空的 `author`/`license`；③ 改设置再导出 ⇒ 新包逐字反映新值，旧包不变。真机证据落 `docs/evidence/`。 |
+| 边界 | 不写 `publisher`（那是软件方，等同 `app`，本轮不碰）；不做「按项目覆盖」；不做许可校验（不认识的标识符照写并原样显示，不猜它是不是合法 SPDX）。 |

@@ -748,8 +748,13 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
    正文 13,535 字节、mac 未签名已披露，并写明首发 `f690b85a` 那次 run 是 failure、已删 tag 重建。
 2. ~~**R2-U4 三种具名拒绝的真机读数**~~ ✅ **已复核并归档（会话，v1.81.0 的 V7）**：结论是这三条**不是"该取未取的读数"，而是"单窗口按当前 UI 合法到达不了的状态"**——`self-merge` 被 UI 在 store 之前挡住（本轮已读到 `confirmDisabled` 真值）；`alias-conflict` 需要"目标名已是别刊别名"，而别名一旦写成，按该名再导入会解析回原刊、造不出第二个刊；`source/target-not-found` 需要**第二个行为者**并发删并。三条现由 jsdom 驱动（`render.test.tsx:277/:349/:250`）+ 具名理由，从"未取"挂账移出。证据 `docs/evidence/2026-10-03-r2-u4-journal-alias-merge.md` §5。
 3. ~~**同日多指标不许静默取一条**~~ ✅ **已交付（会话，v1.81.0 的 V11 / IC1）**：`selectClaimWithAlternatives()` + 面板并列打印 + 冲突徽标；真机读数 `docs/evidence/2026-10-03-journal-metric-conflict.md`（4 passed / 32.9s，**含原发现场景「别名合并」那一条也变成两个值**）。口径：合并后同一 kind+同年份有两条主张时，视图并列显示（各带 source）或显式标冲突；**不许静默挑一条**。
-4. **egress 拦截卡"等满 60 秒"的端到端复现**：修复已完成（到点自动撤卡 + 应答失败不再静默），
-   但"真窗口里等满 60 秒"的读数**未取**，做法同第 2 条。
+4. ~~**egress 拦截卡"等满 60 秒"的端到端复现**~~ ✅ **读数早已取到（本条原写「未取」是一处陈旧记录，2026-11-19 就地更正）**：
+   规格 `e2e/certification/egress-approval-countdown.spec.ts`（`db06590c`，2026-10-07）做的正是这件事 —— 真线程里等过 proxy 自己的 deadline
+   （60s），断言卡面先活倒计时、到点后只剩一句具名解释且**没有按钮可点**。包装车道上的当次读数（Nightly run `44400110168`，
+   job `135156671837` 的「Run P0 Electron certification」= success / **123 passed (39.4m)**）：
+   `[ic33] the countdown reads: "expires in 60s"` → `"expires in 59s"` → 过点后
+   `"This request expired before it was answered — the proxy refused it, and the notebook's own output names the failure."`，
+   `countdown slots left: 0; buttons in the expired card: 0`。**没有要补的活**，不要再写一支等 60 秒的 spec。
 5. ~~**`--primary-foreground` 对比度实测**~~ ✅ **已实测（会话，v1.81.0 的 V9 / IC4）：判定不达标**。真机读数：`--primary` 画成 `rgb(77,107,254)`、前景 `rgb(248,250,254)`、真实 CTA 16px/400 ⇒ 正文门槛 4.5，**实测 4.144:1**；**且前景色换纯白也只有 4.330:1**（该背景天花板）⇒ 原定「微调前景色」这条修法**不可行**，已改立**拍板项**（加深 `--primary` 到 `oklch(0.56 …)`=4.721:1，或接受并记录）。证据 `docs/evidence/2026-10-03-primary-contrast.md`。
 6. ~~**`acp:state` 渲染器 ack**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V15）**：结论是**这条旧立案问错了问题**——通道是活的（`acp.onState` 三处订阅），ack 要解决的「渲染器把缺席当回收」已由 `runtime-event-live-set.ts` 的累积语义从另一侧解决；收益（该通道 52KB→15KB/三回合）改写成一条**有守卫的优化项**（守卫=`interrupted-turn-continuation.spec.ts`），不新做 ack 协议。
 7. ~~**`timeoutMs` 含冷启动**~~ ✅ **已定位并给出结论（会话，v1.81.0 的 V10）：已修，且比老账要求更细**。**先更正老账的地址**——那两个文件**没被删，只是搬到了 `src/main/notebook/`**（老账按 `src/main/agents/` 找才误判"已不在树上"）。现址：`arm(budget)` 先按 `budget + startupGraceMs(30s)` 计时，循环回报开始时 `markStarted()` 换成纯语义预算；`executing` 分辨"超预算"与"根本没启动"并给具名原因；单测在 `kernel-executor.test.ts` 的 `describe('TimeoutController')`。
