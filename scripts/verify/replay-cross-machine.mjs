@@ -33,12 +33,17 @@ const INPUT_FILES = ['analysis.py', 'measurements.csv']
 const OUTPUT_FILES = ['summary.csv', 'counts.json']
 /** 记录格式自己的版本，不跟应用版本走：这个 recipe 记录的是这段分析，不是某次发版。 */
 const RECIPE_APP_VERSION = 'replay-drill@1'
+/**
+ * Windows runner 上解释器叫 `python`，POSIX 上是 `python3` —— 这不是「差不多」，是命令名真的不同，
+ * 所以按平台取，并允许用环境变量覆盖（CI 里各平台各给一个值，读数是同一个 recipe）。
+ */
+const PYTHON = process.env.PS_DRILL_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3')
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex')
 
 const runPython = (cwd) =>
   new Promise((resolve) => {
-    execFile('python3', ['analysis.py'], { cwd, timeout: 120_000 }, (error, stdout, stderr) => {
+    execFile(PYTHON, ['analysis.py'], { cwd, timeout: 120_000 }, (error, stdout, stderr) => {
       resolve({ exitCode: error ? (error.code ?? 1) : 0, stdout, stderr })
     })
   })
@@ -89,7 +94,7 @@ const record = async () => {
       environmentLockRef: `python3 ${(
         await import('node:child_process')
       )
-        .execSync('python3 --version')
+        .execSync(`${PYTHON} --version`)
         .toString()
         .trim()
         .replace(/^Python\s+/u, '')}`
@@ -123,7 +128,7 @@ const replay = async () => {
         verdict: 'unverifiable',
         reason: `analysis failed on this machine: ${execution.stderr || execution.stdout}`,
         platform: `${process.platform}-${process.arch}`,
-        python: (await import('node:child_process')).execSync('python3 --version').toString().trim()
+        python: (await import('node:child_process')).execSync(`${PYTHON} --version`).toString().trim()
       }
     }
     const outputs = await readOutputs(workspace)
@@ -144,7 +149,7 @@ const replay = async () => {
     )
 
     const python = (await import('node:child_process'))
-      .execSync('python3 --version')
+      .execSync(`${PYTHON} --version`)
       .toString()
       .trim()
     return {

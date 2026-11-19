@@ -1,8 +1,8 @@
-# 4.1 跨机重放：记录在开发机（macOS arm64）上封存，重放与判定在干净的 Linux runner 上做。
+# 4.1 跨机重放：记录在开发机（macOS arm64）上封存，重放与判定在两台干净的 runner 上做
+# （Linux x64 与 Windows x64）—— 判据要的是「另一台机器」，多一个平台就多一份读数。
 #
-# 这条工作流存在的理由只有一个：判据「同一份记录在干净机器重放成功」需要第二台机器，
-# 本机取不到。它跑的是产品自己的 compareReplayOutputs，不是演练脚本自带的比较逻辑；
-# 同时跑反向对照（改掉一个 digest 必须判 differs），避免「比对恒真」冒充通过。
+# 跑的是产品自己的 compareReplayOutputs，不是演练脚本自带的比较逻辑；同时跑反向对照
+# （改掉一个 digest 必须判 differs），避免「比对恒真」冒充通过。
 name: Replay cross-machine
 
 on:
@@ -24,9 +24,23 @@ on:
 
 jobs:
   replay:
-    name: replay on a clean runner
-    runs-on: ubuntu-latest
+    name: replay on ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            python: python3
+          - runner: windows-latest
+            # Windows runner 上解释器叫 python，不是 python3；读数是同一个 recipe。
+            python: python
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      PS_DRILL_PYTHON: ${{ matrix.python }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,17 +50,16 @@ jobs:
 
       - name: Show the machine the replay runs on
         run: |
-          uname -a
+          uname -a || true
           node --version
-          python3 --version
+          "$PS_DRILL_PYTHON" --version
 
-      # 一次运行、同时留读数：pipefail 让判定失败照样红（退出码不被 tee 吞掉），
-      # 读数文件只在重放**之前**的输入不成立时才会缺失。
+      # 一次运行、同时留读数：pipefail 让判定失败照样红（退出码不被 tee 吞掉）。
       - name: Replay the sealed record and judge it
         run: node --experimental-strip-types scripts/verify/replay-cross-machine.mjs replay | tee replay-reading.json
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: replay-reading
+          name: replay-reading-${{ matrix.runner }}
           path: replay-reading.json
