@@ -1,5 +1,53 @@
 # PureScience 更新日记
 
+## v2.31.0 — 2026-11-19
+
+### 导入的 crate 会被读，导出的 crate 会说清是谁做的
+
+本版把「可复现、可核验」这一侧补齐了三处，都是**读数先行**的补法，不是先写功能后找理由。
+
+| 单元           | 之前                                                                                                         | 现在                                                                                                                                                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 隔离重放   | 记录与比对都在，但「同一份记录在**另一台**机器重放成功」这条判据没取到，只能标 UNVERIFIED                    | 一份在 macOS arm64（Python 3.9.6）封存的记录，在**干净的 Linux x64（Python 3.14.4）与 Windows Server 2025 x64（Python 3.12.10）** runner 上重放，产品自己的 `compareReplayOutputs` 判 **`reproduced`**，两个输出逐字节 `match`；反向对照（改掉一个 digest）必须判 **`differs`** |
+| 4.2 外部读校验 | 读取器只枚举 `files/`——那是我们写入器的约定，RO-Crate 并没有规定载荷目录                                     | 载荷集合改成 crate 根下真实存在的文件（排除元数据文件、不跟随符号链接），别人的包（profile 1.3、数据在 `data/`）能被读到并真校验字节；越界读取的守卫不放宽                                                                                                                      |
+| 4.3 作者与许可 | 写入器支持 `author`/`license`，但导出处理器从不传，设置里也没有来源 ⇒ 第三方读者给出 `root_has_author=false` | 设置「通用」页加「作者/机构」「默认导出许可」两栏（九语）→ `settings:set-export-author` / `set-export-license` → 导出时逐字写入 crate。**没设过就两个键都不写**，不写空串、不猜默认许可证                                                                                       |
+
+「比不了」与「不一致」在本版被系统地分开：没有 sha256 的记录不再同时被报成 mismatch（那是
+`file-sha256-recorded` 该说的话），没有 `contentSize` 的同理，`@context` / `conformsTo` 接受任何 1.x profile
+（参考实现已经在写 1.3）——把别人的包判成坏包，是我们的读取器窄，不是他们的包错。
+
+### 校对轮不再自造 prompt id
+
+校对轮没有自己的 Prompt（文本由应用注入，不落 User 消息），此前用 `prompt-<uuid>` 充当归属锚。那个 id
+从不在分支上，归属证明按 `prompt-not-owned` **终端拒绝**——校对期间产出的每个文件都丢了，轮次以
+「Generated file finalization failed」收尾（线上 12 次拒绝，一个会话卡在错误态带 5 个被拒版本）。
+现在锚在会话自己的持久 Prompt 上（与后台投递同一条 `resolveInheritablePromptContext`），拿不到锚时明确
+记一条 warn：不让「没有产物」和「有产物但被拒」长得一样。
+
+### agent 可以直接写出 PPTX
+
+新增 `create_presentation` 工具：写进与 `write_artifact_file` 同一个目录，后续按文件名即可挂到本次运行上，
+不需要再从环境变量解析一次路径；文件名走既有校验，用 `wx` 打开——应用绝不覆盖用户可能正在用的文件。
+
+### 真机与第三方读数
+
+- 第三方读物：`rocrate 0.16.0`（ELIXIR 参考实现）与 `pyld 3.3.0`（通用 JSON-LD 处理器）各读一次真包，
+  `author`/`license` 都非空且引用零悬空；没填的包里两个读者都读不到这两个字段。
+  `docs/evidence/2026-11-19-ro-crate-attribution.md`
+- 跨机重放：run `44523950998`（Linux）与 `44524689535`（Linux + Windows）均 success。
+  `docs/evidence/2026-11-19-replay-cross-machine.md`
+- 外部读校验：`docs/evidence/2026-11-18-ro-crate-third-party-read.md`
+
+### 不在本版
+
+- 跨机重放覆盖的是**被封存的一段分析**（固定输入 → 定长输出），不是应用内一次完整 notebook 会话在 CI
+  runner 上重跑——那需要把应用与 kernel 装进 runner，本版没做。
+- 第三方读者只覆盖两个实现，没有跑官方 validator 的完整 profile 校验。
+- 作者一律按 `Person` 写：用户填的是机构名时，语义上更接近 `Organization`；这一轮不猜，留给选择作者类型
+  的那一版。
+- 许可栏是自由文本：填 `CC BY 4.0` 时 `pyld` 展开得到含空格的非法 IRI（`rocrate` 仍能读出）；填 SPDX URL
+  就干净。界面占位符给了两种写法，但不替用户改写——猜错许可证比缺许可证严重。
+
 ## v2.30.2 — 2026-11-18
 
 ### 修回一次没发出去的发布（v2.30.1 已撤）
@@ -10,11 +58,11 @@ v2.30.1 的 Release 在 `build / Verify` 就失败了，四平台 build、签名
 
 ### 主进程的拒绝句：读者看到的是自己语言里那句话
 
-| 读者在表单里敲 | 主进程回的话（英文，带引号） | 之前屏幕上 | 现在（简体中文） |
-|---|---|---|---|
-| `arxiv` | `Connector name "arxiv" is reserved by a built-in connector` | 那句英文，连 Electron 的 invoke 信封一起 | 连接器名称「arxiv」与内置连接器保留的名称冲突 |
-| `arxiv`（ID 撞车） | `Connector ID "arxiv" is reserved by a built-in connector` | 同上 | 连接器 ID「arxiv」为内置连接器保留，不能使用 |
-| `my-tools` | `A custom connector with ID "my-tools" already exists` | 同上 | 已存在 ID 为「my-tools」的自定义连接器 |
+| 读者在表单里敲     | 主进程回的话（英文，带引号）                                 | 之前屏幕上                               | 现在（简体中文）                              |
+| ------------------ | ------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------- |
+| `arxiv`            | `Connector name "arxiv" is reserved by a built-in connector` | 那句英文，连 Electron 的 invoke 信封一起 | 连接器名称「arxiv」与内置连接器保留的名称冲突 |
+| `arxiv`（ID 撞车） | `Connector ID "arxiv" is reserved by a built-in connector`   | 同上                                     | 连接器 ID「arxiv」为内置连接器保留，不能使用  |
+| `my-tools`         | `A custom connector with ID "my-tools" already exists`       | 同上                                     | 已存在 ID 为「my-tools」的自定义连接器        |
 
 4 条逐字句子直接对上字典键；6 条「句子中间夹着读者自己输入的名字 / ID」按模板处理：每个模板只捕获
 **一个**引号值、首尾锚定，所以近失句（多一个括号、首字母小写、没引号）原样留给读者，不被半翻。
