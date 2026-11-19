@@ -502,7 +502,33 @@ Quick Look 的缩略图人工看过：黑色大标题「国产大模型评测方
 
 `qlmanage` 在输出目录不存在时**照样返回成功、什么都不写**，第一次因此把「能预览」误读成「不能预览」；修法是在调用前 `mkdir -p`，并把「产出缩略图」而不是「退出码 0」作为判据。
 
-## 二十四、仍未做的
+## 二十四、外部客户端看进度与定时任务（1.4）
+
+两个只读工具，都复用已有命令（`sessions:list-catalog`、`routine:list-all`），**没有新开 IPC 通道**——白名单 9→10。
+
+### 实机读数（隔离实例）
+
+```
+mcp --list-tools              12 个工具，含 session_activity / list_schedules
+启动清单认证                   无 "expected N external MCP commands" 报错
+/rpc/routine:upsert           建成真定时任务（每 30 分钟，"活动验收定时任务"）
+list_schedules                total 1  enabled 1  paused 0  everyMinutes 30  nextDue 有值  tickCount 0
+session_activity 跑前          total 1  running 0  status idle  messages 11
+session_activity 跑中/跑后     status idle → error → idle，messages 11 → 13
+```
+
+### 一条没能实机证明的事（如实写）
+
+**`running` 这一刻没观察到**。隔离根没有可用模型凭证（dev 构建拿不到钥匙串密钥），run 在建连阶段就落 `error`，所以客户端只看到 `idle → error → idle`。我试过把会话文档里的 `status` 改成 `running` 再读，工具仍返回 `error`——说明 catalog 的状态来自 app 运行时判定，不是文件字段，这条路造不出来。判据里的「进行中」目前只有单测层面的映射证明：catalog 报 `running` → 工具上报 `running: 1`，且不混入别的项目的会话。
+
+「完成」与「失败」两种状态是实机证明的，且工具不会把失败伪装成空闲。
+
+### 顺带修掉的两个实现坑
+
+- 工具表追加时 `rindex('])')` 命中了 `reference.authors ?? []` 里的括号，两个新工具被塞进了 `referenceRow` 内部；表现是 `unknown-tool` 和 `TS1005`。教训：往冻结数组里加条目要锚定唯一注释，不能锚定括号。
+- 测试里 catalog fixture 是模块常量，`status: catalogBusy ? …` 在加载时就被烤死，永远看不到 `running`；改为 router 每次调用时套用标志。
+
+## 二十五、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

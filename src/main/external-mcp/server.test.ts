@@ -55,6 +55,8 @@ const projects = [
   { id: 'p2', name: 'Beta', description: 'second library' }
 ]
 
+// Lets one case make the session catalog report a live turn, which is what `session_activity` reads.
+let catalogBusy = false
 const catalog = {
   sessions: [
     {
@@ -138,6 +140,40 @@ const freshReferences = (): FakeReference[] => [
     citationKey: 'Wilding2021'
   }
 ]
+// One schedule that is firing normally and one that auto-paused on repeated failures: the second is the case
+// that must not look idle to an outside client.
+const routines = [
+  {
+    id: 'job-ok',
+    sessionId: 's1',
+    label: '每晚汇总',
+    instruction: '汇总今天的新文献',
+    everyMinutes: 1440,
+    enabled: true,
+    nextDue: 1_800_000_000_000,
+    lastFireAt: 1_799_913_600_000,
+    lastOkAt: 1_799_913_600_000,
+    tickCount: 12,
+    missedTicks: 0,
+    pausedReason: null,
+    lastResults: [{ at: 1_799_913_600_000, ok: true }]
+  },
+  {
+    id: 'job-paused',
+    sessionId: 's1',
+    label: '抓取任务',
+    instruction: '抓取最新预印本',
+    everyMinutes: 60,
+    enabled: false,
+    nextDue: null,
+    lastFireAt: 1_799_000_000_000,
+    lastOkAt: null,
+    tickCount: 3,
+    missedTicks: 6,
+    pausedReason: 'idle-streak',
+    lastResults: [{ at: 1_799_000_000_000, ok: false }]
+  }
+]
 const references: FakeReference[] = freshReferences()
 // Lets one case make the command answer `duplicate`, which is the service's own verdict and must reach the
 // client as a refusal rather than as a write that appears to have happened.
@@ -146,6 +182,7 @@ let commandSaysDuplicate = false
 beforeEach(() => {
   references.splice(0, references.length, ...freshReferences())
   commandSaysDuplicate = false
+  catalogBusy = false
 })
 
 const fakeInvoke = (): ExternalMcpInvoke & {
@@ -159,7 +196,6 @@ const fakeInvoke = (): ExternalMcpInvoke & {
   }): Promise<unknown> => {
     calls.push({ commandName: input.commandName, args: input.args })
     if (input.commandName === 'projects:list') return projects
-    if (input.commandName === 'sessions:list-catalog') return catalog
     if (input.commandName === 'sessions:read-document') {
       const requested = (input.args[0] as { sessionId?: string } | undefined)?.sessionId ?? ''
       const document = documents[requested]
@@ -168,6 +204,18 @@ const fakeInvoke = (): ExternalMcpInvoke & {
     }
     if (input.commandName === 'artifacts:list-project-files') {
       return [{ id: 'f1', kind: 'file', name: 'notes.md', path: '/tmp/a/notes.md' }]
+    }
+    if (input.commandName === 'sessions:list-catalog') {
+      // Applied per call: the catalog fixture is a module constant, so reading the flag at load time would
+      // freeze the status and a test could never observe a turn start.
+      return {
+        sessions: catalog.sessions.map((session) =>
+          session.id === 's1' && catalogBusy ? { ...session, status: 'running' } : session
+        )
+      }
+    }
+    if (input.commandName === 'routine:list-all') {
+      return routines
     }
     if (input.commandName === 'references:list') {
       const projectId = String(input.args[0] ?? '')
@@ -682,6 +730,65 @@ describe('external MCP logging', () => {
     }
     // The token is a secret: it must never appear in a log payload.
     expect(JSON.stringify(calls)).not.toContain(token)
+  })
+
+  const connectTo = async (
+    requestApproval?: ExternalMcpRequestApproval
+  ): Promise<Awaited<ReturnType<typeof connect>>> => {
+    const { endpoint, token } = await startServer(fakeInvoke(), requestApproval)
+    return connect(endpoint, token)
+  }
+
+  describe('activity and schedules', () => {
+    it('reports a conversation as running while a turn is in flight, and counts it', async () => {
+      const client = await connectTo()
+      const idle = textOf(
+        await client.callTool({ name: 'session_activity', arguments: { project: 'Alpha' } })
+      ) as { total: number; running: number; sessions: { id: string; status: string }[] }
+      expect(idle.total).toBe(1)
+      expect(idle.running).toBe(0)
+
+      // The catalog is the app's own live state; make it say what it says mid-turn.
+      catalogBusy = true
+      const busy = textOf(
+        await client.callTool({ name: 'session_activity', arguments: { project: 'Alpha' } })
+      ) as { total: number; running: number; sessions: { id: string; status: string }[] }
+      expect(busy.running).toBe(1)
+      expect(busy.sessions[0]?.status).toBe('running')
+
+      // Another project's conversations stay out of the answer.
+      const other = textOf(
+        await client.callTool({ name: 'session_activity', arguments: { project: 'Beta' } })
+      ) as { sessions: { id: string }[] }
+      expect(other.sessions.map((session) => session.id)).toEqual(['s2'])
+    })
+
+    it('lists schedules with the paused one distinguishable from the idle one', async () => {
+      const client = await connectTo()
+      const payload = textOf(await client.callTool({ name: 'list_schedules', arguments: {} })) as {
+        total: number
+        enabled: number
+        paused: number
+        schedules: {
+          id: string
+          enabled: boolean
+          pausedReason: string | null
+          missedTicks: number
+          lastOkAt: number | null
+          lastResults: unknown[]
+        }[]
+      }
+      expect(payload).toMatchObject({ total: 2, enabled: 1, paused: 1 })
+      const paused = payload.schedules.find((schedule) => schedule.id === 'job-paused')
+      // The point of the tool: a stalled schedule says why, instead of looking like one with nothing to do.
+      expect(paused).toMatchObject({
+        enabled: false,
+        pausedReason: 'idle-streak',
+        missedTicks: 6,
+        lastOkAt: null
+      })
+      expect(paused?.lastResults).toHaveLength(1)
+    })
   })
 
   describe('library', () => {

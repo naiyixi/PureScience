@@ -32,6 +32,8 @@ export type ExternalMcpToolId =
   | 'add_reference'
   | 'set_reference_notes'
   | 'remove_reference'
+  | 'session_activity'
+  | 'list_schedules'
 
 // `read` touches nothing. `write` changes what the app holds, so it must pass the approval card first —
 // the dispatch path branches on this value, and a write slipping into the read branch would perform an
@@ -320,6 +322,48 @@ const EXTERNAL_MCP_TOOLS: readonly ExternalMcpTool[] = Object.freeze([
     }),
     risk: 'write' as const,
     command: 'references:remove'
+  }),
+  Object.freeze({
+    id: 'session_activity' as const,
+    title: 'See what is running',
+    description:
+      'Report each conversation in a project with its live state: `running` while an agent turn is in ' +
+      'flight, otherwise the state the conversation settled into, plus message count and last update. This ' +
+      'is the read a client polls to tell “still working” from “finished” instead of guessing from silence.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        project: Object.freeze({
+          type: 'string',
+          description: 'Project id from list_projects, or its exact name'
+        }),
+        limit: Object.freeze({
+          type: 'integer',
+          minimum: 1,
+          maximum: 200,
+          description: 'Maximum conversations to return (default 25), most recently updated first'
+        })
+      }),
+      required: Object.freeze(['project']),
+      additionalProperties: false as const
+    }),
+    risk: 'read' as const,
+    command: 'sessions:list-catalog'
+  }),
+  Object.freeze({
+    id: 'list_schedules' as const,
+    title: 'List scheduled routines',
+    description:
+      'List the routines this machine runs on a timer: interval, enabled/paused state with the reason, next ' +
+      'due time, tick count, missed ticks and the most recent tick results. A routine whose ticks failed ' +
+      'says so here rather than looking idle.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({}),
+      additionalProperties: false as const
+    }),
+    risk: 'read' as const,
+    command: 'routine:list-all'
   })
 ])
 

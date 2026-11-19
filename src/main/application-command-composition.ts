@@ -286,10 +286,11 @@ const TASK_COMMAND_COUNT = 15
 // with the tool table in `external-mcp/surface.ts`; this count certifies that adding a tool to the surface
 // also reaches the boot-time inventory check instead of silently widening the reachable set. Five since the
 // write tool (`archive_session`) joined the four reads — the write is the one the approval gate covers.
-// Nine since the library joined: five reads (projects, sessions, session document, project files, library
-// search/get which share `references:list`) and four writes (`archive_session`, `add_reference`,
-// `set_reference_notes`, `remove_reference`). Distinct commands, so `references:list` counts once.
-const EXTERNAL_MCP_COMMAND_COUNT = 9
+// Ten since activity/schedules joined: six reads (projects, sessions, session document, project files,
+// library search/get which share `references:list`, session activity which reuses `sessions:list-catalog`,
+// and routines) and four writes (`archive_session`, `add_reference`, `set_reference_notes`,
+// `remove_reference`). Distinct commands, so `references:list` and `sessions:list-catalog` each count once.
+const EXTERNAL_MCP_COMMAND_COUNT = 10
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',

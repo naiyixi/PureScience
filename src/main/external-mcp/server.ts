@@ -354,6 +354,69 @@ const createReadHandlers = (invoke: ExternalMcpInvoke): Record<ReadToolId, ToolH
         )
       }
       return { projectId: project.id, reference: match }
+    },
+
+    // What an outside client polls to tell "still working" from "finished". The catalog already carries the
+    // live state of each conversation, so this reports it rather than inventing a progress percentage the
+    // app does not have.
+    session_activity: async ({ clientId, args }) => {
+      const project = await resolveProject(clientId, requiredString(args, 'project'))
+      const limit = optionalPositiveInteger(args, 'limit') ?? DEFAULT_REFERENCE_LIMIT
+      const catalog = (await invoke({
+        clientId,
+        commandName: 'sessions:list-catalog',
+        args: []
+      })) as SessionCatalogResult
+      const rows = (catalog.sessions ?? [])
+        .filter((session) => session.projectId === project.id)
+        .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      const running = rows.filter((session) => session.status === 'running').length
+      return {
+        projectId: project.id,
+        total: rows.length,
+        // Said out loud: a client that polls and sees `running: 0` should be able to conclude the work
+        // finished rather than waiting for a signal that will never come.
+        running,
+        returned: Math.min(rows.length, limit),
+        truncated: rows.length > limit,
+        sessions: rows.slice(0, limit).map((session) => ({
+          id: session.id,
+          title: session.title,
+          status: session.status,
+          messageCount: session.messageCount ?? 0,
+          updatedAt: session.updatedAt
+        }))
+      }
+    },
+
+    // Routines are the half of "long work" a client cannot see from a conversation: a schedule that stopped
+    // firing looks exactly like one with nothing to do, so the paused reason and failure counts come along.
+    list_schedules: async ({ clientId }) => {
+      const schedules = (await invoke({
+        clientId,
+        commandName: 'routine:list-all',
+        args: []
+      })) as readonly Record<string, unknown>[]
+      return {
+        total: schedules.length,
+        enabled: schedules.filter((schedule) => schedule.enabled === true).length,
+        paused: schedules.filter((schedule) => schedule.enabled !== true).length,
+        schedules: schedules.map((schedule) => ({
+          id: schedule.id,
+          sessionId: schedule.sessionId,
+          label: schedule.label ?? null,
+          instruction: schedule.instruction,
+          everyMinutes: schedule.everyMinutes,
+          enabled: schedule.enabled === true,
+          nextDue: schedule.nextDue ?? null,
+          lastFireAt: schedule.lastFireAt ?? null,
+          lastOkAt: schedule.lastOkAt ?? null,
+          tickCount: schedule.tickCount ?? 0,
+          missedTicks: schedule.missedTicks ?? 0,
+          pausedReason: schedule.pausedReason ?? null,
+          lastResults: Array.isArray(schedule.lastResults) ? schedule.lastResults.slice(0, 5) : []
+        }))
+      }
     }
   }
 }
