@@ -625,7 +625,39 @@ node scripts/localize-skills.mjs
 
 本轮没有动技能正文。2.3 要求「只翻译流程描述、不改原作者署名」，抽查 20 个包的中文可读性与署名完整——那是一次跨 234 个文件的内容改动，与引入分开做更安全（引入是字节级复制，改动是逐字判断）。已立案到下一轮。
 
-## 二十七、仍未做的
+## 二十七、Windows 真机安装验收（3.1 / 3.2）
+
+### 做法
+
+`.github/workflows/windows-install-verify.yml` + `scripts/verify/windows-install-verify.ps1`，在 **`windows-latest`（真 Windows 11 x64）** 上跑完整链路：下载两个已发布版本的 `win-x64-setup.exe` → 静默安装 → 用 `--purescience-headless --serve=<port>` 起装好的二进制 → 读它自己的 `/api/v1/readiness` 与 `/api/v1/runtimes`（与设置窗口、`purescience ready` 同一份判定）→ 把某个运行时的可执行文件挪走 → 同版本覆盖安装（用户点的「一键重装」）→ 升到下一个版本。逐步落 JSON，任一断言不成立即非零退出。
+
+### 实机读数（[run 44463864051](https://github.com/naiyixi/PureScience/actions/runs/44463864051)，evidence 在 `docs/evidence/windows-install-verify/`）
+
+```
+✓ installed-launcher-exists      productVersion 2.29.0.0  (…\ps-winverify\app\purescience.exe)
+✓ reads-readiness-and-runtimes   runtimes 6 条（runnable 5）；readiness: system/storage/secure-storage/install-network/python = passed，agent = failed+4 warning，backend = warning
+✓ broken-runtime-is-detected     6 条 5 runnable → 5 条 4 runnable（disappearedFromList: true）
+✓ repair-restores-runtimes       重装后回到 6 条 5 runnable
+✓ upgrade-changes-version        2.29.0.0 → 2.30.2.0
+✓ upgrade-keeps-runtimes         升级后仍 6 条 5 runnable
+```
+
+### 两个必须说清的偏差
+
+1. **没有截图。** CI runner 跑在服务会话里，截不到可靠桌面画面。3.1 原文写「成/败各一张截图」，这里换成「装完的二进制真的起来 + 它自己的读数 + 退出码」，证据是 JSON 与日志。要看界面截图需要一台真机或本地虚拟机（见文末）。
+2. **`agent = failed` 是预期的**：隔离根里没有模型凭证，agent 那一项本来就该报失败——这恰好证明 readiness 不是一律绿的装饰品。真正相关的 `python` 检查在破坏前后都报 `passed`，见下条缺口。
+
+### 抓到的真问题（不是脚本 bug，是产品缺口）
+
+把 `python.exe` 挪走之后，`/api/v1/runtimes` **少了一条**（6→5），但 readiness 的 `python` 检查**仍然 `passed`**。也就是说：用户看到的是「运行时列表里少了一条」，没有任何一句话告诉他「某个已登记的 Python 不见了」。3.2 的「失败点名机制」目前只覆盖安装失败，**没有覆盖运行时被删/被损坏**。已立案到 3.2 的下一轮（修法方向：运行时 survey 保留「登记过但找不到」的条目并标 `runnable:false` + 原因，readiness 据此点名）。
+
+判据最初的写法（「同一条必须变 runnable=false」）在这台机器上判了红——那不是产品错，是**判据没对齐真相**。改成「按 envId 不在列表或仍在但不可运行都算察觉」并在落档里写清是哪一种，才是有信息量的红与绿。
+
+### 本地虚拟机可行吗（回答提问）
+
+技术上可以，但不是首选：本机是 Apple M2 / macOS 27，装 UTM + Windows 11 **ARM64** 才行，x64 的 Electron 与 NSIS 包要靠 Windows 的 x64 仿真跑；还需要 ~30–40 GB 磁盘（当前可用 46 GB）与一份授权。收益是能出真截图；代价是首次要拉 5–6 GB 镜像、仿真下 Electron 只能软件渲染、稳定性不如原机。CI 的 `windows-latest` 本来就是真 Windows x64、免费、可重复，所以先用它把「装/坏/修/升」钉死；要截图时再上虚拟机或真机。
+
+## 二十八、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

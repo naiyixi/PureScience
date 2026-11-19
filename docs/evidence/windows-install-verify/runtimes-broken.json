@@ -1,0 +1,59 @@
+{
+  "data": {
+    "python": [
+      {
+        "language": "python",
+        "provenance": "user-own",
+        "registration": "system",
+        "envId": "C:\\hostedtoolcache\\windows\\Python\\3.15.2\\x64\\python.exe",
+        "interpreterPath": "C:\\hostedtoolcache\\windows\\Python\\3.15.2\\x64\\python.exe",
+        "label": "C:\\hostedtoolcache\\windows\\Python\\3.15.2\\x64\\python.exe",
+        "version": "3.15.2",
+        "runnable": true
+      },
+      {
+        "language": "python",
+        "provenance": "user-own",
+        "registration": "system",
+        "envId": "C:\\hostedtoolcache\\windows\\Python\\3.14.10\\x64\\python.exe",
+        "interpreterPath": "C:\\hostedtoolcache\\windows\\Python\\3.14.10\\x64\\python.exe",
+        "label": "C:\\hostedtoolcache\\windows\\Python\\3.14.10\\x64\\python.exe",
+        "version": "3.14.10",
+        "runnable": true
+      },
+      {
+        "language": "python",
+        "provenance": "user-own",
+        "registration": "system",
+        "envId": "C:\\hostedtoolcache\\windows\\Python\\3.13.17\\x64\\python.exe",
+        "interpreterPath": "C:\\hostedtoolcache\\windows\\Python\\3.13.17\\x64\\python.exe",
+        "label": "C:\\hostedtoolcache\\windows\\Python\\3.13.17\\x64\\python.exe",
+        "version": "3.13.17",
+        "runnable": true
+      },
+      {
+        "language": "python",
+        "provenance": "user-own",
+        "registration": "system",
+        "envId": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+        "interpreterPath": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+        "label": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+        "version": "3.11.9",
+        "runnable": true
+      }
+    ],
+    "r": [
+      {
+        "language": "r",
+        "provenance": "user-own",
+        "registration": "system",
+        "envId": "C:\\Program Files\\R\\R-4.6.2\\bin\\x64\\R.exe",
+        "interpreterPath": "C:\\Program Files\\R\\R-4.6.2\\bin\\x64\\R.exe",
+        "label": "C:\\Program Files\\R\\R-4.6.2\\bin\\x64\\R.exe",
+        "version": "4.6.2",
+        "runnable": false,
+        "detail": "Needs jsonlite"
+      }
+    ]
+  }
+}

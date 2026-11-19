@@ -1,0 +1,88 @@
+{
+  "data": {
+    "checkedAt": 1795065409815,
+    "platform": "win32",
+    "architecture": "x64",
+    "checks": [
+      {
+        "id": "system",
+        "label": "System compatibility",
+        "status": "passed",
+        "summary": "Windows x64 is supported.",
+        "detail": "Automatic setup uses an app-managed runtime and does not require administrator access."
+      },
+      {
+        "id": "storage",
+        "label": "App storage permission",
+        "status": "passed",
+        "summary": "PureScience can write to its private data folder.",
+        "detail": "D:\\a\\_temp\\ps-winverify\\e2e"
+      },
+      {
+        "id": "secure-storage",
+        "label": "Secure credential storage",
+        "status": "passed",
+        "summary": "The operating-system credential vault is available."
+      },
+      {
+        "id": "install-network",
+        "label": "Installation network",
+        "status": "passed",
+        "summary": "China-friendly npmmirror is the fastest reachable source.",
+        "detail": "Measured 78 ms. The other trusted source remains available as an automatic fallback."
+      },
+      {
+        "id": "python",
+        "label": "Python for Notebook",
+        "status": "passed",
+        "summary": "A system Python 3 was detected. Notebooks can optionally use it instead of the app-managed environment.",
+        "detail": "py -3"
+      },
+      {
+        "id": "agent",
+        "label": "Claude Code runtime",
+        "status": "failed",
+        "summary": "Claude Code is not installed yet.",
+        "detail": "Automatic setup installs a self-contained runtime without Node.js, npm, or admin access."
+      },
+      {
+        "id": "agent",
+        "label": "OpenCode runtime",
+        "status": "warning",
+        "summary": "OpenCode is not installed (optional — only needed if you switch to it)."
+      },
+      {
+        "id": "agent",
+        "label": "Codex native CLI",
+        "status": "warning",
+        "summary": "Native Codex CLI is not installed (optional — only needed if you switch to Codex)."
+      },
+      {
+        "id": "agent",
+        "label": "Codex ACP adapter",
+        "status": "warning",
+        "summary": "Codex ACP adapter is not installed (optional — only needed if you switch to Codex)."
+      },
+      {
+        "id": "agent",
+        "label": "CodeBuddy runtime",
+        "status": "warning",
+        "summary": "CodeBuddy is not installed (optional — only needed if you switch to it)."
+      },
+      {
+        "id": "backend",
+        "label": "Agent backend configuration",
+        "status": "warning",
+        "summary": "Claude Code is selected, but its provider is not ready — the first turn will fail.",
+        "detail": "Set an active provider with a base URL, a model, and an API key in Settings → Providers, then run this check again."
+      }
+    ],
+    "ready": false,
+    "canAutoInstall": true,
+    "recommendedRegistry": "npmmirror",
+    "agentFrameworkId": "claude-code",
+    "runtime": {
+      "found": false
+    }
+  }
+}

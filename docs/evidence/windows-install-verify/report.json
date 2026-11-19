@@ -1,0 +1,68 @@
+{
+  "startedAt": "2026-11-19T05:15:29.0102534+00:00",
+  "oldSetup": "D:\\a\\_temp\\setups\\zerolink-purescience-2.29.0-win-x64-setup.exe",
+  "newSetup": "D:\\a\\_temp\\setups\\zerolink-purescience-2.30.2-win-x64-setup.exe",
+  "steps": [
+    {
+      "name": "installed-launcher-exists",
+      "ok": true,
+      "detail": {
+        "productVersion": "2.29.0.0",
+        "exe": "D:\\a\\_temp\\ps-winverify\\app\\purescience.exe"
+      }
+    },
+    {
+      "name": "reads-readiness-and-runtimes",
+      "ok": true,
+      "detail": {
+        "runtimes": 6,
+        "readinessChecks": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runnable": 5
+      }
+    },
+    {
+      "name": "broken-runtime-is-detected",
+      "ok": true,
+      "detail": {
+        "disappearedFromList": true,
+        "readinessBefore": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "readinessFailedAfter": 6,
+        "readinessAfter": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runtime": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe",
+        "readinessFailedBefore": 6,
+        "detectedBy": "entry-removed",
+        "language": "python",
+        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
+        "runnableAfter": 4,
+        "runnableBefore": 5
+      }
+    },
+    {
+      "name": "repair-restores-runtimes",
+      "ok": true,
+      "detail": {
+        "runnableAfterRepair": 5,
+        "runnableBefore": 5,
+        "readinessAfterRepair": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
+      }
+    },
+    {
+      "name": "upgrade-changes-version",
+      "ok": true,
+      "detail": {
+        "from": "2.29.0.0",
+        "to": "2.30.2.0"
+      }
+    },
+    {
+      "name": "upgrade-keeps-runtimes",
+      "ok": true,
+      "detail": {
+        "runnableAfterUpgrade": 5,
+        "runnableBefore": 5,
+        "readinessAfterUpgrade": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
+      }
+    }
+  ],
+  "finishedAt": "2026-11-19T05:17:17.8273647+00:00"
+}
