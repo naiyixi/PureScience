@@ -122,6 +122,9 @@ type SettingsStoreData = RuntimeSetupState &
     // Selected built-in app-icon look, applied to the window and dock/taskbar. Defaults to 'light'.
     appIconVariant: AppIconVariant
     // Approval profile applied only when creating a new conversation.
+    // 导出署名与许可（空串 = 没填）。这两个值会逐字进入导出包，所以只是原样透传，不做任何默认值。
+    exportAuthor: string
+    exportLicense: string
     defaultPermissionProfile: PermissionProfileId
     // Declared licensed-skill use intent; absent means commercial (the safe default).
     useIntent: 'commercial' | 'non-commercial' | undefined
@@ -177,6 +180,8 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   closePreference: undefined,
   useIntent: undefined,
   appIconVariant: DEFAULT_APP_ICON_VARIANT,
+  exportAuthor: '',
+  exportLicense: '',
   defaultPermissionProfile: DEFAULT_PERMISSION_PROFILE
 })
 
@@ -200,6 +205,8 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   closePreference: snapshot.closePreference,
   useIntent: snapshot.useIntent,
   appIconVariant: snapshot.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
+  exportAuthor: snapshot.exportAuthor ?? '',
+  exportLicense: snapshot.exportLicense ?? '',
   defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
   agentFrameworkId: snapshot.agentFrameworkId,
   // Every other field here defends against a snapshot that does not carry it; this one did not, and a

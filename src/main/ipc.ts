@@ -3808,6 +3808,14 @@ const createApplicationModules = async (
         // Lazy for the same reason as the support bundle's: `app.getPath('downloads')` throws when the
         // platform cannot resolve the folder (a fresh Windows profile has none).
         getDefaultDir: () => resolveDefaultSaveDirectory((name) => app.getPath(name)),
+        // 署名/许可只来自设置里那两栏；没设过就返回 undefined，让导出不写这两个字段。
+        loadAttribution: async () => {
+          const settings = await settingsService.getStoredSettings()
+          return {
+            ...(settings.exportAuthor ? { author: settings.exportAuthor } : {}),
+            ...(settings.exportLicense ? { license: settings.exportLicense } : {})
+          }
+        },
         log: createLogger('ro-crate')
       })
     )

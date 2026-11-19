@@ -1342,6 +1342,16 @@ class SettingsService {
   }
 
   // Persists the reported interface language; the renderer keeps showing it (this only records it).
+  async setExportAuthor(author: string | undefined): Promise<SettingsSnapshot> {
+    await this.preferences.setExportAuthor(author)
+    return this.getSettingsView()
+  }
+
+  async setExportLicense(license: string | undefined): Promise<SettingsSnapshot> {
+    await this.preferences.setExportLicense(license)
+    return this.getSettingsView()
+  }
+
   async setUiLanguage(language: string): Promise<SettingsSnapshot> {
     await this.preferences.setUiLanguage(language)
 

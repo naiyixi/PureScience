@@ -1180,6 +1180,15 @@ export const en: Record<ZhKey, string> = {
   'settings.saveFailedAppIcon': 'Could not save app icon preference. Try again.',
   'settings.saveFailedDefaultPermissionProfile':
     'Could not save the default permission mode. Try again.',
+  'settings.saveFailedExportAuthor': 'Failed to save the export author',
+  'settings.saveFailedExportLicense': 'Failed to save the export license',
+  'settings.exportAttributionTitle': 'Export attribution',
+  'settings.exportAttributionIntro':
+    'Written into RO-Crate exports as author and license. Left empty, the export simply omits both — nothing is inferred or defaulted.',
+  'settings.exportAuthorLabel': 'Author or institution',
+  'settings.exportAuthorPlaceholder': 'e.g. Li Wei, Department of Chemistry, Fudan University',
+  'settings.exportLicenseLabel': 'Default export license',
+  'settings.exportLicensePlaceholder': 'e.g. CC BY 4.0 or https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch': 'Could not switch active provider or model. Try again.',
   'settings.saveFailedAgentFrameworkSwitch': 'Could not switch agent framework. Try again.',
   'settings.saveFailedVisionModel': 'Could not save the Vision model. Try again.',

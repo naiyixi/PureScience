@@ -214,6 +214,80 @@ describe('RO-Crate export IPC owner', () => {
     expect(result.error).toBe('destination-unwritable')
   })
 
+  // 4.3：署名与许可只能来自设置里用户自己填的两栏。
+  // 这两条用例钉住两个方向：填了就逐字进 crate；没填就**不出现**这两个字段（不写空串、不猜默认值）。
+  it('passes the author and license straight into the crate when the settings have them', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    const result = await ownerFor(storageRoot, {
+      loadAttribution: async () => ({ author: 'Li Wei, Fudan University', license: 'CC BY 4.0' }),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    expect(result.ok).toBe(true)
+    expect(captured?.creators).toEqual([
+      { type: 'Person', id: '#author', name: 'Li Wei, Fudan University' }
+    ])
+    expect(captured?.license).toEqual({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
+  })
+
+  it('omits author and license entirely when the user never filled them in', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    await ownerFor(storageRoot, {
+      loadAttribution: async () => ({}),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    // 关键：不是空串，也不是 undefined 值存在——键本身不该出现。空串会在 crate 里变成一个空 author。
+    expect(Object.hasOwn(captured ?? {}, 'creators')).toBe(false)
+    expect(Object.hasOwn(captured ?? {}, 'license')).toBe(false)
+  })
+
   it('reports a crate that failed its own validation as validation-failed, not as a write problem', async () => {
     const storageRoot = await createScratch()
     await writeDurableVersion({

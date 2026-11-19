@@ -18,6 +18,9 @@ type SettingsPreferencesState = {
   closePreference: CloseActionPreference | undefined
   useIntent: 'commercial' | 'non-commercial' | undefined
   appIconVariant: AppIconVariant
+  // 导出署名与许可：'' 表示用户清空了；undefined 表示从没设过。两者导出时都不写字段。
+  exportAuthor: string
+  exportLicense: string
   defaultPermissionProfile: PermissionProfileId
 }
 
@@ -29,6 +32,8 @@ type OptimisticPreferenceField =
   | 'useIntent'
   | 'appIconVariant'
   | 'defaultPermissionProfile'
+  | 'exportAuthor'
+  | 'exportLicense'
 
 export type SettingsPreferencesActions = {
   setReasoningEffort: (effort: ReasoningEffort) => Promise<void>
@@ -38,6 +43,8 @@ export type SettingsPreferencesActions = {
   setUseIntent: (intent: 'commercial' | 'non-commercial') => Promise<void>
   setAppIconVariant: (variant: AppIconVariant) => Promise<void>
   setDefaultPermissionProfile: (profile: PermissionProfileId) => Promise<void>
+  setExportAuthor: (author: string) => Promise<void>
+  setExportLicense: (license: string) => Promise<void>
   completeOnboarding: () => Promise<void>
   setPackageMirror: (mirror: PackageMirror) => Promise<void>
 }
@@ -51,6 +58,8 @@ type SettingsPreferencesCommands = Pick<
   | 'setUseIntent'
   | 'setAppIconVariant'
   | 'setDefaultPermissionProfile'
+  | 'setExportAuthor'
+  | 'setExportLicense'
   | 'markOnboardingComplete'
   | 'setPackageMirror'
 >
@@ -70,7 +79,9 @@ const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, SettingsWriteErr
   closePreference: SETTINGS_WRITE_ERROR_KEYS.closePreference,
   useIntent: SETTINGS_WRITE_ERROR_KEYS.useIntent,
   appIcon: SETTINGS_WRITE_ERROR_KEYS.appIcon,
-  defaultPermissionProfile: SETTINGS_WRITE_ERROR_KEYS.defaultPermissionProfile
+  defaultPermissionProfile: SETTINGS_WRITE_ERROR_KEYS.defaultPermissionProfile,
+  exportAuthor: SETTINGS_WRITE_ERROR_KEYS.exportAuthor,
+  exportLicense: SETTINGS_WRITE_ERROR_KEYS.exportLicense
 }
 
 // Owns renderer preference commands and their optimistic settlement. Core remains the sole owner of
@@ -170,6 +181,25 @@ export const createSettingsPreferencesSlice = ({
         profile,
         () => getCommands().setDefaultPermissionProfile({ profile }),
         'Failed to set default permission profile'
+      ),
+
+    // 空串就是「清除」：主进程会把 '' 存成 undefined，导出时也就不写这两个字段。
+    setExportAuthor: (author) =>
+      runOptimisticWrite(
+        'exportAuthor',
+        'exportAuthor',
+        author,
+        () => getCommands().setExportAuthor({ value: author }),
+        'Failed to set export author'
+      ),
+
+    setExportLicense: (license) =>
+      runOptimisticWrite(
+        'exportLicense',
+        'exportLicense',
+        license,
+        () => getCommands().setExportLicense({ value: license }),
+        'Failed to set export license'
       ),
 
     completeOnboarding: async () => {

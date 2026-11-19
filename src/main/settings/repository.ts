@@ -1449,6 +1449,25 @@ class SettingsRepository {
     return this.mutate((settings) => ({ ...settings, uiLanguage: language }))
   }
 
+  // 导出署名：RO-Crate 的 author 只能来自用户自己填的内容。空串与空白一律存成 undefined，
+  // 因为「用户清空了这一栏」和「从没填过」在下游是同一件事：都不写这个字段。
+  async setExportAuthor(author: string | undefined): Promise<StoredSettings> {
+    const trimmed = author?.trim()
+    return this.mutate((settings) => ({
+      ...settings,
+      exportAuthor: trimmed && trimmed.length > 0 ? trimmed : undefined
+    }))
+  }
+
+  // 导出许可：同上。不提供默认许可证——猜一个许可证比缺一个更糟。
+  async setExportLicense(license: string | undefined): Promise<StoredSettings> {
+    const trimmed = license?.trim()
+    return this.mutate((settings) => ({
+      ...settings,
+      exportLicense: trimmed && trimmed.length > 0 ? trimmed : undefined
+    }))
+  }
+
   // Persists the approval profile applied to conversations created after this preference changes.
   async setDefaultPermissionProfile(profile: PermissionProfileId): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, defaultPermissionProfile: profile }))

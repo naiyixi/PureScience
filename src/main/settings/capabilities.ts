@@ -22,6 +22,9 @@ export type SettingsPreferencesSnapshot = {
   closePreference?: CloseActionPreference
   appIconVariant: AppIconVariant
   uiLanguage?: string
+  // 导出署名与许可。undefined = 用户没填过；调用方必须保持「没填就不写进 crate」。
+  exportAuthor?: string
+  exportLicense?: string
   defaultPermissionProfile: PermissionProfileId
 }
 
@@ -39,6 +42,8 @@ export interface SettingsPreferences {
   ): Promise<SettingsPreferencesSnapshot>
   setAppIconVariant(variant: AppIconVariant): Promise<SettingsPreferencesSnapshot>
   setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot>
+  setExportAuthor(author: string | undefined): Promise<SettingsPreferencesSnapshot>
+  setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot>
   setDefaultPermissionProfile(profile: PermissionProfileId): Promise<SettingsPreferencesSnapshot>
 }
 

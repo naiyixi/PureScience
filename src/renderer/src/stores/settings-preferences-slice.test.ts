@@ -20,6 +20,8 @@ type PreferencesCommands = Pick<
   | 'setUseIntent'
   | 'setAppIconVariant'
   | 'setDefaultPermissionProfile'
+  | 'setExportAuthor'
+  | 'setExportLicense'
   | 'markOnboardingComplete'
   | 'setPackageMirror'
 >
@@ -35,6 +37,8 @@ type TestStore = SettingsPreferencesActions & {
   closePreference: CloseActionPreference | undefined
   useIntent: 'commercial' | 'non-commercial' | undefined
   appIconVariant: AppIconVariant
+  exportAuthor: string
+  exportLicense: string
   defaultPermissionProfile: PermissionProfileId
   settingsWriteError: string | undefined
 }
@@ -90,6 +94,8 @@ const createCommands = (): CommandMocks => ({
   setDefaultPermissionProfile: vi.fn(({ profile }) =>
     Promise.resolve(snapshot({ defaultPermissionProfile: profile }))
   ),
+  setExportAuthor: vi.fn(({ value }) => Promise.resolve(snapshot({ exportAuthor: value }))),
+  setExportLicense: vi.fn(({ value }) => Promise.resolve(snapshot({ exportLicense: value }))),
   markOnboardingComplete: vi.fn().mockResolvedValue(snapshot({ onboardingCompletedAt: 42 })),
   setPackageMirror: vi.fn((mirror) => Promise.resolve(mirror))
 })
@@ -110,6 +116,8 @@ const createHarness = (): {
       closePreference: next.closePreference,
       useIntent: next.useIntent,
       appIconVariant: next.appIconVariant,
+      exportAuthor: next.exportAuthor ?? '',
+      exportLicense: next.exportLicense ?? '',
       defaultPermissionProfile: next.defaultPermissionProfile ?? 'ask'
     })
   })
@@ -120,6 +128,8 @@ const createHarness = (): {
     closePreference: undefined,
     useIntent: undefined,
     appIconVariant: 'light',
+    exportAuthor: '',
+    exportLicense: '',
     defaultPermissionProfile: 'ask',
     settingsWriteError: undefined,
     ...createSettingsPreferencesSlice({

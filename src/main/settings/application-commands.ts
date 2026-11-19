@@ -19,6 +19,7 @@ import type {
   ScanRepoRequest,
   SetAppIconVariantRequest,
   SetUiLanguageRequest,
+  SetExportAttributionRequest,
   SetClosePreferenceRequest,
   SetDefaultPermissionProfileRequest,
   SetNotificationsEnabledRequest,
@@ -55,6 +56,7 @@ import type { SettingsService } from './service'
 import {
   readAppIconVariant,
   readUiLanguage,
+  readAttributionValue,
   readClosePreference,
   readDefaultPermissionProfile,
   readNotificationsEnabled
@@ -68,6 +70,8 @@ type CoreSettingsCommandStore = Pick<
   | 'cancelClaudeIsolatedLogin'
   | 'checkEnvironment'
   | 'setUiLanguage'
+  | 'setExportAuthor'
+  | 'setExportLicense'
   | 'detectClaude'
   | 'detectCodebuddy'
   | 'detectCodex'
@@ -350,6 +354,17 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: SetUiLanguageRequest],
     StoreResult<'setUiLanguage'>
   >('settings:set-ui-language'),
+  // 导出署名与许可：RO-Crate 的 author / license 唯一来源。传空等于清除，导出时就不写这个字段。
+  setExportAuthor: defineApplicationCommand<
+    'settings:set-export-author',
+    readonly [request: SetExportAttributionRequest],
+    StoreResult<'setExportAuthor'>
+  >('settings:set-export-author'),
+  setExportLicense: defineApplicationCommand<
+    'settings:set-export-license',
+    readonly [request: SetExportAttributionRequest],
+    StoreResult<'setExportLicense'>
+  >('settings:set-export-license'),
   setClosePreference: defineApplicationCommand<
     'settings:set-close-preference',
     readonly [request: SetClosePreferenceRequest],
@@ -524,6 +539,8 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.scanRepoSkills,
   settingsCoreApplicationCommands.setAppIconVariant,
   settingsCoreApplicationCommands.setUiLanguage,
+  settingsCoreApplicationCommands.setExportAuthor,
+  settingsCoreApplicationCommands.setExportLicense,
   settingsCoreApplicationCommands.setClosePreference,
   settingsCoreApplicationCommands.setDefaultPermissionProfile,
   settingsCoreApplicationCommands.setMemory,
@@ -730,6 +747,11 @@ const registerCoreSettingsApplicationCommands = (
         if (language === undefined) throw new Error('A language tag is required.')
         return dependencies.service.setUiLanguage(language)
       },
+      // 署名与许可会逐字写进导出包，所以在这里封顶长度、拒绝控制字符；不做「猜一个默认值」这种事。
+      'settings:set-export-author': ({ args }) =>
+        dependencies.service.setExportAuthor(readAttributionValue(args[0])),
+      'settings:set-export-license': ({ args }) =>
+        dependencies.service.setExportLicense(readAttributionValue(args[0])),
       'settings:set-close-preference': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:set-close-preference')
         return dependencies.service.setClosePreference(readClosePreference(args[0]))

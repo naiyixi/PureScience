@@ -57,6 +57,12 @@ export type RoCrateExportOwnerDeps = Readonly<{
     options: SaveDialogOptions
   ) => Promise<SaveDialogReturnValue>
   exportCrate?: typeof writeRoCrateExport
+  /**
+   * 署名与许可的唯一来源（设置里的两栏）。返回 undefined 的字段一律**不写**——RO-Crate 里缺 author
+   * 是可核验的事实，编一个署名或猜一个许可证不可核验。读取失败同样按「没填」处理，不让设置读取
+   * 问题挡住一次导出。
+   */
+  loadAttribution?: () => Promise<{ author?: string; license?: string }>
   now?: () => Date
   log?: Readonly<{ warn: (message: string, fields?: unknown) => void }>
 }>
@@ -193,6 +199,20 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
         destination = selected.filePath
       }
 
+      // 署名/许可：用户填过的才写。不设默认值，不从项目名或 git 身份去猜 —— 编一个署名不可核验。
+      let creators: { type: 'Person'; id: string; name: string }[] | undefined
+      let license: { id: string; name: string } | undefined
+      try {
+        const attribution = await deps.loadAttribution?.()
+        const author = attribution?.author?.trim()
+        const licenseText = attribution?.license?.trim()
+        if (author) creators = [{ type: 'Person', id: '#author', name: author }]
+        if (licenseText) license = { id: licenseText, name: licenseText }
+      } catch (error) {
+        // 读设置失败不该挡住一次导出：按「没填」处理，导出照常进行，只是没有这两个字段。
+        log.warn('export attribution unavailable; exporting without author/license', error)
+      }
+
       try {
         const result = await exportCrate({
           storageRoot: deps.storageRoot,
@@ -205,6 +225,8 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
             ? { description: project.description.trim() }
             : {}),
           app: { ...deps.app },
+          ...(creators ? { creators } : {}),
+          ...(license ? { license } : {}),
           generatedAt: now().toISOString()
         })
 

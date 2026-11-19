@@ -36,6 +36,8 @@ const toSettingsPreferencesSnapshot = (settings: StoredSettings): SettingsPrefer
   ...(settings.closePreference === undefined ? {} : { closePreference: settings.closePreference }),
   appIconVariant: settings.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
   ...(settings.uiLanguage === undefined ? {} : { uiLanguage: settings.uiLanguage }),
+  ...(settings.exportAuthor === undefined ? {} : { exportAuthor: settings.exportAuthor }),
+  ...(settings.exportLicense === undefined ? {} : { exportLicense: settings.exportLicense }),
   defaultPermissionProfile: getDefaultPermissionProfile(settings)
 })
 
@@ -94,6 +96,14 @@ class SettingsPreferencesModule implements SettingsPreferences {
   // Records the language the renderer is showing, so main-process prose can match it later.
   async setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot> {
     return toSettingsPreferencesSnapshot(await this.repository.setUiLanguage(language))
+  }
+
+  async setExportAuthor(author: string | undefined): Promise<SettingsPreferencesSnapshot> {
+    return toSettingsPreferencesSnapshot(await this.repository.setExportAuthor(author))
+  }
+
+  async setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot> {
+    return toSettingsPreferencesSnapshot(await this.repository.setExportLicense(license))
   }
 
   async setDefaultPermissionProfile(

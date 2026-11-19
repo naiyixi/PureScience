@@ -628,6 +628,8 @@ describe('preload bridge — public surface inventory', () => {
       'settings.setCustomServerEnabled',
       'settings.setDefaultPermissionProfile',
       'settings.setEgress',
+      'settings.setExportAuthor',
+      'settings.setExportLicense',
       'settings.setExternalComputeEndpoint',
       'settings.setMemory',
       'settings.setNcbiCredentials',
@@ -764,7 +766,8 @@ describe('preload bridge — runtime renderer contract catalog', () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
     // 243 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, one contract.
-    expect(runtimeContracts).toHaveLength(245)
+    // 4.3 追加两条导出署名/许可通道 → 247。
+    expect(runtimeContracts).toHaveLength(247)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

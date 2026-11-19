@@ -296,6 +296,11 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setDefaultPermissionProfile', request),
     setAppIconVariant: (request) =>
       electronRendererContracts.invoke('settings.setAppIconVariant', request),
+    // 导出署名与许可：值会逐字进入 RO-Crate，空串等于清除。
+    setExportAuthor: (request) =>
+      electronRendererContracts.invoke('settings.setExportAuthor', request),
+    setExportLicense: (request) =>
+      electronRendererContracts.invoke('settings.setExportLicense', request),
     // Reports the interface language the window is showing, so main-process prose can match it.
     setUiLanguage: (request) => electronRendererContracts.invoke('settings.setUiLanguage', request),
     listAppIcons: () => electronRendererContracts.invoke('settings.listAppIcons'),

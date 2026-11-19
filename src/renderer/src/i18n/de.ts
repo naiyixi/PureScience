@@ -2662,6 +2662,16 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die App-Symbol-Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen.',
   'settings.saveFailedDefaultPermissionProfile':
     'Der Standard-Berechtigungsmodus konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  'settings.saveFailedExportAuthor': 'Export-Urheber konnte nicht gespeichert werden',
+  'settings.saveFailedExportLicense': 'Export-Lizenz konnte nicht gespeichert werden',
+  'settings.exportAttributionTitle': 'Urheber und Lizenz für Exporte',
+  'settings.exportAttributionIntro':
+    'Wird als author und license in RO-Crate-Exporte geschrieben. Leer gelassen werden beide Felder weggelassen – nichts wird abgeleitet oder vorbelegt.',
+  'settings.exportAuthorLabel': 'Urheber oder Einrichtung',
+  'settings.exportAuthorPlaceholder': 'z. B. Li Wei, Fachbereich Chemie, Fudan-Universität',
+  'settings.exportLicenseLabel': 'Standard-Exportlizenz',
+  'settings.exportLicensePlaceholder':
+    'z. B. CC BY 4.0 oder https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
     'Aktiver Anbieter oder Modell konnte nicht gewechselt werden. Bitte erneut versuchen.',
   'settings.saveFailedAgentFrameworkSwitch':

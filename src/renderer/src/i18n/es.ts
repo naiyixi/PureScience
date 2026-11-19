@@ -2635,6 +2635,16 @@ export const es: Partial<Record<ZhKey, string>> = {
     'No se pudo guardar la preferencia de icono de la app. Inténtalo de nuevo.',
   'settings.saveFailedDefaultPermissionProfile':
     'No se pudo guardar el modo de permisos predeterminado. Inténtalo de nuevo.',
+  'settings.saveFailedExportAuthor': 'No se pudo guardar el autor de la exportación',
+  'settings.saveFailedExportLicense': 'No se pudo guardar la licencia de exportación',
+  'settings.exportAttributionTitle': 'Autoría y licencia de la exportación',
+  'settings.exportAttributionIntro':
+    'Se escribe como author y license en las exportaciones RO-Crate. Si se deja vacío, ambos campos se omiten: no se deduce ni se rellena ningún valor por defecto.',
+  'settings.exportAuthorLabel': 'Autor o institución',
+  'settings.exportAuthorPlaceholder': 'p. ej. Li Wei, Departamento de Química, Universidad Fudan',
+  'settings.exportLicenseLabel': 'Licencia de exportación predeterminada',
+  'settings.exportLicensePlaceholder':
+    'p. ej. CC BY 4.0 o https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
     'No se pudo cambiar el proveedor o modelo activo. Inténtalo de nuevo.',
   'settings.saveFailedAgentFrameworkSwitch':

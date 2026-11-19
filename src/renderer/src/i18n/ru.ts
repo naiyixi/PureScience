@@ -2576,6 +2576,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Не удалось сохранить настройку значка приложения. Повторите попытку.',
   'settings.saveFailedDefaultPermissionProfile':
     'Не удалось сохранить режим разрешений по умолчанию. Повторите попытку.',
+  'settings.saveFailedExportAuthor': 'Не удалось сохранить автора экспорта',
+  'settings.saveFailedExportLicense': 'Не удалось сохранить лицензию экспорта',
+  'settings.exportAttributionTitle': 'Авторство и лицензия экспорта',
+  'settings.exportAttributionIntro':
+    'Записывается в экспорт RO-Crate как author и license. Если оставить пустым, оба поля не добавляются — ничего не подставляется по умолчанию.',
+  'settings.exportAuthorLabel': 'Автор или организация',
+  'settings.exportAuthorPlaceholder': 'напр. Ли Вэй, химический факультет, Фуданьский университет',
+  'settings.exportLicenseLabel': 'Лицензия экспорта по умолчанию',
+  'settings.exportLicensePlaceholder':
+    'напр. CC BY 4.0 или https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
     'Не удалось переключить активного провайдера или модель. Повторите попытку.',
   'settings.saveFailedAgentFrameworkSwitch':

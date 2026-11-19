@@ -544,6 +544,9 @@ export type SettingsSnapshot = {
   closePreference?: CloseActionPreference
   // The selected built-in app-icon look for non-macOS windows and the Windows tray. Defaults to 'light'.
   appIconVariant: AppIconVariant
+  // 导出署名（作者/机构）与默认导出许可。undefined = 用户没填过；导出时必须保持不写。
+  exportAuthor?: string
+  exportLicense?: string
   // The default permission profile for new sessions. Valid values: 'ask', 'auto', 'full'.
   // Absent or invalid falls back to 'ask' (the most restrictive mode).
   defaultPermissionProfile?: PermissionProfileId
@@ -590,6 +593,12 @@ export type SetAppIconVariantRequest = {
 // hand-edited value cannot put prose into main-process messages.
 export type SetUiLanguageRequest = {
   language?: string
+}
+
+// 导出署名与默认许可：自由文本，但会被逐个字符写进 RO-Crate，所以由主进程裁剪空白、长度封顶。
+// 省略/空串表示「没填」——调用方必须把这两种情况都当成「不写这个字段」。
+export type SetExportAttributionRequest = {
+  value?: string
 }
 
 export type SetDefaultPermissionProfileRequest = {

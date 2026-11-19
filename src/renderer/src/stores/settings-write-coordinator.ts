@@ -10,6 +10,8 @@ export type SettingsWriteKey =
   | 'useIntent'
   | 'defaultPermissionProfile'
   | 'appIcon'
+  | 'exportAuthor'
+  | 'exportLicense'
 
 export type OptimisticSettingsWriteKey =
   | 'reasoningEffort'
@@ -19,6 +21,8 @@ export type OptimisticSettingsWriteKey =
   | 'useIntent'
   | 'defaultPermissionProfile'
   | 'appIcon'
+  | 'exportAuthor'
+  | 'exportLicense'
 
 type SettingsWriteToken = {
   key: SettingsWriteKey

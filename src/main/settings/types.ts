@@ -212,6 +212,10 @@ export type StoredSettings = {
   // skills are withheld from sessions by default, so turning one on records the decision here instead
   // of relying on "not disabled". Absent means nothing has been allowed yet.
   trustedSkillIds?: string[]
+  // 导出署名与许可：RO-Crate 的 author / license 只能来自用户自己填的东西。没设过就是 undefined，
+  // 不写空串、也不猜一个默认许可证——编一个许可证比缺一个更糟。
+  exportAuthor?: string
+  exportLicense?: string
   connectors?: StoredConnectors
   // Non-secret package-mirror overrides (conda/pypi/cran). Absent means public hosts.
   packageMirror?: PackageMirror

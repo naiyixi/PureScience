@@ -460,6 +460,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['setActiveProvider', 'settings:set-active-provider'], ['setAgentFramework', 'settings:set-agent-framework'],
     ['setAppIconVariant', 'settings:set-app-icon-variant', LOCAL], ['setClosePreference', 'settings:set-close-preference', LOCAL],
     ['setUiLanguage', 'settings:set-ui-language', LOCAL],
+    // 4.3 导出署名与许可：本地设置项，普通桥接调用。
+    ['setExportAuthor', 'settings:set-export-author', LOCAL],
+    ['setExportLicense', 'settings:set-export-license', LOCAL],
     ['setDefaultPermissionProfile', 'settings:set-default-permission-profile', LOCAL],
     ['setConnectorAutoAllow', 'settings:set-connector-auto-allow'], ['setConnectorEnabled', 'settings:set-connector-enabled'], ['setConnectorsEnabled', 'settings:set-connectors-enabled'],
     ['signOutCustomServer', 'settings:sign-out-custom-server'],

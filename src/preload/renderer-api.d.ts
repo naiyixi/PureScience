@@ -300,6 +300,7 @@ import type {
   SetClosePreferenceRequest,
   SetDefaultPermissionProfileRequest,
   SetAppIconVariantRequest,
+  SetExportAttributionRequest,
   SetUiLanguageRequest,
   SetReasoningEffortRequest,
   SetVisionModelRequest,
@@ -662,6 +663,9 @@ export interface PureScienceAPI {
       request: SetDefaultPermissionProfileRequest
     ): Promise<SettingsSnapshot>
     setAppIconVariant(request: SetAppIconVariantRequest): Promise<SettingsSnapshot>
+    // 导出署名与默认许可：写进 RO-Crate 的 author / license。空值 = 清除（导出时不写这两个字段）。
+    setExportAuthor(request: SetExportAttributionRequest): Promise<SettingsSnapshot>
+    setExportLicense(request: SetExportAttributionRequest): Promise<SettingsSnapshot>
     // Reports the interface language the window is showing (main-process prose follows it).
     setUiLanguage(request: SetUiLanguageRequest): Promise<SettingsSnapshot | undefined>
     listAppIcons(): Promise<AppIconPreview[]>

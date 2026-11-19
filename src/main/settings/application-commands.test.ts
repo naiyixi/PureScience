@@ -59,6 +59,9 @@ const expectedChannels = [
   'settings:scan-repo-skills',
   'settings:set-app-icon-variant',
   'settings:set-ui-language',
+  // 4.3：导出署名与许可。名字写在这里而不是只写在注册表里，是为了让「通道清单」这件事永远是一次显式改动。
+  'settings:set-export-author',
+  'settings:set-export-license',
   'settings:set-close-preference',
   'settings:set-default-permission-profile',
   'settings:set-memory',
@@ -144,7 +147,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 66-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 68-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

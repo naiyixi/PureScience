@@ -327,6 +327,8 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setCustomServerEnabled': 'settings:set-custom-server-enabled',
   'settings.setDefaultPermissionProfile': 'settings:set-default-permission-profile',
   'settings.setEgress': 'settings:set-egress',
+  'settings.setExportAuthor': 'settings:set-export-author',
+  'settings.setExportLicense': 'settings:set-export-license',
   'settings.setExternalComputeEndpoint': 'settings:set-external-compute-endpoint',
   'settings.setMemory': 'settings:set-memory',
   'settings.setNcbiCredentials': 'settings:set-ncbi-credentials',

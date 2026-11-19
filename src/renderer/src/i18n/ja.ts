@@ -2574,6 +2574,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.saveFailedAppIcon': 'アプリアイコン設定を保存できませんでした。再試行してください。',
   'settings.saveFailedDefaultPermissionProfile':
     '既定の権限モードを保存できませんでした。再試行してください。',
+  'settings.saveFailedExportAuthor': 'エクスポート作成者を保存できませんでした',
+  'settings.saveFailedExportLicense': 'エクスポートライセンスを保存できませんでした',
+  'settings.exportAttributionTitle': 'エクスポートの帰属情報',
+  'settings.exportAttributionIntro':
+    'RO-Crate に author と license として書き込まれます。空欄なら両方とも出力しません。推測も既定値の補完もしません。',
+  'settings.exportAuthorLabel': '作成者または所属機関',
+  'settings.exportAuthorPlaceholder': '例：李偉、復旦大学化学科',
+  'settings.exportLicenseLabel': '既定のエクスポートライセンス',
+  'settings.exportLicensePlaceholder':
+    '例：CC BY 4.0 または https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
     '使用中のプロバイダーまたはモデルを切り替えられませんでした。再試行してください。',
   'settings.saveFailedAgentFrameworkSwitch':

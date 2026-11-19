@@ -2534,6 +2534,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.saveFailedAppIcon': '앱 아이콘 환경설정을 저장하지 못했습니다. 다시 시도하세요.',
   'settings.saveFailedDefaultPermissionProfile':
     '기본 권한 모드를 저장하지 못했습니다. 다시 시도하세요.',
+  'settings.saveFailedExportAuthor': '내보내기 저자를 저장하지 못했습니다',
+  'settings.saveFailedExportLicense': '내보내기 라이선스를 저장하지 못했습니다',
+  'settings.exportAttributionTitle': '내보내기 저자와 라이선스',
+  'settings.exportAttributionIntro':
+    'RO-Crate의 author와 license로 기록됩니다. 비워 두면 두 필드를 모두 쓰지 않습니다. 추론하거나 기본값을 채우지 않습니다.',
+  'settings.exportAuthorLabel': '저자 또는 기관',
+  'settings.exportAuthorPlaceholder': '예: 리웨이, 푸단대학교 화학과',
+  'settings.exportLicenseLabel': '기본 내보내기 라이선스',
+  'settings.exportLicensePlaceholder':
+    '예: CC BY 4.0 또는 https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
     '활성 공급자 또는 모델을 전환하지 못했습니다. 다시 시도하세요.',
   'settings.saveFailedAgentFrameworkSwitch':

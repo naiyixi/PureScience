@@ -7,6 +7,7 @@ import { ExternalTextLink } from '@/components/ExternalTextLink'
 import { ThemeSegmentedControl } from '@/components/ThemeControls'
 import { GitHubStarBadge } from '@/components/GitHubStarBadge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useSettingsStore } from '@/stores/settings-store'
 import type { CloseActionPreference } from '../../../../shared/window-controls'
@@ -40,6 +41,11 @@ const XMark = ({ className }: { className?: string }): React.JSX.Element => (
 // file stays on this device and is never transmitted by the app.
 const GeneralPanel = (): React.JSX.Element => {
   const { t, lang, preference, setLang } = useLanguage()
+  // 导出署名与许可：主进程存的就是这两栏，导出 RO-Crate 时逐字写进 author / license。
+  const exportAuthor = useSettingsStore((state) => state.exportAuthor)
+  const exportLicense = useSettingsStore((state) => state.exportLicense)
+  const setExportAuthor = useSettingsStore((state) => state.setExportAuthor)
+  const setExportLicense = useSettingsStore((state) => state.setExportLicense)
   const isMac = window.api.platform === 'darwin'
   const [logPath, setLogPath] = useState<string | null>(null)
   const [message, setMessage] = useState<string | undefined>(undefined)
@@ -141,6 +147,37 @@ const GeneralPanel = (): React.JSX.Element => {
   return (
     <div className="space-y-5 p-5">
       <AppVersionSection />
+
+      {/* 导出署名与许可。留空就真的不写 —— 界面上写清楚这一点，免得用户以为留空会「自动填上」。 */}
+      <SettingsSection
+        title={t('settings.exportAttributionTitle')}
+        description={t('settings.exportAttributionIntro')}
+        aria-label={t('settings.exportAttributionTitle')}
+        separated
+      >
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t('settings.exportAuthorLabel')}
+            </span>
+            <Input
+              value={exportAuthor}
+              placeholder={t('settings.exportAuthorPlaceholder')}
+              onChange={(event) => void setExportAuthor(event.target.value)}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t('settings.exportLicenseLabel')}
+            </span>
+            <Input
+              value={exportLicense}
+              placeholder={t('settings.exportLicensePlaceholder')}
+              onChange={(event) => void setExportLicense(event.target.value)}
+            />
+          </label>
+        </div>
+      </SettingsSection>
 
       <SettingsSection
         title={t('settings.licensing')}
