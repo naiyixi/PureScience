@@ -39,7 +39,16 @@ export type BundledSkill = {
   provenance?: SkillProvenance
 }
 
-type ManifestEntry = { id: string; name: string; source: SkillSource; updatedAt: string }
+// `thirdParty` and `license` are optional: they are set for skills imported from a third-party collection,
+// where the manifest is the attribution record. Skills we author ourselves leave both out.
+type ManifestEntry = {
+  id: string
+  name: string
+  source: SkillSource
+  updatedAt: string
+  thirdParty?: string
+  license?: string
+}
 
 const SAFE_ID = /^[a-z0-9-]+$/
 
@@ -180,13 +189,20 @@ class SkillRegistry {
             sourceDir,
             compatibility: await bundledSkillCompatibility(sourceDir),
             author: fields.author,
-            license: fields.license,
+            // The file's own statement wins; the manifest is the fallback for imported collections, where the
+            // attribution lives in ATTRIBUTION.md and the manifest rather than being stamped into the author's
+            // frontmatter.
+            license: fields.license ?? entry.license,
             licenseStatus: classifySkillLicense({
-              license: fields.license,
+              license: fields.license ?? entry.license,
               commercialUse: fields['commercial-use'] ?? fields.commercial_use
             }),
             // The "Third-party software, content, terms, and information" row; several key spellings.
-            thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
+            thirdParty:
+              fields['third-party'] ??
+              fields['third_party'] ??
+              fields.thirdparty ??
+              entry.thirdParty,
             category: fields.category,
             requirements: fields.requirements,
             // Only present when the entry declares a trust state. Bundled/curated skills have none, which

@@ -1,9 +1,27 @@
+import { readFileSync } from 'node:fs'
+
 import { defineConfig } from 'eslint/config'
 import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
+
+// Third-party skills we redistribute verbatim are not our source: their scripts came with the author's license,
+// and running our prettier/TS rules over them would rewrite files we promised to ship as written. Derived from
+// the manifest (never a hand list) so removing a collection removes its exemption too.
+const thirdPartySkillIgnores = (() => {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(new URL('./resources/skills/manifest.json', import.meta.url), 'utf8')
+    )
+    return manifest.skills
+      .filter((skill) => skill.thirdParty !== undefined)
+      .map((skill) => `resources/skills/${skill.id}/**`)
+  } catch {
+    return []
+  }
+})()
 
 export default defineConfig(
   {
@@ -26,7 +44,8 @@ export default defineConfig(
       // Local subagent scratch (ledgers, briefs, ad-hoc demo scripts) — never shipped.
       '**/.superpowers/**',
       // Keep official shadcn registry output unmodified; local adaptations live in wrappers.
-      'src/renderer/src/components/ui/message-scroller.tsx'
+      'src/renderer/src/components/ui/message-scroller.tsx',
+      ...thirdPartySkillIgnores
     ]
   },
   tseslint.configs.recommended,

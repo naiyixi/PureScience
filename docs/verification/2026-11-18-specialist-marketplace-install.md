@@ -555,7 +555,62 @@ $ node examples/sdk-analysis.mjs "用一句话解释什么是双盲实验"
 - **示例的第一版连不上**：`import 'purescience'` 在仓内解析不到，因为它是 workspace 包而不是安装依赖。给 `node_modules/purescience` 做本地链接（不进 git）后可以跑；正常用户从 npm 装包不会有这个问题。
 - **曾想用本地 mock 模型证明链路**：写了 loopback 假端点并把隔离实例的活动提供商改过去，结果 run 仍然 2.7 秒完成、mock 一条请求都没收到、答案是真模型的答案——说明 app 走的是它自己的 agent 后端而不是我改的那个 provider 条目。既然 mock 证明不了任何事，就把那个假端点删了，不留没验过的脚手架。**顺带说明：这条 run 用的是本机已配置的后端，会花掉少量真实额度。**
 
-## 二十六、仍未做的
+## 二十六、引入两个第三方技能集合（2.1 / 2.2）
+
+### 交付
+
+| 位置                                              | 内容                                                                                |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `resources/skills/`                               | 234 个第三方技能（`sci` 160 + `air` 74），与自有 58 个一起随包分发；manifest 292 行 |
+| `resources/skills/ATTRIBUTION.md`                 | 逐个技能的来源仓库内路径、原作者、许可；外加未引入清单与原因                        |
+| `resources/skills/licenses/`                      | 两个集合的许可全文（`sci-MIT-LICENSE.txt`、`air-MIT-LICENSE.txt`）                  |
+| `scripts/import-third-party-skills.mjs`           | 幂等引入器：许可判定、id/name 归一、孤儿清理、ATTRIBUTION 生成                      |
+| `scripts/third-party-skills.sources.json`         | 两个来源仓库 + 钉住的提交 + 许可文件名                                              |
+| `src/main/skills/third-party-attribution.test.ts` | 四条护栏（见下）                                                                    |
+| `docs/guides/third-party-skills.md`               | 规则、重跑方法、成本实测                                                            |
+
+### 一项必须说清楚的合规发现
+
+**两个仓库顶层都是 MIT，但技能自带许可并不都是 MIT。** `sci` 集合里实测：MIT 118、Apache-2.0 20、BSD 系 18、**GPL 3**、**非商业 2**（含 Polyform-Noncommercial、CC BY-NC-SA）、**专有 1**、「Unknown」3，另有 4 个把依赖库的许可 URL 写进了 `license:`。所以按「技能自己的许可」逐个判定，只引入允许商业再分发的：
+
+```
+imported 234 / excluded 19
+excluded: GPL 3 · 非商业 2 · 专有 1 · Unknown 3 · 未声明 2 · 许可串无法归类 4 · frontmatter 读不出 2 · name 不合规 0
+```
+
+未引入清单在 `ATTRIBUTION.md` 里逐条列出（含原因），要引入得先找作者澄清或取得授权。
+
+### 三处只有真跑才暴露的问题
+
+1. **manifest 的 `source` 只认 `featured`**。第一版把导入项标成 `imported`，注册表在 `readManifest` 里直接过滤掉——目录里有 236 个技能，目录读取只回了 58 个。改成 `featured`，第三方身份由 `thirdParty` 字段与 ATTRIBUTION 表达。
+2. **前缀 id 违反「id == frontmatter name」这条既有不变量**（`skill-nudge-identity` 用例当场红）。改成：名字没被占用就用作者的 `name` 当 id；被占用（`diffdock`、`literature-review`、`scientific-visualization`、`scvi-tools`、`pytorch-lightning` 五个）才给目录名与 `name:` 一起加前缀，并在 ATTRIBUTION 标「已加前缀」。
+3. **`ray-data` / `ray-train` 的 frontmatter 我们的解析器读不出来**（YAML 报 `missed comma between flow collection entries`）。引入器改为用 app 自己的 FAILSAFE 解析器预检，读不出 `name`/`description` 的直接跳过——否则装进去就是个空条目。
+
+另一个自查出来的坑：重跑时 manifest 是从**旧 manifest 追加**的，换过一次 id 规则后出现了 467 行第三方记录对应 236 个技能；改为从「自有行 + 本次导入行」重建。
+
+### 实机读数（`SkillRegistry.list()`，真实 `resources/skills`）
+
+```
+skills=292  thirdParty=234  首次 140 ms  第二次 42 ms
+licenseStatus: allowed 231 / needs-review 3
+第三方目录 2,461 个文件 / 32 MB（自有 58 个技能时是 2.1 MB）
+护栏用例：src/main/skills 318 passed
+```
+
+成本说明：注册表为每个内置技能算兼容性哈希（读整棵目录），收益是引入前后**首次 50 ms → 140 ms**（页缓存热）。已把「manifest 存哈希、跳过整树读取」列为后续优化，不在本轮做。
+
+### 品牌扫描与这次的冲突（已解，附判据）
+
+`pre-push-checks` 第一段就红：来源仓库名命中 160 处（manifest 的 `thirdParty` 值）、`ATTRIBUTION.md` 141 行、以及 144 个第三方技能正文（作者自己的项目名等专有说法）。这不是笔误，是两条规则的正面冲突——「自有内容不借用别人产品名」vs「按许可原样保留作者文字」。
+
+解法：`scripts/third-party-skill-paths.mjs` 从 manifest 派生豁免路径（只含 `thirdParty` 行对应目录、`ATTRIBUTION.md`、`licenses/`、`manifest.json`、`sources.json`），`pre-push-checks.sh` 把它们作为 `:(exclude)` 传给 `git grep`；同时把 manifest 的 `thirdParty` 改成集合标题（用户可见的那一行不出现别人仓库名），仓库路径与提交哈希只留在 ATTRIBUTION 与 sources.json。**自有技能、UI、文档一律不豁免**，收窄只需改那一个脚本。
+读数：豁免前 `checks=1`（敏感词 160 处），豁免后 `checks=0`（`git 跟踪范围零命中`），`src/main/skills` 仍 318 passed。
+
+### 2.3 中文改写（未做）
+
+本轮没有动技能正文。2.3 要求「只翻译流程描述、不改原作者署名」，抽查 20 个包的中文可读性与署名完整——那是一次跨 234 个文件的内容改动，与引入分开做更安全（引入是字节级复制，改动是逐字判断）。已立案到下一轮。
+
+## 二十七、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。

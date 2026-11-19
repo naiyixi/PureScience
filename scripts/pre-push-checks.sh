@@ -59,7 +59,16 @@ SENSITIVE_PATTERNS="$BRAND_PATTERNS"
 # two hook scripts (same reason), and patches/ (patch files are byte-exact
 # copies of third-party npm package content — they must match the published
 # package tarball verbatim or patch-package fails to apply).
-HITS="$(git grep -niE "$SENSITIVE_PATTERNS" -- . ':(exclude).web-rooter' ':(exclude)dist' ':(exclude)patches' ':(exclude)scripts/pre-push-checks.sh' ':(exclude)scripts/commit-msg-checks.sh' ':(exclude)scripts/brand-patterns.sh' 2>/dev/null | grep -v 'Binary file' || true)"
+# Third-party skills we redistribute verbatim keep their authors' words: their READMEs name their own tools and
+# upstream projects, and rewriting that text would misstate what the file says (and is not ours to rewrite). The
+# exemption is derived from the manifest, never hand-listed, and it is documented in docs/guides/third-party-skills.md.
+THIRD_PARTY_EXCLUDES=()
+if [[ -f "$ROOT/scripts/third-party-skill-paths.mjs" ]] && [[ -f "$ROOT/resources/skills/manifest.json" ]]; then
+  while IFS= read -r spec; do
+    [[ -n "$spec" ]] && THIRD_PARTY_EXCLUDES+=("$spec")
+  done < <(node "$ROOT/scripts/third-party-skill-paths.mjs" 2>/dev/null || true)
+fi
+HITS="$(git grep -niE "$SENSITIVE_PATTERNS" -- . ':(exclude).web-rooter' ':(exclude)dist' ':(exclude)patches' ':(exclude)scripts/pre-push-checks.sh' ':(exclude)scripts/commit-msg-checks.sh' ':(exclude)scripts/brand-patterns.sh' "${THIRD_PARTY_EXCLUDES[@]}" 2>/dev/null | grep -v 'Binary file' || true)"
 if [[ -n "$HITS" ]]; then
   bad "发现敏感词（${VERSION}）:"
   echo "$HITS" | head -10 | sed 's/^/      /'

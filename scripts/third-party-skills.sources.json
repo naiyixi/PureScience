@@ -1,0 +1,26 @@
+[
+  {
+    "collection": "sci",
+    "title": "第三方科研技能集合",
+    "repo": "K-Dense-AI/claude-scientific-skills",
+    "commit": "ec59a29a03d5c40f73ab40878df04860bc00e876",
+    "commitDate": "2026-11-16",
+    "license": "MIT",
+    "licenseFile": "LICENSE.md",
+    "skillsRoot": "skills",
+    "idPrefix": "sci",
+    "author": "K-Dense Inc."
+  },
+  {
+    "collection": "air",
+    "title": "第三方 AI 研究技能集合",
+    "repo": "aarchila/AI-research-SKILLs",
+    "commit": "04b11c0259437f59fe94c5cfc0b799a2a858cad2",
+    "commitDate": "2026-01-16",
+    "license": "MIT",
+    "licenseFile": "LICENSE",
+    "skillsRoot": ".",
+    "idPrefix": "air",
+    "author": "Claude AI Research Skills Contributors"
+  }
+]
