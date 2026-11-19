@@ -7,7 +7,6 @@
 //
 // Errors are isolated: reviewer failures set lifecycle='error' and do NOT crash the main session.
 
-import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 
 import type { ActiveSession } from '@agentclientprotocol/sdk'
@@ -38,7 +37,7 @@ import { REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND } from './rubric'
 import { buildSupervisorNotice, type SupervisorPlan } from '../../shared/supervisor-signals'
 import { injectAuditorMessage, type CorrectionFailureReason } from './correction'
 import { buildHistoryPreamble } from '../../shared/history-preamble'
-import { getActiveConversationContext } from '../../shared/conversation-graph'
+import { resolveInheritablePromptContext } from '../../shared/conversation-graph'
 
 const log = createLogger('reviewer:orchestrator')
 
@@ -807,10 +806,25 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
     // is what this lane re-reviews (Step C/D below).
     let correctionDeferred = false
     try {
-      const provenanceContext = getActiveConversationContext(
-        materializeSessionConversationGraph(sessionBefore).conversationGraph!,
-        `prompt-${randomUUID()}`
-      )
+      // A correction turn has no Prompt of its own in the durable graph: the app injects the text, so
+      // no User message is persisted for it. An id invented here (`prompt-<uuid>`) is therefore never
+      // on the Branch, and the ownership proof refuses it as `prompt-not-owned` — a TERMINAL verdict,
+      // so every artifact raised during the correction was lost and the turn ended "Generated file
+      // finalization failed" (production: 12 refusals, one session stuck in error with 5 refused
+      // versions). Anchor on the durable Prompt the conversation was raised for instead, exactly as
+      // background delivery does (`resolveInheritablePromptContext`, which returns only a Prompt the
+      // proof would accept, and `undefined` when none exists).
+      const graph = materializeSessionConversationGraph(sessionBefore).conversationGraph
+      const provenanceContext = graph ? resolveInheritablePromptContext(graph) : undefined
+      if (!provenanceContext) {
+        // Named, not silent: without an anchor the turn still runs, but its artifacts can never be
+        // finalized. Saying so here is the difference between "no artifacts were raised" and
+        // "artifacts were raised and refused" — both look the same afterwards.
+        log.warn(
+          'fix loop: correction turn has no durable Prompt to anchor artifacts; artifacts from this turn cannot be finalized',
+          { sessionId, round, consequence: 'prompt-not-owned' }
+        )
+      }
       const injection = await injectAuditorMessage({
         sessionId,
         mainSessionId,

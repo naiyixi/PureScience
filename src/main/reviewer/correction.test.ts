@@ -325,10 +325,165 @@ describe('single-round auditor correction', () => {
           agentFrameId: 'root-frame-pending-session-1',
           messageBranchId: 'message-branch-pending-session-1',
           runtimeSegmentId: 'runtime-segment-pending-session-1',
-          promptMessageId: expect.stringMatching(/^prompt-/u)
+          // The durable user Prompt, not an id invented for this turn: the ownership proof looks the
+          // id up on the Branch, so `prompt-<uuid>` could only ever be refused (`prompt-not-owned`).
+          promptMessageId: 'msg-1'
         })
       })
     )
+
+    await client.$disconnect()
+  })
+
+  // Regression for the production shape: `[artifacts:finalization] … proofCause: 'prompt-not-owned'`
+  // twelve times, all of them correction turns, all of them terminal — the session ended in error with
+  // "Generated file finalization failed" and five refused versions. The proof looks the claimed Prompt
+  // id up on the Branch, so an id minted for the injection can never satisfy it. The anchor has to be a
+  // Prompt that really is durable: complete, on the declared Branch, in the declared Segment, before
+  // the reply this turn will write.
+  it('anchors the correction on a durable user Prompt the ownership proof accepts', async () => {
+    const process = new FakeAgentProcess()
+    startFakeAgent(process, {
+      reviewerSessionId: 'reviewer-session-1',
+      mainSessionId: 'main-session-1',
+      simulateFindingsViaHttp: true,
+      checksToSubmit: [
+        {
+          status: 'fail' as const,
+          claim: 'Agent claimed 42 results',
+          evidence: 'Tool output shows 0 results in msg-2',
+          locator: { blockRef: { messageId: 'msg-2', blockIndex: 1 }, contentHash: 'abc123' }
+        }
+      ]
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+    await runtime.createSession({ cwd: '/workspace' })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+    const session = makeSession()
+    session.conversationGraph = createLinearConversationGraph({
+      sessionId: 'pending-session-1',
+      messages: session.messages,
+      frameworkId: 'claude-code',
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
+    })
+    const correctionSendPrompt = vi.spyOn(runtime, 'sendPrompt')
+
+    await runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => session,
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!,
+      mainSessionId: 'main-session-1',
+      sessionRefreshTimeoutMs: 0
+    })
+
+    const correctionCall = correctionSendPrompt.mock.calls
+      .map((call) => call[0])
+      .find((request) => request.sessionId === 'main-session-1')
+    expect(correctionCall, 'the correction turn was injected').toBeDefined()
+    const provenance = correctionCall!.provenanceContext
+    expect(provenance, 'the correction carries an anchor').toBeDefined()
+
+    const graph = session.conversationGraph!
+    const prompt = graph.messages.find((message) => message.id === provenance!.promptMessageId)
+    expect(prompt, 'the claimed Prompt exists in the durable graph').toBeDefined()
+    expect(prompt!.role).toBe('user')
+    expect(prompt!.status).toBe('complete')
+    expect(prompt!.agentFrameId).toBe(provenance!.agentFrameId)
+    expect(prompt!.introducedOnBranchId).toBe(provenance!.messageBranchId)
+    expect(prompt!.runtimeSegmentId).toBe(provenance!.runtimeSegmentId)
+    // Ordered before the reply, which is the other half of the proof.
+    const path = createLinearConversationGraph({
+      sessionId: 'pending-session-1',
+      messages: session.messages,
+      frameworkId: 'claude-code',
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
+    }).messages.map((message) => message.id)
+    expect(path.indexOf(provenance!.promptMessageId)).toBeLessThan(path.length - 1)
+
+    await client.$disconnect()
+  })
+
+  // The other half of the same rule: when no Prompt satisfies the proof (a session whose only durable
+  // message is the answer), the turn must run WITHOUT an invented identity. A fabricated id only moves
+  // the failure to finalization time, where it reads as a product bug instead of a fact about the
+  // session.
+  it('injects without a Prompt anchor when the session has none the proof would accept', async () => {
+    const process = new FakeAgentProcess()
+    startFakeAgent(process, {
+      reviewerSessionId: 'reviewer-session-1',
+      mainSessionId: 'main-session-1',
+      simulateFindingsViaHttp: true,
+      checksToSubmit: [
+        {
+          status: 'fail' as const,
+          claim: 'Agent claimed 42 results',
+          evidence: 'Tool output shows 0 results in msg-2',
+          locator: { blockRef: { messageId: 'msg-2', blockIndex: 1 }, contentHash: 'abc123' }
+        }
+      ]
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+    await runtime.createSession({ cwd: '/workspace' })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+    const session = makeSession()
+    session.conversationGraph = createLinearConversationGraph({
+      sessionId: 'pending-session-1',
+      messages: session.messages,
+      frameworkId: 'claude-code',
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
+    })
+    // A Prompt from an EARLIER Runtime Segment is the real shape of "nothing the proof accepts": the
+    // conversation moved to a new Segment (a specialist switch) and no user Prompt was written there
+    // yet. The messages stay where they are, so the review scope is unaffected.
+    session.conversationGraph.runtimeSegments.push({
+      id: 'runtime-segment-later',
+      agentFrameId: session.conversationGraph.rootFrameId,
+      frameworkId: 'claude-code',
+      startedAt: 3000
+    })
+    const correctionSendPrompt = vi.spyOn(runtime, 'sendPrompt')
+
+    await runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => session,
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!,
+      mainSessionId: 'main-session-1',
+      sessionRefreshTimeoutMs: 0
+    })
+
+    const correctionCall = correctionSendPrompt.mock.calls
+      .map((call) => call[0])
+      .find((request) => request.sessionId === 'main-session-1')
+    expect(correctionCall, 'the correction turn was still injected').toBeDefined()
+    expect(correctionCall!.text).toMatch(/^\[Auditor\]/u)
+    expect(correctionCall!.provenanceContext).toBeUndefined()
 
     await client.$disconnect()
   })

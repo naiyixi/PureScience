@@ -124,7 +124,10 @@ export const injectAuditorMessage = async (options: {
   mainSessionId: string
   findings: ReviewCheck[] // the full checks list; only warn/fail are injected
   acpRuntime: ReviewerAcpRuntime
-  provenanceContext: NonNullable<AcpPromptRequest['provenanceContext']>
+  // The durable anchor the correction turn's artifacts are claimed under. Absent when the session has
+  // no Prompt the ownership proof would accept (see `resolveInheritablePromptContext`): the turn still
+  // runs, but it must not carry an invented identity, because that refusal is terminal.
+  provenanceContext?: NonNullable<AcpPromptRequest['provenanceContext']>
   // Optional hook for tests to capture the injected message text.
   onCorrectionPrompt?: (text: string) => void
   // Optional hook called when this lane steps aside for a correction turn that is already in flight
