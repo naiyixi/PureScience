@@ -234,6 +234,9 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'logout-shared-claude',
     'set-app-icon-variant',
     'set-close-preference',
+    // 4.3 导出署名/许可：本机设置写入，配对的浏览器被拒（窗口之外没人该改这个人的署名）。
+    'set-export-author',
+    'set-export-license',
     'set-ui-language',
     'set-default-permission-profile',
     'get-memory',
@@ -355,7 +358,7 @@ describe('renderer surface inventory', () => {
     // the inventory and the catalog move together.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL): two preload methods
     // for two contracts, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(509)
+    expect(electronPaths).toHaveLength(511)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -375,7 +378,7 @@ describe('renderer surface inventory', () => {
     // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke entry in the generated map.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(388)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(390)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -424,7 +427,7 @@ describe('renderer surface inventory', () => {
     // 136 with reading text out of an image (pdf.ocr, LOCAL): it spawns a reader on this machine, so a
     // paired remote browser is refused before dispatch.
     // 138 with the case bundle pair: both read and write this machine's disk, so a paired browser is refused.
-    expect(expectedRemoteLocalOnly).toHaveLength(141)
+    expect(expectedRemoteLocalOnly).toHaveLength(143)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)
