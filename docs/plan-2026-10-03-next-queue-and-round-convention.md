@@ -20233,3 +20233,64 @@ AssertionError: expected '\data\.pdfs\a.json' to be '/data/.pdfs/a.json'
 - ① 读 `d8ff474a` 的双车道判决（Windows 分片 4/8 是否转绿）；`6c6c5143` 在它落定后再推，**只推一次**。
 - ② 负载解除后的两条真机读数按优先级：状态文件两代重叠（证据档 §五 判据）→ 中断态「继续」。
 - ③ 排期 1.4 / 4.3 仍归桌面会话；它们提交后本轮不再认领，避免重复交付。
+
+## 三百五十七、本轮追加（执行器，2026-11-19 09:3x–）—— 发版清单的那四行 warn：把「认不出来」还给真正认不出来的文件
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 6ce0ed11`，本地不领先；`git status` 里 8 个修改路径 + 5 份未跟踪档
+  全部是桌面会话的在制（ro-crate / `artifacts/mcp-server*` / `shared/background-delivery-labels`），一个字节没碰。
+- 桌面会话此刻在跑：多个 `claude` 子进程 + dev:headless 占 44100（18h55m）+ 上一轮留下的隔离实例
+  `/tmp/ps-verify23`（44222，需收尾）。内存闸现取：空闲页 4,507（≈70 MB）、swap 6,301/7,168 ⇒
+  **不 build、不起新实例**。
+- CI：`6ce0ed11` Windows Full Test **success**；Nightly **in_progress**。`d8ff474a` 的 Windows 红在分片 8/8、
+  `d9fb3986` 在分片 4/8，**两个不同分片、HEAD 全绿** ⇒ 按「失败文件是否本批碰过」判为分片间歇红，不改代码。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；C 段外部阻塞；排期 1.4 / 4.3 归桌面会话 ⇒ 取缺陷队列。
+- 4.1 先按域词核了一遍（`environmentManifest` / `manifestFingerprint` / `compareReplayEnvironment`）：
+  环境快照（包清单+kernel+runtime+平台，带 checksum/fingerprint）与重放时的环境比对**都已存在**
+  （`src/shared/notebook.ts:138`、`src/shared/replay-verification.ts:97-132`、`src/main/artifacts/replay-composition.ts:118`）
+  ⇒ 排期写的「环境快照与依赖锁定无」是**按 API 形状搜出来的过时读数**，未开工；只在证据档记更正。
+
+### 一 缺陷与修法
+
+issue #20 第 1 条（AppImage 进不了清单）在 `97b34007` 已修。本轮做的是它旁边那格：
+
+`v2.30.2` 的 publish 作业日志里仍有四行 `warn: unrecognized release file certification-*.json`。这四个文件是
+发布作业自己产出的按平台认证证据，既不进包也不进清单 ⇒ 每次发布四行无害 warn。**同一条分支是「安装件名字
+对不上」唯一的信号**，而 AppImage 那格正是被这层例行噪声盖住、跨了十几个版本才被发现。
+
+修法：`scripts/generate-version-manifest.mjs` 把 `certification-<平台>.json` 认作已知非安装件（与
+`RELEASE-CERTIFICATION.json` 同等），其余照旧 warn。新增两条用例：认证证据静默、形似认证证据（`certification-.json`、
+`certification-report.txt`）仍 warn。
+
+### 二 读数（真资产 + 本机实跑）
+
+| 读数 | 值 |
+| --- | --- |
+| `gh release download v2.30.2 -p version.json` | `downloads` 五键齐，含 `linux-x64-appimage` → `…-linux-x86_64.AppImage` |
+| publish 作业汇总行（run 44216634387 / job 134539767731） | `platforms=linux-x64-appimage,mac-arm64,mac-x64,win-x64,linux-x64-deb` |
+| 镜像模式 CLI（伪造产物目录，19 个文件） | exit 0，五平台，URL `https://cdn.example.com/purescience/releases/2.30.2/<file>`，**零 warn** |
+| 变异（另加 `mystery-setup.exe` + `certification-.json`） | 两条仍 warn，清单仍五条 |
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/generate-version-manifest.test.ts` | 1 file / **44 passed** |
+| `npx eslint --no-cache`（两个改动文件） | 0 error / 0 warning |
+| `typecheck:node` / `typecheck:web` | 见本轮汇报（node 已 0；web 同批复核） |
+
+### 四 边界
+
+1. 镜像工作流本身仍缺仓库变量 `CDN_BASE_URL` / `S3_PREFIX`：未设时它打印 `mirror not enabled` 并非零退出
+   —— 这是**明确未启用**，不是静默坏掉；本轮没有为了取绿去填假变量，也没有改 workflow 文件。
+2. 「清单里有 AppImage URL」只证明清单侧；CDN 上是否真有那份文件要等镜像启用后才有读数。
+3. 证据档 `docs/evidence/2026-11-19-release-manifest-certification-noise.md`。
+
+### 五 下一轮第一步
+
+- ① 读本轮提交的双车道判决（按完整 40 位 SHA）；红了逐作业读日志，按「失败文件是否本批碰过」定性。
+- ② 桌面会话在制路径（ro-crate / `artifacts/mcp-server*` / `background-delivery-labels`）仍不碰；
+  1.4 的「`running` 未实机观察到」与 4.3 都由它推进。
+- ③ issue #20 已在本轮附读数并结案（AppImage 半截=真实资产核验，镜像半截=脚本实跑 + 明确未启用）；
+  下一个候选单元：v3.2 的第三方技能集合引入（需先核许可与来源清单，属跨轮大件）。

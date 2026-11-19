@@ -314,6 +314,53 @@ describe('buildManifest', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('mystery-artifact.bin'))
     warn.mockRestore()
   })
+
+  it('stays silent for the per-platform certification evidence the publish job carries', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    dir = makeReleaseDir([
+      entry('mac-arm64', 1),
+      { name: 'certification-macos-arm64.json', content: '{}', sha: HEX('7') },
+      { name: 'certification-windows-update.json', content: '{}', sha: HEX('6') }
+    ])
+
+    const manifest = buildManifest({
+      dir,
+      version: VERSION,
+      notes: '',
+      releaseDate: '',
+      cdnBase: CDN,
+      prefix: PREFIX
+    })
+
+    // Certification evidence is produced by the publish job, not by packaging: it is neither a
+    // downloads key nor "unrecognized". Keeping it out of that branch is what lets the warning keep
+    // meaning "an installer name does not match" — the signal that was buried under four routine
+    // lines while the AppImage entry was missing.
+    expect(Object.keys(manifest.downloads)).toEqual(['mac-arm64'])
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('still warns for a file that only looks like certification evidence', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    dir = makeReleaseDir([
+      entry('mac-arm64', 1),
+      { name: 'certification-.json', content: '{}', sha: HEX('5') },
+      { name: 'certification-report.txt', content: 'x', sha: HEX('4') }
+    ])
+
+    buildManifest({
+      dir,
+      version: VERSION,
+      notes: '',
+      releaseDate: '',
+      cdnBase: CDN,
+      prefix: PREFIX
+    })
+
+    expect(warn).toHaveBeenCalledTimes(2)
+    warn.mockRestore()
+  })
 })
 
 describe('manifestNotes', () => {

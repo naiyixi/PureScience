@@ -118,8 +118,8 @@ export const manifestNotes = (version, changelogPath = join(HERE, '..', 'CHANGEL
 
 // Builds the client manifest for a release directory. `cdnBase`/`prefix` follow the S3 mirror URL
 // shape (<cdn>/<prefix>/releases/<version>/<file>); sha256 comes from the dir's SHA256SUMS.txt.
-// Missing installers are omitted; a file without a checksum warns and is skipped; zips and
-// checksum/feed files are ignored silently.
+// Missing installers are omitted; a file without a checksum warns and is skipped; zips, checksum/feed
+// files and the per-platform certification evidence are ignored silently.
 export const buildManifest = ({ dir, version, notes, releaseDate, cdnBase, prefix }) => {
   const files = readdirSync(dir)
   const sums = parseSha256Sums(
@@ -137,9 +137,17 @@ export const buildManifest = ({ dir, version, notes, releaseDate, cdnBase, prefi
     'arm64-mac.yml',
     'x64-mac.yml'
   ])
+  // The publish job's artifacts directory also carries one certification evidence file per platform
+  // (`certification-macos-arm64.json`, `certification-windows-update.json`, …). They are not installers,
+  // so they used to land in the "unrecognized release file" branch — four harmless warnings on every
+  // release. That is not cosmetic: the same branch is the only signal an installer name mismatch gets,
+  // and it is exactly how the AppImage entry stayed missing for a dozen releases while the warning was
+  // read as routine noise. Recognising them keeps the warning meaning "something is wrong here".
+  const isCertificationEvidence = (file) => /^certification-[a-z0-9-]+\.json$/i.test(file)
   const downloads = {}
   for (const file of files) {
     if (file.endsWith('.zip') || file.endsWith('.blockmap') || silent.has(file)) continue
+    if (isCertificationEvidence(file)) continue
     const key = Object.keys(INSTALLERS).find((k) => INSTALLERS[k](version) === file)
     if (!key) {
       console.warn(`warn: unrecognized release file ${file}`)
