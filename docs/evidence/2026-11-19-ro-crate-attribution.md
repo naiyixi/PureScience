@@ -53,6 +53,22 @@ npx vitest run src/main/ro-crate/attribution-evidence.test.ts
 
 读数原文：`/tmp/ps-attr-readings.json`（本档表格即其摘要）。
 
+## CI 读数（HEAD `8911b7cb`）
+
+| 作业                                                          | 结论                             |
+| ------------------------------------------------------------- | -------------------------------- |
+| Windows Full Test（8 分片，Windows 11 x64）                   | **success**（run `44511623602`） |
+| Nightly → build / Verify（lint + typecheck + test + package） | **success**（run `44511623653`） |
+| Scheduled Regression                                          | **success**（run `44518152558`） |
+| Nightly → Build linux-x64 / windows-x64 / macos-x64           | success                          |
+| Nightly → Build macos-arm64                                   | 打包仍在跑（与本项判据无关）     |
+
+新增两条通道会让四处「清单用例」变红，这是它们该有的行为：应用命令总数 382→384、本地 Web 380→382、
+远程失败关闭 141→143、契约目录 509→511、投影 388→390、preload 暴露面 509→511、本地 Web 可调用面
+418→420、设置页区块 8→9。每处都在提交里写明「为什么多这两条」，而不是把数字改到绿。
+
+本地全量：`18945 passed | 229 skipped (19174)`，`1512 passed | 31 skipped (1543)` 个文件，0 失败。
+
 ## 边界
 
 - 只覆盖两个第三方实现（ELIXIR 参考库 + 通用 JSON-LD 展开），没有跑官方 `rocrate-validator` 的完整 profile 校验。
