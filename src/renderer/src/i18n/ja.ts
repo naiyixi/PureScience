@@ -3677,9 +3677,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '来歴',
   'reviewer.label': 'レビュアー',
   'reviewer.fixLimitReached': '修正回数の上限に達しました',
-  'references.import.button': '文献を読み込む（Zotero JSON / RIS / EndNote / MEDLINE）',
+  'references.import.button': '文献を読み込む（Zotero JSON / RIS / EndNote / MEDLINE / CNKI）',
   'references.import.notAnExport':
-    'このファイルは Zotero JSON でも RIS でもありません。CNKI・万方・維普・NoteExpress・EndNote の RIS はそのまま読み込めます（EndNote の .enw、MEDLINE の .nbib も同様）。',
+    'このファイルは Zotero JSON でも RIS でもありません。CNKI・万方・維普・NoteExpress・EndNote の RIS はそのまま読み込めます（EndNote の .enw、MEDLINE の .nbib、CNKI 形式のテキスト .txt も同様）。',
   'references.zotero.import': 'Zotero から取り込む',
   'references.zotero.notAnExport':
     'このファイルは Zotero の JSON 書き出しではありません。ライブラリを JSON で書き出してから再試行してください。',

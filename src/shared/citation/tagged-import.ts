@@ -124,6 +124,14 @@ const toRecord = (
   record: TaggedRecord,
   options: {
     typeMap: Record<string, CitationItemType>
+    /**
+     * Fallback type words that are not a whole word but a family prefix: CNKI's `SrcDatabase` writes the
+     * database code (`CJFD2022`, `CMFD2014`, `CPFD2021`) rather than a type, and the first two letters are
+     * what names the kind. Ordered — the first match wins.
+     */
+    typePrefixes?: ReadonlyArray<readonly [RegExp, CitationItemType]>
+    /** Tags that are known and deliberately carry nothing a citation can use (`DataType: 1`). */
+    ignoredTags?: readonly string[]
     typeTags: readonly string[]
     titleTags: readonly string[]
     authorTags: readonly string[]
@@ -160,12 +168,17 @@ const toRecord = (
       options.volumeTags.includes(tag) ||
       options.issueTags.includes(tag) ||
       options.pageTags.includes(tag) ||
-      options.pmidTags.includes(tag)
+      options.pmidTags.includes(tag) ||
+      (options.ignoredTags?.includes(tag) ?? false)
     if (!known) options.unmappedTags[tag] = (options.unmappedTags[tag] ?? 0) + 1
   }
 
   const rawType = firstOf(record, options.typeTags)
-  const mapped = rawType === undefined ? undefined : options.typeMap[rawType.toLowerCase()]
+  const mapped =
+    rawType === undefined
+      ? undefined
+      : (options.typeMap[rawType.toLowerCase()] ??
+        options.typePrefixes?.find(([pattern]) => pattern.test(rawType))?.[1])
   if (rawType !== undefined && mapped === undefined) {
     options.unmappedTypes[rawType] = (options.unmappedTypes[rawType] ?? 0) + 1
   }
@@ -399,3 +412,191 @@ export const looksLikeEndNote = (text: string): boolean =>
 /** True when the text looks like a MEDLINE export: a `PMID- ` (or another 2–4 letter tag) first line. */
 export const looksLikeMedline = (text: string): boolean =>
   /^[A-Z]{2,4}\s*-\s/u.test(text.replace(/^\uFEFF/u, '').trimStart())
+
+// ---------------------------------------------------------------------------------------------------------
+// CNKI's own text export ("导出/参考文献 → CNKI 格式", copied or saved as .txt)
+//
+// The tags are `EnglishName-ChineseLabel:` — a shape none of the dialects above has, which is what detection
+// keys on. Two label generations are in real exports and they are not synonyms:
+//
+//   2022 export: Source-文献来源 · PubTime-发表时间 · Volume-卷    · PageCount-页码 (the pages)
+//   2021 export: Source-刊名     · PubTime-出版时间 · Roll-卷      · Page-页码 (the pages)
+//                                                                · PageCount-页数 (a COUNT: "3")
+//
+// So the record is keyed by the composite label, not by the English name: a bare `PageCount` would turn
+// "this article is 3 pages long" into pages `3`, which is a citation that points at nothing. Same reason the
+// list of tags is written out per generation below instead of matched loosely.
+//
+// What it must not do (each one is a way to invent a fact):
+//   - `Organ-单位` is the authors' affiliation, never the publisher.
+//   - `URL-网址: [Link]` / `DOI-DOI: 10.…/[Link].…` appear in copies whose links were elided. A value that is
+//     not an http(s) URL, or a DOI with a bracketed placeholder in it, is left absent rather than stored as an
+//     identifier that would 404 on the resolver.
+//   - Authors and keywords are `;`-separated (often with a trailing `;`, keywords often with `;;`); they are
+//     split into separate values so one author is never one giant string.
+// ---------------------------------------------------------------------------------------------------------
+
+const CNKI_PROFILE = {
+  typeTags: ['SrcDatabase-来源库'] as const,
+  titleTags: ['Title-题名'] as const,
+  authorTags: ['Author-作者'] as const,
+  containerTags: ['Source-文献来源', 'Source-刊名'] as const,
+  yearTags: ['Year-年', 'PubTime-发表时间', 'PubTime-出版时间'] as const,
+  abstractTags: ['Summary-摘要'] as const,
+  keywordTags: ['Keyword-关键词'] as const,
+  doiTags: ['DOI-DOI'] as const,
+  urlTags: ['URL-网址', 'Link-链接'] as const,
+  volumeTags: ['Volume-卷', 'Roll-卷'] as const,
+  issueTags: ['Period-期'] as const,
+  pageTags: ['Page-页码', 'PageCount-页码'] as const,
+  ignoredTags: ['DataType'] as const
+}
+
+/** Whole-word `SrcDatabase` values, then the database codes the same field writes in older exports. */
+const CNKI_TYPE_MAP: Record<string, CitationItemType> = {
+  期刊: 'journal-article',
+  博士: 'thesis',
+  硕士: 'thesis',
+  学位论文: 'thesis',
+  会议: 'conference-paper',
+  图书: 'book'
+}
+
+const CNKI_TYPE_PREFIXES: ReadonlyArray<readonly [RegExp, CitationItemType]> = [
+  [/^CJFD|^CJFQ|^CJFZ|^CJFN/u, 'journal-article'],
+  [/^CMFD|^CDFD/u, 'thesis'],
+  [/^CPFD|^IPFD/u, 'conference-paper']
+]
+
+/** `English-Chinese:` or a bare `English:` (`DataType: 1`), value after the colon. */
+const CNKI_LINE = /^([A-Za-z][A-Za-z0-9]*)\s*(?:-([^:：]{1,24}))?[:：]\s?(.*)$/u
+
+/** Split `a;b;;c;` into `['a','b','c']` on either semicolon, dropping the empty slots. */
+const splitCnkiList = (value: string): string[] =>
+  value
+    .split(/[;；]/u)
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+
+const isWebUrl = (value: string): boolean => /^https?:\/\//iu.test(value.trim())
+
+/**
+ * CNKI 格式 export. Records are separated by a blank line in the 2022 generation and by nothing at all in the
+ * 2021 one, where each record restarts at `DataType:` / a second `Title-`. Both are handled: a repeated title
+ * or database field closes the record under construction.
+ */
+export const parseCnkiTagged = (text: string): RisImportResult => {
+  const records: TaggedRecord[] = []
+  const skipped: RisSkippedRecord[] = []
+  let current: TaggedRecord | undefined
+  let lastTag: string | undefined
+
+  const push = (record: TaggedRecord, key: string, value: string): void => {
+    if (key === 'Author-作者' || key === 'Keyword-关键词') {
+      for (const part of splitCnkiList(value)) pushTag(record, key, part)
+      return
+    }
+    // A placeholder is not an identifier: `[Link]` in the URL field of an elided copy, and a DOI with a
+    // bracketed placeholder inside it, are both refused here rather than stored as facts.
+    if ((CNKI_PROFILE.urlTags as readonly string[]).includes(key) && !isWebUrl(value)) return
+    if ((CNKI_PROFILE.doiTags as readonly string[]).includes(key) && /[[\]]/u.test(value)) return
+    if ((CNKI_PROFILE.doiTags as readonly string[]).includes(key) && !/^10\./u.test(value.trim()))
+      return
+    pushTag(record, key, value)
+  }
+
+  const lines = text.split(/\r?\n/u)
+  lines.forEach((rawLine, index) => {
+    const lineNumber = index + 1
+    const line = rawLine.replace(/\uFEFF/gu, '')
+    if (line.trim() === '') {
+      current = undefined
+      lastTag = undefined
+      return
+    }
+    const match = CNKI_LINE.exec(line)
+    if (match === null) {
+      // A wrapped value belongs to the tag above it, never to a new field.
+      if (current !== undefined && lastTag !== undefined) {
+        const values = current.tags.get(lastTag)
+        const last = values?.[values.length - 1]
+        if (values !== undefined && last !== undefined) {
+          values[values.length - 1] = `${last} ${line.trim()}`
+          return
+        }
+      }
+      skipped.push({
+        line: lineNumber,
+        reason: 'unparsable-line',
+        detail: line.trim().slice(0, 160)
+      })
+      return
+    }
+    const english = match[1] as string
+    const label = match[2]
+    const key = label === undefined ? english : `${english}-${label.trim()}`
+    const opensRecord =
+      key === 'DataType' ||
+      (key === 'Title-题名' && (current?.tags.has('Title-题名') ?? false)) ||
+      (key === 'SrcDatabase-来源库' && (current?.tags.has('SrcDatabase-来源库') ?? false))
+    if (current === undefined || opensRecord) {
+      current = { startLine: lineNumber, tags: new Map() }
+      records.push(current)
+    }
+    push(current, key, match[3] ?? '')
+    lastTag = key
+  })
+
+  const unmappedTags: Record<string, number> = {}
+  const unmappedTypes: Record<string, number> = {}
+  const imported: RisImportedRecord[] = []
+  for (const record of records) {
+    const rows = toRecord(record, {
+      typeMap: CNKI_TYPE_MAP,
+      typePrefixes: CNKI_TYPE_PREFIXES,
+      ignoredTags: CNKI_PROFILE.ignoredTags,
+      typeTags: CNKI_PROFILE.typeTags,
+      titleTags: CNKI_PROFILE.titleTags,
+      authorTags: CNKI_PROFILE.authorTags,
+      containerTags: CNKI_PROFILE.containerTags,
+      yearTags: CNKI_PROFILE.yearTags,
+      abstractTags: CNKI_PROFILE.abstractTags,
+      keywordTags: CNKI_PROFILE.keywordTags,
+      doiTags: CNKI_PROFILE.doiTags,
+      urlTags: CNKI_PROFILE.urlTags,
+      publisherTags: [],
+      volumeTags: CNKI_PROFILE.volumeTags,
+      issueTags: CNKI_PROFILE.issueTags,
+      pageTags: CNKI_PROFILE.pageTags,
+      pmidTags: [],
+      unmappedTags,
+      unmappedTypes
+    })
+    if (rows.length === 0) {
+      skipped.push({
+        line: record.startLine,
+        reason: 'no-title',
+        detail: `CNKI record at line ${record.startLine}`
+      })
+      continue
+    }
+    imported.push(...rows)
+  }
+
+  return { records: imported, skipped, unmappedTags, unmappedTypes }
+}
+
+/**
+ * True when the text looks like a CNKI export. The 2021 generation opens with `DataType: 1`, so the first few
+ * non-empty lines are scanned rather than just the first; the `English-Chinese:` shape is what is looked for,
+ * and none of the other dialects can produce it.
+ */
+export const looksLikeCnki = (text: string): boolean => {
+  const lines = text
+    .replace(/^\uFEFF/u, '')
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .slice(0, 5)
+  return lines.some((line) => /^[A-Za-z][A-Za-z0-9]*-[\u3400-\u9fff][^:：]{0,20}[:：]/u.test(line))
+}

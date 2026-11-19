@@ -8,8 +8,10 @@
 import { normalizeTitleForDedupe } from './references'
 import { parseRis, type RisImportResult } from './citation/ris-import'
 import {
+  looksLikeCnki,
   looksLikeEndNote,
   looksLikeMedline,
+  parseCnkiTagged,
   parseEndNoteTagged,
   parseMedline
 } from './citation/tagged-import'
@@ -21,7 +23,7 @@ import {
 } from './zotero-import'
 import type { Reference, ReferenceItemType } from './references'
 
-export type ReferenceImportFormat = 'zotero-json' | 'ris' | 'endnote' | 'medline'
+export type ReferenceImportFormat = 'zotero-json' | 'ris' | 'endnote' | 'medline' | 'cnki'
 
 export type ReferenceImportPlan = ZoteroImportPlan & {
   /** Which dialect the text was read as — the dialog says so rather than guessing silently. */
@@ -68,6 +70,11 @@ export const planReferenceImport = (
   }
   if (looksLikeMedline(trimmed)) {
     return { ...planParsedImport(parseMedline(trimmed), existing), format: 'medline' as const }
+  }
+  // CNKI's own text export ("CNKI 格式") — the one a reader gets when the export menu offers no RIS. Last
+  // because its `English-Chinese:` tag shape cannot occur in the dialects above, so order costs nothing.
+  if (looksLikeCnki(trimmed)) {
+    return { ...planParsedImport(parseCnkiTagged(trimmed), existing), format: 'cnki' as const }
   }
   return { error: 'not-an-export' }
 }

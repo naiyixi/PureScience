@@ -3611,9 +3611,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '출처',
   'reviewer.label': '리뷰어',
   'reviewer.fixLimitReached': '수정 한도에 도달했습니다',
-  'references.import.button': '문헌 가져오기 (Zotero JSON / RIS / EndNote / MEDLINE)',
+  'references.import.button': '문헌 가져오기 (Zotero JSON / RIS / EndNote / MEDLINE / CNKI)',
   'references.import.notAnExport':
-    '이 파일은 Zotero JSON도 RIS도 아닙니다. CNKI·완팡·VIP·NoteExpress·EndNote의 RIS는 바로 가져올 수 있으며, EndNote(.enw)와 MEDLINE(.nbib) 내보내기도 지원합니다.',
+    '이 파일은 Zotero JSON도 RIS도 아닙니다. CNKI·완팡·VIP·NoteExpress·EndNote의 RIS는 바로 가져올 수 있으며, EndNote(.enw)·MEDLINE(.nbib)·CNKI 형식 텍스트(.txt) 내보내기도 지원합니다.',
   'references.zotero.import': 'Zotero에서 가져오기',
   'references.zotero.notAnExport':
     '이 파일은 Zotero JSON 내보내기가 아닙니다. 라이브러리를 JSON으로 내보낸 뒤 다시 시도하세요.',

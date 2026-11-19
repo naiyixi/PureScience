@@ -3403,9 +3403,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '溯源',
   'reviewer.label': '複核員',
   'reviewer.fixLimitReached': '已達修復次數上限',
-  'references.import.button': '匯入文獻（Zotero JSON / RIS / EndNote / MEDLINE）',
+  'references.import.button': '匯入文獻（Zotero JSON / RIS / EndNote / MEDLINE / CNKI 格式）',
   'references.import.notAnExport':
-    '這個檔案既不是 Zotero 的 JSON 匯出，也不是 RIS —— 知網、萬方、維普、NoteExpress、EndNote 的 RIS 匯出可以直接匯入，EndNote 的 .enw 與 PubMed 的 .nbib 也可以。',
+    '這個檔案既不是 Zotero 的 JSON 匯出，也不是 RIS —— 知網、萬方、維普、NoteExpress、EndNote 的 RIS 匯出可以直接匯入，EndNote 的 .enw、PubMed 的 .nbib、以及知網「匯出/參考文獻」裡的 CNKI 格式文字也可以。',
   'references.zotero.import': '從 Zotero 匯入',
   'references.zotero.notAnExport':
     '這個檔案不是 Zotero 的 JSON 匯出 —— 請把文獻庫匯出為 JSON 再試。',

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  looksLikeCnki,
   looksLikeEndNote,
   looksLikeMedline,
+  parseCnkiTagged,
   parseEndNoteTagged,
   parseMedline
 } from './tagged-import'
@@ -184,5 +186,149 @@ describe('format detection', () => {
     expect(looksLikeEndNote(MEDLINE)).toBe(false)
     expect(looksLikeMedline(MEDLINE)).toBe(true)
     expect(looksLikeMedline(ENDNOTE)).toBe(false)
+  })
+})
+
+// The two blocks below are verbatim records from two real CNKI exports found in public repositories
+// (sha256 of the complete files in the evidence note for this unit): the first generation writes
+// `Source-文献来源` / `PubTime-发表时间` / `PageCount-页码`, the second one `Source-刊名` / `PubTime-出版时间` /
+// `Roll-卷` / `Page-页码` **and** `PageCount-页数`, which is a page COUNT and not a page range. Both are kept
+// because the difference between them is exactly what a loose tag match would get wrong.
+const CNKI_2022 = `SrcDatabase-来源库:  期刊
+Title-题名:  新时代桥梁智能建造及智慧服务体系研究
+Author-作者:  文武松;毛伟琦;陶世峰;
+Organ-单位:  中铁大桥局集团有限公司;桥梁结构健康与安全国家重点实验室;
+Source-文献来源:  世界桥梁
+Keyword-关键词:  桥梁工程;;战略需求;;智慧服务;;智能建造;;智慧运维;;综合管理平台;;数字化转型
+Summary-摘要:  面向数字中国建设重大战略需求，针对桥梁智慧服务、建养并重的发展态势，以物联网、标识解析、大数据、云计算等现代科学技术的深化应用为基础，总结参建的多项重点桥梁智能建造与智慧运维工程及重点科研项目的构建要素、内涵与特征，逐步构建桥梁建造的智慧服务体系。
+PubTime-发表时间:  2022-11-25
+Year-年:  2022
+
+SrcDatabase-来源库:  期刊
+Title-题名:  双碳目标驱动的新型低压配电系统技术展望
+Author-作者:  张勇军;羿应棋;李立浧;钟康骅;李钦豪;刘斯亮;肖晃庆;
+Organ-单位:  智慧能源工程技术研究中心华南理工大学电力学院;
+Source-文献来源:  电力系统自动化
+Keyword-关键词:  新型电力系统;;碳达峰;;碳中和;;新能源;;配电网;;数字孪生;;云边协同
+Summary-摘要:  新能源分布式应用是支撑中国实现“碳达峰·碳中和”战略目标的重要方式。
+PubTime-发表时间:  2022-11-24
+Year-年:  2022
+DOI-DOI:  10.7500/AEPS20220325005
+`
+
+// The 2021 generation: no blank line between records — the next record starts at `DataType: 1`. The second
+// record has no author at all, so an empty author list is the only honest result.
+const CNKI_2021 = `DataType: 1
+Title-题名: 1例卡培他滨与苯妥英钠相互作用致乳腺癌合并癫痫患者小脑功能障碍的病例分析
+Author-作者: 柯洪琴;陈璿英;王启斌;
+Source-刊名: 中南药学
+Year-年: 2021
+PubTime-出版时间: 2021-01-18
+Keyword-关键词: 苯妥英钠;卡培他滨;相互作用;小脑功能障碍;不良反应
+Summary-摘要: <正>苯妥英钠作为一种传统抗癫痫药物(AEDs),因价格低、疗效佳、易获取,目前仍在基层医院广泛用于癫痫治疗。
+Period-期: 01
+Roll-卷: 19
+PageCount-页数: 3
+Page-页码: 168-170
+SrcDatabase-来源库: 期刊
+Organ-机构: 十堰市太和医院药学部(湖北医药学院附属医院);南昌大学第一附属医院药剂科;
+Link-链接: https://kns.cnki.net/kcms/detail/detail.aspx?FileName=ZNYX202101034&DbName=CJFQTEMP
+DataType: 1
+Title-题名: 中国女性乳腺癌筛查标准(T/CPMA 014-2020)
+Source-刊名: 中华疾病控制杂志
+PubTime-出版时间: 2021-01-15 16:54
+Keyword-关键词: 乳腺癌;筛查;标准
+PageCount-页数: 7
+Page-页码: 1-7
+SrcDatabase-来源库: 期刊
+Organ-机构: 中华预防医学会;
+Link-链接: https://kns.cnki.net/kcms/detail/detail.aspx?FileName=JBKZ20210115000&DbName=DKFX2021
+`
+
+describe('parseCnkiTagged', () => {
+  it('reads the 2022 generation: one author per name, keywords split, pages from PageCount-页码', () => {
+    const result = parseCnkiTagged(CNKI_2022)
+
+    expect(result.skipped).toEqual([])
+    expect(result.records).toHaveLength(2)
+    const first = result.records[0]
+    expect(first?.item.title).toBe('新时代桥梁智能建造及智慧服务体系研究')
+    expect(first?.item.authors.map((author) => author.name)).toEqual(['文武松', '毛伟琦', '陶世峰'])
+    expect(first?.item.containerTitle).toBe('世界桥梁')
+    expect(first?.item.year).toBe(2022)
+    expect(first?.item.itemType).toBe('journal-article')
+    expect(first?.keywords).toEqual([
+      '桥梁工程',
+      '战略需求',
+      '智慧服务',
+      '智能建造',
+      '智慧运维',
+      '综合管理平台',
+      '数字化转型'
+    ])
+    // `Organ-单位` is the authors' affiliation; there is no publisher in this export and none is invented.
+    expect(first?.item.publisher).toBeUndefined()
+    expect(first?.item.doi).toBeUndefined()
+    expect(result.records[1]?.item.doi).toBe('10.7500/AEPS20220325005')
+  })
+
+  it('reads the 2021 generation: records split on DataType, pages never taken from PageCount-页数', () => {
+    const result = parseCnkiTagged(CNKI_2021)
+
+    expect(result.skipped).toEqual([])
+    expect(result.records).toHaveLength(2)
+    const first = result.records[0]
+    expect(first?.item.title).toBe(
+      '1例卡培他滨与苯妥英钠相互作用致乳腺癌合并癫痫患者小脑功能障碍的病例分析'
+    )
+    expect(first?.item.volume).toBe('19')
+    expect(first?.item.issue).toBe('01')
+    // `PageCount-页数: 3` is how many pages the article spans; the pages are `Page-页码: 168-170`.
+    expect(first?.item.pages).toBe('168-170')
+    expect(first?.item.url).toBe(
+      'https://kns.cnki.net/kcms/detail/detail.aspx?FileName=ZNYX202101034&DbName=CJFQTEMP'
+    )
+    expect(first?.item.year).toBe(2021)
+    // The second record carries no Author-作者 line at all: an empty list, not a made-up one.
+    expect(result.records[1]?.item.authors).toEqual([])
+    expect(result.records[1]?.item.itemType).toBe('journal-article')
+  })
+
+  it('refuses a bracketed placeholder instead of storing it as a URL or a DOI', () => {
+    const elided = [
+      'SrcDatabase-来源库: 期刊',
+      'Title-题名: 一篇链接被抹掉的记录',
+      'Author-作者: 张三;',
+      'Source-刊名: 某某学报',
+      'PubTime-出版时间: 2020',
+      'PageCount-页码: 12-18',
+      'URL-网址: [Link]',
+      'DOI-DOI: 10.20242/[Link].2097-5384.2025.11.005',
+      ''
+    ].join('\n')
+
+    const record = parseCnkiTagged(elided).records[0]
+    expect(record?.item.url).toBeUndefined()
+    expect(record?.item.doi).toBeUndefined()
+    expect(record?.item.pages).toBe('12-18')
+  })
+
+  it('reports a record with no title as skipped, by line, instead of dropping it silently', () => {
+    const headerOnly = 'DataType: 1\nAuthor-作者: 张三;\n'
+    const result = parseCnkiTagged(headerOnly)
+    expect(result.records).toEqual([])
+    expect(result.skipped).toHaveLength(1)
+    expect(result.skipped[0]?.reason).toBe('no-title')
+  })
+})
+
+describe('CNKI detection', () => {
+  it('recognises both generations and nothing else', () => {
+    expect(looksLikeCnki(CNKI_2022)).toBe(true)
+    // The 2021 file opens with `DataType: 1`, so detection cannot look at the first line only.
+    expect(looksLikeCnki(CNKI_2021)).toBe(true)
+    expect(looksLikeCnki(ENDNOTE)).toBe(false)
+    expect(looksLikeCnki(MEDLINE)).toBe(false)
+    expect(looksLikeCnki('TY  - JOUR\nTI  - An RIS record\nER  - \n')).toBe(false)
   })
 })

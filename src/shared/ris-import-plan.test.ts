@@ -150,4 +150,43 @@ describe('planReferenceImport — reading both dialects behind one plan', () => 
     expect(duplicate.records).toHaveLength(0)
     expect(duplicate.skipped[0]?.reason).toBe('duplicate')
   })
+
+  // The export menu on the Chinese databases offers its own text format next to RIS, and that is what a
+  // reader who has never heard of RIS ends up with. It reaches the same plan, so the duplicate rule applies
+  // to it unchanged — including the space-insensitive Chinese title key below.
+  it('reads a CNKI-format export, names the dialect, and refuses a spaced duplicate of the same title', () => {
+    const cnki = [
+      'SrcDatabase-来源库:  期刊',
+      'Title-题名:  新时代桥梁智能建造及智慧服务体系研究',
+      'Author-作者:  文武松;毛伟琦;陶世峰;',
+      'Organ-单位:  中铁大桥局集团有限公司;桥梁结构健康与安全国家重点实验室;',
+      'Source-文献来源:  世界桥梁',
+      'Keyword-关键词:  桥梁工程;;战略需求;;智慧服务',
+      'Summary-摘要:  面向数字中国建设重大战略需求。',
+      'PubTime-发表时间:  2022-11-25',
+      'Year-年:  2022',
+      ''
+    ].join('\n')
+
+    const fresh = planReferenceImport(cnki, [])
+    if ('error' in fresh) throw new Error('expected a plan')
+    expect(fresh.format).toBe('cnki')
+    expect(fresh.records).toHaveLength(1)
+    expect(fresh.records[0]?.input).toMatchObject({
+      title: '新时代桥梁智能建造及智慧服务体系研究',
+      venue: '世界桥梁',
+      year: 2022,
+      itemType: 'journal-article'
+    })
+    expect(fresh.records[0]?.input.authors).toEqual([
+      { name: '文武松' },
+      { name: '毛伟琦' },
+      { name: '陶世峰' }
+    ])
+
+    const duplicate = planReferenceImport(cnki, [{ title: '新时代桥梁智能建造及智慧服务体系研究' }])
+    if ('error' in duplicate) throw new Error('expected a plan')
+    expect(duplicate.records).toHaveLength(0)
+    expect(duplicate.skipped[0]?.reason).toBe('duplicate')
+  })
 })
