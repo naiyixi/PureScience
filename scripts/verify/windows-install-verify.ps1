@@ -275,6 +275,9 @@ try {
   # → 跑 cli/rollback-supervisor.cjs（ELECTRON_RUN_AS_NODE=1）→ 断言文件被恢复、标记写成已回滚。
   $asar = Join-Path $installDir 'resources\app.asar'
   $supervisor = Join-Path $installDir 'resources\cli\rollback-supervisor.cjs'
+  # 第 5 步起的那个实例还占着 app.asar；Windows 上文件被占用时删除会直接失败，所以先停掉再动手。
+  Stop-App
+  Start-Sleep -Seconds 3
   if (-not (Test-Path $asar) -or -not (Test-Path $supervisor)) {
     Save-Json 'rollback-skipped.json' @{ asar = (Test-Path $asar); supervisor = (Test-Path $supervisor); note = '缺少 app.asar 或监管脚本，未做回滚步骤，未声明通过' }
     Add-Step 'rollback-skipped' $false @{ reason = 'missing app.asar or supervisor script in the installed layout' }
@@ -298,7 +301,12 @@ try {
     } | ConvertTo-Json | Set-Content -Path $markerFile -Encoding utf8
 
     # 装坏：新版本的 asar 不见了（这是「进程内回滚不可能、必须外部监管」的那个场景）。
-    Remove-Item -Force $asar
+    # 进程退出与文件句柄释放之间有间隙，删不掉就重试几次 —— 这是被测环境的时序，不是判据。
+    for ($i = 0; $i -lt 10; $i++) {
+      try { Remove-Item -Force $asar -ErrorAction Stop; break }
+      catch { Start-Sleep -Seconds 2 }
+    }
+    if (Test-Path $asar) { throw 'could not remove app.asar to simulate a broken install (still locked)' }
     $env:ELECTRON_RUN_AS_NODE = '1'
     $output = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 5000 --poll-ms 300 2>&1
     $env:ELECTRON_RUN_AS_NODE = ''
