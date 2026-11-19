@@ -1,7 +1,7 @@
 {
-  "startedAt": "2026-11-19T05:15:29.0102534+00:00",
+  "startedAt": "2026-11-19T05:53:41.1958138+00:00",
   "oldSetup": "D:\\a\\_temp\\setups\\zerolink-purescience-2.29.0-win-x64-setup.exe",
-  "newSetup": "D:\\a\\_temp\\setups\\zerolink-purescience-2.30.2-win-x64-setup.exe",
+  "newSetup": "D:\\a\\PureScience\\PureScience\\dist\\zerolink-purescience-2.30.2-win-x64-setup.exe",
   "steps": [
     {
       "name": "installed-launcher-exists",
@@ -15,8 +15,8 @@
       "name": "reads-readiness-and-runtimes",
       "ok": true,
       "detail": {
-        "runtimes": 6,
         "readinessChecks": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runtimes": 6,
         "runnable": 5
       }
     },
@@ -24,16 +24,15 @@
       "name": "broken-runtime-is-detected",
       "ok": true,
       "detail": {
-        "disappearedFromList": true,
-        "readinessBefore": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
-        "readinessFailedAfter": 6,
-        "readinessAfter": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
-        "runtime": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe",
-        "readinessFailedBefore": 6,
-        "detectedBy": "entry-removed",
-        "language": "python",
-        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
         "runnableAfter": 4,
+        "detail": null,
+        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
+        "readinessAfter": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "named": false,
+        "stillListed": false,
+        "language": "python",
+        "readinessBefore": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runtime": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe",
         "runnableBefore": 5
       }
     },
@@ -41,28 +40,40 @@
       "name": "repair-restores-runtimes",
       "ok": true,
       "detail": {
-        "runnableAfterRepair": 5,
         "runnableBefore": 5,
-        "readinessAfterRepair": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
+        "readinessAfterRepair": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
+        "runnableAfterRepair": 5
       }
     },
     {
       "name": "upgrade-changes-version",
       "ok": true,
       "detail": {
-        "from": "2.29.0.0",
-        "to": "2.30.2.0"
+        "to": "2.30.2.0",
+        "from": "2.29.0.0"
       }
     },
     {
       "name": "upgrade-keeps-runtimes",
       "ok": true,
       "detail": {
-        "runnableAfterUpgrade": 5,
+        "readinessAfterUpgrade": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning",
         "runnableBefore": 5,
-        "readinessAfterUpgrade": "system=passed,storage=passed,secure-storage=passed,install-network=passed,python=passed,agent=failed,agent=warning,agent=warning,agent=warning,agent=warning,backend=warning"
+        "runnableAfterUpgrade": 5
+      }
+    },
+    {
+      "name": "upgrade-names-a-deleted-runtime",
+      "ok": true,
+      "detail": {
+        "runtime": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe",
+        "brokenPath": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe.broken",
+        "stillListed": true,
+        "runnableAfterUpgrade": 5,
+        "detail": "Interpreter is no longer at this path (it was available earlier)",
+        "runnableAfterBreak": 4
       }
     }
   ],
-  "finishedAt": "2026-11-19T05:17:17.8273647+00:00"
+  "finishedAt": "2026-11-19T05:55:10.3555672+00:00"
 }

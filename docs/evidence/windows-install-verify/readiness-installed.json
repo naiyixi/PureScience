@@ -1,6 +1,6 @@
 {
   "data": {
-    "checkedAt": 1795065374294,
+    "checkedAt": 1795067647555,
     "platform": "win32",
     "architecture": "x64",
     "checks": [
@@ -29,7 +29,7 @@
         "label": "Installation network",
         "status": "passed",
         "summary": "official npm registry is the fastest reachable source.",
-        "detail": "Measured 165 ms. The other trusted source remains available as an automatic fallback."
+        "detail": "Measured 110 ms. The other trusted source remains available as an automatic fallback."
       },
       {
         "id": "python",

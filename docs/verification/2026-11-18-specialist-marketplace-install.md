@@ -657,7 +657,41 @@ node scripts/localize-skills.mjs
 
 技术上可以，但不是首选：本机是 Apple M2 / macOS 27，装 UTM + Windows 11 **ARM64** 才行，x64 的 Electron 与 NSIS 包要靠 Windows 的 x64 仿真跑；还需要 ~30–40 GB 磁盘（当前可用 46 GB）与一份授权。收益是能出真截图；代价是首次要拉 5–6 GB 镜像、仿真下 Electron 只能软件渲染、稳定性不如原机。CI 的 `windows-latest` 本来就是真 Windows x64、免费、可重复，所以先用它把「装/坏/修/升」钉死；要截图时再上虚拟机或真机。
 
-## 二十八、仍未做的
+## 二十八、运行时被删不再悄悄消失（3.2 点名缺口已修）
+
+### 起因（上一节抓到的缺口）
+
+挪走 `python.exe` 后 `/api/v1/runtimes` 从 6 条 5 runnable 变成 5 条 4 runnable——**那一行直接没了**，readiness 的 `python` 检查仍 `passed`。用户只看到「少一项」，没人告诉他谁不见了。
+
+### 修法
+
+`src/main/notebook/interpreter-history.ts`：把**探测成功过**的解释器路径记在 `<storageRoot>/runtime/interpreter-history.json`（消失的保留 30 天、每语言上限 40、文件坏了当没有历史——诊断信息不能反过来拖垮发现）。发现流程把「上次见过、这次找不到」的路径作为**一行**带回来：`runnable: false`，`detail: 'Interpreter is no longer at this path (it was available earlier)'`，`registration` 沿用 `system`（不为一个字符串推 schema 变更）。界面本来就渲染 `env.detail`（`RuntimesPanel.tsx:111`、`NotebookPreview.tsx:1048`），所以这行字直接出现在用户眼前。
+
+### 判据先写死，再让它满足
+
+验收脚本第 6 步：在**用当前提交现打的安装包**上再装坏一次，硬性要求「那一行仍在 + `runnable=false` + 有 `detail`」。这条判据先红了一轮——不是修复没生效，而是**脚本自己的断言取材有 bug**：`Get-RuntimeEntries` 只收 `Test-Path` 存在的路径，把「已经不在了」的那一行自己筛掉了。证据 JSON 里其实已经写着 `runnable: false` 与那句 detail。改成收录全部条目并带 `exists` 标志、选受害者用 `runnable && exists` 之后转绿。
+
+### 实机读数（[run 44467544070](https://github.com/naiyixi/PureScience/actions/runs/44467544070)，Windows 11 x64，新包由当前提交现打）
+
+```
+✓ installed-launcher-exists        2.29.0.0
+✓ reads-readiness-and-runtimes     runtimes 6（runnable 5）
+✓ broken-runtime-is-detected       6条5runnable → 5条4runnable（旧版本：条目消失）
+✓ repair-restores-runtimes         覆盖安装后 6（runnable 5）
+✓ upgrade-changes-version          2.29.0.0 → 2.30.2.0（新包 = 当前提交）
+✓ upgrade-keeps-runtimes           仍 6（runnable 5）
+✓ upgrade-names-a-deleted-runtime  stillListed: true, runnable=false,
+                                   detail: "Interpreter is no longer at this path (it was available earlier)"
+```
+
+同一台机器上，旧版本（v2.29.0 发布包）在这一步只会「少一条」，新包会「留着并说明原因」——修复值多少钱，这条对比就是答案。证据在 `docs/evidence/windows-install-verify/`（10 份 JSON）。
+
+### 仍然诚实的边界
+
+- readiness 的 `python` 检查**依旧报 `passed`**，这是设计使然（应用自带托管环境，系统 Python 是可选项，不该因为它的存亡把整体判红）。**点名发生在运行时列表这一层**，也正是用户挑选解释器的地方。
+- 30 天淘汰、每语言 40 条上限是取舍，不是真理：长期不用的解释器会被忘掉，这是有意的（否则列表只会越来越假）。
+
+## 二十九、仍未做的
 
 - **10 位专才未跑任务**（12 位中已验收 2 位：`tcm-evidence-expert`、`radiology-imaging-expert`）。
 - 切换专才导致的 contextReset 仍会打断进行中的那一轮（提示已改成事实描述，但没有阻止打断本身）；agent 运行中调 `setSessionSpecialist` 会报 `Cannot switch specialist while the Agent is running.`，界面在下拉里点选不会遇到，但调用方需要等空闲。
