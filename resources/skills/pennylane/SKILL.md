@@ -1,6 +1,7 @@
 ---
 name: pennylane
 description: Builds and differentiates PennyLane quantum circuits, hybrid PyTorch or JAX models, molecular VQE and QAOA workflows. Use for variational quantum algorithms, quantum machine learning, simulator validation, and moving validated circuits to provider plugins. For hardware-specific compilation use qiskit or cirq; for open-system dynamics use qutip.
+description-zh: 构建并求导 PennyLane 量子线路，以及与 PyTorch/JAX 的混合模型、分子 VQE 与 QAOA 流程。适用于变分量子算法、量子机器学习、模拟器校验，以及把已验证线路迁移到真机。
 license: Apache-2.0 license
 compatibility: Requires Python 3.11+ and PennyLane 0.45.1 with NumPy 2+. Optional PyTorch, JAX or provider plugins need separate compatible environments. Local simulation needs no credentials; hardware requires provider credentials and network access.
 allowed-tools: Read Bash Python

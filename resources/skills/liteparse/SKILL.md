@@ -1,6 +1,7 @@
 ---
 name: liteparse
 description: Local document and PDF parsing that returns spatial text with bounding boxes. Use for extracting text from PDFs, DOCX, Office files, and images; running OCR on scans; producing layout-preserved JSON for RAG; batch-ingesting folders of papers; or rendering pages to PNG for multimodal agents. Distinguishing capabilities are spatial text boxes, Markdown, page raster output, and local parsing with optional custom HTTP OCR.
+description-zh: 本地文档与 PDF 解析，返回带边界框的空间文本：从 PDF、DOCX、Office 文件与图像提取文字、对扫描件做 OCR、产出保留版式的 JSON 供 RAG 使用、批量导入论文文件夹，或渲染页面。
 license: Apache-2.0
 allowed-tools: Read Write Edit Bash
 compatibility: Python 3.10+ with liteparse 2.15.0. LibreOffice required for Office formats; images convert natively. Tesseract is bundled but missing language data downloads on first use. Optional HTTP OCR requires network access and server-specific authentication.

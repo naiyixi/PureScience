@@ -1,6 +1,7 @@
 ---
 name: nwb-conversion
 description: Converts neuroscience acquisition data to Neurodata Without Borders files with NeuroConv and PyNWB, preserves metadata and timebases, checks evidence-based clock alignment, and produces schema validation, NWB Inspector findings and round-trip checks. Use for NWB conversion and synchronization of planar single-channel two-photon TIFF imaging plus timestamped behavioral position CSV; this skill does not perform spike sorting or claim tested support for arbitrary acquisition formats.
+description-zh: 用 NeuroConv 与 PyNWB 把神经科学采集数据转成 NWB 文件：保留元数据与时间基准、按证据核对时钟对齐，并给出模式校验、NWB Inspector 检查结果与往返一致性检查。
 license: MIT
 compatibility: Requires Python 3.12 with neuroconv[tiff] 0.10.2, PyNWB 4.2.0, NWB Inspector 0.7.2, roiextractors 0.10.0, tifffile 2026.9.20, zarr 2.18.7 and hdmf-zarr 0.11.3. Local HDF5 file access is required. Network is needed only for installation; no credentials.
 metadata:

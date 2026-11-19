@@ -1,6 +1,7 @@
 ---
 name: arboreto
 description: Infers candidate gene regulatory networks from bulk or single-cell expression data using AertsLab Arboreto GRNBoost2 and GENIE3. Use for transcription factor-target association ranking, compatible Dask execution, sparse expression inputs, and network stability checks.
+description-zh: 用 Arboreto 的 GRNBoost2 与 GENIE3，从 bulk 或单细胞表达数据推断候选基因调控网络。用于转录因子-靶基因关联排序、兼容 Dask 的执行、稀疏表达输入与网络稳健性评估。
 license: BSD-3-Clause license
 compatibility: Requires the isolated Python 3.11 compatibility stack below, including Arboreto, Dask/distributed, NumPy, pandas, scikit-learn and SciPy. Network access is needed for installation, not local inference. No credentials required.
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: cantera
 description: Runs Cantera homogeneous chemical reactors and evaluates ignition delay with mechanism provenance, conservation checks, and numerical refinement. Use for combustion kinetics, closed adiabatic ideal-gas constant-volume or constant-pressure ignition, temperature histories, or mechanism-specific ignition-delay comparisons.
+description-zh: 用 Cantera 跑均相化学反应器并评估点火延迟：机理来源记录、守恒检查与数值加密。适用于燃烧动力学、封闭绝热理想气体的定容或定压反应。
 license: MIT
 compatibility: Requires Python 3.12-3.14, Cantera 3.2.0, and NumPy. Installation needs network access; simulations run locally without credentials. Custom mechanisms must be available as Cantera YAML files.
 metadata:

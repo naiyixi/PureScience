@@ -1,6 +1,7 @@
 ---
 name: openpiv
 description: Performs Particle Image Velocimetry (PIV) analysis with OpenPIV. Use when extracting velocity fields from PIV image pairs, analyzing fluid dynamics or flow visualization experiments, cross-correlating interrogation windows, validating and replacing spurious PIV vectors, or computing vorticity, strain rate, and turbulence statistics from measured velocity fields.
+description-zh: 用 OpenPIV 做粒子图像测速（PIV）分析：从 PIV 图像对提取速度场、分析流体力学与流动显示实验、对查询窗口做互相关、校验并替换异常矢量。
 license: BSD-3-Clause
 compatibility: Requires Python 3.10+ with openpiv installed (uv pip install openpiv). numpy, scipy, scikit-image, and matplotlib arrive as dependencies. No network access needed after install.
 allowed-tools: Read Write Edit Bash

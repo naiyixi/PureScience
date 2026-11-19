@@ -1,6 +1,7 @@
 ---
 name: geomaster
 description: Supports geospatial research workflows for remote sensing, vector and raster GIS, spatial statistics, terrain and network analysis, and machine learning for Earth observation. Use when processing satellite imagery, aligning coordinate systems and raster grids, accessing STAC catalogs, analyzing geospatial time series, or implementing scientific GIS workflows in Python, R, Julia, JavaScript, C++, Java, Go, or Rust.
+description-zh: 支持遥感、矢量与栅格 GIS、空间统计、地形与网络分析，以及面向地球观测的机器学习等地理空间研究流程。适用于处理卫星影像、对齐坐标系与栅格网格。
 license: MIT License
 compatibility: Core examples require Python 3.12+ and GeoPandas, Rasterio, NumPy and PyProj. Optional workflows require their named packages, native GIS applications, GPU runtimes, or service credentials and network access.
 metadata:

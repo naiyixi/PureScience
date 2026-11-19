@@ -1,6 +1,7 @@
 ---
 name: histolab
 description: Extracts and preprocesses whole-slide histology image tiles with Histolab. Use for WSI inspection, tissue masks, random/grid/score-based tile extraction, H&E stain normalization, and tile dataset preparation. For multiplexed imaging or deep learning inference pipelines, use pathml.
+description-zh: 用 Histolab 从全片组织学图像中切取并预处理瓦片：WSI 检查、组织掩码、随机/网格/评分式切取、H&E 染色归一化，以及瓦片数据集准备。多重成像或深度学习推理另用其他技能。
 license: Apache-2.0 license
 compatibility: Requires Python 3.8–3.11 and histolab 0.7.0 on Linux or macOS, plus native OpenSlide. Python 3.10 avoids scikit-image 0.19 source builds on macOS ARM. Optional pooch downloads samples; matplotlib plots results; large-image plus a tile source enables MPP extraction.
 metadata:

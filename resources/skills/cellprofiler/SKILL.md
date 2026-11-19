@@ -1,6 +1,7 @@
 ---
 name: cellprofiler
 description: Runs reproducible CellProfiler microscopy pipelines for nuclear segmentation, cell counts, and per-object fluorescence measurements. Supports image/channel manifests, headless batch execution, segmentation overlays, and measurement QC for 2D fluorescence assays.
+description-zh: 跑可复现的 CellProfiler 显微影像流程：细胞核分割、细胞计数与逐目标荧光测量。支持图像与通道清单、无头批量执行、分割叠加图，以及二维荧光影像的测量质控。
 license: MIT
 compatibility: Python 3.12+ with numpy and tifffile for current helper-only dependencies; a separate CellProfiler 4.2.8 application/container for segmentation. Full CellProfiler has older native dependencies. Network access is needed for installation only. No credentials required.
 metadata:

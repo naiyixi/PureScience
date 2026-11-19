@@ -1,6 +1,7 @@
 ---
 name: lamindb
 description: Manages biological datasets and models with LaminDB, including artifact registration, lineage tracking, schema validation, Bionty ontology annotation, query/search, collections, branches, storage, and workflow integrations. Use for reproducible biological data curation or a LaminDB lakehouse.
+description-zh: 用 LaminDB 管理生物数据集与模型：工件登记、谱系追踪、模式校验、Bionty 本体注释、查询与检索、集合、分支、存储与工作流对接。用于可复现的生物数据管理。
 license: Apache-2.0 license
 compatibility: Requires Python 3.10-3.14 and lamindb; examples tested on Python 3.12 with lamindb 2.10.0, bionty 2.5.0, and IPython. Local SQLite needs no login; public ontologies and remote storage require network access, and private instances require credentials.
 metadata:

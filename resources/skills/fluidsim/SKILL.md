@@ -1,6 +1,7 @@
 ---
 name: fluidsim
 description: Plans, configures, inspects, restarts, and analyzes bounded FluidSim computational-fluid-dynamics simulations with explicit numerical-validity and HPC safety checks. Use for FluidSim solver selection, parameter review, FFT/MPI setup, output diagnostics, or restart compatibility.
+description-zh: 规划、配置、检查、重启并分析有边界的 FluidSim 计算流体力学仿真，并带显式的数值有效性与 HPC 安全校验。适用于 FluidSim 求解器选择、参数审查、FFT/MPI 配置。
 license: MIT
 compatibility: Bundled CLIs require Python 3.11+ and use the standard library; HDF5/netCDF4 metadata tools lazily use h5py when available. Simulation examples target fluidsim 0.9.0, fluidfft 0.4.5, and pyFFTW 0.15.1. MPI/native FFT use requires a site-compatible MPI implementation, development headers, FFTW/PFFT/P3DFFT libraries, compilers, and an approved scheduler workflow. No GPU backend is assumed.
 allowed-tools: Read Write Bash Glob Python

@@ -1,6 +1,7 @@
 ---
 name: alphagenome
 description: "Looks up precomputed AlphaGenome Atlas effects for any GRCh38 single-nucleotide variant (AVI score with Phred and 18 SHAP feature attributions, plus raw and quantile scores for RNA-seq, DNase, ATAC, ChIP-TF, ChIP-histone, CAGE, PRO-cap, splicing, polyadenylation and contact-map tracks), scores variants or scans windows on demand with the AlphaGenome model for human and mouse (variant scoring, in silico mutagenesis, REF-versus-ALT track prediction), and builds Atlas website deep links. Use when the user mentions AlphaGenome, AlphaGenome Atlas, AVI or AlphaGenome Variant Impact, DeepMind variant effect prediction, or wants to prioritise or mechanistically interpret non-coding, regulatory, splicing, enhancer, promoter, or chromatin-accessibility effects of SNVs from a VCF, credible set, or region. Research use only; not a clinical tool."
+description-zh: 查询任意 GRCh38 单核苷酸变异上预先算好的 AlphaGenome Atlas 效应：AVI 分数（含 Phred 与 18 项 SHAP 特征归因），以及 RNA-seq、DNase、ATAC、ChIP-TF、ChIP-histone、CAGE、PRO-cap、剪接、polyA 等的原始分与分位分。
 license: MIT
 compatibility: "Python 3.10+ with the alphagenome package (0.9.0 or later for the Atlas client; brings numpy, pandas, anndata, grpcio). Network access to gdmscience.googleapis.com:443 and a free non-commercial AlphaGenome API key in ALPHAGENOME_API_KEY (ALPHA_GENOME_API_KEY also read). Human data is GRCh38 only; mouse is mm10 (model only)."
 allowed-tools: Read Write Edit Bash

@@ -1,6 +1,7 @@
 ---
 name: aeon
 description: This skill should be used for time series machine learning tasks including classification, regression, clustering, forecasting, anomaly detection, segmentation, and similarity search. Use when working with temporal data, sequential patterns, or time-indexed observations requiring specialized algorithms beyond standard ML approaches. Particularly suited for univariate and multivariate time series analysis with scikit-learn compatible APIs.
+description-zh: 时序机器学习任务：分类、回归、聚类、预测、异常检测、分段与相似性检索。适用于时间型数据与序列模式。
 license: BSD-3-Clause license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.11-3.14 and aeon 1.6.0. Optional stumpy for matrix profiles, TensorFlow for deep learning. Network needed only for installation and remote datasets/results.

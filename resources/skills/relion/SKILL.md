@@ -1,6 +1,7 @@
 ---
 name: relion
 description: Validates and executes RELION single-particle cryo-EM refinement and half-map postprocessing. Supports STAR optics/acquisition checks, particle-stack consistency, gold-standard half sets, soft-mask validation, diagnostic Fourier shell correlation, and restart guidance.
+description-zh: 校验并执行 RELION 单颗粒冷冻电镜精修与半图后处理：STAR 光学与采集检查、颗粒栈一致性、金标准半集、软掩膜校验、诊断用傅里叶壳相关（FSC），以及重建。
 license: MIT
 compatibility: Python 3.12+ with numpy, mrcfile and starfile for bundled validation; RELION 5.0.1 CPU/MPI executables for refinement and postprocessing. Native workflows require MPI, OpenMP and an FFT library (FFTW or MKL). GPU builds require their supported accelerator stack. Network is needed for installation only.
 metadata:
