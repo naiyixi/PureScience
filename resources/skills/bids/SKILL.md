@@ -6,6 +6,7 @@ description: >
   NIRS, motion capture, EMG, MR spectroscopy, behavioral), querying BIDS layouts,
   validating compliance, converting DICOM to BIDS, writing metadata sidecars, or
   creating BIDS derivatives.
+description-zh: 组织、查询、校验与转换脑影像数据结构（BIDS）数据集，支持 MRI、EEG、MEG、iEEG、PET、显微等神经科学与生物医学数据的整理与格式转换。
 license: https://creativecommons.org/licenses/by/4.0/
 compatibility: Requires Python 3.10+ for PyBIDS and the validator wrapper; dcm2niix for DICOM conversion. Network access for installation and schema updates; no API credentials required.
 metadata:

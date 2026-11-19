@@ -1,6 +1,7 @@
 ---
 name: pymc
 description: Builds and checks Bayesian models with PyMC, including hierarchical models, NUTS MCMC, variational inference, mutable-data predictions, posterior predictive checks, diagnostics, and PSIS-LOO model comparison. Use for probabilistic modeling and uncertainty inference in PyMC.
+description-zh: 用 PyMC 构建与检验贝叶斯模型：层级模型、NUTS 采样、变分推断、可变数据预测、后验预测检验、诊断，以及 PSIS-LOO 模型比较。适合概率建模与不确定性推断。
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.12+ with PyMC 6.3.2, PyTensor 3.3.2 and ArviZ 1.3-compatible dependencies; NumPy, pandas, Matplotlib, h5netcdf and h5py for bundled helpers/artifacts. Network access for installation only. Optional nutpie, NumPyro and BlackJAX samplers need separate dependencies.
 license: Apache License, Version 2.0

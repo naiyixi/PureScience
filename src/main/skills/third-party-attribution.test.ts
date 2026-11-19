@@ -56,6 +56,30 @@ describe('bundled third-party skills', () => {
     }
   })
 
+  // 2.3's rule in test form: the translation is an addition, never a replacement, and the author's attribution
+  // is not part of what gets localized.
+  it('localized descriptions sit beside the original text and leave attribution alone', () => {
+    const localized = thirdParty.filter((skill) => {
+      const file = join(skillsRoot, skill.id, 'SKILL.md')
+      return existsSync(file) && readFileSync(file, 'utf8').includes('\ndescription-zh:')
+    })
+    // The spot-check sample the roadmap asks for, plus a couple.
+    expect(localized.length).toBeGreaterThanOrEqual(20)
+
+    const offenders: string[] = []
+    for (const skill of localized) {
+      const text = readFileSync(join(skillsRoot, skill.id, 'SKILL.md'), 'utf8')
+      const head = text.split('\n---')[0] ?? ''
+      const chinese = /description-zh:\s*(.+)/.exec(head)?.[1] ?? ''
+      // Real Chinese text, not a placeholder or a copy of the English line.
+      if (!/[\u4e00-\u9fff]/.test(chinese)) offenders.push(`${skill.id}: 中文为空或非中文`)
+      if (/^description:\s*[^\n]*[\u4e00-\u9fff]/.test(head))
+        offenders.push(`${skill.id}: 原文被改成了中文`)
+      if (!/\n(author|\s+skill-author):/.test(head)) offenders.push(`${skill.id}: 署名字段消失`)
+    }
+    expect(offenders).toEqual([])
+  })
+
   it('never imports a skill whose own license forbids redistribution', () => {
     // Frontmatter is the author's statement of terms; the importer refuses GPL, non-commercial and unstated
     // licenses. This re-checks the shipped tree so a hand-copy cannot slip past it.

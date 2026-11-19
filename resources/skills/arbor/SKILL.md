@@ -1,6 +1,7 @@
 ---
 name: arbor
 description: Applies Arbor Hypothesis Tree Refinement to research artifacts with repeatable evaluators, including model training, agent harnesses, data synthesis and benchmark optimization. Uses persistent hypotheses, isolated experiments, evidence propagation and held-out candidate comparison for multi-experiment research runs. Includes a standard-library state manager and guidance for the RUC-NLPIR Arbor CLI.
+description-zh: 把 Arbor 假设树精炼方法用于研究工件，配合可重复的评估器，用于模型训练、agent 评测框架、数据合成与基准优化；用持久假设、隔离实验、证据传播与留出候选对比来推进多轮实验研究。
 allowed-tools: Read Write Edit Bash Agent
 license: MIT license
 compatibility: Requires Python 3.10+ for the bundled state manager and Git for experiment worktrees. The optional arbor-agent CLI needs a separate installation; autonomous model calls need provider credentials and network access.

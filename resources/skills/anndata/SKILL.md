@@ -1,6 +1,7 @@
 ---
 name: anndata
 description: Handles annotated matrices in single-cell analysis, .h5ad and Zarr files, and integration with the scverse ecosystem. This is the data format skill—for analysis workflows use scanpy; for probabilistic models use scvi-tools; for population-scale queries use cellxgene-census.
+description-zh: 处理单细胞分析中的带注释矩阵、.h5ad 与 Zarr 文件，以及与 scverse 生态的对接。这是数据格式技能：做分析流程用 scanpy，做概率模型用 scvi-tools，做群体规模查询用 cellxgene-census。
 license: BSD-3-Clause license
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.12+ and anndata; uv for installation. Optional dask/lazy extras for lazy I/O; openpyxl for Excel, loompy for legacy Loom, and provider-specific fsspec adapters for remote stores. Network required for installation and remote data only.

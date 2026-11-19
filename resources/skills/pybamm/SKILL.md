@@ -1,6 +1,7 @@
 ---
 name: pybamm
 description: Simulates lithium-ion battery charge, discharge and rest experiments with PyBaMM, records parameter-set provenance, checks mesh and solver sensitivity, and compares predicted voltage curves with measured cycling data. Use for SPM or DFN electrochemical battery modeling, C-rate protocols, voltage cutoffs, parameter studies and numerical validation of battery simulations.
+description-zh: 用 PyBaMM 模拟锂离子电池的充电、放电与静置实验，记录参数集来源，检查网格与求解器敏感性，并把预测电压曲线与实测循环数据对比。适合 SPM/DFN 电化学建模、C 倍率规程与电压截止条件。
 license: MIT
 compatibility: Requires Python 3.12 with PyBaMM 26.9.0.0 and pybammsolvers 0.10.0 (IDAKLU). NumPy and CasADi are supplied by PyBaMM. Network is needed for installation and optional upstream dataset retrieval; bundled simulations and CSV comparisons run locally without credentials.
 metadata:

@@ -1,6 +1,7 @@
 ---
 name: bulk-rnaseq
 description: Prepares bulk RNA-seq FASTQ, Salmon, STAR or featureCounts output for gene-level differential expression. Covers nf-core/rnaseq and standalone quantification, biological replication, strandedness, reference provenance, validated count assembly and a PyDESeq2 handoff. Use for FASTQ-to-counts analysis, nf-core/rnaseq configuration, STAR/Salmon quantification, or building a counts matrix for DESeq2. For single-cell data use scanpy; for statistical fitting alone use pydeseq2.
+description-zh: 把 bulk RNA-seq 的 FASTQ、Salmon、STAR 或 featureCounts 结果整理成基因水平差异表达分析的输入：覆盖 nf-core/rnaseq 与独立定量、生物学重复、链特异性、参考基因组来源、计数矩阵校验，并衔接到 PyDESeq2。适合从 FASTQ 到计数矩阵的整套流程。
 license: MIT
 compatibility: Requires Python 3.11+ with pandas and numpy; Salmon import also needs pytximport. Read processing needs Nextflow with containers or standalone bioinformatics tools. Network access is needed for installation and reference downloads.
 metadata:

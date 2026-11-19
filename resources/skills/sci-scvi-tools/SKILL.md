@@ -1,6 +1,7 @@
 ---
 name: sci-scvi-tools
 description: Fits probabilistic models for single-cell omics, including scVI batch integration, scANVI annotation, totalVI CITE-seq, MultiVI RNA/ATAC integration, and posterior differential expression. Use for generative modeling, reference mapping, multimodal analysis, or model-based uncertainty; use scanpy for standard preprocessing and exploratory analysis.
+description-zh: 为单细胞组学拟合概率模型：scVI 批次整合、scANVI 注释、totalVI 处理 CITE-seq、MultiVI 整合 RNA 与 ATAC、后验差异表达。适合生成式建模、参考映射、多模态分析与基于模型的不确定性估计。
 license: BSD-3-Clause license
 compatibility: Requires Python 3.12+ and scvi-tools with model-specific dependencies. CPU supported; accelerator requirements depend on PyTorch and hardware. Network access is needed for installation or optional dataset/genome downloads, not local model fitting.
 metadata:

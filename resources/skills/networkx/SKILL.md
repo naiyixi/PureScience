@@ -1,6 +1,7 @@
 ---
 name: networkx
 description: Creates, analyzes, and visualizes complex networks and graphs in Python with NetworkX. Use when working with network/graph data structures, computing graph algorithms (shortest paths, centrality, clustering), detecting communities, generating synthetic networks (random, scale-free, small-world), reading/writing graph file formats, or drawing network topologies. Common applications include social, biological, transportation, and citation networks.
+description-zh: 用 NetworkX 在 Python 里构建、分析与可视化复杂网络与图：图的算法（最短路、中心性、聚类）、社区发现、合成网络生成（随机、无标度、小世界）、图的读写。
 license: 3-clause BSD license
 compatibility: Requires Python >=3.12 (excluding 3.14.1) and NetworkX 3.7. NumPy, SciPy, pandas and Matplotlib support numerical, tabular and drawing examples; optional integrations need their own packages. No credentials; network needed only for installation or remote data.
 metadata:

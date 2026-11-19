@@ -606,7 +606,20 @@ licenseStatus: allowed 231 / needs-review 3
 解法：`scripts/third-party-skill-paths.mjs` 从 manifest 派生豁免路径（只含 `thirdParty` 行对应目录、`ATTRIBUTION.md`、`licenses/`、`manifest.json`、`sources.json`），`pre-push-checks.sh` 把它们作为 `:(exclude)` 传给 `git grep`；同时把 manifest 的 `thirdParty` 改成集合标题（用户可见的那一行不出现别人仓库名），仓库路径与提交哈希只留在 ATTRIBUTION 与 sources.json。**自有技能、UI、文档一律不豁免**，收窄只需改那一个脚本。
 读数：豁免前 `checks=1`（敏感词 160 处），豁免后 `checks=0`（`git 跟踪范围零命中`），`src/main/skills` 仍 318 passed。
 
-### 2.3 中文改写（未做）
+### 2.3 中文改写（第一批 20 个已做）
+
+只译流程描述、不动署名：译文写成并排的 `description-zh:`，英文原文与 `name`/`author`/`license`/`allowed-tools` 全部保持原样。译文在 `scripts/skill-localizations.zh-CN.json`，`scripts/localize-skills.mjs` 幂等应用。
+
+```
+node scripts/localize-skills.mjs
+→ {"localized": 20, "thirdPartyTotal": 234, "remaining": 214, "skipped": []}
+```
+
+第一批 20 个（中文可读性由我逐条抽查：术语沿用领域常用写法——`bulk RNA-seq` 译「bulk RNA-seq 差异表达」、`pseudobulk`/`LFC 收缩`/`构象筛检` 保留行业内原词，不硬译；句式按中文语序重写，不是逐词直译）。
+
+护栏用例第 5 条钉住三件事：`description-zh` 必须含中文、原 `description` 不得被改成中文、`author`/`skill-author` 必须仍在。`src/main/skills/third-party-attribution.test.ts` **5 passed**。
+
+剩余 214 个未译（多数是 `sci` 集合的细分领域技能），按批继续——翻译是逐字判断的活，不批量机器替换。
 
 本轮没有动技能正文。2.3 要求「只翻译流程描述、不改原作者署名」，抽查 20 个包的中文可读性与署名完整——那是一次跨 234 个文件的内容改动，与引入分开做更安全（引入是字节级复制，改动是逐字判断）。已立案到下一轮。
 

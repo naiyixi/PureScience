@@ -1,6 +1,7 @@
 ---
 name: rdkit
 description: Cheminformatics toolkit for fine-grained molecular control. SMILES/SDF parsing, descriptors (MW, LogP, TPSA), fingerprints, substructure search, 2D/3D generation, similarity, reactions. For standard workflows with simpler interface, use datamol (wrapper around RDKit). Use rdkit for advanced control, custom sanitization, specialized algorithms.
+description-zh: 化学信息学工具包，用于细粒度分子控制：SMILES/SDF 解析、描述符（分子量、LogP、TPSA）、指纹、子结构检索、2D/3D 构象生成、相似性与反应。要更简单接口的标准流程可用 datamol，需要高级控制与自定义参数时用 rdkit。
 license: BSD-3-Clause license
 allowed-tools: Read Write Edit Bash
 compatibility: Tested with RDKit 2026.03.6 on Python 3.13; bundled scripts require the rdkit package. No credentials or network are needed after installation. Use conda-forge for the broadest binary support or PyPI package `rdkit` for supported platform wheels; `rdkit-pypi` is the legacy PyPI name.

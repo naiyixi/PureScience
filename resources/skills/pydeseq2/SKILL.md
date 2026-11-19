@@ -1,6 +1,7 @@
 ---
 name: pydeseq2
 description: Performs bulk RNA-seq differential expression analysis with PyDESeq2, including count validation, formula designs, explicit contrasts, Wald tests, FDR correction, coefficient-matched LFC shrinkage, and result visualization. Use for PyDESeq2 or Python DESeq2 workflows with biological replicates.
+description-zh: 用 PyDESeq2 做 bulk RNA-seq 差异表达：计数校验、公式化设计、显式对比、Wald 检验、FDR 校正、与系数匹配的 LFC 收缩，以及结果可视化。适合有生物学重复的 PyDESeq2 / Python DESeq2 流程。
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python >=3.11 and PyDESeq2 0.5.4. Tested current stack uses Python 3.13 and AnnData 0.13.4 (which requires Python >=3.12). Local analyses need no credentials or network; installation and upstream example-data downloads need network access.
 license: MIT license

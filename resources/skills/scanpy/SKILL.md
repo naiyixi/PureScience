@@ -1,6 +1,7 @@
 ---
 name: scanpy
 description: Performs Scanpy single-cell RNA-seq QC, normalization, HVG selection, PCA/UMAP/t-SNE, clustering, exploratory marker ranking, pseudobulk preparation, visualization, and Seurat or SingleCellExperiment RDS conversion to h5ad. Applies to established exploratory scRNA-seq workflows with explicit count and expression provenance; complementary skills cover scvi-tools models and AnnData format details.
+description-zh: 用 Scanpy 做单细胞 RNA-seq 的质控、标准化、高变基因选择、PCA/UMAP/t-SNE、聚类、探索性标记基因排序、pseudobulk 准备、可视化，以及 Seurat 或 SingleCellExperiment 的 RDS 转 h5ad。适用于已有明确计数与表达阈值的探索性单细胞流程。
 license: BSD-3-Clause
 compatibility: Requires Python 3.12+ and Scanpy; tested with Python 3.13, Scanpy 1.12.4, and AnnData 0.13.4. Optional integrations need separate packages; R conversion needs R. Local analysis needs no credentials or network.
 metadata:

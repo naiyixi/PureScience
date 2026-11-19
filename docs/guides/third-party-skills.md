@@ -40,6 +40,22 @@ SKILLS_SOURCE_SCI=/tmp/src-sci SKILLS_SOURCE_AIR=/tmp/src-air node scripts/impor
 
 这是页缓存热的读数；冷盘约 380 ms。引入 234 个技能把首次目录读取从约 50 ms 推到了 140 ms 量级——可以接受，但已经把「manifest 里存兼容性哈希、跳过整树读取」列为后续优化项。
 
+## 中文改写（2.3，第一批 20 个）
+
+引入的技能正文是英文，中文用户读不上手。做法刻意保守：
+
+- 只翻译 `description`（流程描述），写成**并排**的 `description-zh:`；英文原文一个字不动，`name`、`author`/`skill-author`、`license`、`allowed-tools` 也一律不动。
+- 译文放 `scripts/skill-localizations.zh-CN.json`（id → 中文），`scripts/localize-skills.mjs` 应用它：幂等、可重跑，没收录的技能保持原状并在报告里点出剩余数量。
+- 注册表把 `description-zh` 读成 `BundledSkill.descriptionZh`（可选字段：没有译文就是没有，不用空串掩盖）。
+
+第一批 20 个：`polars-bio`、`bids`、`onekgpd`、`bulk-rnaseq`、`waypoint-bio`、`arbor`、`pybamm`、`open-notebook`、`pysam`、`scanpy`、`anndata`、`pydeseq2`、`biopython`、`pymc`、`statsmodels`、`networkx`、`rdkit`、`hypogenic`、`sci-diffdock`、`sci-scvi-tools`。
+
+```bash
+node scripts/localize-skills.mjs   # → {"localized":20,"thirdPartyTotal":234,"remaining":214}
+```
+
+剩余 214 个未译，按批次继续。
+
 ## 品牌扫描的豁免（以及为什么不是漏洞）
 
 `scripts/pre-push-checks.sh` 会对跟踪范围做一次敏感词扫描，规则是「自有内容不借用别人的产品名与说法」。第三方技能正文里必然出现作者自己的项目名、依赖名等专有说法——那是他们的原文，改掉就等于篡改别人的文件，也与「不改原作者署名」这条相冲突。

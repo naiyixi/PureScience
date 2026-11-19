@@ -1,6 +1,7 @@
 ---
 name: open-notebook
 description: Organizes research with the self-hosted Open Notebook alternative to NotebookLM. Supports source ingestion (PDFs, web pages, audio, video, and Office documents), cited document chat, text and vector search, notes, custom transformations, and multi-speaker podcasts. Use when automating Open Notebook through its REST API or configuring its local or cloud AI providers, including OpenAI, Anthropic, Google, Ollama, Groq, and Mistral.
+description-zh: 用自托管的开源笔记工具组织研究资料（NotebookLM 的替代品）：导入 PDF、网页、音视频与 Office 文档，做带引用的文档问答、文本与向量检索、笔记、自定义转换，以及多说话人播客。适合通过接口自动化该工具的工作流。
 license: MIT
 compatibility: Requires a running Open Notebook backend and worker; Python 3.11+ with requests for bundled helpers. Docker Compose is the documented deployment option. Network access to the instance and any configured providers is required.
 metadata:

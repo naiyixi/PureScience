@@ -1,6 +1,7 @@
 ---
 name: hypogenic
 description: Plans and audits use of ChicagoHAI HypoGeniC/HypoRefine for LLM-assisted hypothesis generation from labeled text datasets. Use for the `hypogenic` package, its task configs, hypothesis banks, or HypoBench datasets—not for manual hypothesis formulation or scientific validation.
+description-zh: 规划并审查用 HypoGeniC/HypoRefine 从带标签文本数据集做 LLM 辅助假设生成的工作：适用于 hypogenic 包、其任务配置、假设库与 HypoBench 数据集；不用于人工提出假设或科学验证。
 license: MIT
 compatibility: Requires Python 3.10+ and uv for the pinned upstream package. Bundled local audit tools use only the Python standard library for JSON; YAML input requires exactly PyYAML 6.0.3. Actual HypoGeniC runs may require a separately approved LLM provider, credentials, Redis, local model resources, and network access.
 allowed-tools: Read Write Edit Bash Glob Grep

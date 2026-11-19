@@ -23,6 +23,9 @@ export type BundledSkill = {
   id: string
   name: string
   description: string
+  // Chinese localization of the process description, when one exists (2.3). Optional: a skill without a
+  // translation is the normal state for most of the bundled set, and an empty string would blur that.
+  descriptionZh?: string
   source: SkillSource
   updatedAt: string
   sourceDir: string
@@ -184,6 +187,10 @@ class SkillRegistry {
             id: entry.id,
             name: entry.name,
             description: fields.description ?? '',
+            ...(typeof fields['description-zh'] === 'string' &&
+            fields['description-zh'].trim() !== ''
+              ? { descriptionZh: fields['description-zh'].trim() }
+              : {}),
             source: entry.source,
             updatedAt: entry.updatedAt,
             sourceDir,

@@ -1,6 +1,7 @@
 ---
 name: sci-diffdock
 description: Predicts protein-small-molecule binding poses with DiffDock and DiffDock-L from PDB or sequence plus SMILES/SDF/MOL2. Covers batch docking, pose triage, confidence interpretation, and validation. Use for molecular docking and virtual-screening pose generation, not binding-affinity prediction.
+description-zh: 用 DiffDock 与 DiffDock-L 从 PDB 或序列加 SMILES/SDF/MOL2 预测蛋白-小分子结合构象：批量对接、构象筛检、置信度解读与验证。用于分子对接与虚拟筛选的构象生成，不用于结合亲和力预测。
 allowed-tools: Read Write Edit Bash Glob Grep
 compatibility: Requires the upstream DiffDock v1.1.3 repository/environment (Python 3.9.18, PyTorch 1.13.1, fair-esm 2.0.0, RDKit/PyG) or its Docker image. Network and disk space for model weights; CUDA required by upstream sequence-folding path. Bundled CSV helper needs pandas and RDKit.
 license: MIT license

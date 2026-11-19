@@ -1,6 +1,7 @@
 ---
 name: biopython
 description: Provides Biopython workflows for sequence manipulation, file parsing (FASTA/GenBank/PDB), phylogenetics, and programmatic NCBI/PubMed access (Bio.Entrez). Supports batch processing, custom molecular-biology pipelines, BLAST automation, structure analysis, and motif analysis.
+description-zh: 用 Biopython 做序列操作、文件解析（FASTA/GenBank/PDB）、系统发生分析，以及通过 Bio.Entrez 程序化访问 NCBI/PubMed。支持批处理、自定义分子生物学流程、BLAST 自动化、结构分析与基序分析。
 allowed-tools: Read Write Edit Bash
 compatibility: Requires Python 3.10+, NumPy, and Biopython 1.88. Optional plotting requires Matplotlib or ReportLab. Entrez and web BLAST require network access and a contact email; local BLAST, MUSCLE 5, Clustal Omega, and DSSP require separate executables.
 license: Biopython License Agreement

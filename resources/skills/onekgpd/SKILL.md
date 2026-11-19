@@ -10,6 +10,7 @@ description: >
   in a gene or region, the relatedness between two specified individuals.
   Variants are returned with 1000 Genomes allele frequencies (AF),
   gnomAD v4.1 exome and genome AF, AlphaMissense score, and HGVSp annotations.
+description-zh: 按单个参与者查询千人基因组计划数据集（3,202 例全基因组测序个体，GRCh38），用于在个体层面核对变异与样本信息。
 license: MIT
 compatibility: Requires Python >=3.11. Variant and sample queries require outbound network access to the public 1000 Genomes query endpoint over TLS; the sample/population metadata commands run fully offline over a data file bundled in the skill. No credentials, API keys, or environment variables are used.
 allowed-tools: Write Bash

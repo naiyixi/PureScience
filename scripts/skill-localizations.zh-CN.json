@@ -1,0 +1,25 @@
+{
+  "note": "第三方技能的流程描述中文版。只翻译 description，原作者、许可、正文一律不动；原文保留在 description，中文另起 description-zh。",
+  "skills": {
+    "polars-bio": "在 Polars DataFrame 上做基因组区间运算：交集、最近邻、合并、覆盖度、补集与相减，并能读写 BED、VCF、BCF、BAM、CRAM、GFF、GTF、FASTA、FASTQ。适合需要考虑坐标的基因组连接、测序深度分析、惰性生物信息读写、SQL 查询，或从 bioframe 迁移。",
+    "bids": "组织、查询、校验与转换脑影像数据结构（BIDS）数据集，支持 MRI、EEG、MEG、iEEG、PET、显微等神经科学与生物医学数据的整理与格式转换。",
+    "onekgpd": "按单个参与者查询千人基因组计划数据集（3,202 例全基因组测序个体，GRCh38），用于在个体层面核对变异与样本信息。",
+    "bulk-rnaseq": "把 bulk RNA-seq 的 FASTQ、Salmon、STAR 或 featureCounts 结果整理成基因水平差异表达分析的输入：覆盖 nf-core/rnaseq 与独立定量、生物学重复、链特异性、参考基因组来源、计数矩阵校验，并衔接到 PyDESeq2。适合从 FASTQ 到计数矩阵的整套流程。",
+    "waypoint-bio": "使用 Outpost Bio 的开源微生物组基础模型：Waypoint 各规模检查点、Atlas 预训练语料、Compass 八任务基准，以及 waypoint 命令行。覆盖微生物组样本嵌入与微调。",
+    "arbor": "把 Arbor 假设树精炼方法用于研究工件，配合可重复的评估器，用于模型训练、agent 评测框架、数据合成与基准优化；用持久假设、隔离实验、证据传播与留出候选对比来推进多轮实验研究。",
+    "pybamm": "用 PyBaMM 模拟锂离子电池的充电、放电与静置实验，记录参数集来源，检查网格与求解器敏感性，并把预测电压曲线与实测循环数据对比。适合 SPM/DFN 电化学建模、C 倍率规程与电压截止条件。",
+    "open-notebook": "用自托管的开源笔记工具组织研究资料（NotebookLM 的替代品）：导入 PDF、网页、音视频与 Office 文档，做带引用的文档问答、文本与向量检索、笔记、自定义转换，以及多说话人播客。适合通过接口自动化该工具的工作流。",
+    "pysam": "用 pysam 处理基因组文件的 Python/HTSlib 工作流：读写与查询 SAM/BAM/CRAM、VCF/BCF、FASTA/FASTQ、tabix 数据，含 pileup、覆盖度、建索引与 CRAM 参考序列处理。",
+    "scanpy": "用 Scanpy 做单细胞 RNA-seq 的质控、标准化、高变基因选择、PCA/UMAP/t-SNE、聚类、探索性标记基因排序、pseudobulk 准备、可视化，以及 Seurat 或 SingleCellExperiment 的 RDS 转 h5ad。适用于已有明确计数与表达阈值的探索性单细胞流程。",
+    "anndata": "处理单细胞分析中的带注释矩阵、.h5ad 与 Zarr 文件，以及与 scverse 生态的对接。这是数据格式技能：做分析流程用 scanpy，做概率模型用 scvi-tools，做群体规模查询用 cellxgene-census。",
+    "pydeseq2": "用 PyDESeq2 做 bulk RNA-seq 差异表达：计数校验、公式化设计、显式对比、Wald 检验、FDR 校正、与系数匹配的 LFC 收缩，以及结果可视化。适合有生物学重复的 PyDESeq2 / Python DESeq2 流程。",
+    "biopython": "用 Biopython 做序列操作、文件解析（FASTA/GenBank/PDB）、系统发生分析，以及通过 Bio.Entrez 程序化访问 NCBI/PubMed。支持批处理、自定义分子生物学流程、BLAST 自动化、结构分析与基序分析。",
+    "pymc": "用 PyMC 构建与检验贝叶斯模型：层级模型、NUTS 采样、变分推断、可变数据预测、后验预测检验、诊断，以及 PSIS-LOO 模型比较。适合概率建模与不确定性推断。",
+    "statsmodels": "用 Python 拟合与诊断统计模型：OLS、GLM、离散与混合模型、ARIMA 与 SARIMAX。支持系数推断、边际效应、模型比较与时间序列预测，并要求显式声明设计与不确定性检查。",
+    "networkx": "用 NetworkX 在 Python 里构建、分析与可视化复杂网络与图：图的算法（最短路、中心性、聚类）、社区发现、合成网络生成（随机、无标度、小世界）、图的读写。",
+    "rdkit": "化学信息学工具包，用于细粒度分子控制：SMILES/SDF 解析、描述符（分子量、LogP、TPSA）、指纹、子结构检索、2D/3D 构象生成、相似性与反应。要更简单接口的标准流程可用 datamol，需要高级控制与自定义参数时用 rdkit。",
+    "hypogenic": "规划并审查用 HypoGeniC/HypoRefine 从带标签文本数据集做 LLM 辅助假设生成的工作：适用于 hypogenic 包、其任务配置、假设库与 HypoBench 数据集；不用于人工提出假设或科学验证。",
+    "sci-diffdock": "用 DiffDock 与 DiffDock-L 从 PDB 或序列加 SMILES/SDF/MOL2 预测蛋白-小分子结合构象：批量对接、构象筛检、置信度解读与验证。用于分子对接与虚拟筛选的构象生成，不用于结合亲和力预测。",
+    "sci-scvi-tools": "为单细胞组学拟合概率模型：scVI 批次整合、scANVI 注释、totalVI 处理 CITE-seq、MultiVI 整合 RNA 与 ATAC、后验差异表达。适合生成式建模、参考映射、多模态分析与基于模型的不确定性估计。"
+  }
+}
