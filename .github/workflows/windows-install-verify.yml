@@ -13,9 +13,14 @@ on:
         required: true
         default: 'v2.29.0'
       new_version:
-        description: '覆盖升级到的新版本（含 v 前缀，例如 v2.30.2）'
+        description: '覆盖升级到的新版本（含 v 前缀，例如 v2.30.2）；build_from_source 为 true 时忽略'
         required: true
         default: 'v2.30.2'
+      build_from_source:
+        description: 'true = 当前提交现打一个 Windows 安装包当「新版本」（验证未发布的修复）'
+        type: boolean
+        required: false
+        default: false
   workflow_call:
     inputs:
       old_version:
@@ -24,6 +29,10 @@ on:
       new_version:
         required: true
         type: string
+      build_from_source:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,40 +43,59 @@ concurrency:
 
 jobs:
   install-verify:
-    name: install → runtimes → break → repair → upgrade
+    name: install → runtimes → break → repair → upgrade → name-it
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BUILD_FROM_SOURCE: ${{ inputs.build_from_source }}
+      OLD_VERSION: ${{ inputs.old_version }}
+      NEW_VERSION: ${{ inputs.new_version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            scripts/verify
-          sparse-checkout-cone-mode: false
 
-      - name: Download the two installers
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build the installer from this commit
+        if: ${{ inputs.build_from_source }}
         shell: pwsh
-        env:
-          OLD_VERSION: ${{ inputs.old_version }}
-          NEW_VERSION: ${{ inputs.new_version }}
+        run: |
+          npm ci
+          npm run build:win
+          $setup = Get-ChildItem -Path dist -Filter '*-win-x64-setup.exe' -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) { throw 'electron-builder produced no win-x64 setup exe' }
+          Write-Host "built: $($setup.FullName)  $($setup.Length) bytes"
+          "BUILT_SETUP=$($setup.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Download the installers
+        shell: pwsh
         run: |
           $dir = Join-Path $env:RUNNER_TEMP 'setups'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
           gh release download $env:OLD_VERSION --repo $env:GITHUB_REPOSITORY --pattern '*-win-x64-setup.exe' --dir $dir --clobber
-          gh release download $env:NEW_VERSION --repo $env:GITHUB_REPOSITORY --pattern '*-win-x64-setup.exe' --dir $dir --clobber
           Get-ChildItem $dir | ForEach-Object { Write-Host "$($_.Name)  $($_.Length) bytes" }
           $old = Get-ChildItem $dir -Filter "*$($env:OLD_VERSION.TrimStart('v'))*-win-x64-setup.exe" | Select-Object -First 1
-          $new = Get-ChildItem $dir -Filter "*$($env:NEW_VERSION.TrimStart('v'))*-win-x64-setup.exe" | Select-Object -First 1
           if (-not $old) { throw "no installer for $env:OLD_VERSION" }
-          if (-not $new) { throw "no installer for $env:NEW_VERSION" }
           "OLD_SETUP=$($old.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "NEW_SETUP=$($new.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          # build_from_source 时「新版本」就是刚才现打的那个包；否则才去拿发布产物。
+          if ($env:BUILD_FROM_SOURCE -eq 'true') {
+            if (-not $env:BUILT_SETUP) { throw 'build_from_source is set but no built installer was handed over' }
+            Write-Host "new = built from this commit: $env:BUILT_SETUP"
+            "NEW_SETUP=$env:BUILT_SETUP" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          } else {
+            gh release download $env:NEW_VERSION --repo $env:GITHUB_REPOSITORY --pattern '*-win-x64-setup.exe' --dir $dir --clobber
+            $new = Get-ChildItem $dir -Filter "*$($env:NEW_VERSION.TrimStart('v'))*-win-x64-setup.exe" | Select-Object -First 1
+            if (-not $new) { throw "no installer for $env:NEW_VERSION" }
+            "NEW_SETUP=$($new.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
 
       - name: Run the install verification
         shell: pwsh
-        run: |
-          ./scripts/verify/windows-install-verify.ps1 -OldSetup $env:OLD_SETUP -NewSetup $env:NEW_SETUP
+        run: ./scripts/verify/windows-install-verify.ps1 -OldSetup $env:OLD_SETUP -NewSetup $env:NEW_SETUP
 
       - name: Upload evidence
         if: always()

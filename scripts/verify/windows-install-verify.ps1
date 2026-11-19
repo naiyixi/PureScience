@@ -181,19 +181,21 @@ try {
     Save-Json 'readiness-broken.json' $readinessBroken
     $snapBroken = Get-RuntimeSnapshot $afterBreak
     $checksBroken = Get-CheckStatuses $readinessBroken
-    # 判据（2026-11-19 起）：消失的解释器必须**仍在列表里**，标 runnable=false，并带一句说明为什么不在了。
-    # 之前它只是悄悄少一条（6→5），readiness 的 python 检查仍报 passed —— 那正是这次要修的东西，
-    # 所以这里钉死「条目还在 + 有 detail」，不许用「少一条也算察觉」放过去。
+    # 这一步只判「察觉」：同一条按 envId 已不在列表，或仍在但 runnable=false，两种都算。
+    # 之所以不在这里要求「点名」，是因为这一步跑在**升级前**的二进制上——已发布的旧版本本来就没有
+    # interpreter-history，要求它点名等于用未来的判据判旧版本。硬要求「点名」的是第 6 步（升级后）。
     $victimAfter = $snapBroken.entries | Where-Object { $_.id -eq $victim.id } | Select-Object -First 1
     $detail = if ($null -ne $victimAfter) { $victimAfter.detail } else { $null }
-    $named = ($null -ne $victimAfter) -and (-not $victimAfter.runnable) -and [bool]$detail
-    Add-Step 'broken-runtime-is-named' $named @{
+    $stillListed = $null -ne $victimAfter
+    $detected = (-not $stillListed) -or (-not $victimAfter.runnable)
+    Add-Step 'broken-runtime-is-detected' $detected @{
       runtime = $victim.id
       language = $victim.language
       brokenPath = $brokenPath
       runnableBefore = $snapBefore.runnable
       runnableAfter = $snapBroken.runnable
-      stillListed = ($null -ne $victimAfter)
+      stillListed = $stillListed
+      named = ([bool]$detail)
       detail = $detail
       readinessBefore = $checksBefore.byId
       readinessAfter = $checksBroken.byId
@@ -235,6 +237,33 @@ try {
   Add-Step 'upgrade-keeps-runtimes' ($snapUpgraded.runnable -ge $snapBefore.runnable) @{
     runnableBefore = $snapBefore.runnable; runnableAfterUpgrade = $snapUpgraded.runnable
     readinessAfterUpgrade = $checksUpgraded.byId
+  }
+
+  Write-Host "== 6/6 在新版本上再装坏一次，这次要求它点名"
+  # 同一个动作，判据不同：这一步跑在**升级后的二进制**上。老版本会悄悄少一条（判红），带 interpreter-history 的
+  # 新版本会让那一行留着并写明原因（判绿）—— 这就是这次修的东西值多少的直接证据。
+  $victim2 = ($snapUpgraded.entries | Where-Object { $_.runnable } | Select-Object -First 1)
+  if ($null -eq $victim2) {
+    Save-Json 'break-after-upgrade-skipped.json' @{ reason = '升级后没有可破坏的运行时'; note = '未做破坏步骤，未声明通过' }
+    Add-Step 'break-after-upgrade-skipped' $true @{ skipped = $true }
+  } else {
+    $brokenPath2 = "$($victim2.path).broken"
+    Move-Item -Path $victim2.path -Destination $brokenPath2 -Force
+    $afterUpgradeBreak = Get-Api '/api/v1/runtimes' $token
+    Save-Json 'runtimes-after-upgrade-broken.json' $afterUpgradeBreak
+    $snapUpgradeBroken = Get-RuntimeSnapshot $afterUpgradeBreak
+    $victim2After = $snapUpgradeBroken.entries | Where-Object { $_.id -eq $victim2.id } | Select-Object -First 1
+    $detail2 = if ($null -ne $victim2After) { $victim2After.detail } else { $null }
+    $named2 = ($null -ne $victim2After) -and (-not $victim2After.runnable) -and [bool]$detail2
+    Add-Step 'upgrade-names-a-deleted-runtime' $named2 @{
+      runtime = $victim2.id
+      brokenPath = $brokenPath2
+      runnableAfterUpgrade = $snapUpgraded.runnable
+      runnableAfterBreak = $snapUpgradeBroken.runnable
+      stillListed = ($null -ne $victim2After)
+      detail = $detail2
+    }
+    Move-Item -Path $brokenPath2 -Destination $victim2.path -Force
   }
 }
 catch {
