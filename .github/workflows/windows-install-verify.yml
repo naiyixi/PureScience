@@ -1,0 +1,78 @@
+name: Windows Install Verify
+
+# 3.1/3.2 的真机证据：在一个真实的 Windows 11 x64 runner 上装包、读它自己的 readiness/runtimes、把某个运行时装坏看它
+# 能不能点名、一键重装、再升级。桌面截图在 CI 上没有意义（服务会话），所以判据是「装完的二进制真的起来」+ 它自己的
+# /api/v1 读数，逐段落 JSON。
+#
+# 只手动触发：这会下载并运行安装包，不该在每次 push 上重复烧分钟数。默认取相邻两个已发布版本，正好试出「升级」。
+on:
+  workflow_dispatch:
+    inputs:
+      old_version:
+        description: '先装的旧版本（含 v 前缀，例如 v2.30.1）'
+        required: true
+        default: 'v2.30.1'
+      new_version:
+        description: '覆盖升级到的新版本（含 v 前缀，例如 v2.30.2）'
+        required: true
+        default: 'v2.30.2'
+  workflow_call:
+    inputs:
+      old_version:
+        required: true
+        type: string
+      new_version:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-install-verify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  install-verify:
+    name: install → runtimes → break → repair → upgrade
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/verify
+          sparse-checkout-cone-mode: false
+
+      - name: Download the two installers
+        shell: pwsh
+        env:
+          OLD_VERSION: ${{ inputs.old_version }}
+          NEW_VERSION: ${{ inputs.new_version }}
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'setups'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          gh release download $env:OLD_VERSION --repo $env:GITHUB_REPOSITORY --pattern '*-win-x64-setup.exe' --dir $dir --clobber
+          gh release download $env:NEW_VERSION --repo $env:GITHUB_REPOSITORY --pattern '*-win-x64-setup.exe' --dir $dir --clobber
+          Get-ChildItem $dir | ForEach-Object { Write-Host "$($_.Name)  $($_.Length) bytes" }
+          $old = Get-ChildItem $dir -Filter "*$($env:OLD_VERSION.TrimStart('v'))*-win-x64-setup.exe" | Select-Object -First 1
+          $new = Get-ChildItem $dir -Filter "*$($env:NEW_VERSION.TrimStart('v'))*-win-x64-setup.exe" | Select-Object -First 1
+          if (-not $old) { throw "no installer for $env:OLD_VERSION" }
+          if (-not $new) { throw "no installer for $env:NEW_VERSION" }
+          "OLD_SETUP=$($old.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "NEW_SETUP=$($new.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run the install verification
+        shell: pwsh
+        run: |
+          ./scripts/verify/windows-install-verify.ps1 -OldSetup $env:OLD_SETUP -NewSetup $env:NEW_SETUP
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-install-evidence
+          path: ${{ runner.temp }}/ps-winverify/evidence
+          if-no-files-found: warn
