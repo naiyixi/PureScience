@@ -20475,3 +20475,53 @@ AssertionError: expected 45410861056 to be 45410869248
 变异证明断言仍然活着：把实现里的 `current = parent` 改成跳一级 `dirname(parent)`，新增/改写的两条当场 2 failed；
 恢复后 20 passed。读数为本机实跑：`vitest run src/main/storage/usage.test.ts` **20 passed**、eslint 0 problem、
 双 typecheck 0。
+
+## 三百五十九、本轮追加（执行器，2026-11-20 06:3x–07:x）—— 一道从来没绿过的门：演练没有把团队 ID 交给演练脚本
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == e2610438`；工作树里 27 个改动 + 1 个未跟踪**全是会话在制**
+  （`src/main/settings/**` 传输校验、`src/main/ro-crate/ipc*`、九语 i18n、`GeneralPanel.tsx`、
+  `stores/settings-*`、`e2e/visual-regression.spec.ts`）⇒ 一个字节没碰；本轮只碰
+  `.github/workflows/update-drill-macos.yml`、`scripts/ci/update-drill-workflow.test.ts` 与 `docs/**`（三处都与它不相交）。
+- CI 在飞为 0；内存闸现取：空闲页 6,425（≈100 MB）、swap 3,161/4,096 ⇒ **不 build、不起实例**，只用 CI 与只读读数。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）与 v3.0–v3.4 排期已全部收口；1.4 的 `running` 未观察归桌面会话 ⇒
+  本轮取 **issue #19**（mac 签名与就地更新），它是「版本发完」之后唯一还开着的发布链缺陷条目。
+
+### 一 交付
+
+1. **产物级定性（零代码）**：下载 v2.31.0 的 arm64 zip，`shasum -a 256` 与发布页 `SHA256SUMS.txt` 逐字符一致，
+   再读签名 ⇒ `Authority=Developer ID Application: kai wang (UGQZPJ74DF)`、`flags=0x10000(runtime)`、
+   `codesign --verify --deep --strict` 通过、`spctl` 判 `accepted / source=Notarized Developer ID`、
+   `stapler validate` 为 `The validate action worked!`。x64 半由同一次发布作业的读数（`TeamIdentifier=UGQZPJ74DF`）对齐。
+2. **演练的真实缺陷与修法（`d60e0539`）**：`update-drill-macos.yml` 的 job 没有 env，而
+   `scripts/macos-update-cache-drill.mjs:583-593` 要求 `PURESCIENCE_MAC_TEAM_ID` ⇒ 凭据配齐之后这道门**只可能**
+   停在「签名不可归属」这一句。补 job 级 `env`，并加守卫用例钉四处契约（变量真被交接 / 两侧变量名一致 /
+   必须 `--real-update` / 判决行两侧都在）。
+
+### 二 读数
+
+| 项 | 读数 |
+| --- | --- |
+| 修前派发 `44629584158` | 红在 `verify-signatures`：`PURESCIENCE_MAC_TEAM_ID is not set…`，而同一次日志里两个包的签名都是 `teamIdentifier=UGQZPJ74DF, adHoc=false` |
+| 修后派发 `44630482279`（提交 `d60e0539`） | **success**，`macos update drill: ok 2.30.2-2.31.0`；Squirrel.Mac 2882 ms 换包、新版起来、下载件缓存 `590,843,729 → 0` 字节；观测 JSON 两条场景皆 `passed` |
+| 守卫变异 | 把变量名改成 `vars.MUTATION_PROBE` ⇒ **1 failed**；恢复 ⇒ 5 passed |
+
+### 三 门禁
+
+`vitest scripts/ci/update-drill-workflow.test.ts` 5 passed / `eslint --no-cache` 0 error 0 warning /
+`typecheck:node` 0（`scripts/**` 只被 node 工程收录，未跑 web 是范围判断不是省事）/ `pre-push-checks.sh` EXIT=0。
+
+### 四 边界与具名未办
+
+1. 演练的「应用自报缓存目录」这条**交叉核对**在打包态取不到（`Cannot find module 'electron-updater'`），
+   清缓存断言依据的是包内 `app-update.yml` 的 `updaterCacheDirName` —— 探针能力缺口，非产品缺陷，已入证据档。
+2. 只覆盖 macOS arm64→arm64；Windows 有 `windows-upgrade-smoke`，Linux 无就地更新演练。
+3. `issue #19` 的四条要求已全部满足（定性 / 具名 no-op / 发布前闸门 / 真实演练读数），结案并附读数。
+
+### 五 下一轮第一步
+
+- ① 读 `d60e0539` 的 Nightly / Windows 判决（按完整 40 位 SHA）；红了按「失败文件是否本批碰过」定性。
+- ② 工作树若仍被会话占着，继续只做文档/取证或 CI 侧读数；`src/main/settings/**`、`ro-crate/ipc*`、i18n 仍不碰。
+- ③ 下一个候选：让演练把「应用自报清理目录」这条交叉核对补回来（要么走应用自己的 IPC，要么在主进程侧留一个
+  读得出来的读数），使清缓存证据不再依赖包内配置推断。
