@@ -112,12 +112,16 @@ function Get-RuntimeEntries($runtimes) {
     foreach ($item in @($payload.$language)) {
       if ($null -eq $item) { continue }
       $path = $item.interpreterPath
-      if ($path -is [string] -and $path -and (Test-Path $path)) {
+      # 不按 Test-Path 过滤：修复之后「已经不在了」的那一行**正是**要断言的对象，用存在性做前置条件会把
+      # 被点名的证据自己筛掉（第一版就这么错了，判红了一轮）。
+      if ($path -is [string] -and $path) {
         $entries += [pscustomobject]@{
           language = $language
           id       = $item.envId
           path     = $path
+          exists   = [bool](Test-Path $path)
           runnable = [bool]$item.runnable
+          detail   = $item.detail
         }
       }
     }
@@ -171,7 +175,7 @@ try {
     Save-Json 'break-skipped.json' @{ reason = '运行时列表为空，没有可破坏的条目'; note = '未做破坏步骤，未声明通过' }
     Add-Step 'break-a-runtime-skipped' $true @{ skipped = $true }
   } else {
-    $victim = ($snapBefore.entries | Where-Object { $_.runnable } | Select-Object -First 1)
+    $victim = ($snapBefore.entries | Where-Object { $_.runnable -and $_.exists } | Select-Object -First 1)
     if ($null -eq $victim) { $victim = $snapBefore.entries[0] }
     $brokenPath = "$($victim.path).broken"
     Move-Item -Path $victim.path -Destination $brokenPath -Force
@@ -242,7 +246,7 @@ try {
   Write-Host "== 6/6 在新版本上再装坏一次，这次要求它点名"
   # 同一个动作，判据不同：这一步跑在**升级后的二进制**上。老版本会悄悄少一条（判红），带 interpreter-history 的
   # 新版本会让那一行留着并写明原因（判绿）—— 这就是这次修的东西值多少的直接证据。
-  $victim2 = ($snapUpgraded.entries | Where-Object { $_.runnable } | Select-Object -First 1)
+  $victim2 = ($snapUpgraded.entries | Where-Object { $_.runnable -and $_.exists } | Select-Object -First 1)
   if ($null -eq $victim2) {
     Save-Json 'break-after-upgrade-skipped.json' @{ reason = '升级后没有可破坏的运行时'; note = '未做破坏步骤，未声明通过' }
     Add-Step 'break-after-upgrade-skipped' $true @{ skipped = $true }
