@@ -308,18 +308,29 @@ try {
     }
     if (Test-Path $asar) { throw 'could not remove app.asar to simulate a broken install (still locked)' }
     $env:ELECTRON_RUN_AS_NODE = '1'
-    $output = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 5000 --poll-ms 300 2>&1
+    $proc = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
+      $supervisor, '--marker', $markerFile, '--timeout-ms', '5000', '--poll-ms', '300'
+    )
     $env:ELECTRON_RUN_AS_NODE = ''
-    $outcome = ($output | Select-Object -Last 1) | ConvertFrom-Json
-    Save-Json 'rollback-run.json' @{ raw = ($output -join ' | '); outcome = $outcome }
+    # Electron 在 Windows 上是 GUI 子系统程序，标准输出不会回到控制台 —— 所以判据不靠 stdout：
+    # 看退出码、看文件是否被恢复(哈希)、看标记文件里写下的 rolledBackTo。
+    $exitCode = $proc.ExitCode
+    $markerAfter = Get-Content -Raw -Path $markerFile | ConvertFrom-Json
     $asarHashAfter = if (Test-Path $asar) { (Get-FileHash $asar -Algorithm SHA256).Hash } else { $null }
-    Add-Step 'rollback-restores-the-previous-install' (
-      $outcome.outcome -eq 'rolled-back' -and $asarHashAfter -eq $asarHashBefore
-    ) @{
-      outcome = $outcome.outcome
+    Save-Json 'rollback-run.json' @{
+      exitCode = $exitCode
       asarRestored = (Test-Path $asar)
       hashMatches = ($asarHashAfter -eq $asarHashBefore)
-      restoredFrom = $outcome.restoredFrom
+      rolledBackTo = $markerAfter.rolledBackTo
+      rolledBackAt = $markerAfter.rolledBackAt
+    }
+    Add-Step 'rollback-restores-the-previous-install' (
+      $exitCode -eq 0 -and $asarHashAfter -eq $asarHashBefore -and $null -ne $markerAfter.rolledBackTo
+    ) @{
+      exitCode = $exitCode
+      asarRestored = (Test-Path $asar)
+      hashMatches = ($asarHashAfter -eq $asarHashBefore)
+      rolledBackTo = $markerAfter.rolledBackTo
     }
 
     Write-Host "== 8/8 回滚：新版本起来了就不该动它"
@@ -336,14 +347,25 @@ try {
     } | ConvertTo-Json | Set-Content -Path $markerFile -Encoding utf8
     @{ version = 'healthy'; at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } | ConvertTo-Json | Set-Content -Path $healthFile -Encoding utf8
     $env:ELECTRON_RUN_AS_NODE = '1'
-    $output2 = & (Get-AppExe) $supervisor --marker $markerFile --timeout-ms 3000 --poll-ms 300 2>&1
+    $proc2 = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
+      $supervisor, '--marker', $markerFile, '--timeout-ms', '3000', '--poll-ms', '300'
+    )
     $env:ELECTRON_RUN_AS_NODE = ''
-    $outcome2 = ($output2 | Select-Object -Last 1) | ConvertFrom-Json
-    Save-Json 'rollback-healthy-run.json' @{ raw = ($output2 -join ' | '); outcome = $outcome2 }
+    $exitCode2 = $proc2.ExitCode
+    $markerAfter2 = Get-Content -Raw -Path $markerFile | ConvertFrom-Json
     $asarHashAfter2 = (Get-FileHash $asar -Algorithm SHA256).Hash
+    Save-Json 'rollback-healthy-run.json' @{
+      exitCode = $exitCode2
+      asarUnchanged = ($asarHashAfter2 -eq $asarHashHealthy)
+      untouchedMarker = ($null -eq $markerAfter2.rolledBackAt)
+    }
     Add-Step 'healthy-update-is-left-alone' (
-      $outcome2.outcome -eq 'healthy' -and $asarHashAfter2 -eq $asarHashHealthy
-    ) @{ outcome = $outcome2.outcome; asarUnchanged = ($asarHashAfter2 -eq $asarHashHealthy) }
+      $exitCode2 -eq 0 -and $asarHashAfter2 -eq $asarHashHealthy -and $null -eq $markerAfter2.rolledBackAt
+    ) @{
+      exitCode = $exitCode2
+      asarUnchanged = ($asarHashAfter2 -eq $asarHashHealthy)
+      untouchedMarker = ($null -eq $markerAfter2.rolledBackAt)
+    }
   }
 }
 catch {
