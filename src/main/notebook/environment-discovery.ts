@@ -11,6 +11,7 @@ import type {
   EnvProvenance,
   RuntimeRegistration
 } from '../../shared/notebook-runtime'
+import { readInterpreterHistory, recordInterpreterHistory } from './interpreter-history'
 import { createInterpreterProbeMemo } from './interpreter-probe-memo'
 import { probeInterpreterVersion } from './python-command'
 import { parseRVersion, rHasJsonlite } from './r-command'
@@ -76,6 +77,12 @@ export type DiscoveryDeps = {
   // App runtime root (<storageRoot>/runtime); used to classify provenance of an interpreter by whether
   // it lives under runtime/envs and whether it is a default (app-managed) vs a named (agent-created) env.
   runtimeRoot: string
+  // Interpreters this machine had before. A runtime that is deleted or moved must stay in the list with
+  // a reason, not silently disappear — otherwise the user is left guessing why there is one entry fewer.
+  history?: {
+    read: (language: NotebookLanguage) => string[]
+    record: (language: NotebookLanguage, runnablePaths: string[]) => void
+  }
 }
 
 const safeRealpath = (p: string): string => {
@@ -476,6 +483,13 @@ export const discoverInterpreters = async (
     }
   }
 
+  // Interpreters we knew about that this scan cannot see any more. Only paths that are genuinely gone
+  // become "missing" entries: a path that exists but probes as not-runnable is already in `unique` and
+  // must not be duplicated here.
+  const remembered = (deps.history?.read(language) ?? []).filter(
+    (path) => !indexByEnvId.has(deps.realpath(path)) && !existsSync(path)
+  )
+
   const results = new Array<DiscoveredInterpreter>(unique.length)
   let next = 0
   const worker = async (): Promise<void> => {
@@ -486,7 +500,26 @@ export const discoverInterpreters = async (
   await Promise.all(
     Array.from({ length: Math.min(PROBE_CONCURRENCY, unique.length) }, () => worker())
   )
-  return results
+
+  // A remembered interpreter that is gone keeps its row, marked not runnable with a reason. `registration`
+  // stays 'system' because that is how it was found the last time it was usable — inventing a new value
+  // would push a schema change into the panel for one line of text.
+  const missing: DiscoveredInterpreter[] = remembered.map((path) => ({
+    language,
+    provenance: classify(path, deps.runtimeRoot),
+    registration: 'system',
+    envId: deps.realpath(path),
+    interpreterPath: path,
+    label: path,
+    version: undefined,
+    runnable: false,
+    detail: 'Interpreter is no longer at this path (it was available earlier)'
+  }))
+
+  // Remember what is runnable now, so the next scan can name whatever disappears from here on.
+  deps.history?.record(language, results.filter((entry) => entry.runnable).map((entry) => entry.interpreterPath))
+
+  return [...results, ...missing]
 }
 
 // The env's Rscript sits beside its R (…/bin/R → …/bin/Rscript); used to probe jsonlite in THAT env,
@@ -569,6 +602,10 @@ export const defaultDiscoveryDeps = (
         })
       ),
     realpath: safeRealpath,
-    runtimeRoot
+    runtimeRoot,
+    history: {
+      read: (language) => readInterpreterHistory(runtimeRoot, language),
+      record: (language, runnablePaths) => recordInterpreterHistory(runtimeRoot, language, runnablePaths)
+    }
   }
 }
