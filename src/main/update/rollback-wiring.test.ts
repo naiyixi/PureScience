@@ -8,7 +8,7 @@
 // electron 与 spawn 必须替身：这个模块在真实启动路径上无参数可注入，测试进程里也没有 Electron。
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -351,16 +351,19 @@ describe('packagedRollbackTargets', () => {
     expect(packagedRollbackTargets()).toBeUndefined()
 
     electronState.isPackaged = true
-    electronState.exePath = '/opt/PureScience.app/Contents/MacOS/PureScience'
+    electronState.exePath = join('/opt/PureScience.app/Contents/MacOS', 'PureScience')
+    const resourcesPath = join('/opt/PureScience.app/Contents', 'Resources')
     Object.defineProperty(process, 'resourcesPath', {
-      value: '/opt/PureScience.app/Contents/Resources',
+      value: resourcesPath,
       configurable: true
     })
 
-    expect(packagedRollbackTargets()).toEqual({
-      exePath: '/opt/PureScience.app/Contents/MacOS/PureScience',
-      installDir: '/opt/PureScience.app/Contents/MacOS',
-      supervisorScript: '/opt/PureScience.app/Contents/Resources/cli/rollback-supervisor.cjs'
-    })
+    const targets = packagedRollbackTargets()
+    // 三条都在宿主规则下判，不写字面量分隔符：Windows 车道上 join 给出的是反斜杠。
+    expect(targets?.exePath).toBe(electronState.exePath)
+    expect(targets?.installDir).toBe(dirname(electronState.exePath))
+    expect(targets?.supervisorScript.startsWith(resourcesPath)).toBe(true)
+    expect(basename(targets?.supervisorScript ?? '')).toBe('rollback-supervisor.cjs')
+    expect(targets?.supervisorScript.split(sep)).toContain('cli')
   })
 })
