@@ -54,7 +54,7 @@
 
 | 单元           | 现状                                        | 动作                          | 判据                         |
 | -------------- | ------------------------------------------- | ----------------------------- | ---------------------------- |
-| 4.1 隔离重放   | `artifacts/reproducibility-service.ts` 已有 | 补「环境快照 + 依赖锁定」两件 | 同一份记录在干净机器重放成功 |
+| 4.1 隔离重放   | **环境快照与比对已在（2026-11-19 就地更正，原「无」是按 API 形状搜出来的过时读数）**：每次 notebook run 落 `NotebookEnvironmentManifest`（包清单 + kernel + runtime 版本 + 平台，带 `manifestChecksum`/`manifestFingerprint`，见 `src/shared/notebook.ts:138`、`src/main/notebook/execution-owner.ts:321`）；重放侧 `compareReplayEnvironment` 五态比对（`src/shared/replay-verification.ts:97-132`），重跑会按记录把同一 runtime 绑回（`src/main/artifacts/replay-composition.ts:118,186-215`） | 无代码缺口（架构已覆盖）；剩下的只有判据那一半 | 判据「同一份记录在干净机器重放成功」需要第二台环境 ⇒ 本机取不到，标 UNVERIFIED 并写明缺的是机器而不是实现 |
 | 4.2 外部读校验 | 我方 `ro-crate` 实现有校验规则              | 用第三方工具读一次导出包      | 第三方解析出实体图无缺失     |
 
 ## 排期纪律
