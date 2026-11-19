@@ -9,7 +9,7 @@
 import { app } from 'electron'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 import {
   backupInstallDir,
@@ -68,8 +68,13 @@ export const prepareRollbackForUpdate = (input: PrepareInput): boolean => {
 
   try {
     // 独立进程：新版本的 asar 一旦坏了，App 自己的代码根本不会跑，进程内回滚是空想。
+    //
+    // 而且必须从**备份目录**里那份可执行文件启动，不能用安装目录里那个：回滚要覆盖安装目录里的 purescience.exe，
+    // 而 Windows 不允许改动正在运行的映像（实测: "cannot be performed on a file with a user-mapped section open"）。
+    // 让救生艇停在别处，是这条链路能成立的前提。
+    const supervisorExe = join(backupDir, basename(input.exePath))
     const child = spawn(
-      input.exePath,
+      existsSync(supervisorExe) ? supervisorExe : input.exePath,
       [
         input.supervisorScript,
         '--marker',

@@ -308,8 +308,11 @@ try {
     }
     if (Test-Path $asar) { throw 'could not remove app.asar to simulate a broken install (still locked)' }
     if (Test-Path "$markerFile.result.json") { Remove-Item -Force "$markerFile.result.json" }
+    # 从备份目录里的那份可执行文件启动监管进程：回滚要覆盖安装目录里的 purescience.exe，
+    # 从安装目录启动的话 Windows 会拒绝改动正在运行的映像(实测 user-mapped section open)。
+    $backupExe = Join-Path $backupDir (Split-Path (Get-AppExe) -Leaf)
     $env:ELECTRON_RUN_AS_NODE = '1'
-    $proc = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
+    $proc = Start-Process -FilePath $backupExe -Wait -PassThru -NoNewWindow -ArgumentList @(
       $supervisor, '--marker', $markerFile, '--timeout-ms', '5000', '--poll-ms', '300'
     )
     $env:ELECTRON_RUN_AS_NODE = ''
@@ -359,7 +362,7 @@ try {
     @{ version = 'healthy'; at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } | ConvertTo-Json | Set-Content -Path $healthFile -Encoding utf8
     if (Test-Path "$markerFile.result.json") { Remove-Item -Force "$markerFile.result.json" }
     $env:ELECTRON_RUN_AS_NODE = '1'
-    $proc2 = Start-Process -FilePath (Get-AppExe) -Wait -PassThru -NoNewWindow -ArgumentList @(
+    $proc2 = Start-Process -FilePath $backupExe -Wait -PassThru -NoNewWindow -ArgumentList @(
       $supervisor, '--marker', $markerFile, '--timeout-ms', '3000', '--poll-ms', '300'
     )
     $env:ELECTRON_RUN_AS_NODE = ''
