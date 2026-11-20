@@ -5,10 +5,14 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  countPurgeRecords,
   judgeCacheDirResolution,
+  judgeOrphanRemovalRecord,
   judgePurgeRecord,
+  logDirectoriesForLogFile,
   readAppUpdateCacheRecords,
   selectHandoffRecord,
+  selectOrphanRecord,
   selectPurgeRecord
 } from './macos-update-cache-drill.mjs'
 
@@ -83,6 +87,28 @@ describe('reading the app own update-cache records', () => {
     })
 
     expect(records).toEqual([])
+  })
+
+  it('still finds a record a whole launch of lines has pushed back', async () => {
+    // A launch writes hundreds of lines; a record written early in it must not fall out of the tail
+    // the reader parses. At a 400-line window this drill reported "no orphan record" while the app
+    // had recorded it, so the bound itself is pinned here.
+    const noise = Array.from({ length: 1_000 }, (_, index) =>
+      JSON.stringify({ msg: `renderer: line ${index}`, scope: 'renderer', data: {} })
+    )
+    const directory = await writeLog([
+      purgeRecord({ cacheDir: CACHE_DIR, installedVersion: '2.31.0', removedBytes: 590843729 }),
+      ...noise
+    ])
+
+    const records = await readAppUpdateCacheRecords({
+      home: '/nonexistent',
+      directories: [directory]
+    })
+
+    expect(selectPurgeRecord({ records, cacheDir: CACHE_DIR })?.data).toMatchObject({
+      removedBytes: 590843729
+    })
   })
 })
 
@@ -260,5 +286,111 @@ describe('judging the cache directory the app resolved, before the install', () 
 
     expect(verdict.state).toBe('matched')
     expect(verdict.evidence.matched).toMatchObject({ cacheDir: CACHE_DIR })
+  })
+})
+
+// The local sweep drill (no --real-update) judges the same facts as the packaged drill, but it also
+// runs against a dev app root, whose log directory is named "PureScience (DEV)". Reading a guessed
+// name there silently produced "no purge line found" while the app had recorded the purge — a reading
+// that looks like a product finding. These pin the two halves that keep it honest: the app names its
+// own log file, and a non-event is counted rather than inferred.
+describe('locating the app log through the app own answer', () => {
+  it('reads from the directory of the log file the app named, dev name included', () => {
+    const directories = logDirectoriesForLogFile({
+      logPath: '/Users/runner/Library/Logs/PureScience (DEV)/main.log'
+    })
+
+    expect(directories).toEqual(['/Users/runner/Library/Logs/PureScience (DEV)'])
+  })
+
+  it('keeps the documented fallbacks when the app did not answer', () => {
+    expect(logDirectoriesForLogFile({ logPath: null })).toBeUndefined()
+    expect(logDirectoriesForLogFile({ logPath: '' })).toBeUndefined()
+  })
+})
+
+describe('counting purges so that a non-event is measured', () => {
+  const readRecords = async (lines: string[]): Promise<unknown[]> => {
+    const directory = await writeLog(lines)
+    return readAppUpdateCacheRecords({ home: '/nonexistent', directories: [directory] })
+  }
+
+  it('counts only the purges of the cache under test', async () => {
+    const records = await readRecords([
+      pendingRecord(CACHE_DIR, '2.31.2'),
+      purgeRecord({ cacheDir: CACHE_DIR, installedVersion: '2.31.2', removedBytes: 42991788 }),
+      purgeRecord({
+        cacheDir: '/Users/runner/Library/Caches/other',
+        installedVersion: '2.31.2',
+        removedBytes: 42991788
+      })
+    ])
+
+    expect(countPurgeRecords({ records, cacheDir: CACHE_DIR })).toBe(1)
+    expect(countPurgeRecords({ records, cacheDir: '/tmp/another-cache' })).toBe(0)
+  })
+})
+
+describe('judging the orphan record the app wrote for a partial download', () => {
+  const PARTIAL = 'pending/temp-PureScience-2.31.3-arm64-mac.zip'
+
+  const orphanRecord = (files: string[]): string =>
+    JSON.stringify({
+      t: '2026-11-20T19:53:13.165Z',
+      level: 'info',
+      scope: 'update',
+      msg: 'update cache: removed orphaned partial downloads',
+      data: { files }
+    })
+
+  const readRecords = async (lines: string[]): Promise<unknown[]> => {
+    const directory = await writeLog(lines)
+    return readAppUpdateCacheRecords({ home: '/nonexistent', directories: [directory] })
+  }
+
+  it('passes when the app recorded removing exactly the file that vanished', async () => {
+    const records = await readRecords([orphanRecord([PARTIAL])])
+    const verdict = judgeOrphanRemovalRecord({
+      record: selectOrphanRecord({ records }),
+      expectedFile: PARTIAL
+    })
+
+    expect(verdict.ok).toBe(true)
+    expect(verdict.summary).toContain(PARTIAL)
+    expect(verdict.evidence.matched).toMatchObject({ files: [PARTIAL] })
+  })
+
+  it('refuses to call a vanished file attributable when the app recorded no orphan removal', async () => {
+    const records = await readRecords([pendingRecord(CACHE_DIR, '2.31.2')])
+    const verdict = judgeOrphanRemovalRecord({
+      record: selectOrphanRecord({ records }),
+      expectedFile: PARTIAL
+    })
+
+    expect(verdict.ok).toBe(false)
+    expect(verdict.reason).toContain('not attributable')
+  })
+
+  it('names the files the app actually removed when they are not the seeded partial', async () => {
+    const records = await readRecords([
+      orphanRecord(['pending/temp-PureScience-2.29.9-arm64-mac.zip'])
+    ])
+    const verdict = judgeOrphanRemovalRecord({
+      record: selectOrphanRecord({ records }),
+      expectedFile: PARTIAL
+    })
+
+    expect(verdict.ok).toBe(false)
+    expect(verdict.summary).toBe('the record names other files')
+    expect(verdict.reason).toContain('2.29.9')
+  })
+
+  it('does not let a record left by an earlier run stand in for this one', async () => {
+    // The seeded file name repeats across runs, so a stale record names the same file. What separates
+    // them is position in the log, not content — which is why the drill passes a baseline count.
+    const records = await readRecords([orphanRecord([PARTIAL])])
+
+    expect(selectOrphanRecord({ records })?.data).toMatchObject({ files: [PARTIAL] })
+    expect(selectOrphanRecord({ records, skip: 1 })).toBeUndefined()
   })
 })

@@ -41,7 +41,7 @@ import { createReadStream } from 'node:fs'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { dump, load } from 'js-yaml'
@@ -198,7 +198,14 @@ const launchApp = async ({ mode, home, profile, storageRoot }) => {
     timeout: STARTUP_TIMEOUT_MS
   })
   const appInfo = await page.evaluate(() => globalThis.window.api.update.getAppInfo())
-  return { client, page, appInfo }
+  // The app names its own log file, and its directory differs by build mode: `app.getPath('logs')`
+  // answers `…/Logs/PureScience` for a packaged bundle and `…/Logs/PureScience (DEV)` for a dev app
+  // root. Guessing the name is how a real reading once went unmade (the drill reported "no purge line
+  // found" while the app had recorded the purge in the other directory).
+  const logPath = await page
+    .evaluate(() => globalThis.window.api.logs?.getPath?.().catch(() => null) ?? null)
+    .catch(() => null)
+  return { client, page, appInfo, logPath }
 }
 
 // Waits for the process to actually exit: the next launch shares the profile, and the app takes a
@@ -293,6 +300,10 @@ const judgeCacheDirResolution = ({ record, records, cacheDir, version }) => {
 
 const PURGE_RECORD_MESSAGE = 'update cache: purged after a completed install'
 
+// How many trailing log lines the reader parses. One launch writes hundreds of lines before the drill
+// gets to read, so the window must comfortably clear a launch rather than just the last few records.
+const READ_RECORD_TAIL_LINES = 5_000
+
 // The app writes one JSON record per line (src/main/logger.ts). Parsing them — rather than grepping
 // for a substring — is what separates "the app purged this cache" from "the app recorded a pending
 // install", and exposes the two facts only the app knows: which directory it resolved, and how many
@@ -311,9 +322,10 @@ const readAppUpdateCacheRecords = async ({ home, directories }) => {
     for (const name of names) {
       const file = join(directory, name)
       const text = await readFile(file, 'utf8').catch(() => '')
-      // The purge happens at launch and the drill stops reading right after it, so the record is
-      // near the end; a bounded tail keeps a long-lived dev log from being parsed in full.
-      for (const line of text.split('\n').slice(-400)) {
+      // A bounded tail keeps a long-lived dev log from being parsed in full. The bound has to clear a
+      // whole launch: at 400 lines a record written early in a launch fell out of the window before
+      // the drill read it, and the drill reported "no orphan record" while the app had recorded it.
+      for (const line of text.split('\n').slice(-READ_RECORD_TAIL_LINES)) {
         if (!line.includes('update cache:')) continue
         let record
         try {
@@ -330,13 +342,90 @@ const readAppUpdateCacheRecords = async ({ home, directories }) => {
 }
 
 // The app's OWN log names the directory it purged and how many bytes it removed — the strongest
-// cross-check available in a packaged build: the app itself says which cache it cleaned.
-const readAppPurgeLogLines = async ({ home, cacheDir }) => {
-  const records = await readAppUpdateCacheRecords({ home })
+// cross-check available in either launch mode: the app itself says which cache it cleaned.
+const readAppPurgeLogLines = async ({ home, cacheDir, directories }) => {
+  const records = await readAppUpdateCacheRecords({ home, directories })
   return records
     .filter((record) => record.msg === PURGE_RECORD_MESSAGE && record.data?.cacheDir === cacheDir)
     .map((record) => ({ file: record.file, line: record.line }))
     .slice(-6)
+}
+
+// The log directory the app itself named (`window.api.logs.getPath()`), never a guessed name. Undefined
+// when the app did not answer, in which case the reader keeps its documented fallbacks.
+const logDirectoriesForLogFile = ({ logPath }) =>
+  typeof logPath === 'string' && logPath !== '' ? [dirname(logPath)] : undefined
+
+// How many purge records the app has written for this cache directory so far. Needed where the claim
+// is a NON-event (an empty cache, a rollback): "the app recorded no purge" has to be counted, not
+// inferred from a directory that merely stayed as it was.
+const countPurgeRecords = ({ records, cacheDir }) =>
+  records.filter(
+    (record) => record.msg === PURGE_RECORD_MESSAGE && record.data?.cacheDir === cacheDir
+  ).length
+
+const ORPHAN_RECORD_MESSAGE = 'update cache: removed orphaned partial downloads'
+
+// The app's own record of the partial download it removed. Its data carries no cacheDir (the sweep
+// only ever lists orphans under the directory it resolved), so selection is by recency — and by how
+// many such records the drill had already seen, because the seeded file name is deterministic: a
+// record left by an earlier run of this drill names the same file and must not be able to stand in
+// for one this run made.
+const orphanRecords = ({ records }) =>
+  records.filter((record) => record.msg === ORPHAN_RECORD_MESSAGE)
+
+const selectOrphanRecord = ({ records, skip = 0 }) => orphanRecords({ records }).slice(skip).at(-1)
+
+// A partial download that is gone from disk is only attributable to the sweep when the app says it
+// removed that file: the cache directory is a real one under the user's home, so something else could
+// have taken it.
+const judgeOrphanRemovalRecord = ({ record, expectedFile }) => {
+  const evidence = {
+    expectedFile,
+    matched:
+      record === undefined
+        ? null
+        : { file: record.file, files: Array.isArray(record.data?.files) ? record.data.files : null }
+  }
+  if (!record) {
+    return {
+      ok: false,
+      evidence,
+      summary: 'no orphan record',
+      reason:
+        `the partial download ${expectedFile} is gone from the cache, but the app never recorded ` +
+        'removing an orphaned partial download — a file that vanished without the app saying so is ' +
+        'not attributable to the sweep'
+    }
+  }
+  const files = Array.isArray(record.data?.files) ? record.data.files : []
+  if (!files.includes(expectedFile)) {
+    return {
+      ok: false,
+      evidence,
+      summary: 'the record names other files',
+      reason:
+        `the app recorded removing ${JSON.stringify(files)}, which does not include the partial ` +
+        `download this drill seeded (${expectedFile})`
+    }
+  }
+  return {
+    ok: true,
+    evidence,
+    summary: `the app recorded removing the orphaned partial download ${expectedFile}`
+  }
+}
+
+// The record is written asynchronously right after the bytes are gone, so the drill polls for it
+// (bounded) instead of reading once and calling a missing line "the app did not record it".
+const waitForAppRecord = async ({ read, judge, timeoutMs = 10_000 }) => {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const { record, records } = await read()
+    const verdict = judge({ record, records })
+    if (verdict.ok || Date.now() >= deadline) return { verdict, records }
+    await delay(250)
+  }
 }
 
 // Newest purge record the app wrote for this cache directory. Selection deliberately does NOT filter
@@ -611,7 +700,10 @@ const launchPackagedApp = async ({ executablePath, profile, storageRoot }) => {
     timeout: STARTUP_TIMEOUT_MS
   })
   const appInfo = await page.evaluate(() => globalThis.window.api.update.getAppInfo())
-  return { client, page, appInfo }
+  const logPath = await page
+    .evaluate(() => globalThis.window.api.logs?.getPath?.().catch(() => null) ?? null)
+    .catch(() => null)
+  return { client, page, appInfo, logPath }
 }
 
 // Drives apply() the way the user does. The UI path is preferred when the ready dialog happens to be
@@ -1122,6 +1214,11 @@ const runSweepDrill = async () => {
     const first = await launchApp({ mode, home, profile: profile1, storageRoot })
     application = first
     const appVersion = String(first.appInfo.version)
+    // Everything below reads the app's own records out of the directory the app named. Without that,
+    // the dev app root's `PureScience (DEV)` logs are invisible and the cross-check silently degrades
+    // to "no purge line found" — a reading that looks like a finding.
+    const logDirectories = logDirectoriesForLogFile({ logPath: first.logPath })
+    evidence.appLog = { path: first.logPath ?? null, directories: logDirectories ?? null }
     const newerVersion = (() => {
       const parts = appVersion.split('.').map((part) => Number.parseInt(part, 10) || 0)
       parts[parts.length - 1] += 1
@@ -1158,16 +1255,39 @@ const runSweepDrill = async () => {
       )
     })
     const after1 = await snapshotDirectory(cacheDir)
+    // An empty directory only says the bytes are gone. The app's own record says it is the one that
+    // removed them, from the directory it resolved, and how many bytes — so the verdict waits for it.
+    const purge1 = await waitForAppRecord({
+      read: async () => {
+        const records = await readAppUpdateCacheRecords({ home, directories: logDirectories })
+        return { record: selectPurgeRecord({ records, cacheDir }), records }
+      },
+      judge: ({ record, records }) =>
+        judgePurgeRecord({
+          record,
+          records,
+          cacheDir,
+          expectedBytes: before1.bytes,
+          expectedVersion: appVersion
+        })
+    })
+    console.log(`[drill] app purge record: ${purge1.verdict.summary}`)
+    if (!purge1.verdict.ok) throw new Error(purge1.verdict.reason)
+    const appLogLines = await readAppPurgeLogLines({
+      home,
+      cacheDir,
+      directories: logDirectories
+    })
     evidence.scenarios.push({
       name: 'landed-install-purges-the-downloaded-package',
       appVersion,
       markerVersion: appVersion,
       before: before1,
       after: after1,
+      appPurge: purge1.verdict.evidence,
       purgeObservedAfterMs: Date.now() - purgeStartedAt,
-      passed: after1.files.length === 0 && after1.bytes === 0
+      passed: after1.files.length === 0 && after1.bytes === 0 && purge1.verdict.ok
     })
-    const appLogLines = await readAppPurgeLogLines({ home, cacheDir })
     evidence.scenarios[0].appLogLines = appLogLines
     console.log(
       `[drill] scenario 1: cache ${before1.bytes} B -> ${after1.bytes} B (${after1.files.length} files) ` +
@@ -1198,26 +1318,52 @@ const runSweepDrill = async () => {
       SWEEP_TIMEOUT_MS
     )
     const after2 = await snapshotDirectory(cacheDir)
+    const purge2 = await waitForAppRecord({
+      read: async () => {
+        const records = await readAppUpdateCacheRecords({ home, directories: logDirectories })
+        return { record: selectPurgeRecord({ records, cacheDir }), records }
+      },
+      judge: ({ record, records }) =>
+        judgePurgeRecord({
+          record,
+          records,
+          cacheDir,
+          expectedBytes: before2.bytes,
+          expectedVersion: appVersion
+        })
+    })
+    console.log(`[drill] app purge record (relaunch): ${purge2.verdict.summary}`)
+    if (!purge2.verdict.ok) throw new Error(purge2.verdict.reason)
     evidence.scenarios.push({
       name: 're-entrant-purge-on-a-later-launch',
       before: before2,
       after: after2,
+      appPurge: purge2.verdict.evidence,
       purgeObservedAfterMs: Date.now() - relaunchStartedAt,
-      passed: after2.files.length === 0
+      passed: after2.files.length === 0 && purge2.verdict.ok
     })
     console.log(`[drill] scenario 2: re-entrant purge ${before2.bytes} B -> ${after2.bytes} B`)
 
     // A further launch with an already-empty cache must stay clean (idempotent, and it must not crash).
+    // The claim is a NON-event, so it is counted: the app must not have recorded another purge.
+    const purgeCountBefore2b = countPurgeRecords({ records: purge2.records, cacheDir })
     await closeApp(application.client)
     application = await launchApp({ mode, home, profile: profile2, storageRoot })
     await delay(3000)
     const after2b = await snapshotDirectory(cacheDir)
+    const records2b = await readAppUpdateCacheRecords({ home, directories: logDirectories })
+    const purgeCountAfter2b = countPurgeRecords({ records: records2b, cacheDir })
     evidence.scenarios.push({
       name: 'empty-cache-stays-empty',
       after: after2b,
-      passed: after2b.files.length === 0
+      purgeRecordsBefore: purgeCountBefore2b,
+      purgeRecordsAfter: purgeCountAfter2b,
+      passed: after2b.files.length === 0 && purgeCountAfter2b === purgeCountBefore2b
     })
-    console.log(`[drill] scenario 2b: cache stayed at ${after2b.bytes} B`)
+    console.log(
+      `[drill] scenario 2b: cache stayed at ${after2b.bytes} B, ` +
+        `purge records ${purgeCountBefore2b} -> ${purgeCountAfter2b}`
+    )
     await closeApp(application.client)
 
     // ── Scenario 3: nothing installable is ever removed ───────────────────────────────────────────
@@ -1232,6 +1378,9 @@ const runSweepDrill = async () => {
     const artifactPath = join('pending', seeded.artifact)
     const partialPath = join('pending', seeded.partial)
     const before3 = await snapshotDirectory(cacheDir)
+    // Orphan records name no cache directory and the seeded file name repeats across runs, so the
+    // number already in the log is the baseline: only a record written after this launch can count.
+    const orphanRecordsBefore3 = orphanRecords({ records: records2b }).length
     application = await launchApp({ mode, home, profile: profile3, storageRoot })
     await waitFor(
       'the orphaned partial download to be removed',
@@ -1247,6 +1396,21 @@ const runSweepDrill = async () => {
     const artifactAfter = after3.files.find((file) => file.name === artifactPath)
     const markerStillThere = after3.files.some((file) => file.name === MARKER_FILE)
     const partialRemoved = !after3.files.some((file) => file.name === partialPath)
+    // Two things only the app can say: it removed that partial (and nothing else), and it did NOT
+    // treat the still-installable package as a landed install. A file that vanished, or a package
+    // that survived, without the app's own record is not attributable to the sweep.
+    const orphan3 = await waitForAppRecord({
+      read: async () => {
+        const records = await readAppUpdateCacheRecords({ home, directories: logDirectories })
+        return {
+          record: selectOrphanRecord({ records, skip: orphanRecordsBefore3 }),
+          records
+        }
+      },
+      judge: ({ record }) => judgeOrphanRemovalRecord({ record, expectedFile: partialPath })
+    })
+    console.log(`[drill] app orphan record: ${orphan3.verdict.summary}`)
+    const purgeCountAfter3 = countPurgeRecords({ records: orphan3.records, cacheDir })
     evidence.scenarios.push({
       name: 'rollback-keeps-the-installable-package',
       artifact: artifactPath,
@@ -1255,15 +1419,22 @@ const runSweepDrill = async () => {
       markerStillThere,
       before3,
       after3,
+      appOrphanRemoval: orphan3.verdict.evidence,
+      purgeRecordsBefore: purgeCountAfter2b,
+      purgeRecordsAfter: purgeCountAfter3,
       passed:
         artifactAfter?.bytes === artifactBefore?.bytes &&
         artifactAfter?.bytes === ARTIFACT_BYTES &&
         partialRemoved &&
-        markerStillThere
+        markerStillThere &&
+        orphan3.verdict.ok &&
+        purgeCountAfter3 === purgeCountAfter2b
     })
     console.log(
       `[drill] scenario 3: pending package ${artifactBefore?.bytes} B -> ${artifactAfter?.bytes} B, ` +
-        `marker kept=${markerStillThere}, partial removed=${partialRemoved}`
+        `marker kept=${markerStillThere}, partial removed=${partialRemoved}, ` +
+        `app orphan record=${orphan3.verdict.ok ? 'ok' : 'missing'}, ` +
+        `purge records ${purgeCountAfter2b} -> ${purgeCountAfter3}`
     )
   } catch (error) {
     evidence.error = error instanceof Error ? error.message : String(error)
@@ -1326,6 +1497,10 @@ export {
   judgeCacheDirResolution,
   readAppUpdateCacheRecords,
   readAppPurgeLogLines,
+  logDirectoriesForLogFile,
+  countPurgeRecords,
+  selectOrphanRecord,
+  judgeOrphanRemovalRecord,
   selectPurgeRecord,
   judgePurgeRecord,
   resolveLaunchMode,

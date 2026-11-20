@@ -1,5 +1,60 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十一、本轮追加（执行器，2026-11-21 03:4x–）—— 本地 sweep 演练从「目录空了」升级成「应用自报它清了哪个目录、多少字节」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == ead513d`（会话推的发版回执与两次更正），工作树 **18 个改动仍是会话在制**
+  （`src/main/settings/**` 的 `authorKind` 那套、`src/main/ro-crate/ipc*`；mtime 停在 11-19 22:17–22:19）
+  ⇒ 一个字节没碰。本轮只碰 `scripts/**` 与 `docs/**`（两者都不在它的在制集合里）。
+- 进轮车道读数（现取）：`9fda9f3c` 的 `Nightly` `4474…`、`Windows Full Test` 均 **success**；无在飞 run。
+- 上一轮 §一百九十 §三 已经把 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）判完 ⇒ 本轮取它自己写下的下一候选：
+  「本地 sweep 诊断路径的交叉核对仍是记录式，需先造可驱动读数再改判定语义」。
+
+### 一 发版核验（现取，v2.31.2）
+
+- `gh release list` → `PureScience v2.31.2` 为 **Latest**；`gh release view` → `draft=false`、`isPrerelease=false`、
+  **17 个资产**（四平台安装包 + `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` /
+  `latest*.yml` / `arm64-mac.yml` / `x64-mac.yml`）。
+- `RELEASE-CERTIFICATION.json` 的 `sourceSha` = `7f1f93ad…`，与 `git rev-parse 'v2.31.2^{commit}'` 逐字符相同；
+  该提交在 `origin/main` 上。
+
+### 二 本单元：四个判决都改挂到应用自己的记录上
+
+- 读数先行（改之前）：四条场景全绿，但 `[drill] app log: no purge line found` —— `passed` 全部来自
+  「演练看到的目录空了」。查下来不是「应用没记」，而是**演练在猜日志目录名**：`app.getPath('logs')` 在 dev app
+  root 答 `…/Logs/PureScience (DEV)`，演练只找 `…/Logs/PureScience`（实测记录确实写在前者）。
+- 改法（只动演练脚本 + 它的用例）：① 启动后问应用要 `window.api.logs.getPath()`，用它的目录读记录（不答才回落）；
+  ② 场景 1/2 判 `judgePurgeRecord`（目录逐字相等 + 安装版本相等 + **字节数逐字节相等**）；③ 场景 2b 改成
+  **计数**「purge 记录条数不变」；④ 场景 3 新增 `judgeOrphanRemovalRecord`（应用必须自报删掉**那个**孤儿）
+  + purge 计数不变；⑤ 两处仪器修正：尾部窗口 400 → 5,000 行（一次启动就写数百行，早期记录会掉出窗口）、
+  孤儿记录选择加 `skip` 基线（种下去的文件名确定，上一轮同名记录不得顶替）。
+- 证据档：`docs/evidence/2026-11-21-sweep-drill-attribution.md`。
+
+### 三 读数（本机真机，dev app root，应用 2.31.2）
+
+- 场景 1：应用自报 `purged 42991788 bytes (5 files) … after installing 2.31.2`，与落地前快照**逐字节相同**；
+  场景 2（重启后重试）同样；场景 2b：`purge records 2 -> 2`；场景 3：应用自报删掉
+  `pending/temp-PureScience-2.31.3-arm64-mac.zip`、`purge records 2 -> 2`、包 33,554,432 B 未动。
+- 变异自证（三份变异副本各跑一次真演练，均**打红**且具名）：日志目录退回猜名字 ⇒ `no purge record`（改前是静默通过）；
+  期望字节 +1 ⇒ `byte count disagrees`；孤儿 skip +1 ⇒ `app orphan record=missing`。
+
+### 四 门禁与边界
+
+- `npx vitest run scripts/` **46 文件 / 590 例通过**（其中本文件 20 例，新增 6 例）；`eslint --no-cache` 两文件
+  **0 error 0 warning**；`typecheck:node` / `typecheck:web` **均 0**。
+- 边界：跑的是 dev app root，不是打包态（本机 `dist/mac-arm64` 是 v2.21.0 旧包，用它跑 packaged 模式时卡在
+  `electronApp.close()`，600 s 未返回 —— 旧包现场，未据此声称任何产品缺陷）；本地 sweep 演练**不在 CI**，
+  CI 只有 `--real-update` 那条；记录是 `info` 级，日志级别被调高时会转成具名失败而不是静默通过。
+- 没改产品代码、没写 CHANGELOG。
+
+### 五 下一轮第一步
+
+- ① 推前先 `git status --short`：会话那 18 个在制仍脏就继续只做 `scripts/**` / `docs/**`。
+- ② 本单元已推一次，等该 SHA 的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA，`gh api …?head_sha=`）。
+- ③ 下一候选：`docs/evidence/2026-11-20-acp-probe-real-binary.md` 的最后一格 —— 隔离根里谁写入了真实
+  `opencodePath`（读两个值即可结案，不修产品代码）；再往后按 v3.5 读数扫遗留项。
+
 ## 一百九十、本轮追加（执行器，2026-11-20 21:3x–）—— 收口主线红：一条断言没跟上车道的改动；顺带定因「本机探针起了真实二进制」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
