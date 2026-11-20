@@ -484,6 +484,22 @@ jobs:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
         run: npm run test:e2e:visual
 
+      # A pixel count names nothing by itself: "2526 pixels differ" was observed three times on this lane
+      # (two reds, one green, same baseline) and each time the diff image stayed on the runner. Without the
+      # images the next reader can only guess between paint/environment and a real regression — and guessing is
+      # what let this surface stay unexplained across two releases. Upload the evidence instead, and only when
+      # the shot actually differed.
+      - name: Upload visual regression failure
+        if: ${{ steps.visual.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: visual-regression-failure-${{ matrix.name }}
+          retention-days: 7
+          path: |
+            test-results/electron/visual-regression-*/
+            playwright-report/
+          if-no-files-found: warn
+
       # Exercise both macOS distributables rather than treating the unpacked app launch above as
       # package coverage: mount the DMG, extract the ZIP, verify each bundle, and launch each app. The
       # smoke also reads the shipped ZIP bundle's own signature into --signature-reading, so the mac
