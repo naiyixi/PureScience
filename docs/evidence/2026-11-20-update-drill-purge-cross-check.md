@@ -69,10 +69,38 @@ macos update drill: failed at cross-check-the-app-purge-record: the drill counte
 修法（收紧参照点，不放宽断言）：在**旧应用退出、新版本尚未启动**的那一刻再取一次快照 `cacheAtQuit`，
 `expectedBytes` 改用它的字节数，并把两个读数同时写进证据（`cacheBytesBefore` / `cacheBytesWhenTheAppQuit`）。
 
-## 六 边界（不许读成更强）
+## 七 第二次派发（`dcdd8989`）的真机读数：绿，且两处数字对得上
 
-- 本轮第一次派发（`44653013476`）**红了**，红在参照点（见 §五），已修并重新派发；第二次的读数回填在
-  §七。在那之前，「应用自报的字节数与演练一致」只到「口径已对齐、断言已生效」这一步。
+`Update Drill (macOS)` run `44653894888`，作业 `136015302372`，**success**。逐字：
+
+```
+[drill] updater cache under test: /Users/runner/Library/Caches/purescience-updater
+[drill] downloaded package before the install: 3 files, 590843729 bytes
+[drill] updater cache when the app quit: 4 files, 590843790 bytes (61 more than the download)
+[drill] Squirrel.Mac replaced the bundle with 2.31.0 after 3746ms
+[drill] the new version is running: 2.31.0
+[drill] app purge record: the app recorded purging 590843790 bytes (3 files) from
+        /Users/runner/Library/Caches/purescience-updater after installing 2.31.0
+[drill] updater cache after the install: 0 files, 0 bytes (was 590843729)
+macos update drill: ok 2.30.2-2.31.0
+```
+
+对照三件事，全部同一次运行内自洽：
+
+| 量 | 演练侧的读数 | 应用自报的读数 | 判 |
+| --- | --- | --- | --- |
+| 缓存目录 | `~/Library/Caches/purescience-updater`（脚本从 `app-update.yml` 推的） | `/Users/runner/Library/Caches/purescience-updater` | 一致 —— **这正是打包态取不到 `require('electron-updater')` 时缺的那个答案** |
+| 待清字节 | 590,843,790（应用退出那一刻快照） | 590,843,790 | 逐字节一致 |
+| 装上的版本 | 2.31.0 | 2.31.0 | 一致 |
+
+**一处如实记下的不对称**：应用退出时目录里有 **4** 个文件，而 purge 记录写 `removedFiles: 3`；差的那一个是
+install-pending 标记本身 —— 它的字节进了 `removedBytes`（所以 590,843,790 对得上），但没进文件计数。
+这不是缺陷（标记是记账自己的文件），但**不许把「3 files」读成「4 个只清了 3 个」**；字节数才是这条断言的锚。
+
+## 八 边界（不许读成更强）
+
+- 第一次派发（`44653013476`）红在参照点（见 §五），修好后第二次派发（`44653894888`）绿，读数见 §七；
+  两次都是**真演练**（真下载 295 MB、真换包、真启动新版本），不是本机模拟。
 - 演练仍只覆盖 macOS arm64→arm64；Windows 走 `windows-upgrade-smoke`，Linux 无就地更新演练。
 - 这条交叉核对证明的是「应用清了它自己解析的那个缓存目录、清掉的字节数与演练观测一致」，
   **不证明**候选包内容正确（那是 feed 的 sha512 与签名两道门的事）。

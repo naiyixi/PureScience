@@ -1,5 +1,72 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十六、本轮追加（执行器，2026-11-20 09:1x–）—— 演练的「清缓存」证据从「目录空了」升级成「应用自报清了哪个目录、多少字节」，第一次派发就被自己的新断言打红
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == b85dca98`（上一轮 `push-when-green` 已把它推上去，记事本第 ① 项结案）；
+  `d60e0539` 的三条车道现取全绿（`Update Drill (macOS)` / `Nightly` / `Windows Full Test`，均 success）——
+  记事本第 ② 项结案。`b85dca98` 是纯文档、`head_sha` 查回 0 条 run，**不声称它有车道判决**。
+- 工作树里 27 个改动 + 1 个未跟踪**全是会话在制**（`src/main/settings/**` 传输校验、`src/main/ro-crate/ipc*`、
+  九语 i18n、`GeneralPanel.tsx`、`stores/settings-*`、`e2e/visual-regression.spec.ts`；mtime 停在
+  11-19 22:17–11-20 00:39，即 8 小时以上没动）⇒ **一个字节没碰**。本轮只碰 `scripts/**` 与 `docs/evidence/**`。
+- CI 在飞为 0；B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）与 v3.0–v3.4 排期已全部收口，1.4 的 `running` 读数归桌面会话 ⇒
+  取上一轮自己立下的具名未办（§一百八十五 §五 ③：让演练把「应用自报清理目录」的交叉核对补回来）。
+- 本机内存闸紧（上一轮读数空闲页 ~6,425 ≈ 100 MB）⇒ **不 build、不起实例**，真机读数走 CI 的 `workflow_dispatch`。
+
+### 一 定因：那条交叉核对不是「取不到」，是「只在纸面上」
+
+两条现取读数（`44630482279` 作业日志）说明问题分两半：
+
+| 读数 | 含义 |
+| --- | --- |
+| `[drill] running 2.30.2; the app resolved its cache to "unavailable: Cannot find module 'electron-updater'"` | 打包态里 `require` 解析不到该模块 ⇒「应用解析到哪个目录」**没有任何答案** |
+| `[drill] updater cache after the install: 0 files, 0 bytes (was 590843729)` | 清缓存唯一的判据是**目录变空** |
+
+而目录是脚本从包内 `app-update.yml` 的 `updaterCacheDirName` **推断**的 ⇒ 目录空 ≠ 应用清的，
+看错目录也会同形通过。**应用其实一直在自报**：本机装机版 `~/Library/Logs/PureScience/main.log` 里
+`update cache: purged after a completed install` 带着 `cacheDir` / `installedVersion` / `removedBytes` 三个字段
+（该记录自 `v1.76.0` 的 `73871fc4` 起就在）。脚本里也有 `readAppPurgeLogLines`，但**只在 sweep 模式用、
+且只打印不断言**，`--real-update` 车道压根不调它。
+
+### 二 交付（两笔，`db82164f` + `dcdd8989`）
+
+1. `db82164f`：按**行解析 JSON** 取记录（原来按子串匹配，连「recorded the pending install」也算命中）；
+   `selectPurgeRecord` 只按目录取最新（**不按版本过滤** —— 否则「有记录但版本不符」会被报成「从没记录过」，
+   这是本轮写测试时自己抓到并改掉的）；`judgePurgeRecord` 三态各自具名（无记录 / 版本不符 / 字节不符）；
+   `--real-update` 车道在清缓存断言后调用，`!ok` 就 `throw`。
+2. `dcdd8989`：修**参照点**（见 §三）。
+
+### 三 读数：第一次派发红在参照点，第二次绿
+
+| 派发 | 读数 |
+| --- | --- |
+| `44653013476`（`db82164f`） | **failure**：`the drill counted 590843729 bytes … while the app reports it removed 590843790` —— 差 **61 字节** |
+| 定因 | 应用在**收到 apply 之后**才写 install-pending 标记（`cache-maintenance.ts` 的 `markInstallPending`），而 `cacheBefore` 是 apply **之前**取的；`{"version":"2.31.0","recordedAt":"…"}` + 换行 = **61 字节**（实算） |
+| 修法 | 在「旧应用退出、新版本尚未启动」那一刻再取 `cacheAtQuit` 作 `expectedBytes`，两个读数同时进证据 |
+| `44653894888`（`dcdd8989`） | **success**：`updater cache when the app quit: 4 files, 590843790 bytes (61 more than the download)` → `app purge record: the app recorded purging 590843790 bytes (3 files) from /Users/runner/Library/Caches/purescience-updater after installing 2.31.0` → `0 files, 0 bytes` |
+
+这一条同时补上了打包态取不到的半个答案：**应用自报的目录 == 脚本推断的目录**（逐字相同）。
+一处如实记下的不对称：退出时 4 个文件、记录写 `removedFiles: 3`，差的那个是标记本身（字节进了
+`removedBytes`、没进文件计数）—— **别把「3 files」读成「4 个只清了 3 个」**。证据档
+`docs/evidence/2026-11-20-update-drill-purge-cross-check.md`。
+
+### 四 门禁
+
+`vitest scripts/update-drill-purge-cross-check.test.ts` **8 passed**、`scripts/ci/update-drill-workflow.test.ts`
+**6 passed**；变异两处各红 1 条（去掉字节比较 / 删掉 `throw`）；`eslint --no-cache` 0 error 0 warning；
+`typecheck:node` / `typecheck:web` 均 0；`pre-push-checks.sh` EXIT=0。
+
+### 五 边界与下一轮第一步
+
+- 会话在制的 27 个文件一个字节没碰；本轮两笔只动 `scripts/**` 与 `docs/evidence/**`。
+- 演练仍只覆盖 macOS arm64→arm64；这条交叉核对证明的是「应用清了它自己解析的那个目录、字节数与演练观测一致」，
+  **不证明**候选包内容正确（那是 feed 的 sha512 与签名两道门的事）。
+- 「`removedFiles` 不含标记」这处不对称**没有改产品**：字节数才是断言锚点，动文件计数会让既有的
+  `removedFiles` 语义（用户可读的「清了几个下载件」）变糊。若将来要统一，得先定「标记算不算下载件」。
+- 下一轮第一步：先 `git status --short` 现查工作树；仍脏则继续只做 `scripts/**` / `docs/**` / 取证，
+  干净则从「记录类字段先查写入方」「入口可达性」两类形状自拟单元。
+
 ## 一百八十五、本轮追加（执行器，2026-11-20 02:4x–04:4x）—— v2.31.0 发版：前一晚两次红都不是产品缺陷，重建 tag 后一次发成
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
