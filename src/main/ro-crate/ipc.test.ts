@@ -251,7 +251,9 @@ describe('RO-Crate export IPC owner', () => {
     )
 
     expect(result.ok).toBe(true)
-    expect(captured?.creators).toEqual([{ type: 'Person', id: '#author', name: 'Abel Wang' }])
+    expect(captured?.creators).toEqual([
+      { type: 'Person', id: '#author', name: 'Abel Wang' }
+    ])
     expect(captured?.license).toEqual({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
   })
 
