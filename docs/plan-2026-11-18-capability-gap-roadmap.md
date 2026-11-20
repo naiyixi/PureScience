@@ -83,7 +83,12 @@
   base `ro-crate-1.1` REQUIRED 零条；四个 workflow 家族 profile 全部卡在「根实体要有 `mainEntity` → Main Workflow」——
   我们导出的是文件集合，不是工作流，**不为了变绿去塞一个不存在的流程**，因此不宣称符合。
   `process-run-crate-0.5` 的 Action 形状我们真过（有 `CreateAction`，`instrument` 指向 PureScience 与
-  `#environment-python`），只差 `conformsTo` 声明那一条，补了仍红、**未定因**，故不宣称。
+  `#environment-python`）。那条 `2.1` **已定因（2026-11-20，`docs/evidence/2026-11-20-process-run-crate-2-1.md`）**：
+  形状的目标节点是**根实体**而不是元数据描述符（写描述符不但不消、还会把 base `5.3` 弄红），且 `sh:class`
+  逐个值判 ⇒ 只剩「把根实体的 `conformsTo` 变成列表 + 给两个被引用 id 各写一条 `CreativeWork` 实体」
+  这一种写法能让 REQUIRED 归零（实测 0 条，base 判决逐条不变）。**仍不宣称**：RECOMMENDED 还差 10 条
+  （7 条 profile 自己的 + 3 条 base 的），其中 `agent`/`description`/`mentions` 三条要真内容 ——
+  领域档里那句「补了仍红、未定因」已被这次读数取代。
 - **`publisher` 按决定保留为空**：发布者是一项署名主张，不替用户声明；要支持时做成用户自填字段。
 - **notebook 整段会话在 CI 重跑：已落地（`e2e/certification/notebook-python-provisioned-runtime.spec.ts`）**。
   底细：`test:e2e:p0` 跑整个 `e2e/certification`，但 `kernel-controls` / `notebook-runtime-binding` 两条

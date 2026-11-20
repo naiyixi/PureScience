@@ -1,5 +1,56 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十九、本轮追加（执行器，2026-11-20 19:1x–）—— 「补了仍红、未定因」那条：形状判的是根实体，且引用要逐个有实体
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == be9d48dd`（会话 19:07 推的第三笔回归修复），工作树 19 个改动 + 1 个未跟踪
+  **仍是会话在制**（`src/main/settings/**` 的 `authorKind` 那套、`src/main/ro-crate/ipc*`、`e2e/visual-regression.spec.ts`；
+  mtime 停在 11-19 22:17 — 11-20 00:39）⇒ 一个字节没碰，本轮只碰 `docs/**`。
+- 进轮车道读数（现取）：`be9d48dd` 上 **`Nightly` 与 `Windows Full Test` 均 `in_progress`**（19:07Z 起）
+  ⇒ **本轮不推送**（推了会当场顶掉他们），只本地提交。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）、v3.0–v3.4 排期、v3.5 候选里的机构接线（`src/main/ipc.ts` 等）
+  都在会话手上 ⇒ 取**上一轮自己留在 v3.5 候选里的「未定因」**作为单元：它不碰 `src/**`、结论可复算、
+  且下一轮若有人想「顺手补个 conformsTo」会被这次读数拦住。
+
+### 一 定因：三处形状事实，各有一条读数
+
+读检查器自己的 `profiles/process-run-crate/must/2_root_data_entity_metadata.ttl`：`sh:targetClass`
+是 `ro-crate:RootDataEntity`（我们的 `./` Dataset）、`sh:path dct:conformsTo`、并同时挂着 `sh:class
+schema:CreativeWork` 与 `sh:qualifiedValueShape [ sh:pattern "^https://w3id.org/ro/wfrun/process/.*" ]`。
+
+| 变体（同一份产品导出包，只改一处） | REQUIRED 读数 |
+| --- | --- |
+| 基线 | 2 条 `2.1` |
+| `conformsTo` 写到**元数据描述符** | 仍 2 条 `2.1`，**外加** base `5.3` 红 —— 上一轮「补了仍红」就是这个位置错 |
+| 写到**根实体**、但引用没有实体 | 1 条（pattern 过、`sh:class` 不过） |
+| 根实体 + 列表（保留 base）+ **两个**被引用 id 各一条 `CreativeWork` | **0 条**，base 判决逐条不变（3 条 RECOMMENDED / 0 条 REQUIRED，改前改后相同） |
+
+另一条顺手量到的：`endTime` 的 pattern 只认 `+HH:MM`，`…000Z` 过不了（与 `datePublished` 当年同一个坑；
+`normalizeDatePublished` 只覆盖了后者，`src/shared/ro-crate.ts:477` 的 `endTime` 仍写 `Z`）。
+
+### 二 交付（`docs/evidence/2026-11-20-process-run-crate-2-1.md` + 同名 `.py` 复算脚本）
+
+- 五个变体 + RECOMMENDED 清单（7 条 profile 自己的 + 3 条 base 的）全部由脚本现算，脚本对着那份包跑过
+  一次 `EXIT=0`，表里的数字就是它打印出来的。
+- 三处就地更正：`docs/plan-2026-11-18-capability-gap-roadmap.md` 的 v3.5 候选（未定因 → 已定因 + 仍不宣称的理由）、
+  `docs/evidence/2026-11-20-validator-profiles.md` 末节（加更正指针）。
+
+### 三 边界
+
+- **仍不宣称符合 Process Run Crate 0.5**：REQUIRED 可达（三处编辑），但 RECOMMENDED 还差 10 条，其中
+  `agent` / `description` / `mentions` 要**真内容**。这正是不该为了变绿去补的东西。
+- 没改产品代码：`endTime` 那处不一致只具名、不改 —— 它在会话手上的 `src/main/ro-crate/**` 旁边，
+  且只有真要宣称本 profile 时才有意义。
+- 只量了 REQUIRED 与 RECOMMENDED；`may/` 级没逐条过，多文件多 Action 的包没复测。
+
+### 四 下一轮第一步
+
+- ① 先 `git status --short` 现查；会话那批仍脏就继续只做 `docs/**` / `scripts/**`。
+- ② 本轮那笔 docs 提交**尚未推送**（进轮时两条车道在飞）⇒ 下一轮先看 `gh run list` 有无在飞，落定后一并推。
+- ③ `git worktree prune` 可做（7 条 prunable 的目录现查全已不在盘上）。
+
+
 ## 一百八十八、本轮追加（执行器，2026-11-20 15:0x–17:1x）—— v2.31.1 无页的真因是**一条写死的检查条数**：`Report platform certification` 只是下游后果
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
