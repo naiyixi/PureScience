@@ -85,7 +85,16 @@
   `process-run-crate-0.5` 的 Action 形状我们真过（有 `CreateAction`，`instrument` 指向 PureScience 与
   `#environment-python`），只差 `conformsTo` 声明那一条，补了仍红、**未定因**，故不宣称。
 - **`publisher` 按决定保留为空**：发布者是一项署名主张，不替用户声明；要支持时做成用户自填字段。
-- **notebook 整段会话在 CI 重跑**：未开工。
+- **notebook 整段会话在 CI 重跑：已落地（`e2e/certification/notebook-python-provisioned-runtime.spec.ts`）**。
+  底细：`test:e2e:p0` 跑整个 `e2e/certification`，但 `kernel-controls` / `notebook-runtime-binding` 两条
+  真内核用例都要从 `~/.purescience/runtime/packs` **种子**打包好的运行时，runner 上没有该目录 ⇒ 它们在那里
+  `skip`，python 执行路径恰好在最该被验的地方没被验。新用例走**新装机器的路径**：不注册、不播种，让应用自己
+  取运行时（实测该轮 `releases/download/runtime-v1/osx-arm64-python-3.12.tar.zst` 200，45.5s 通过）。
+- **待查（未定因，不记为产品缺陷）**：本机探针把 python 选成一枚 `--copies` 裸 venv 后再发 prompt，应用
+  起的是**真实 `/opt/homebrew/bin/opencode`** 而不是夹具的 shim，于是 `session/prompt` 以
+  `Cannot connect to API` 失败。两种解释未分：①启用运行时这一步让应用重启、夹具的 fake-agent PATH 丢失；
+  ②真实用户也会踩到。区分方法：在同一流程里读 `[acp] agent spawn` 的 `executablePath`（已证实是真实
+  opencode），以及检查启用运行时是否触发重启。**在分清之前不写进 CHANGELOG，也不修。**
 
 ## 排期纪律
 
