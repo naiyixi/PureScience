@@ -74,12 +74,16 @@
 
 ## v3.5 候选（官网验证器读数的后续）
 
-- **4.x 作者机构**：作者实体把机构塞在 `name` 里（`"Abel Wang, zerolink Bio"`），社区验证器要求
-  `author → Person` + `affiliation → Organization` 独立实体（`ro-crate-1.1.27.2` / `27.3`）。
-  `RoCrateCreator` 目前只有 `type`/`id`/`name`，需与人「作者类型可选 Organization」一并改；改完复量
-  `22.1`/`27.2`/`27.3`。**未开工**（`ipc.ts` 在执行器手上）。
-- **验证器 profile 覆盖**：只跑了 base `ro-crate-1.1` 的 REQUIRED（已全绿）与一份 RECOMMENDED/OPTIONAL 建议清单
-  （`docs/evidence/2026-11-19-official-validator.md` 末节）；1.2 / 1.3 profile 与 Process Run Crate 等扩展未跑。
+- **4.x 作者机构：构建侧已做（`055a7c24`）**。`RoCrateCreator.affiliation` 让 `Person` 指向独立的
+  `Organization` 实体，同机构多人只写一个；校验侧新增 `author-affiliation-resolves`。实测官方验证器
+  `27.2`/`27.3` 消失、机构带 URL 后 `28.2` 也消失。
+  **还差接线**：设置页没有机构字段，`ipc.ts` 只传作者与作者类型（该文件在执行器手上），真实导出现仍不写
+  `affiliation`。接线三步：设置页机构栏（+可选 URL）→ `loadAttribution` 带出 → `ipc.ts` 映射。
+- **验证器 profile 覆盖：已量完（2026-11-20）**。仪器装的六个 profile 全部跑过（`docs/evidence/2026-11-20-validator-profiles.md`）：
+  base `ro-crate-1.1` REQUIRED 零条；四个 workflow 家族 profile 全部卡在「根实体要有 `mainEntity` → Main Workflow」——
+  我们导出的是文件集合，不是工作流，**不为了变绿去塞一个不存在的流程**，因此不宣称符合。
+  `process-run-crate-0.5` 的 Action 形状我们真过（有 `CreateAction`，`instrument` 指向 PureScience 与
+  `#environment-python`），只差 `conformsTo` 声明那一条，补了仍红、**未定因**，故不宣称。
 - **`publisher` 按决定保留为空**：发布者是一项署名主张，不替用户声明；要支持时做成用户自填字段。
 - **notebook 整段会话在 CI 重跑**：未开工。
 
