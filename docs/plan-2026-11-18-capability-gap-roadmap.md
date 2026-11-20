@@ -101,6 +101,27 @@
   ②真实用户也会踩到。区分方法：在同一流程里读 `[acp] agent spawn` 的 `executablePath`（已证实是真实
   opencode），以及检查启用运行时是否触发重启。**在分清之前不写进 CHANGELOG，也不修。**
 
+### v3.5 读数（2026-11-20，run `44730436800` @ `79ef6ee8`）
+
+- 六作业全绿：`Verify` + 四平台 `Build` + `publish`。arm64 作业 `136275802476` 的
+  `Run P0 Electron certification` 12:09:40Z→12:50:56Z 通过（41 分钟，137 条用例）。
+- `notebook-python-provisioned-runtime.spec.ts` 在 runner 上是 **[58/137]、12:24:00→12:24:45（45 秒）**，
+  与本机同一条用时一致 ⇒ 「没有本机种子包也能真跑 python 单元」在 CI 上已经成立，不再只是本机读数。
+- **视觉门禁：`workspace-empty` 在 runner 上红了，作业仍是绿的。** 步骤 `Run desktop visual regression`
+  带 `continue-on-error: true`，所以步结论恒为 success；真正的读数由后一步 `Upload visual regression failure`
+  是否触发来暴露 —— 这次它**触发了**，产物 `visual-regression-failure-macos-arm64`(1.79 MB) 里两份 attempt 都是
+  `workspace-empty` 差 **2526 px（ratio 0.01）**。这也把「上传步骤从未真正触发过」这条待验证项销掉。
+  差异分布：529 个连通块，最大两处在 `x1109-1173 y723-754`（右下角一枚小 chip）与 `x321-1186 y669-763`
+  （底部输入条一带），其余为零散字形边沿；放大对照看是抗锯齿级差别、没有内容增减。同一提交在本机
+  `test:e2e:visual` 通过（9.0s）⇒ 判断为 runner 侧渲染差异，**但「为什么这台 runner 渲染不同」仍未定因**，
+  故只记读数，不改基线、不宣布视觉门禁恢复。
+- 关掉的红链（我自己造成，共三笔）：`88d90c21` 改示例身份时把执行器工作区版本的整份测试文件一并提交，
+  引用了只存在于他未提交代码里的 `readExportAuthorKind` / `ExportAuthorKind` / 加宽后的 `AttributionLoader`，
+  于是 Verify 连红四笔（TS2305 / TS2322 / TS2551 + 一条断言产出 `Person` 而非 `Organization`）。
+  修法是让这三份文件回到已提交版本、只重放我自己的改动，并把「断言尚未实现行为」的那条用例下线；
+  `79ef6ee8` Verify 转绿。**教训：提交前对每个 `git add` 的文件先 `git diff` 看有没有夹带别人工作区的改动；
+  提交后再把 WIP 还原回工作区时，下一次编辑必须从 `git show <sha>:<path>` 取版本，不能接着用工作区那份。**
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
