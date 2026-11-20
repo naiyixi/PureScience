@@ -89,6 +89,18 @@ describe('macOS update drill workflow', () => {
     expect(script).toContain('expectedBytes: cacheAtQuit.bytes')
   })
 
+  it('gates on the app own cache-dir resolution instead of an unjudged probe', () => {
+    // `require('electron-updater')` never resolves inside a packaged bundle, so the old probe answered
+    // "unavailable" on every real run and nothing compared that string — a cross-check in the comments
+    // only. The reading that does exist is the app's hand-off record (written before quitAndInstall),
+    // and it must stop the drill by name when it names another directory or is missing altogether.
+    const script = readDrillScript()
+    expect(script).toContain("step = 'verify-the-app-resolved-the-cache-under-test'")
+    expect(script).toContain('if (!resolution.ok) throw new Error(resolution.reason)')
+    expect(script).toContain('selectHandoffRecord')
+    expect(script).not.toContain('readUpdaterCacheDirFromApp')
+  })
+
   it('stays a bounded, on-demand gate', () => {
     // Manual only on purpose: two ~150 MB installers and a real install, so it is a release-time gate.
     const on = readWorkflow().on as Record<string, unknown> | undefined

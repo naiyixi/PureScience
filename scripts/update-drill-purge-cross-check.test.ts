@@ -5,8 +5,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  judgeCacheDirResolution,
   judgePurgeRecord,
   readAppUpdateCacheRecords,
+  selectHandoffRecord,
   selectPurgeRecord
 } from './macos-update-cache-drill.mjs'
 
@@ -184,5 +186,79 @@ describe('judging the app record against what the drill watched', () => {
 
     expect(verdict.ok).toBe(false)
     expect(verdict.reason).toContain('2.30.2')
+  })
+})
+
+// The half of the cross-check that has to happen BEFORE the install: the app records which cache
+// directory it resolved when it hands the package to the installer. Inside a packaged bundle that
+// record is the only reading available — `require('electron-updater')` does not resolve there, so an
+// "unavailable" probe result that nothing judged was the gap this pins shut.
+describe('judging the cache directory the app resolved, before the install', () => {
+  const readRecords = async (lines: string[]): Promise<unknown[]> => {
+    const directory = await writeLog(lines)
+    return readAppUpdateCacheRecords({ home: '/nonexistent', directories: [directory] })
+  }
+
+  const judge = (records: unknown[]): ReturnType<typeof judgeCacheDirResolution> =>
+    judgeCacheDirResolution({
+      record: selectHandoffRecord({ records, version: '2.31.1' }),
+      records,
+      cacheDir: CACHE_DIR,
+      version: '2.31.1'
+    })
+
+  it('passes when the app recorded exactly the directory the drill watches', async () => {
+    const records = await readRecords([pendingRecord(CACHE_DIR, '2.31.1')])
+
+    const verdict = judge(records)
+
+    expect(verdict.state).toBe('matched')
+    expect(verdict.ok).toBe(true)
+    expect(verdict.summary).toContain(CACHE_DIR)
+    expect(verdict.evidence.matched).toMatchObject({ cacheDir: CACHE_DIR, version: '2.31.1' })
+  })
+
+  it('fails by name when the app resolved a different directory', async () => {
+    const records = await readRecords([
+      pendingRecord('/Users/runner/Library/Caches/other', '2.31.1')
+    ])
+
+    const verdict = judge(records)
+
+    expect(verdict.ok).toBe(false)
+    expect(verdict.state).toBe('mismatch')
+    expect(verdict.reason).toContain('/Users/runner/Library/Caches/other')
+    expect(verdict.reason).toContain(CACHE_DIR)
+  })
+
+  it('refuses to infer the directory when this version has no hand-off record', async () => {
+    // A record for an earlier install says nothing about this one: without that distinction the drill
+    // would attribute a purge it arranged to whichever directory it happened to be watching.
+    const records = await readRecords([
+      pendingRecord(CACHE_DIR, '2.30.2'),
+      JSON.stringify({ msg: 'acp: prompt start', scope: 'acp', data: { sessionId: 's1' } })
+    ])
+
+    const verdict = judge(records)
+
+    expect(verdict.ok).toBe(false)
+    expect(verdict.state).toBe('unavailable')
+    expect(verdict.reason).toContain('2.31.1')
+    expect(verdict.reason).toContain('inferred')
+    expect(verdict.evidence.handoffRecordsSeen).toEqual([
+      { cacheDir: CACHE_DIR, version: '2.30.2' }
+    ])
+  })
+
+  it('takes the newest hand-off record for the version being installed', async () => {
+    const records = await readRecords([
+      pendingRecord('/Users/runner/Library/Caches/stale', '2.31.1'),
+      pendingRecord(CACHE_DIR, '2.31.1')
+    ])
+
+    const verdict = judge(records)
+
+    expect(verdict.state).toBe('matched')
+    expect(verdict.evidence.matched).toMatchObject({ cacheDir: CACHE_DIR })
   })
 })

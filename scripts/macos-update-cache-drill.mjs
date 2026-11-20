@@ -54,6 +54,7 @@ const SMOKE_ROOT_PREFIX = 'purescience-update-cache-drill-'
 const APP_ROOT = resolve(process.cwd())
 const STARTUP_TIMEOUT_MS = 90_000
 const SWEEP_TIMEOUT_MS = 60_000
+const HANDOFF_RECORD_TIMEOUT_MS = 15_000
 const DEFAULT_APP = 'dist/mac-arm64/PureScience.app'
 const CACHE_DIR_NAME = 'purescience-updater'
 const MARKER_FILE = 'install-pending.json'
@@ -212,24 +213,83 @@ const closeApp = async (client) => {
   await Promise.race([exited, delay(30_000)])
 }
 
-// The app's own resolution is the authority: ask the running main process which cache directory
-// electron-updater would use. Best-effort — an unavailable internal means the drill says so instead of
-// pretending it cross-checked.
-const readUpdaterCacheDirFromApp = async (client) =>
-  client
-    .evaluate(async () => {
-      try {
-        // Playwright runs this inside the main process, where `require` is not on globalThis.
-        const request = globalThis.require ?? process.mainModule?.require
-        if (!request) return 'unavailable: no require in the main process'
-        const { autoUpdater } = request('electron-updater')
-        const helper = await autoUpdater.getOrCreateDownloadHelper?.()
-        return helper?.cacheDir ?? 'unavailable: no download helper'
-      } catch (error) {
-        return `unavailable: ${error instanceof Error ? error.message : String(error)}`
-      }
-    })
-    .catch((error) => `unavailable: ${error instanceof Error ? error.message : String(error)}`)
+// Which cache directory the app actually uses is the app's own answer, and inside a packaged bundle the
+// app is the only one that can give it: `require('electron-updater')` is not resolvable there, so the
+// earlier probe answered "unavailable: Cannot find module 'electron-updater'" on a real run — a reading
+// nothing judged, which is worse than no reading at all.
+//
+// The reading that does exist is the app's own hand-off record: right before quitting to install, the
+// in-place strategy records the version it is installing together with the directory it resolved
+// (`src/main/update/cache-maintenance.ts` -> markInstallPending, logged at info). Judging that record
+// against the directory this drill watches is what turns "the bytes are gone" into "the app removed
+// them, from the directory it actually uses".
+const HANDOFF_RECORD_MESSAGE = 'update cache: recorded the pending install'
+
+// Newest hand-off record for the version being installed. Deliberately not widened to other versions:
+// a record for some other install says nothing about this one.
+const selectHandoffRecord = ({ records, version }) =>
+  records
+    .filter((record) => record.msg === HANDOFF_RECORD_MESSAGE && record.data?.version === version)
+    .at(-1)
+
+// Three outcomes, none of which is "assume it matched": the app named the directory under test
+// (matched), it named another one (mismatch — the drill had been watching the wrong directory all
+// along), or it never recorded a resolution for this version (unavailable — the directory is then only
+// inferred from the update config the package carries, so a purge in it is not attributable).
+const judgeCacheDirResolution = ({ record, records, cacheDir, version }) => {
+  const handoffRecords = records.filter((entry) => entry.msg === HANDOFF_RECORD_MESSAGE)
+  const evidence = {
+    cacheDir,
+    version,
+    handoffRecordsSeen: handoffRecords.map((entry) => ({
+      cacheDir: entry.data?.cacheDir ?? null,
+      version: entry.data?.version ?? null
+    })),
+    matched:
+      record === undefined
+        ? null
+        : {
+            file: record.file,
+            cacheDir: record.data?.cacheDir ?? null,
+            version: record.data?.version ?? null
+          }
+  }
+  if (!record) {
+    const elsewhere = evidence.handoffRecordsSeen
+      .map((entry) => JSON.stringify(entry.cacheDir))
+      .filter((value, index, all) => all.indexOf(value) === index)
+    return {
+      ok: false,
+      state: 'unavailable',
+      evidence,
+      summary: 'unavailable: the app never recorded its cache directory',
+      reason:
+        `the app never recorded which cache directory it resolved for ${version} ` +
+        `(${handoffRecords.length} hand-off record(s) seen` +
+        `${elsewhere.length > 0 ? `, naming ${elsewhere.join(', ')}` : ''}) — ` +
+        `the directory under test (${cacheDir}) is only inferred from the update config the package ` +
+        'carries, so a purge there is not attributable to the app'
+    }
+  }
+  const recorded = record.data?.cacheDir
+  if (recorded !== cacheDir) {
+    return {
+      ok: false,
+      state: 'mismatch',
+      evidence,
+      summary: `mismatch: the app resolved ${JSON.stringify(recorded ?? null)}`,
+      reason:
+        `the app resolved its update cache to ${JSON.stringify(recorded ?? null)} while the drill ` +
+        `watched ${cacheDir} — every byte counted there belongs to some other directory`
+    }
+  }
+  return {
+    ok: true,
+    state: 'matched',
+    evidence,
+    summary: `the app resolved ${cacheDir} before installing ${version}`
+  }
+}
 
 const PURGE_RECORD_MESSAGE = 'update cache: purged after a completed install'
 
@@ -813,11 +873,9 @@ const runRealUpdateDrill = async (options) => {
         `the launched app reports ${application.appInfo.version}; expected ${previousVersion}.`
       )
     }
-    const cacheDirResolvedByApp = await readUpdaterCacheDirFromApp(application.client)
-    evidence.cacheDirResolvedByApp = cacheDirResolvedByApp
     console.log(
-      `[drill] running ${previousVersion}; the app resolved its cache to ` +
-        `${JSON.stringify(cacheDirResolvedByApp)}`
+      `[drill] running ${previousVersion}; the package's update config resolves the cache to ` +
+        `${cacheDirName} (the app's own resolution is judged from its hand-off record below)`
     )
 
     step = 'check-for-update'
@@ -880,6 +938,29 @@ const runRealUpdateDrill = async (options) => {
       passed: true
     })
     application = undefined
+
+    // The old app has quit, so its hand-off record is on disk. The record is written before
+    // quitAndInstall, so the short wait below only covers a flush, never a whole event — a record that
+    // is still absent afterwards is a fact about the build, and the judge says which one it is.
+    step = 'verify-the-app-resolved-the-cache-under-test'
+    let handoffRecords = await readAppUpdateCacheRecords({ home })
+    const handoffDeadline = Date.now() + HANDOFF_RECORD_TIMEOUT_MS
+    while (
+      selectHandoffRecord({ records: handoffRecords, version: updateVersion }) === undefined &&
+      Date.now() < handoffDeadline
+    ) {
+      await delay(250)
+      handoffRecords = await readAppUpdateCacheRecords({ home })
+    }
+    const resolution = judgeCacheDirResolution({
+      record: selectHandoffRecord({ records: handoffRecords, version: updateVersion }),
+      records: handoffRecords,
+      cacheDir,
+      version: updateVersion
+    })
+    evidence.cacheDirResolution = resolution.evidence
+    console.log(`[drill] app cache-dir resolution: ${resolution.summary}`)
+    if (!resolution.ok) throw new Error(resolution.reason)
 
     step = 'observe-bundle-replacement'
     const swappedVersion = await waitFor(
@@ -1048,9 +1129,7 @@ const runSweepDrill = async () => {
     })()
     evidence.appVersion = appVersion
     evidence.newVersion = newerVersion
-    const resolvedByApp = await readUpdaterCacheDirFromApp(first.client)
     console.log(`[drill] launch mode=${mode.mode} app version=${appVersion}`)
-    console.log(`[drill] app resolved cache dir: ${JSON.stringify(resolvedByApp)}`)
     await closeApp(first.client)
 
     await seedDownloadedCache({
@@ -1086,7 +1165,6 @@ const runSweepDrill = async () => {
       before: before1,
       after: after1,
       purgeObservedAfterMs: Date.now() - purgeStartedAt,
-      cacheDirResolvedByApp: resolvedByApp,
       passed: after1.files.length === 0 && after1.bytes === 0
     })
     const appLogLines = await readAppPurgeLogLines({ home, cacheDir })
@@ -1244,7 +1322,8 @@ if (invokedAsScript) {
 
 export {
   parseArguments,
-  readUpdaterCacheDirFromApp,
+  selectHandoffRecord,
+  judgeCacheDirResolution,
   readAppUpdateCacheRecords,
   readAppPurgeLogLines,
   selectPurgeRecord,
