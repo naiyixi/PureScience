@@ -63,6 +63,15 @@
 | 4.1 隔离重放   | **已完成（代码无缺口）**：每次 notebook run 落 `NotebookEnvironmentManifest`（`src/shared/notebook.ts:138`、`src/main/notebook/execution-owner.ts:321`）；重放侧 `compareReplayEnvironment` 五态比对（`src/shared/replay-verification.ts:104`）、重跑按记录回绑 runtime（`src/main/artifacts/replay-composition.ts`）；产物侧 `SealedRecipe` + `compareReplayOutputs` 是字节级判据，「模型重建的步骤」在类型上不可能给出 `reproduced`，「比不了」是一等结果 | **已取到跨机读数**（`docs/evidence/2026-11-19-replay-cross-machine.md`）：macOS arm64 / Python 3.9.6 封存 → 干净的 Linux x64 runner / Python 3.14.4 重放，`compareReplayOutputs` 判 **`reproduced`**，两个输出逐字节 `match`，反向对照（改 digest）判 **`differs`**；另在 **Windows Server 2025 x64 / Python 3.12.10** 上重放同样判 `reproduced`。CI run `44523950998`、`44524689535` 均 success | 边界：重放的是封存的分析（固定输入 → 定长输出），不是应用内完整 notebook 会话在 CI 重跑               |
 | 4.2 外部读校验 | **已完成**：读取器不再假定载荷在 `files/`（RO-Crate 没规定载荷目录），载荷集合 = crate 根下真实存在的文件，声明 id 按 crate 相对路径准入；校验侧三处更正都是「比不了 ≠ 不一致」（1.x profile 一律接受、缺 sha256/缺 contentSize 不再同时报 mismatch）                                                                                                                                                                                                       | **已取到**：`rocrate 0.16.0` 与 `pyld 3.3.0` 都能完整读出我们的导出包（`docs/evidence/2026-11-18-ro-crate-third-party-read.md`），反方向读别人的包揪出的缺陷已修（commit `a628b584`）                                                                                                                                                                                                            | 边界：第三方读者只覆盖两个实现，未跑官方 validator 的完整 profile；`author`/`license` 缺位由 4.3 补齐 |
 
+### v2.31.1 发布说明（官方验证器合规）
+
+- tag `v2.31.1` = **`468ce153`**，Release run **`44695798413`**（attempt 1，success），17 个产物。
+- 读数取自 `RELEASE-CERTIFICATION.json`：四平台 `packageSmoke=passed`；macos-arm64
+  `electronP0=passed`、`visualRegression=passed`、`macSignature=signed`（team `UGQZPJ74DF`）；
+  windows-x64 `authenticode=not-required`。
+- 首次尝试（`a1c325d5`）红在 e2e 把校验条数写死成 30（校验器已 31 条），`15d8e80a` 改成与验证器清单自洽；
+  同轮视觉门禁 2526/7289 px **未定因**，本版起失败即上传 diff 图（`468ce153`）。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；

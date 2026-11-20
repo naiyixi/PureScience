@@ -82,3 +82,33 @@ none => RO-Crate is a valid ro-crate-1.1
 - 没填许可时写的那句话是**描述**，不是许可主张；它让包在结构上合规，同时明确说清「导出方没声明」。
   若将来产品支持「明确选择无许可」，文案要跟着改。
 - `datePublished` 只归一化根实体；文件实体的时间戳沿用原值（规范对 `File` 没有同样的 MUST）。
+
+## 发布读数（v2.31.1）
+
+| 项             | 读数                                                                                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| tag / 提交     | `v2.31.1` = **`468ce153`**（`sourceSha` 与 tag 一致）                                                                                                          |
+| Release run    | **`44695798413`**，attempt **1**，success                                                                                                                      |
+| 产物           | **17** 个（含 `RELEASE-CERTIFICATION.json`、`SHA256SUMS.txt`、四平台安装包）                                                                                   |
+| `packageSmoke` | 四平台（linux-x64 / macos-arm64 / macos-x64 / windows-x64）全 **passed**                                                                                       |
+| macos-arm64    | `electronP0=passed`、`visualRegression=passed`、`macSignature=signed`（team `UGQZPJ74DF`，`identifier=com.zerolink.purescience`，`readingSource=shipped-zip`） |
+| windows-x64    | `authenticode=not-required`                                                                                                                                    |
+
+### 两次红与它们的定因
+
+1. **`a1c325d5` 那轮红在 e2e 断言写死条数**：`ro-crate-export.spec.ts:125` 期望 `report.passed === 30`，而
+   本版校验器多了 `root-license-declared`（31）。判据本身是错的——它把验证器清单手抄了一份。改成
+   `report.passed === report.assertions.length`（`15d8e80a`），既不断言一个魔法数，也仍然要求那条 REQUIRED
+   规则真的在报告里（否则「全绿」等于没人检查许可）。**这才是 v2.31.1 第一次发版红的真因**。
+2. **同一轮视觉门禁红**：`home-empty` 7289 px、`workspace-empty` 2526 px（ratio 0.01）。同提交在本机同基线下
+   **1 passed (9.0s)**，且重发轮（`44695798413`）在 arm64 上 `visualRegression=passed`。
+
+   这一面到现在红过三次（v2.31.0 两次、v2.31.1 一次）、绿过三次，**始终没有 diff 图**（只上传 P0 上下文）。
+   本版加了「视觉门禁失败即上传 `test-results/electron/visual-regression-*/` 与 `playwright-report/`」，
+   判据与预算一律不动。**仍未定因**：在没有图的情况下把像素差归给「环境」是猜测，而猜测正是它跨越两个版本
+   还没被解释的原因。
+
+## 本档不覆盖的
+
+- 只证明了「这一版写出的包」合规，**没有**跑 1.2/1.3 等其它 profile。
+- 视觉面那 2526/7289 px 的成因仍未定；下次红会带图。
