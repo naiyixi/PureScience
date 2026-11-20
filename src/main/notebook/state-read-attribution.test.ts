@@ -49,6 +49,7 @@ const makeService = (
   options: {
     repository?: NotebookRunRepository
     logger?: { warn: (message: string, data?: unknown) => void }
+    now?: () => number
   } = {}
 ): NotebookRuntimeService =>
   new NotebookRuntimeService({
@@ -56,6 +57,7 @@ const makeService = (
     dataRoot: root,
     projectName: 'default-project',
     repository: options.repository ?? new NotebookRunRepository(root),
+    ...(options.now ? { now: options.now } : {}),
     ...(options.logger
       ? { logger: { info: vi.fn(), warn: options.logger.warn, error: vi.fn() } }
       : {}),
@@ -71,6 +73,17 @@ const makeService = (
       shutdown: async () => ({ reaped: true })
     })
   })
+
+// A stepped clock: every reading is `stepMs` later than the previous one, so a read that takes three
+// readings reports 2 × stepMs no matter how long the filesystem actually took. Used to pin the
+// threshold predicate on its own terms instead of on how fast the machine running the suite is.
+const steppedClock = (stepMs: number): (() => number) => {
+  let current = 1_000
+  return () => {
+    current += stepMs
+    return current
+  }
+}
 
 describe('notebook:state slow-read attribution', () => {
   it('names ensure, load and projection when the read crosses the threshold', async () => {
@@ -119,10 +132,27 @@ describe('notebook:state slow-read attribution', () => {
     const second = warn.mock.calls[1] as [string, Record<string, number | string | boolean>]
     expect(second[1].cold).toBe(false)
 
-    const quietService = makeService(root, { logger: { warn } })
+    const quietService = makeService(root, { logger: { warn }, now: steppedClock(5) })
     warn.mockClear()
     await quietService.state({ sessionId: 'session-2', workspaceCwd: '/workspace' })
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  // The clock is only a seam if the line actually reads it: a cheap read on a clock that steps 500 ms
+  // must still be reported, and the reported total has to be the clock's number. Without this leg,
+  // dropping the seam would leave the silence test above green on a fast machine.
+  it('takes the duration from the injected clock rather than the wall clock', async () => {
+    const root = await createStorageRoot()
+    const warn = vi.fn()
+    const service = makeService(root, { logger: { warn }, now: steppedClock(500) })
+
+    await service.state({ sessionId: 'session-3', workspaceCwd: '/workspace' })
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    const [message, data] = warn.mock.calls[0] as [string, Record<string, number>]
+    expect(message).toBe('notebook state read was slow')
+    expect(data.totalMs).toBeGreaterThanOrEqual(1_000)
+    expect(data.totalMs).toBeLessThan(1_100)
   })
 
   it('returns the answer even when the logger throws', async () => {

@@ -120,11 +120,10 @@ import {
 // to public hosts, so this default never silently forces a CN mirror).
 const DEFAULT_LOCALE = 'en-US'
 
-// Above this, one `notebook:state` read is worth a line that names its phases. On this machine the
-// durable half alone measures 57–198 ms for documents of 5.9–16.6 MB (median document 2.1 MB), so a
-// read that crosses this line is either a very large document or a main thread that stopped running
-// our code — exactly the two cases the phase split exists to separate. `ipc handler was slow` (50 ms)
-// already reports the total; this line is what turns the total into an attribution.
+// Above this, one `notebook:state` read is worth a line naming its phases: on this machine the durable half alone
+// measures 57–198 ms for documents of 5.9–16.6 MB (median 2.1 MB), so a read crossing this line is either a very
+// large document or a main thread that stopped running our code. `ipc handler was slow` (50 ms) reports the total;
+// this line attributes it — which of those two it was, and how much of it was the loop being held.
 const SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200
 
 const EMPTY_NOTEBOOK_RUNTIME_SETTINGS: Pick<NotebookRuntimeSettings, 'getSnapshot'> = {
@@ -215,6 +214,8 @@ type NotebookRuntimeServiceOptions = {
   // Structured main-process diagnostics for package operations and interpreter probes. Injectable so
   // tests assert logging without initializing the rotating file sink.
   logger?: RuntimeDiagnosticLogger
+  // Slow-read clock seam: quiet under the threshold is a predicate, not a machine-speed claim.
+  now?: () => number
   // Provisioner-backed named-environment manager for manageEnvironments. Injectable so tests use a
   // fake; the production instance (the DefaultRuntimeProvisioner) is wired after construction in
   // main/ipc.ts via setEnvironmentManager, mirroring the mcp/mirror resolvers.
@@ -870,16 +871,16 @@ class NotebookRuntimeService {
   async state(
     request: NotebookSessionRequest
   ): Promise<NotebookSessionState & { runtimeBindings: NotebookRuntimeBindings }> {
-    const requestedAt = performance.now()
+    const requestedAt = this.options.now?.() ?? performance.now()
     // `performance.now` here, the CPU sample beside it: the question the total raises ("is this a big
     // document or a busy main thread") is answered by CPU, not by another wall clock.
     const cpuRequestedAt = process.cpuUsage()
     const wasLive = this.sessions.get(request.sessionId) !== undefined
     const session = await this.sessionLifecycle.ensure(request)
-    const ensuredAt = performance.now()
+    const ensuredAt = this.options.now?.() ?? performance.now()
     const phases: NotebookStateReadPhases = {}
     const state = await this.sessionReadModel.state(session, phases)
-    const finishedAt = performance.now()
+    const finishedAt = this.options.now?.() ?? performance.now()
     // Sampled at the same instant as `totalMs`; the phase numbers above are wall clock only.
     const cpuEndedAt = process.cpuUsage()
     const loadMs = phases.loadMs ?? 0
