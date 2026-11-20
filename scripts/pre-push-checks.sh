@@ -193,7 +193,9 @@ if [[ $FAIL -eq 1 ]]; then
   exit 1
 fi
 if [[ $WARN -eq 1 ]]; then
-  printf '\033[1;33m[pre-push] 检查通过（有提醒项，不阻断）。\033[0m\n'
+  # 成功行只有一种写法：门禁与自测都按「全部通过」这一句判断这一环是否真的跑完。分成两种措辞时，
+  # 「有提醒项」这条路径会被读成「没打汇总行 ⇒ 未跑完」（release-gate 的 repo-checks 环就是这么红的）。
+  printf '\033[1;33m[pre-push] 全部通过（有提醒项，不阻断）。\033[0m\n'
 else
   printf '\033[1;32m[pre-push] 全部通过。\033[0m\n'
 fi
