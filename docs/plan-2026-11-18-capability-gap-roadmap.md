@@ -74,7 +74,7 @@
 
 ## v3.5 候选（官网验证器读数的后续）
 
-- **4.x 作者机构**：作者实体把机构塞在 `name` 里（`"Li Wei, Fudan University"`），社区验证器要求
+- **4.x 作者机构**：作者实体把机构塞在 `name` 里（`"Abel Wang, zerolink Bio"`），社区验证器要求
   `author → Person` + `affiliation → Organization` 独立实体（`ro-crate-1.1.27.2` / `27.3`）。
   `RoCrateCreator` 目前只有 `type`/`id`/`name`，需与人「作者类型可选 Organization」一并改；改完复量
   `22.1`/`27.2`/`27.3`。**未开工**（`ipc.ts` 在执行器手上）。

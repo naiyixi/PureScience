@@ -2657,7 +2657,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     "Écrit dans les exports RO-Crate comme author et license. Laissé vide, les deux champs sont omis — rien n'est déduit ni prérempli.",
   'settings.exportAuthorLabel': 'Auteur ou institution',
-  'settings.exportAuthorPlaceholder': 'ex. Li Wei, département de chimie, université Fudan',
+  'settings.exportAuthorPlaceholder': 'Votre nom',
   'settings.exportLicenseLabel': "Licence d'export par défaut",
   'settings.exportLicensePlaceholder': 'ex. CC BY 4.0 ou https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':
@@ -5520,5 +5520,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorIdExists':
     "Un connecteur personnalisé avec l'identifiant « {id} » existe déjà",
   'mainMessage.connectorIdAliasConflict':
-    "L'identifiant « {id} » entre en conflit avec un alias de connecteur existant"
+    "L'identifiant « {id} » entre en conflit avec un alias de connecteur existant",
+  'settings.exportAuthorKindLabel': 'Type d’attribution',
+  'settings.exportAuthorKindPerson': 'Une personne',
+  'settings.exportAuthorKindOrganization': 'Un établissement'
 }

@@ -5,6 +5,7 @@ import {
   readConversationSkillImportEnabled,
   readDefaultPermissionProfile,
   readAppIconVariant,
+  readExportAuthorKind,
   readIsolatedClaudeToken,
   readNotificationsEnabled,
   readReasoningEffort
@@ -55,6 +56,20 @@ describe('Settings transport validation', () => {
       'Unknown app icon variant: sparkle'
     )
     expect(() => readAppIconVariant({})).toThrow('Unknown app icon variant: undefined')
+  })
+
+  it('accepts the two author kinds, and treats an absent one as "not stated"', () => {
+    expect(readExportAuthorKind({ authorKind: 'person' })).toBe('person')
+    expect(readExportAuthorKind({ authorKind: 'organization' })).toBe('organization')
+    // Absent is not "person": the command must not silently overwrite a stored choice.
+    expect(readExportAuthorKind({ value: 'zerolink Bio' })).toBeUndefined()
+    expect(readExportAuthorKind(undefined)).toBeUndefined()
+    expect(() => readExportAuthorKind({ authorKind: 'company' })).toThrow(
+      'Invalid export author kind: company'
+    )
+    expect(() => readExportAuthorKind({ authorKind: true })).toThrow(
+      'Invalid export author kind: true'
+    )
   })
 
   it('accepts only known default permission profiles', () => {

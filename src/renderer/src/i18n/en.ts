@@ -1186,7 +1186,7 @@ export const en: Record<ZhKey, string> = {
   'settings.exportAttributionIntro':
     'Written into RO-Crate exports as author and license. Left empty, the export simply omits both — nothing is inferred or defaulted.',
   'settings.exportAuthorLabel': 'Author or institution',
-  'settings.exportAuthorPlaceholder': 'e.g. Li Wei, Department of Chemistry, Fudan University',
+  'settings.exportAuthorPlaceholder': 'Your name',
   'settings.exportLicenseLabel': 'Default export license',
   'settings.exportLicensePlaceholder': 'e.g. CC BY 4.0 or https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch': 'Could not switch active provider or model. Try again.',
@@ -5392,5 +5392,8 @@ export const en: Record<ZhKey, string> = {
   'mainMessage.connectorIdReserved': 'Connector ID "{id}" is reserved by a built-in connector',
   'mainMessage.connectorIdExists': 'A custom connector with ID "{id}" already exists',
   'mainMessage.connectorIdAliasConflict':
-    'Connector ID "{id}" conflicts with an existing Connector alias'
+    'Connector ID "{id}" conflicts with an existing Connector alias',
+  'settings.exportAuthorKindLabel': 'Author type',
+  'settings.exportAuthorKindPerson': 'An individual',
+  'settings.exportAuthorKindOrganization': 'An institution'
 }

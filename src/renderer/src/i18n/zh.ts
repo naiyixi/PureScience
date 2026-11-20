@@ -1119,7 +1119,7 @@ export const zh = {
   'settings.exportAttributionIntro':
     '会写进 RO-Crate 导出包的 author 与 license。留空则不写这两个字段——不推断、不填默认值。',
   'settings.exportAuthorLabel': '作者或机构',
-  'settings.exportAuthorPlaceholder': '例：李伟，复旦大学化学系',
+  'settings.exportAuthorPlaceholder': '你的名字',
   'settings.exportLicenseLabel': '默认导出许可',
   'settings.exportLicensePlaceholder': '例：CC BY 4.0 或 https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch': '切换当前提供商或模型失败，请重试。',
@@ -4998,7 +4998,10 @@ export const zh = {
   'mainMessage.connectorNameAliasConflict': '连接器名称「{name}」与已有连接器身份冲突',
   'mainMessage.connectorIdReserved': '连接器 ID「{id}」为内置连接器保留，不能使用',
   'mainMessage.connectorIdExists': '已存在 ID 为「{id}」的自定义连接器',
-  'mainMessage.connectorIdAliasConflict': '连接器 ID「{id}」与已有连接器别名冲突'
+  'mainMessage.connectorIdAliasConflict': '连接器 ID「{id}」与已有连接器别名冲突',
+  'settings.exportAuthorKindLabel': '署名类型',
+  'settings.exportAuthorKindPerson': '个人',
+  'settings.exportAuthorKindOrganization': '机构'
 }
 
 export type ZhKey = keyof typeof zh

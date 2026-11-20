@@ -15,11 +15,11 @@
 
 三种配置，覆盖用户可能填的每一类值：
 
-| 代号   | 署名                                            | 许可                                  | 用意                       |
-| ------ | ----------------------------------------------- | ------------------------------------- | -------------------------- |
-| `raw`  | `#author` / Person / `Li Wei, Fudan University` | 自由文本 `CC BY 4.0`                  | 最可能被手打进来的形态     |
-| `url`  | 同上                                            | `https://spdx.org/licenses/CC-BY-4.0` | 界面占位符推荐的另一种形态 |
-| `none` | 没填                                            | 没填                                  | 「没设过就两个键都不写」   |
+| 代号   | 署名                             | 许可                                  | 用意                       |
+| ------ | -------------------------------- | ------------------------------------- | -------------------------- |
+| `raw`  | `#author` / Person / `Abel Wang` | 自由文本 `CC BY 4.0`                  | 最可能被手打进来的形态     |
+| `url`  | 同上                             | `https://spdx.org/licenses/CC-BY-4.0` | 界面占位符推荐的另一种形态 |
+| `none` | 没填                             | 没填                                  | 「没设过就两个键都不写」   |
 
 ## 修前读数：三种配置全部不合规
 
@@ -138,7 +138,7 @@ none => RO-Crate is a valid ro-crate-1.1
 
 ### `27.2` / `27.3` 作者机构：这就是个真缺口
 
-现在作者实体只有一个 `name`，机构被塞在名字字符串里——`{"@type": "Person", "name": "Li Wei, Fudan University"}`。
+现在作者实体只有一个 `name`，机构被塞在名字字符串里——`{"@type": "Person", "name": "Abel Wang, zerolink Bio"}`。
 验证器要求的是：`author` → Person，Person 有 `affiliation` → 独立的 Organization 实体。
 
 这条与执行器在做的「作者类型可选 Organization」是同一处结构（`RoCrateCreator` 目前只有 `type`/`id`/`name`），
@@ -156,7 +156,7 @@ none => RO-Crate is a valid ro-crate-1.1
 
 | 配置                                                                | REQUIRED | RECOMMENDED 里与作者/机构有关的                      |
 | ------------------------------------------------------------------- | -------- | ---------------------------------------------------- |
-| 作者机构塞在名字里（`"Li Wei, Fudan University"`）                  | 全过     | `27.2`、`27.3` 两条报「应有机构 / 机构应是独立实体」 |
+| 作者机构塞在名字里（`"Abel Wang, zerolink Bio"`）                   | 全过     | `27.2`、`27.3` 两条报「应有机构 / 机构应是独立实体」 |
 | 拆成 `Person "Abel Wang"` + `Organization "zerolink Bio"`（无 URL） | 全过     | `27.2`、`27.3` 消失；剩 `28.2`「机构 SHOULD 有 URL」 |
 | 同上 + 机构 URL `https://www.zerolink.com`                          | 全过     | `28.2` 也消失                                        |
 

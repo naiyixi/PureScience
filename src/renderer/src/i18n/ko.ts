@@ -2540,7 +2540,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     'RO-Crate의 author와 license로 기록됩니다. 비워 두면 두 필드를 모두 쓰지 않습니다. 추론하거나 기본값을 채우지 않습니다.',
   'settings.exportAuthorLabel': '저자 또는 기관',
-  'settings.exportAuthorPlaceholder': '예: 리웨이, 푸단대학교 화학과',
+  'settings.exportAuthorPlaceholder': '이름',
   'settings.exportLicenseLabel': '기본 내보내기 라이선스',
   'settings.exportLicensePlaceholder':
     '예: CC BY 4.0 또는 https://spdx.org/licenses/CC-BY-4.0.html',
@@ -5268,5 +5268,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '커넥터 이름 「{name}」이(가) 기존 커넥터 식별자와 충돌합니다',
   'mainMessage.connectorIdReserved': '커넥터 ID 「{id}」은(는) 기본 제공 커넥터가 예약했습니다',
   'mainMessage.connectorIdExists': 'ID 「{id}」인 사용자 지정 커넥터가 이미 있습니다',
-  'mainMessage.connectorIdAliasConflict': '커넥터 ID 「{id}」이(가) 기존 커넥터 별칭과 충돌합니다'
+  'mainMessage.connectorIdAliasConflict': '커넥터 ID 「{id}」이(가) 기존 커넥터 별칭과 충돌합니다',
+  'settings.exportAuthorKindLabel': '서명 유형',
+  'settings.exportAuthorKindPerson': '개인',
+  'settings.exportAuthorKindOrganization': '기관'
 }

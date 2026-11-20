@@ -2580,7 +2580,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     'RO-Crate に author と license として書き込まれます。空欄なら両方とも出力しません。推測も既定値の補完もしません。',
   'settings.exportAuthorLabel': '作成者または所属機関',
-  'settings.exportAuthorPlaceholder': '例：李偉、復旦大学化学科',
+  'settings.exportAuthorPlaceholder': 'あなたの名前',
   'settings.exportLicenseLabel': '既定のエクスポートライセンス',
   'settings.exportLicensePlaceholder':
     '例：CC BY 4.0 または https://spdx.org/licenses/CC-BY-4.0.html',
@@ -5364,5 +5364,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'コネクタ名「{name}」は既存のコネクタ識別子と競合します',
   'mainMessage.connectorIdReserved': 'コネクタ ID「{id}」は組み込みコネクタが予約しています',
   'mainMessage.connectorIdExists': 'ID「{id}」のカスタムコネクタは既に存在します',
-  'mainMessage.connectorIdAliasConflict': 'コネクタ ID「{id}」は既存のコネクタ別名と競合します'
+  'mainMessage.connectorIdAliasConflict': 'コネクタ ID「{id}」は既存のコネクタ別名と競合します',
+  'settings.exportAuthorKindLabel': '署名の種類',
+  'settings.exportAuthorKindPerson': '個人',
+  'settings.exportAuthorKindOrganization': '機関'
 }

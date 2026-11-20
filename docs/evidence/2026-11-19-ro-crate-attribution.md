@@ -22,11 +22,11 @@
 
 用**真实写入器**（`writeRoCrateExport`）生成，不是手搓 JSON：
 
-| 包        | 配置                                              | rocrate 0.16.0                                             | pyld 3.3.0                                                                                            |
-| --------- | ------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `with`    | 作者 `Li Wei, Fudan University`，许可 `CC BY 4.0` | author `["Li Wei, Fudan University"]`；license `CC BY 4.0` | author `["http://example.org/base/#author"]`；license `["http://example.org/base/CC BY 4.0"]`；悬空 0 |
-| `url`     | 同上，许可填 SPDX URL                             | author 同上；license `CC BY 4.0`                           | author 同上；license `["https://spdx.org/licenses/CC-BY-4.0.html"]`；悬空 0                           |
-| `without` | 两栏都没填                                        | author `null`；license `null`                              | author `[]`；license `[]`；悬空 0                                                                     |
+| 包        | 配置                               | rocrate 0.16.0                              | pyld 3.3.0                                                                                            |
+| --------- | ---------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `with`    | 作者 `Abel Wang`，许可 `CC BY 4.0` | author `["Abel Wang"]`；license `CC BY 4.0` | author `["http://example.org/base/#author"]`；license `["http://example.org/base/CC BY 4.0"]`；悬空 0 |
+| `url`     | 同上，许可填 SPDX URL              | author 同上；license `CC BY 4.0`            | author 同上；license `["https://spdx.org/licenses/CC-BY-4.0.html"]`；悬空 0                           |
+| `without` | 两栏都没填                         | author `null`；license `null`               | author `[]`；license `[]`；悬空 0                                                                     |
 
 结论：
 

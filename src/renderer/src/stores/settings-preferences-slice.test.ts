@@ -2,7 +2,12 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 import type { PackageMirror } from '../../../shared/mirror'
-import type { AppIconVariant, ReasoningEffort, SettingsSnapshot } from '../../../shared/settings'
+import type {
+  AppIconVariant,
+  ExportAuthorKind,
+  ReasoningEffort,
+  SettingsSnapshot
+} from '../../../shared/settings'
 import type { CloseActionPreference } from '../../../shared/window-controls'
 import type { PermissionProfileId } from '../../../shared/permission-profiles'
 import {
@@ -38,6 +43,7 @@ type TestStore = SettingsPreferencesActions & {
   useIntent: 'commercial' | 'non-commercial' | undefined
   appIconVariant: AppIconVariant
   exportAuthor: string
+  exportAuthorKind: ExportAuthorKind
   exportLicense: string
   defaultPermissionProfile: PermissionProfileId
   settingsWriteError: string | undefined
@@ -94,7 +100,11 @@ const createCommands = (): CommandMocks => ({
   setDefaultPermissionProfile: vi.fn(({ profile }) =>
     Promise.resolve(snapshot({ defaultPermissionProfile: profile }))
   ),
-  setExportAuthor: vi.fn(({ value }) => Promise.resolve(snapshot({ exportAuthor: value }))),
+  setExportAuthor: vi.fn(({ value, authorKind }) =>
+    Promise.resolve(
+      snapshot({ exportAuthor: value, ...(authorKind ? { exportAuthorKind: authorKind } : {}) })
+    )
+  ),
   setExportLicense: vi.fn(({ value }) => Promise.resolve(snapshot({ exportLicense: value }))),
   markOnboardingComplete: vi.fn().mockResolvedValue(snapshot({ onboardingCompletedAt: 42 })),
   setPackageMirror: vi.fn((mirror) => Promise.resolve(mirror))
@@ -117,6 +127,7 @@ const createHarness = (): {
       useIntent: next.useIntent,
       appIconVariant: next.appIconVariant,
       exportAuthor: next.exportAuthor ?? '',
+      exportAuthorKind: next.exportAuthorKind ?? 'person',
       exportLicense: next.exportLicense ?? '',
       defaultPermissionProfile: next.defaultPermissionProfile ?? 'ask'
     })
@@ -129,6 +140,7 @@ const createHarness = (): {
     useIntent: undefined,
     appIconVariant: 'light',
     exportAuthor: '',
+    exportAuthorKind: 'person',
     exportLicense: '',
     defaultPermissionProfile: 'ask',
     settingsWriteError: undefined,
@@ -171,6 +183,23 @@ describe('settings preferences slice', () => {
     expect(commands.setAppIconVariant).toHaveBeenCalledWith({ variant: 'dark' })
     expect(commands.setDefaultPermissionProfile).toHaveBeenCalledWith({ profile: 'auto' })
     expect(reconcileSnapshot).toHaveBeenCalledTimes(6)
+  })
+
+  it('carries the author type and the author text in the same write, so neither silently overwrites the other', async () => {
+    await store.getState().setExportAuthor('zerolink Bio')
+    await store.getState().setExportAuthorKind('organization')
+
+    expect(commands.setExportAuthor).toHaveBeenNthCalledWith(1, {
+      value: 'zerolink Bio',
+      authorKind: 'person'
+    })
+    // The second write names the text it is not changing, and the kind it is: a partial payload would
+    // let the main process clear whichever half it did not receive.
+    expect(commands.setExportAuthor).toHaveBeenNthCalledWith(2, {
+      value: 'zerolink Bio',
+      authorKind: 'organization'
+    })
+    expect(store.getState().exportAuthorKind).toBe('organization')
   })
 
   it('applies immediately, then rolls back and exposes the unchanged failure copy', async () => {

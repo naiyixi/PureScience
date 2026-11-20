@@ -234,7 +234,7 @@ describe('RO-Crate export IPC owner', () => {
     let captured: Record<string, unknown> | undefined
 
     const result = await ownerFor(storageRoot, {
-      loadAttribution: async () => ({ author: 'Li Wei, Fudan University', license: 'CC BY 4.0' }),
+      loadAttribution: async () => ({ author: 'Abel Wang', license: 'CC BY 4.0' }),
       exportCrate: (async (input: Record<string, unknown>) => {
         captured = input
         return {
@@ -251,9 +251,7 @@ describe('RO-Crate export IPC owner', () => {
     )
 
     expect(result.ok).toBe(true)
-    expect(captured?.creators).toEqual([
-      { type: 'Person', id: '#author', name: 'Li Wei, Fudan University' }
-    ])
+    expect(captured?.creators).toEqual([{ type: 'Person', id: '#author', name: 'Abel Wang' }])
     expect(captured?.license).toEqual({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
   })
 
@@ -272,7 +270,7 @@ describe('RO-Crate export IPC owner', () => {
 
     await ownerFor(storageRoot, {
       loadAttribution: async () => ({
-        author: 'Fudan University',
+        author: 'zerolink Bio',
         authorKind: 'organization',
         license: 'CC-BY-4.0'
       }),
@@ -293,7 +291,7 @@ describe('RO-Crate export IPC owner', () => {
 
     // Only `@type` changes: the text the user typed is passed through byte for byte.
     expect(captured?.creators).toEqual([
-      { type: 'Organization', id: '#author', name: 'Fudan University' }
+      { type: 'Organization', id: '#author', name: 'zerolink Bio' }
     ])
   })
 

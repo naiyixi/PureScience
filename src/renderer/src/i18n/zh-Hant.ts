@@ -2389,7 +2389,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     '會寫進 RO-Crate 匯出包的 author 與 license。留空則不寫這兩個欄位——不推斷、不填預設值。',
   'settings.exportAuthorLabel': '作者或機構',
-  'settings.exportAuthorPlaceholder': '例：李偉，復旦大學化學系',
+  'settings.exportAuthorPlaceholder': '你的名字',
   'settings.exportLicenseLabel': '預設匯出授權',
   'settings.exportLicensePlaceholder': '例：CC BY 4.0 或 https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch': '切換目前供應商或模型失敗，請重試。',
@@ -4943,5 +4943,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorNameAliasConflict': '連接器名稱「{name}」與既有連接器身分衝突',
   'mainMessage.connectorIdReserved': '連接器 ID「{id}」為內建連接器保留，無法使用',
   'mainMessage.connectorIdExists': '已存在 ID 為「{id}」的自訂連接器',
-  'mainMessage.connectorIdAliasConflict': '連接器 ID「{id}」與既有連接器別名衝突'
+  'mainMessage.connectorIdAliasConflict': '連接器 ID「{id}」與既有連接器別名衝突',
+  'settings.exportAuthorKindLabel': '署名類型',
+  'settings.exportAuthorKindPerson': '個人',
+  'settings.exportAuthorKindOrganization': '機構'
 }

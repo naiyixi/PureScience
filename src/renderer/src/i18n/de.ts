@@ -2668,7 +2668,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     'Wird als author und license in RO-Crate-Exporte geschrieben. Leer gelassen werden beide Felder weggelassen – nichts wird abgeleitet oder vorbelegt.',
   'settings.exportAuthorLabel': 'Urheber oder Einrichtung',
-  'settings.exportAuthorPlaceholder': 'z. B. Li Wei, Fachbereich Chemie, Fudan-Universität',
+  'settings.exportAuthorPlaceholder': 'Ihr Name',
   'settings.exportLicenseLabel': 'Standard-Exportlizenz',
   'settings.exportLicensePlaceholder':
     'z. B. CC BY 4.0 oder https://spdx.org/licenses/CC-BY-4.0.html',
@@ -5554,5 +5554,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorIdReserved': 'Die ID „{id}“ ist für einen eingebauten Konnektor reserviert',
   'mainMessage.connectorIdExists': 'Ein eigener Konnektor mit der ID „{id}“ existiert bereits',
   'mainMessage.connectorIdAliasConflict':
-    'Die ID „{id}“ kollidiert mit einem bestehenden Konnektor-Alias'
+    'Die ID „{id}“ kollidiert mit einem bestehenden Konnektor-Alias',
+  'settings.exportAuthorKindLabel': 'Art der Urheberschaft',
+  'settings.exportAuthorKindPerson': 'Eine Person',
+  'settings.exportAuthorKindOrganization': 'Eine Einrichtung'
 }

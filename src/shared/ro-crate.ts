@@ -121,7 +121,7 @@ export type RoCrateCreator = {
   /**
    * Where the author works, kept as its own Organization entity rather than folded into `name`.
    * The profile asks for exactly this split (`ro-crate-1.1.27.2`/`27.3`): a `Person` with an
-   * `affiliation` that resolves to an `Organization`. `"Li Wei, Fudan University"` in `name` is one
+   * `affiliation` that resolves to an `Organization`. `"Abel Wang, zerolink Bio"` in `name` is one
    * string that answers two questions and lets neither be checked.
    */
   affiliation?: { id: string; name: string; url?: string }

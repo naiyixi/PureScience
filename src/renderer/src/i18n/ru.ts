@@ -2582,7 +2582,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.exportAttributionIntro':
     'Записывается в экспорт RO-Crate как author и license. Если оставить пустым, оба поля не добавляются — ничего не подставляется по умолчанию.',
   'settings.exportAuthorLabel': 'Автор или организация',
-  'settings.exportAuthorPlaceholder': 'напр. Ли Вэй, химический факультет, Фуданьский университет',
+  'settings.exportAuthorPlaceholder': 'Ваше имя',
   'settings.exportLicenseLabel': 'Лицензия экспорта по умолчанию',
   'settings.exportLicensePlaceholder':
     'напр. CC BY 4.0 или https://spdx.org/licenses/CC-BY-4.0.html',
@@ -5389,5 +5389,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorIdExists':
     'Пользовательский коннектор с идентификатором «{id}» уже существует',
   'mainMessage.connectorIdAliasConflict':
-    'Идентификатор «{id}» конфликтует с существующим псевдонимом коннектора'
+    'Идентификатор «{id}» конфликтует с существующим псевдонимом коннектора',
+  'settings.exportAuthorKindLabel': 'Тип авторства',
+  'settings.exportAuthorKindPerson': 'Физическое лицо',
+  'settings.exportAuthorKindOrganization': 'Организация'
 }
