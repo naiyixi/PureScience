@@ -21,6 +21,13 @@ const STARTUP_STALL_MS = 60_000
 // separates "the app was still working and this runner is slow" from "the app went silent and never
 // got there" — two states that used to end in the identical sentence.
 const POST_TRIP_OBSERVATION_MS = 30_000
+// The packaged app has already announced its endpoint by the time these two calls are made, so this is
+// the cost of one request to a service on the same machine — not a startup budget. 15 s was never
+// measured: on 2026-11-19 the macos-arm64 runner announced its endpoint at 4040 ms and then the
+// bootstrap request itself tripped a 15 s abort (`DOMException [TimeoutError]`), which the signing gate
+// correctly reported as "signature reading not taken — unobserved is not a pass". Waiting long enough to
+// take the reading is the fix; reporting a slow machine as an unread bundle is not.
+const PROBE_REQUEST_BUDGET_MS = 60_000
 
 const delay = (milliseconds) =>
   new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
@@ -330,7 +337,7 @@ export const launchAndProbe = async ({
         `startup phases: ${describeStartupPhases(output)}`
     )
     const response = await fetch(`${service.endpoint}/api/bootstrap?${service.auth}`, {
-      signal: AbortSignal.timeout(15_000)
+      signal: AbortSignal.timeout(PROBE_REQUEST_BUDGET_MS)
     })
     if (!response.ok) throw new Error(`Packaged macOS bootstrap returned HTTP ${response.status}.`)
     const bootstrap = await response.json()
@@ -343,7 +350,7 @@ export const launchAndProbe = async ({
     }
     const shutdown = await fetch(`${service.endpoint}/api/shutdown?${service.auth}`, {
       method: 'POST',
-      signal: AbortSignal.timeout(15_000)
+      signal: AbortSignal.timeout(PROBE_REQUEST_BUDGET_MS)
     })
     await shutdown.text()
     if (shutdown.status !== 202) {
