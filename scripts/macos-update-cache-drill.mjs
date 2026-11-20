@@ -231,26 +231,133 @@ const readUpdaterCacheDirFromApp = async (client) =>
     })
     .catch((error) => `unavailable: ${error instanceof Error ? error.message : String(error)}`)
 
-// The app's OWN log names the directory it purged and how many bytes it removed — the strongest
-// cross-check available without a signed build: the app itself says which cache it cleaned.
-const readAppPurgeLogLines = async ({ home, cacheDir }) => {
-  const candidates = [
+const PURGE_RECORD_MESSAGE = 'update cache: purged after a completed install'
+
+// The app writes one JSON record per line (src/main/logger.ts). Parsing them — rather than grepping
+// for a substring — is what separates "the app purged this cache" from "the app recorded a pending
+// install", and exposes the two facts only the app knows: which directory it resolved, and how many
+// bytes it removed.
+const readAppUpdateCacheRecords = async ({ home, directories }) => {
+  const candidates = directories ?? [
     join(home, 'Library', 'Logs', 'PureScience'),
     join(homedir(), 'Library', 'Logs', 'PureScience')
   ]
-  const matched = []
+  const records = []
+  const visited = new Set()
   for (const directory of candidates) {
+    if (visited.has(directory)) continue
+    visited.add(directory)
     const names = (await readdir(directory).catch(() => [])).filter((name) => name.endsWith('.log'))
     for (const name of names) {
-      const text = await readFile(join(directory, name), 'utf8').catch(() => '')
+      const file = join(directory, name)
+      const text = await readFile(file, 'utf8').catch(() => '')
+      // The purge happens at launch and the drill stops reading right after it, so the record is
+      // near the end; a bounded tail keeps a long-lived dev log from being parsed in full.
       for (const line of text.split('\n').slice(-400)) {
-        if (line.includes('update cache:') && line.includes(cacheDir)) {
-          matched.push({ file: join(directory, name), line: line.trim() })
+        if (!line.includes('update cache:')) continue
+        let record
+        try {
+          record = JSON.parse(line)
+        } catch {
+          continue
         }
+        if (typeof record?.msg !== 'string' || !record.msg.startsWith('update cache:')) continue
+        records.push({ file, line: line.trim(), msg: record.msg, data: record.data ?? {} })
       }
     }
   }
-  return matched.slice(-6)
+  return records
+}
+
+// The app's OWN log names the directory it purged and how many bytes it removed — the strongest
+// cross-check available in a packaged build: the app itself says which cache it cleaned.
+const readAppPurgeLogLines = async ({ home, cacheDir }) => {
+  const records = await readAppUpdateCacheRecords({ home })
+  return records
+    .filter((record) => record.msg === PURGE_RECORD_MESSAGE && record.data?.cacheDir === cacheDir)
+    .map((record) => ({ file: record.file, line: record.line }))
+    .slice(-6)
+}
+
+// Newest purge record the app wrote for this cache directory. Selection deliberately does NOT filter
+// on the installed version: a record that exists but names another version must be reported as
+// exactly that, not as "the app never recorded a purge".
+const selectPurgeRecord = ({ records, cacheDir }) =>
+  records
+    .filter((record) => record.msg === PURGE_RECORD_MESSAGE && record.data?.cacheDir === cacheDir)
+    .at(-1)
+
+// Judges the app's own record against what the drill watched. An emptied directory is not proof the
+// app emptied it: the directory the drill watches is inferred from app-update.yml, so without this
+// record the drill could report a purge it never saw the app perform — and could not tell that it
+// had been watching the wrong directory all along.
+const judgePurgeRecord = ({ record, records, cacheDir, expectedBytes, expectedVersion }) => {
+  const purgeRecords = records.filter((entry) => entry.msg === PURGE_RECORD_MESSAGE)
+  const evidence = {
+    cacheDir,
+    expectedBytes,
+    expectedVersion,
+    purgeRecordsSeen: purgeRecords.map((entry) => ({
+      cacheDir: entry.data?.cacheDir ?? null,
+      installedVersion: entry.data?.installedVersion ?? null,
+      removedBytes: entry.data?.removedBytes ?? null
+    })),
+    matched:
+      record === undefined
+        ? null
+        : {
+            file: record.file,
+            cacheDir: record.data?.cacheDir ?? null,
+            installedVersion: record.data?.installedVersion ?? null,
+            removedFiles: record.data?.removedFiles ?? null,
+            removedBytes: record.data?.removedBytes ?? null
+          }
+  }
+  if (!record) {
+    const elsewhere = purgeRecords
+      .map((entry) => JSON.stringify(entry.data?.cacheDir ?? null))
+      .filter((value, index, all) => all.indexOf(value) === index)
+    return {
+      ok: false,
+      evidence,
+      summary: 'no purge record',
+      reason:
+        `the cache at ${cacheDir} is empty, but the app never recorded purging it ` +
+        `(${purgeRecords.length} purge record(s) seen` +
+        `${elsewhere.length > 0 ? `, naming ${elsewhere.join(', ')}` : ''}) — ` +
+        'an empty directory is not proof the app removed its contents'
+    }
+  }
+  if (record.data?.installedVersion !== expectedVersion) {
+    return {
+      ok: false,
+      evidence,
+      summary: 'wrong installed version',
+      reason:
+        `the app recorded purging ${cacheDir} after installing ` +
+        `${JSON.stringify(record.data?.installedVersion ?? null)}; this drill installed ` +
+        `${JSON.stringify(expectedVersion)}`
+    }
+  }
+  if (record.data?.removedBytes !== expectedBytes) {
+    return {
+      ok: false,
+      evidence,
+      summary: 'byte count disagrees',
+      reason:
+        `the drill counted ${expectedBytes} bytes in ${cacheDir} before the install, while the app ` +
+        `reports it removed ${JSON.stringify(record.data?.removedBytes ?? null)} — the purge the app ` +
+        'performed is not the one this drill observed'
+    }
+  }
+  return {
+    ok: true,
+    evidence,
+    summary:
+      `the app recorded purging ${record.data.removedBytes} bytes ` +
+      `(${record.data.removedFiles} files) from ${record.data.cacheDir} ` +
+      `after installing ${record.data.installedVersion}`
+  }
 }
 
 // ── The real in-place update drill (CI) ──────────────────────────────────────────────────────────
@@ -813,6 +920,21 @@ const runRealUpdateDrill = async (options) => {
           `${snapshot.bytes} bytes`
       )
     })
+    // An empty directory only says the bytes are gone. The app's own record says it is the one that
+    // removed them, from the directory it resolved — which is also the only answer available for
+    // "which cache did the app use": `require('electron-updater')` is not resolvable inside a
+    // packaged bundle, so the directory under test is otherwise inferred from app-update.yml.
+    step = 'cross-check-the-app-purge-record'
+    const purgeRecords = await readAppUpdateCacheRecords({ home })
+    const purgeVerdict = judgePurgeRecord({
+      record: selectPurgeRecord({ records: purgeRecords, cacheDir }),
+      records: purgeRecords,
+      cacheDir,
+      expectedBytes: cacheBefore.bytes,
+      expectedVersion: updateVersion
+    })
+    console.log(`[drill] app purge record: ${purgeVerdict.summary}`)
+    if (!purgeVerdict.ok) throw new Error(purgeVerdict.reason)
     evidence.scenarios.push({
       name: 'the-install-landed-then-the-downloaded-package-was-purged',
       fromVersion: previousVersion,
@@ -821,6 +943,7 @@ const runRealUpdateDrill = async (options) => {
       cacheFilesBefore: cacheBefore.files,
       cacheBytesAfter: cacheAfter.bytes,
       cacheFilesAfter: cacheAfter.files,
+      appPurge: purgeVerdict.evidence,
       passed: cacheAfter.bytes === 0 && cacheAfter.files.length === 0
     })
     console.log(
@@ -1111,6 +1234,10 @@ if (invokedAsScript) {
 export {
   parseArguments,
   readUpdaterCacheDirFromApp,
+  readAppUpdateCacheRecords,
+  readAppPurgeLogLines,
+  selectPurgeRecord,
+  judgePurgeRecord,
   resolveLaunchMode,
   seedDownloadedCache,
   snapshotDirectory,

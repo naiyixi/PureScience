@@ -73,6 +73,17 @@ describe('macOS update drill workflow', () => {
     expect(readDrillScript()).toContain('macos update drill: ok ')
   })
 
+  it('cross-checks the app own purge record instead of trusting an empty directory', () => {
+    // An emptied cache directory proves the bytes are gone, not who removed them: the directory the
+    // drill watches is inferred from app-update.yml, and `require('electron-updater')` is not
+    // resolvable inside a packaged bundle. The app's own record is the only authority available, so
+    // the drill must consult it and stop by name when it is missing or disagrees.
+    const script = readDrillScript()
+    expect(script).toContain("step = 'cross-check-the-app-purge-record'")
+    expect(script).toContain('readAppUpdateCacheRecords({ home })')
+    expect(script).toContain('if (!purgeVerdict.ok) throw new Error(purgeVerdict.reason)')
+  })
+
   it('stays a bounded, on-demand gate', () => {
     // Manual only on purpose: two ~150 MB installers and a real install, so it is a release-time gate.
     const on = readWorkflow().on as Record<string, unknown> | undefined
