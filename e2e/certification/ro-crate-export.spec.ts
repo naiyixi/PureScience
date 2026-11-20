@@ -118,11 +118,23 @@ test('exports a project from the interface into a crate that validates on disk',
   expect(await readFile(join(crateDir, 'files/provenance-evidence.txt'), 'utf8')).toBe(
     'artifact provenance e2e'
   )
-  // Every spec-must and export-contract assertion holds for the file that was written — 30 of them, none
+  // Every spec-must and export-contract assertion holds for the file that was written — all of them, none
   // failed. A crate that does not validate is not a deliverable, so this is the acceptance criterion.
+  // The count is deliberately NOT written out here: a literal is a second copy of an inventory the validator
+  // owns, and the copy that lived here said 30 while the validator had grown a 31st rule
+  // (`root-license-declared`), which turned a valid crate into a red lane without anything being wrong with
+  // the crate. Self-consistency is asserted instead, plus the one REQUIRED rule whose absence would still be
+  // "all green" above: a report that quietly stopped emitting it must not pass.
   expect(report.failed).toBe(0)
   expect(report.ok).toBe(true)
-  expect(report.passed).toBe(30)
+  expect(report.passed).toBe(report.assertions.length)
+  expect(report.assertions.filter((assertion) => !assertion.ok)).toEqual([])
+  expect(
+    report.assertions.find((assertion) => assertion.id === 'root-license-declared')
+  ).toMatchObject({
+    level: 'spec-must',
+    ok: true
+  })
 
   const graph = document['@graph'] as Array<Record<string, unknown>>
   const root = graph.find((entity) => entity['@id'] === './')
