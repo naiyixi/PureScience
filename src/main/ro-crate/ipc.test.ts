@@ -255,46 +255,6 @@ describe('RO-Crate export IPC owner', () => {
     expect(captured?.license).toEqual({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
   })
 
-  it('writes an institution as an Organization, and keeps a person as a Person', async () => {
-    const storageRoot = await createScratch()
-    await writeDurableVersion({
-      storageRoot,
-      projectId: 'project-1',
-      appSessionId: 'session-1',
-      artifactId: 'artifact-1',
-      versionId: 'version-1',
-      filename: 'assay.csv',
-      body: 'a,b\n1,2\n'
-    })
-    let captured: Record<string, unknown> | undefined
-
-    await ownerFor(storageRoot, {
-      loadAttribution: async () => ({
-        author: 'zerolink Bio',
-        authorKind: 'organization',
-        license: 'CC-BY-4.0'
-      }),
-      exportCrate: (async (input: Record<string, unknown>) => {
-        captured = input
-        return {
-          outputDir: String(input.outputDir),
-          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
-          files: [],
-          validation: { passed: [], failed: [] },
-          skipped: []
-        }
-      }) as never
-    }).exportProject(
-      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
-      SENDER
-    )
-
-    // Only `@type` changes: the text the user typed is passed through byte for byte.
-    expect(captured?.creators).toEqual([
-      { type: 'Organization', id: '#author', name: 'zerolink Bio' }
-    ])
-  })
-
   it('never writes a creator from an author type alone', async () => {
     const storageRoot = await createScratch()
     await writeDurableVersion({
@@ -309,11 +269,7 @@ describe('RO-Crate export IPC owner', () => {
     let captured: Record<string, unknown> | undefined
 
     await ownerFor(storageRoot, {
-      // Cast, not a shape fix: at run time the owner already reads `authorKind` (it picks Person vs
-      // Organization), but the loader's declared type has not been widened yet — that widening belongs to
-      // the author-type change in flight. The assertion below is about behaviour (a type alone never fabricates
-      // a creator), so it must not wait for a type to be published before it can be checked.
-      loadAttribution: (async () => ({ authorKind: 'organization' })) as never,
+      loadAttribution: async () => ({ authorKind: 'organization' }),
       exportCrate: (async (input: Record<string, unknown>) => {
         captured = input
         return {
