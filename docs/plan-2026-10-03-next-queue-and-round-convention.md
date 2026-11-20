@@ -1,5 +1,49 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十、本轮追加（执行器，2026-11-20 21:3x–）—— 收口主线红：一条断言没跟上车道的改动；顺带定因「本机探针起了真实二进制」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == c3339130`（上一轮我自己推的 docs+test），工作树 **18 个改动**仍是会话在制
+  （`src/main/settings/**` 的 `authorKind` 那套、`src/main/ro-crate/ipc*`、`e2e/visual-regression.spec.ts`），
+  一个字节没碰。
+- 进轮车道读数（现取）：`c3339130` 上 **`Nightly` `44745667022` 与 `Windows Full Test` `44745666425` 均在跑**；
+  上一笔 `e063d066` 双红（见 §一）。⇒ 本轮**先不推**，等这两条落定再推本轮提交。
+
+### 一 主线红定因：`e063d066` 改了车道、没改钉住它的断言
+
+- 两条车道红在**同一条用例**：`scripts/windows-release-workflows.test.ts > runs one canonical packaged P0 and
+  visual gate …`，原文 `expected 'set +e\nnpm run test:e2e:visual\nrc=$…' to be 'npm run test:e2e:visual'`。
+- 溯源：`e063d066` 给 `.github/workflows/build.yml` 的视觉步骤加了「写退出码 + 以该码退出」（`git log -S
+  'visual-regression-exit-code' -- .github/workflows/build.yml` 只命中这一笔），而用例里仍是 `toBe(单条命令)`。
+  与「散文里的计数」同族：**第二份真源**没跟着改。
+- 修法（已在 `c3339130` 里，不是我本轮新写）：把断言换成契约三连 —— 含该命令、含
+  `$RUNNER_TEMP/visual-regression-exit-code`、含 `exit "$rc"`。比原来的等值更紧：少任何一项都红。
+- 复核（隔离工作树 `/tmp/ps-fix` @ `c3339130`，软链 `node_modules`）：该文件 **12 passed**、
+  `eslint --no-cache` 该文件 **EXIT=0**、`scripts/pre-push-checks.sh` **全部通过**。
+- **具名更正**：`c3339130` 的正文写「18 例通过」，实测该文件是 **12 例**（`grep -cE '^\s*(it|test)\('` = 12，
+  vitest 汇总 `Tests 12 passed`）。数字错了，结论没错；已推送的提交不改写历史，以本节为准。
+
+### 二 顺带定因：本机探针的 ACP 起了真实二进制（原「两种解释未分」）
+
+- 结论：两种解释**都不成立**，判据是解析顺序 —— `settings.opencodePath` 持久化且文件存在就**直接返回、不看
+  PATH**（`backend-resolver.ts:727` → `agent-runtime-manager.ts:921-930`），PATH 探测只在其缺席时参与
+  （`opencode-detect.ts:59-71`）。同根里先有一次不带夹具的启动 ⇒ 真实路径落库 ⇒ 之后带夹具的启动也用它。
+- 解释①不成立：`app.relaunch()` 全仓只有数据根迁移一处（`src/main/storage/command-owner.ts:457`），
+  `src/main/notebook/**` 无重启分支；且重启会继承夹具注入的 PATH。
+- 解释②不成立：真实用户的持久化值就是他自己的安装，那正是应有的优先序。
+- 证据与边界落在 `docs/evidence/2026-11-20-acp-probe-real-binary.md`；**不改产品代码、不写 CHANGELOG**。
+  仍未取证一格：谁写入那条持久化路径（隔离根已清理），下一轮读两个值即可结案。
+
+### 三 下一轮第一步
+
+- ① 等 `c3339130` 的双车道落定，绿了就把本轮这笔 docs 推上去（**推一次就够**，别再叠推送顶掉它）；
+  红了按作业级日志归因，先看是不是同一族「第二份真源」。
+- ② 推前 `git fetch -q origin && git log --oneline origin/main -3` 看会话有没有把 `authorKind` 实现推上来
+  —— 它推了就先看它的读数，别替它提交在制品。
+- ③ B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已无可取单元；v3.5 候选里「机构接线」在会话手上，
+  「本机 ACP 探针」本轮已定因 ⇒ 下一轮若无新单元，优先补 §二 那枚举证（两个值），再扫 v3.5 读数的遗留项。
+
 ## 一百八十九、本轮追加（执行器，2026-11-20 19:1x–）—— 「补了仍红、未定因」那条：形状判的是根实体，且引用要逐个有实体
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
