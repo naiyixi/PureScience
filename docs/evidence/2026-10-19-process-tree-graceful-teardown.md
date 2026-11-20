@@ -3,6 +3,8 @@
 取数日期 2026-10-19（第三轮）。仓库 `naiyixi/PureScience`，基点 `15cbfcf1`（origin/main）。
 来自真机审计 `docs/plan-2026-10-19-runtime-audit-and-fixes.md` §5 第 7 条
 （「退出时进程树残留：7 次 `left N descendant(s) alive after SIGTERM`，最多 112 个子孙进程被 SIGKILL」）。
+那份审计档**不在 main 上**，只存在于备份分支 `bak/main-32db0300`（`git show bak/main-32db0300:docs/plan-2026-10-19-runtime-audit-and-fixes.md`），
+按只读引用；本文的读数是从本机日志现取的，不依赖那份档里的数字。
 
 ## 1 真机上到底发生了什么
 
