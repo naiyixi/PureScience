@@ -11,6 +11,7 @@ import {
   allocateRoCrateContentPath,
   buildRoCrateMetadata,
   failedRoCrateAssertions,
+  normalizeDatePublished,
   roCrateContentEntityFromArtifactVersion,
   roCrateContentEntityFromProjectFile,
   roCrateVersionLocator,
@@ -133,7 +134,8 @@ describe('RO-Crate 1.1 metadata', () => {
     expect(String(root?.['@id']).endsWith('/')).toBe(true)
     expect(root?.['name']).toBe('Project One')
     expect(root?.['description']).toBeTypeOf('string')
-    expect(root?.['datePublished']).toBe('2026-09-30T00:00:00.000Z')
+    // 写入侧把 `Z` 换成 `+00:00`：参考验证器的 datePublished 形状只认 `+HH:MM`（见 ro-crate.ts 注释）。
+    expect(root?.['datePublished']).toBe('2026-09-30T00:00:00.000+00:00')
   })
 
   it('links the file to the Root Data Entity through hasPart and types it File', () => {
@@ -468,6 +470,55 @@ describe('validateRoCrate', () => {
     // The entity is still findable by its conformsTo, so only the mandated @id is reported wrong.
     expect(failed).toContain('metadata-descriptor-id')
     expect(failed).not.toContain('metadata-file-descriptor-present')
+  })
+
+  it('writes a datePublished the reference validator accepts, keeping the instant when it can', () => {
+    // The profile's shape wants `+HH:MM`; `Z` is valid ISO 8601 and still fails it.
+    expect(normalizeDatePublished('2026-09-30T12:34:56.789Z')).toBe('2026-09-30T12:34:56.789+00:00')
+    // Already acceptable: left exactly as it came in.
+    expect(normalizeDatePublished('2026-09-30T12:34:56.789+08:00')).toBe(
+      '2026-09-30T12:34:56.789+08:00'
+    )
+    expect(normalizeDatePublished('2026-09-30')).toBe('2026-09-30')
+    // A value nobody can place keeps its day rather than shipping a timestamp the shape rejects; day
+    // precision is the profile's stated minimum.
+    expect(normalizeDatePublished('2026-09-30 12:34')).toBe('2026-09-30')
+  })
+
+  it('carries a textual licence as text, and says so when the exporter declared none', () => {
+    const content = [contentFor(evidenceFor({ filename: 'assay.csv', body: 'a,b\n1,2\n' }))]
+    const build = (license?: { id: string; name: string }): RoCrateMetadataDocument =>
+      buildRoCrateMetadata({
+        projectId: 'project-1',
+        name: 'Project One',
+        description: 'Files produced for project one.',
+        datePublished: '2026-09-30T00:00:00.000Z',
+        app: {
+          name: 'PureScience',
+          version: '1.75.0',
+          url: 'https://www.zerolink.com/purescience'
+        },
+        ...(license ? { license } : {}),
+        entities: content
+      })
+
+    // Free text is a description, which the profile allows; an `@id` with a space in it is neither a URI
+    // nor a literal, and the reference validator rejects it (`ro-crate-1.1.8.3`).
+    const textual = build({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
+    expect(entityById(textual, RO_CRATE_ROOT_DATASET_ID)?.['license']).toBe('CC BY 4.0')
+    expect(textual['@graph'].some((entity) => entity['@id'] === 'CC BY 4.0')).toBe(false)
+
+    const uri = build({ id: 'https://spdx.org/licenses/CC-BY-4.0', name: 'CC BY 4.0' })
+    expect(entityById(uri, RO_CRATE_ROOT_DATASET_ID)?.['license']).toEqual({
+      '@id': 'https://spdx.org/licenses/CC-BY-4.0'
+    })
+    expect(entityById(uri, 'https://spdx.org/licenses/CC-BY-4.0')?.['name']).toBe('CC BY 4.0')
+
+    const undeclared = build()
+    expect(entityById(undeclared, RO_CRATE_ROOT_DATASET_ID)?.['license']).toBe(
+      'No licence declared by the exporter'
+    )
+    expect(validateRoCrate({ document: undeclared }).ok).toBe(true)
   })
 
   it('fails when datePublished is not an ISO 8601 string', () => {

@@ -67,7 +67,7 @@ describe('RO-Crate export IPC owner', () => {
     expect(result.metadataPath).toBe(join(outputDir, 'ro-crate-metadata.json'))
     expect(result.fileCount).toBe(1)
     expect(result.totalBytes).toBe('a,b\n1,2\n'.length)
-    expect(result.validation).toEqual({ passed: 30, failed: 0 })
+    expect(result.validation).toEqual({ passed: 31, failed: 0 })
     expect(result.refusedCount).toBe(0)
     // The crate is really on disk, and the payload is the stored bytes rather than a re-encoding.
     expect(await readFile(join(outputDir, 'files/assay.csv'), 'utf8')).toBe('a,b\n1,2\n')

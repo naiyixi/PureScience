@@ -266,6 +266,8 @@ describe('inspectExternalRoCrate', () => {
           name: 'Foreign crate',
           description: 'Written by another tool.',
           datePublished: '2026-11-18T00:00:00Z',
+          // 一个正当的 RO-Crate 必须带许可：这里给的是文本描述形态（规范允许），也正是别人会写的形态。
+          license: 'CC BY 4.0',
           hasPart: [{ '@id': 'data/measurements.csv' }]
         },
         {
@@ -322,6 +324,23 @@ describe('inspectExternalRoCrate', () => {
     // this app can write (two rules read that locator). Naming exactly those is the honest answer.
     expect(ids).toEqual(['file-provenance-names-stored-version', 'file-names-stored-version'])
     expect(namedFailures(failed)).toContain('data/measurements.csv')
+
+    // The license rule is REQUIRED by the profile, not advisory: the reference validator reports
+    // `ro-crate-1.1.8.3` for the same crate, so a crate that declares none is named here too. Silence in
+    // the metadata must not read as "no rules apply to reuse".
+    const withoutLicense = structuredClone(document) as { '@graph': { license?: unknown }[] }
+    delete withoutLicense['@graph'][0].license
+    await writeFile(
+      join(cratePath, RO_CRATE_METADATA_FILENAME),
+      `${JSON.stringify(withoutLicense, null, 2)}\n`,
+      'utf8'
+    )
+    const withoutLicenseResult = await inspectExternalRoCrate(cratePath)
+    expect(withoutLicenseResult.ok).toBe(true)
+    if (!withoutLicenseResult.ok) return
+    expect(failedRoCrateAssertions(withoutLicenseResult.report).map((a) => a.id)).toContain(
+      'root-license-declared'
+    )
   })
 
   it('still names a context that is not RO-Crate at all', async () => {

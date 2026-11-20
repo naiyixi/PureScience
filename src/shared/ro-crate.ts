@@ -491,17 +491,24 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
     '@id': sessionEntityIdFor(session.id)
   }))
 
+  const licenseUri = input.license !== undefined && hasUriScheme(input.license.id)
+  const licenseValue: string | { '@id': string } = input.license
+    ? licenseUri
+      ? { '@id': input.license.id }
+      : (input.license.name || input.license.id).trim() || RO_CRATE_NO_LICENSE_DECLARED
+    : RO_CRATE_NO_LICENSE_DECLARED
+
   const root: RoCrateJsonLdEntity = {
     '@id': RO_CRATE_ROOT_DATASET_ID,
     '@type': 'Dataset',
     name: input.name,
     description: input.description,
-    datePublished: input.datePublished,
+    datePublished: normalizeDatePublished(input.datePublished),
     conformsTo: { '@id': RO_CRATE_PROFILE_URL },
     identifier: input.projectId,
     hasPart,
     ...(mentions.length > 0 ? { mentions } : {}),
-    ...(input.license ? { license: { '@id': input.license.id } } : {}),
+    license: licenseValue,
     ...(input.publisher ? { publisher: { '@id': input.publisher.id } } : {}),
     ...(input.creators && input.creators.length > 0
       ? { author: input.creators.map((creator) => ({ '@id': creator.id })) }
@@ -530,15 +537,16 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
     )
   ]
 
-  const licenseEntity: RoCrateJsonLdEntity[] = input.license
-    ? [
-        {
-          '@id': input.license.id,
-          '@type': 'CreativeWork',
-          name: input.license.name
-        }
-      ]
-    : []
+  const licenseEntity: RoCrateJsonLdEntity[] =
+    input.license && licenseUri
+      ? [
+          {
+            '@id': input.license.id,
+            '@type': 'CreativeWork',
+            name: input.license.name
+          }
+        ]
+      : []
 
   const sessionEntity: RoCrateJsonLdEntity[] = sessionRecords.map((session) => ({
     '@id': sessionEntityIdFor(session.id),
@@ -637,8 +645,37 @@ const referencesOf = (value: unknown, out: string[] = []): string[] => {
 
 const hasUriScheme = (value: string): boolean => /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)
 
+// The reference RO-Crate validator pins `datePublished` with a SHACL pattern:
+//   ^(\d{4}-\d{2}-\d{2})(T\d{2}:\d{2}:\d{2}(\.\d{3})?[+-]\d{2}:\d{2})?$
+// `2026-11-19T00:00:00.000Z` is valid ISO 8601 but fails that pattern (a `Z` offset is not the `+HH:MM`
+// it asks for), and a crate that fails a REQUIRED shape is not usable as an RO-Crate however readable it
+// is. Measured, not assumed: the official validator reported `ro-crate-1.1.8.4` on all three export
+// configurations before this normalization existed (`docs/evidence/2026-11-19-official-validator.md`).
+// Validation is deliberately wider than the writer: the reference validator's pattern accepts `+HH:MM`
+// but not `Z` and not a negative offset, both of which are legal ISO 8601. A crate we did not write is
+// judged by the spec, not by that one shape; what we write is the stricter form so it passes as well.
 const ISO_8601_DATE =
   /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/
+
+const RO_CRATE_DATE_PUBLISHED =
+  /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?[+-]\d{2}:\d{2})?$/
+
+/** Writes a timestamp the profile accepts, without throwing away the instant when it can keep it. */
+export const normalizeDatePublished = (value: string): string => {
+  const trimmed = value.trim()
+  if (RO_CRATE_DATE_PUBLISHED.test(trimmed)) return trimmed
+  const withOffset = trimmed.replace(/Z$/, '+00:00')
+  if (RO_CRATE_DATE_PUBLISHED.test(withOffset)) return withOffset
+  // Day precision is the profile's stated minimum: an unplaceable value keeps its date part instead of
+  // shipping a timestamp the validator will reject.
+  return /^\d{4}-\d{2}-\d{2}/.exec(trimmed)?.[0] ?? trimmed
+}
+
+// A crate MUST carry a `license`; MAY carry a URI; MAY carry a textual description. It is not allowed to
+// carry nothing. When the exporter declared no licence, the field says exactly that — the shape asks for
+// a description of how the crate may be used, and "nobody said" is the honest description. This is not a
+// licence claim: no rights are asserted, and the wording names the exporter as the missing party.
+const RO_CRATE_NO_LICENSE_DECLARED = 'No licence declared by the exporter'
 
 const SHA256_HEX = /^[a-f0-9]{64}$/
 
@@ -783,12 +820,28 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
   )
 
   const licenseRefs = root ? referencesOf(root['license']) : []
+  const licenseLiteral = typeof root?.['license'] === 'string' ? root['license'].trim() : ''
   assert(
     'root-license-described',
     'spec-should',
     RO_CRATE_REQUIREMENTS.root,
     licenseRefs.length === 0 || licenseRefs.every((id) => byId.has(id)),
     licenseRefs.length > 0 ? `license: ${licenseRefs.join(', ')}` : 'no license declared'
+  )
+  // REQUIRED, and it used to be checked only as a SHOULD: the reference validator reports
+  // `ro-crate-1.1.8.3` for a crate whose Root Data Entity carries no licence at all. A licence is
+  // satisfied by a URI, by an entity reference that resolves, or by a textual description — not by
+  // silence, and not by an `@id` with a space in it (which is neither a URI nor a literal).
+  assert(
+    'root-license-declared',
+    'spec-must',
+    RO_CRATE_REQUIREMENTS.root,
+    licenseLiteral !== '' || (licenseRefs.length > 0 && licenseRefs.every((id) => byId.has(id))),
+    licenseLiteral !== ''
+      ? `license (textual): ${JSON.stringify(licenseLiteral)}`
+      : licenseRefs.length > 0
+        ? `license: ${licenseRefs.join(', ')}`
+        : 'no license property on the Root Data Entity'
   )
 
   // --- data entities -----------------------------------------------------------------------
