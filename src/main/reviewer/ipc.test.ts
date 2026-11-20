@@ -700,16 +700,25 @@ describe('reviewer IPC handlers', () => {
     })
 
     it('stays quiet when the load is fast', async () => {
-      getReviewsForSession.mockResolvedValue([{ id: 'review-1', turnMessageId: 'message-1' }])
-      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+      // Frozen Date, for the same reason the slow leg above fakes it: the claim is "under the threshold
+      // reports nothing", and reading that off the real clock turns it into a claim about this runner's
+      // load instead of about the predicate.
+      vi.useFakeTimers({ toFake: ['Date'] })
+      try {
+        vi.setSystemTime(new Date('2026-10-19T00:00:01.000Z'))
+        getReviewsForSession.mockResolvedValue([{ id: 'review-1', turnMessageId: 'message-1' }])
+        registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
 
-      loggerWarnings.length = 0
-      await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
-        {},
-        { projectId: 'project-1', appSessionId: 'session-1' }
-      )
+        loggerWarnings.length = 0
+        await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+          {},
+          { projectId: 'project-1', appSessionId: 'session-1' }
+        )
 
-      expect(loggerWarnings.filter((w) => w.message === 'review load segments')).toEqual([])
+        expect(loggerWarnings.filter((w) => w.message === 'review load segments')).toEqual([])
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('logs the segments (with sessionUnavailable) when the session cannot be read', async () => {
