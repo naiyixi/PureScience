@@ -95,11 +95,18 @@
   真内核用例都要从 `~/.purescience/runtime/packs` **种子**打包好的运行时，runner 上没有该目录 ⇒ 它们在那里
   `skip`，python 执行路径恰好在最该被验的地方没被验。新用例走**新装机器的路径**：不注册、不播种，让应用自己
   取运行时（实测该轮 `releases/download/runtime-v1/osx-arm64-python-3.12.tar.zst` 200，45.5s 通过）。
-- **待查（未定因，不记为产品缺陷）**：本机探针把 python 选成一枚 `--copies` 裸 venv 后再发 prompt，应用
-  起的是**真实 `/opt/homebrew/bin/opencode`** 而不是夹具的 shim，于是 `session/prompt` 以
-  `Cannot connect to API` 失败。两种解释未分：①启用运行时这一步让应用重启、夹具的 fake-agent PATH 丢失；
-  ②真实用户也会踩到。区分方法：在同一流程里读 `[acp] agent spawn` 的 `executablePath`（已证实是真实
-  opencode），以及检查启用运行时是否触发重启。**在分清之前不写进 CHANGELOG，也不修。**
+- **已定因（2026-11-20，`docs/evidence/2026-11-20-acp-probe-real-binary.md`）：两种解释都不成立**。
+  本机探针把 python 选成一枚 `--copies` 裸 venv 后再发 prompt，应用起的是**真实
+  `/opt/homebrew/bin/opencode`** 而不是夹具的 shim，于是 `session/prompt` 以 `Cannot connect to API` 失败。
+  判据不在 PATH 上，而在解析顺序：`settings.opencodePath` 一旦持久化且文件存在就**直接返回、完全不看 PATH**
+  （`src/main/settings/backend-resolver.ts:727` → `agent-runtime-manager.ts:921-930`）；PATH 探测只在没有
+  可用持久化值时参与（`opencode-detect.ts:59-71`，`pathDirs` 排最前）。同一根里先有一次不带夹具的启动，
+  真实路径就被写进设置，之后带夹具的启动再也赢不回来 —— **夹具场景的假阴性**。
+  解释①在代码上不成立（`app.relaunch()` 全仓只有数据根迁移那一处，`src/main/notebook/**` 无重启分支；
+  且重启会继承夹具注入的 PATH）；解释②不成立（真实用户的持久化值就是他自己的安装，正是应有的优先序）。
+  `Cannot connect to API` 是真实二进制去连 E2E 假端点 `http://127.0.0.1:9/v1` 的必然结果，不是第二个缺陷。
+  **仍未取证**：谁在那个隔离根写入了真实路径（根已清理）。下一轮读两个值即可结案：隔离根 `settings.json`
+  的 `opencodePath`、以及 `[acp] agent spawn` 的 `executablePath`。**不修产品代码，不写进 CHANGELOG。**
 
 ### v3.5 读数（2026-11-20，run `44730436800` @ `79ef6ee8`）
 
@@ -131,6 +138,20 @@
   修法是让这三份文件回到已提交版本、只重放我自己的改动，并把「断言尚未实现行为」的那条用例下线；
   `79ef6ee8` Verify 转绿。**教训：提交前对每个 `git add` 的文件先 `git diff` 看有没有夹带别人工作区的改动；
   提交后再把 WIP 还原回工作区时，下一次编辑必须从 `git show <sha>:<path>` 取版本，不能接着用工作区那份。**
+
+### 视觉红线：先排除「没配模型」，再按机器分基线（2026-11-20 用户提问触发）
+
+- 用户问「红的原因不然没配模型吗」。**不是**，实测：base 基线图与 runner 实际图在底部输入区里都写着
+  `No model available`（两侧同为「无 provider」态）；把本机新拍、老基线、runner 实际三张两两比，
+  差异分别是 **4309 / 7359 / 10639 px** —— 两台都在「无 provider」态时仍差 7359 px，
+  所以差异与模型是否配置无关，是同一状态下两台机器把同一段文字画得不同。
+- 附带查清一个真实的状态差异：`ComposerModelPicker` 在 0 个 provider 时渲染琥珀色告警按钮，1 个可用 provider
+  时**整块返回 null**，多个时才是下拉 ⇒ 这个槽位的宽度本来就随机器配置而变。它目前不是本次红线的原因
+  （两侧都是 0 provider），但它是视觉基线最容易再次漂移的地方，记在这里。
+- 处置按用户拍板走 **B：基线按机器分档**。`baselineProfile()` 用 `process.env.CI === 'true'` 区分
+  `ci` / `local`，文件名变成 `<name>-<profile>-darwin.png`；`ci` 档的 `workspace-empty` 直接用 runner
+  自己那次的真像素（产物里的 `workspace-empty-actual.png`），其余三张沿用已通过的那份。本机 `local` 档
+  重新拍摄后本机 **1 passed (9.1s)**；两档互不干扰，红线从此表示「这台机器上产品变了」。
 
 ## 排期纪律
 

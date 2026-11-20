@@ -1,4 +1,6 @@
 import { expect } from '@playwright/test'
+import type { TestInfo } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import type { Page } from 'playwright'
 import { test } from './fixtures/electron-app'
 
@@ -36,9 +38,22 @@ const waitForStableHeader = async (page: Page): Promise<void> => {
   }
 }
 
+// Baselines are per machine class, not per product version.
+//
+// The same commit rasterises text slightly differently on the CI runner and on a development machine: run
+// 44730436800 measured 2526 px (ratio 0.01) on `workspace-empty` against a baseline captured here, while the
+// same commit passed locally in 9.0 s. Playwright already separates baselines by OS and architecture; this
+// separates the two darwin-arm64 machines that actually run this spec, so a red means the product changed
+// rather than that the other machine drew the same glyphs differently. Both profiles are refreshed the same
+// way — run with `--update-snapshots` on the machine whose files you are updating.
+const baselineProfile = (): string => (process.env.CI === 'true' ? 'ci' : 'local')
+
+const baselineName = (name: string): string => name.replace(/\.png$/, `-${baselineProfile()}.png`)
+
 const expectStableScreenshot = async (
   page: Page,
   name: string,
+  testInfo: TestInfo,
   maxDiffPixelRatio = 0.002
 ): Promise<void> => {
   await page.locator('a[aria-label*="GitHub"]').evaluateAll((elements) => {
@@ -84,7 +99,7 @@ const expectStableScreenshot = async (
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   })
   try {
-    await expect(page).toHaveScreenshot(name, {
+    await expect(page).toHaveScreenshot(baselineName(name), {
       animations: 'disabled',
       caret: 'hide',
       maxDiffPixelRatio: process.platform === 'darwin' ? maxDiffPixelRatio : 0.035
@@ -97,7 +112,104 @@ const expectStableScreenshot = async (
     console.log(
       `[visual] ${name} differs; surface fingerprint ${JSON.stringify(await surfaceFingerprint(page))}`
     )
+    // …and say WHERE. The fingerprint above cannot separate "the copy changed" from "the same box moved",
+    // and a lane-only red (the runner renders a packaged app on another macOS build) leaves no diff image
+    // to look at. The two PNGs both exist on the runner — Playwright just wrote the actual beside the test
+    // output — so they are compared here and the differing box is named, with the elements inside it.
+    const region = await diffRegion(page, name, testInfo)
+    console.log(`[visual] ${name} differing region ${JSON.stringify(region)}`)
     throw error
+  }
+}
+
+// Reads the expected snapshot and the actual capture Playwright just wrote, compares them in the page
+// (an OffscreenCanvas needs no extra dependency), and reports the bounding box of the pixels that differ
+// together with the elements intersecting it. Instrumentation only: it never decides pass or fail.
+const diffRegion = async (
+  page: Page,
+  name: string,
+  testInfo: TestInfo
+): Promise<Record<string, unknown>> => {
+  try {
+    const expected = await readFile(testInfo.snapshotPath(name, { kind: 'snapshot' }))
+    // Playwright writes `<stem>-actual.png`: the extension is dropped, not doubled.
+    const actual = await readFile(testInfo.outputPath(`${name.replace(/\.png$/, '')}-actual.png`))
+    return await page.evaluate(
+      async (payload: { expected: string; actual: string }) => {
+        // No fetch here: the app page's CSP refuses data: URLs, and this only needs the bytes decoded.
+        const decode = async (base64: string): Promise<ImageBitmap> => {
+          const binary = atob(base64)
+          const bytes = new Uint8Array(binary.length)
+          for (let index = 0; index < binary.length; index += 1)
+            bytes[index] = binary.charCodeAt(index)
+          return createImageBitmap(new Blob([bytes], { type: 'image/png' }))
+        }
+        const [want, got] = await Promise.all([decode(payload.expected), decode(payload.actual)])
+        if (want.width !== got.width || want.height !== got.height) {
+          return {
+            geometry: `expected ${want.width}x${want.height}, actual ${got.width}x${got.height}`
+          }
+        }
+        const pixels = (bitmap: ImageBitmap): Uint8ClampedArray => {
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+          const context = canvas.getContext('2d')
+          if (!context) throw new Error('no 2d context')
+          context.drawImage(bitmap, 0, 0)
+          return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+        }
+        const left = pixels(want)
+        const right = pixels(got)
+        let minX = Number.POSITIVE_INFINITY
+        let minY = Number.POSITIVE_INFINITY
+        let maxX = -1
+        let maxY = -1
+        let changed = 0
+        for (let index = 0; index < left.length; index += 4) {
+          const delta =
+            Math.abs(left[index] - right[index]) +
+            Math.abs(left[index + 1] - right[index + 1]) +
+            Math.abs(left[index + 2] - right[index + 2])
+          if (delta <= 24) continue
+          changed += 1
+          const pixel = index / 4
+          const x = pixel % want.width
+          const y = (pixel - x) / want.width
+          if (x < minX) minX = x
+          if (y < minY) minY = y
+          if (x > maxX) maxX = x
+          if (y > maxY) maxY = y
+        }
+        if (changed === 0) return { changed: 0 }
+        const nameOf = (element: Element): string => {
+          const slot = element.getAttribute('data-slot')
+          const label = element.getAttribute('aria-label')
+          const id = element.getAttribute('data-testid')
+          const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 48)
+          return `${element.tagName}${slot ? ` slot=${slot}` : ''}${id ? ` testid=${id}` : ''}${label ? ` label=${label}` : ''}${text ? ` “${text}”` : ''}`
+        }
+        const seen = new Set<Element>()
+        const elements: string[] = []
+        for (let x = minX; x <= maxX; x += Math.max(8, Math.round((maxX - minX) / 8) || 8)) {
+          for (let y = minY; y <= maxY; y += Math.max(8, Math.round((maxY - minY) / 4) || 8)) {
+            const hit = document.elementFromPoint(x, y)
+            if (hit === null || seen.has(hit)) continue
+            seen.add(hit)
+            elements.push(`${nameOf(hit)} @${x},${y}`)
+          }
+        }
+        return {
+          changed,
+          box: { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+          elements: elements.slice(0, 12)
+        }
+      },
+      {
+        expected: expected.toString('base64'),
+        actual: actual.toString('base64')
+      }
+    )
+  } catch (cause) {
+    return { unavailable: cause instanceof Error ? cause.message : String(cause) }
   }
 }
 
@@ -128,21 +240,21 @@ const surfaceFingerprint = async (page: Page): Promise<Record<string, unknown>> 
     }
   })
 
-test('keeps core desktop surfaces visually stable', async ({ app }) => {
+test('keeps core desktop surfaces visually stable', async ({ app }, testInfo) => {
   const page = await app.completeOnboarding()
   await prepareVisualPage(page)
   await expect(page.getByRole('region', { name: 'Projects' })).toBeVisible()
-  await expectStableScreenshot(page, 'home-empty.png')
+  await expectStableScreenshot(page, 'home-empty.png', testInfo)
 
   await page.getByRole('button', { name: 'New project' }).click()
   const projectDialog = page.getByRole('dialog', { name: 'New project' })
   await expect(projectDialog).toBeVisible()
-  await expectStableScreenshot(page, 'project-create-dialog.png')
+  await expectStableScreenshot(page, 'project-create-dialog.png', testInfo)
 
   await projectDialog.getByLabel('Name').fill('Visual baseline project')
   await projectDialog.getByRole('button', { name: 'Create project' }).click()
   await expect(page.getByRole('heading', { name: 'New conversation' })).toBeVisible()
-  await expectStableScreenshot(page, 'workspace-empty.png')
+  await expectStableScreenshot(page, 'workspace-empty.png', testInfo)
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   const settings = page.getByRole('dialog', { name: 'Settings' })
@@ -167,5 +279,5 @@ test('keeps core desktop surfaces visually stable', async ({ app }) => {
     for (const element of elements) element.style.visibility = 'hidden'
   })
   // The text-dense settings surface has slightly different font antialiasing on macos-14 runners.
-  await expectStableScreenshot(page, 'settings-general.png', 0.004)
+  await expectStableScreenshot(page, 'settings-general.png', testInfo, 0.004)
 })
