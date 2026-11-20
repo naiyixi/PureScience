@@ -863,6 +863,15 @@ const runRealUpdateDrill = async (options) => {
     const appliedVia = await driveRestartToUpdate(application.page, closed)
     const quitObservedAt = Date.now()
     console.log(`[drill] restart-to-update driven via ${appliedVia}; the app quit`)
+    // The bytes the purge must remove are NOT the bytes the download staged: asking the app to apply
+    // writes the install-pending marker first (src/main/update/cache-maintenance.ts, markInstallPending),
+    // which lands after `cacheBefore` was taken. The last moment the drill can count what the purge has
+    // to deal with is here — the old app has quit, the new one has not launched, nothing else is writing.
+    const cacheAtQuit = await snapshotDirectory(cacheDir)
+    console.log(
+      `[drill] updater cache when the app quit: ${cacheAtQuit.files.length} files, ` +
+        `${cacheAtQuit.bytes} bytes (${cacheAtQuit.bytes - cacheBefore.bytes} more than the download)`
+    )
     evidence.scenarios.push({
       name: 'download-then-restart-to-update-quits-the-app',
       appliedVia,
@@ -930,7 +939,7 @@ const runRealUpdateDrill = async (options) => {
       record: selectPurgeRecord({ records: purgeRecords, cacheDir }),
       records: purgeRecords,
       cacheDir,
-      expectedBytes: cacheBefore.bytes,
+      expectedBytes: cacheAtQuit.bytes,
       expectedVersion: updateVersion
     })
     console.log(`[drill] app purge record: ${purgeVerdict.summary}`)
@@ -941,6 +950,8 @@ const runRealUpdateDrill = async (options) => {
       toVersion: updateVersion,
       cacheBytesBefore: cacheBefore.bytes,
       cacheFilesBefore: cacheBefore.files,
+      cacheBytesWhenTheAppQuit: cacheAtQuit.bytes,
+      cacheFilesWhenTheAppQuit: cacheAtQuit.files,
       cacheBytesAfter: cacheAfter.bytes,
       cacheFilesAfter: cacheAfter.files,
       appPurge: purgeVerdict.evidence,

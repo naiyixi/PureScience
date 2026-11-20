@@ -82,6 +82,11 @@ describe('macOS update drill workflow', () => {
     expect(script).toContain("step = 'cross-check-the-app-purge-record'")
     expect(script).toContain('readAppUpdateCacheRecords({ home })')
     expect(script).toContain('if (!purgeVerdict.ok) throw new Error(purgeVerdict.reason)')
+    // The byte the app must remove is the cache as it stands when the install actually starts — asking
+    // the app to apply writes the install-pending marker (+61 bytes) after the download snapshot, so
+    // comparing against the pre-apply count is off by exactly that marker.
+    expect(script).toContain('const cacheAtQuit = await snapshotDirectory(cacheDir)')
+    expect(script).toContain('expectedBytes: cacheAtQuit.bytes')
   })
 
   it('stays a bounded, on-demand gate', () => {

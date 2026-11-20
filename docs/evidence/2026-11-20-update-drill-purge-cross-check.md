@@ -49,11 +49,30 @@
 | `eslint --no-cache` 三文件 | 0 error / 0 warning |
 | `typecheck:node` / `typecheck:web` | 均 0 |
 
-## 五 边界（不许读成更强）
+## 五 第一次派发的读数：新断言当场把演练打红，红的是**参照点**（真发现）
 
-- 本轮**没有**跑真演练（本机内存闸：空闲页不足以起打包实例），所以「应用真的在 CI 上写出这条记录、
-  且字节数与演练一致」这一条还没有真机读数 —— 推送后按 `workflow_dispatch` 派发一次 `Update Drill (macOS)`
-  再回填。若那一次的字节数对不上，是**发现**（演练与产品对同一批字节的口径不一致），不是把断言放宽的理由。
+派发 `44653013476`（跑 `db82164f`）后，演练红在自己新加的那一步，逐字：
+
+```
+[drill] app purge record: byte count disagrees
+macos update drill: failed at cross-check-the-app-purge-record: the drill counted 590843729 bytes in
+/Users/runner/Library/Caches/purescience-updater before the install, while the app reports it removed
+590843790 — the purge the app performed is not the one this drill observed
+```
+
+差 **61 字节**。定因（不是猜测）：应用在**收到 apply 之后**才写 install-pending 标记
+（`src/main/update/cache-maintenance.ts` 的 `markInstallPending`），而演练的 `cacheBefore` 快照是在
+`download()` 返回后、`apply()` 之前取的 ⇒ 标记那 61 字节不在快照里，却在应用的 `removedBytes` 里。
+
+算术自证：`{"version":"2.31.0","recordedAt":"2026-11-20T01:24:33.123Z"}` + 换行 = **61 字节**（实算）。
+
+修法（收紧参照点，不放宽断言）：在**旧应用退出、新版本尚未启动**的那一刻再取一次快照 `cacheAtQuit`，
+`expectedBytes` 改用它的字节数，并把两个读数同时写进证据（`cacheBytesBefore` / `cacheBytesWhenTheAppQuit`）。
+
+## 六 边界（不许读成更强）
+
+- 本轮第一次派发（`44653013476`）**红了**，红在参照点（见 §五），已修并重新派发；第二次的读数回填在
+  §七。在那之前，「应用自报的字节数与演练一致」只到「口径已对齐、断言已生效」这一步。
 - 演练仍只覆盖 macOS arm64→arm64；Windows 走 `windows-upgrade-smoke`，Linux 无就地更新演练。
 - 这条交叉核对证明的是「应用清了它自己解析的那个缓存目录、清掉的字节数与演练观测一致」，
   **不证明**候选包内容正确（那是 feed 的 sha512 与签名两道门的事）。
