@@ -153,6 +153,19 @@
   自己那次的真像素（产物里的 `workspace-empty-actual.png`），其余三张沿用已通过的那份。本机 `local` 档
   重新拍摄后本机 **1 passed (9.1s)**；两档互不干扰，红线从此表示「这台机器上产品变了」。
 
+### 分档基线的回执（run `44757359740` @ `5e6d5402`）
+
+六作业全绿。macos-arm64 的四条读数：`Run P0 Electron certification` **success**、`Run desktop visual
+regression` **success**、`Upload visual regression failure` **skipped**（没触发 ⇒ 比较真的通过了，不是被弱化）、
+`RELEASE-CERTIFICATION.json` 里 `macos-arm64.visualRegression = **passed**`。
+
+这一条同时验了两件事：①分档基线成立 —— 同一提交、同一 runner，用 runner 自己的像素当基线就不再红；
+②上一笔的「记录不许说谎」在真实链路上生效 —— 上一轮同样的红被记成 `not-applicable`，这一轮真通过才记
+`passed`，两者不再混同。
+
+别忘了它的反面：`ci` 档的基线来自 runner 自己，所以**本机跑不出「CI 基线是否过期」的结论**；要判断产品视觉
+是否变了，得两边各自跑、各自看 —— 这是分档的代价，写在方案 B 的账上。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
