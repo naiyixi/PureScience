@@ -169,6 +169,13 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 ### v2.31.2 发版回执（run `44778050362` @ `7f1f93ad`）
 
 - 六作业 + `notarize-mac` + `windows-upgrade-smoke` 全 success；`publish` success，release `v2.31.2` 非草稿、17 个资产。
+  **但 `notarize-mac` 的 success 是「没做事」**：作业日志写着 `APPLE_API_KEY_P8_BASE64 is not set —
+notarization, stapling and the Gatekeeper smoke are SKIPPED … assets ship UNSIGNED (ad-hoc signature only)`。
+  与认证记录并不矛盾，但必须分开读：`macSignature: signed` 说的是 **Developer ID 签名**
+  （`TeamIdentifier=UGQZPJ74DF`，`readingSource=shipped-zip`，`credentialsPresent=true`），
+  而**公证/装订/Gatekeeper 冒烟这三件全被跳过**。⇒ 结论只能是「已签名、未公证」，
+  不能读成「公证成功」。这条与「视觉上传步骤 skipped 才是真通过」是同一类陷阱的两种方向：
+  **一个 success 的含义要读到它下面那行**。
 - `RELEASE-CERTIFICATION.json`：`macos-arm64` → `p0: passed`、`visual: passed`、`smoke: passed`；其余三平台 `smoke: passed`。
 - 视觉那一步本轮仍是 `success` 且 `Upload visual regression failure` **skipped** ⇒ 分档基线在第二个真实 runner 上没有失手。
 - 本机门禁（发版前）：`typecheck` 0 错、`test:gate` 0（226 s）、`lint` 0 error（100 条既有 warning）、`pre-push-checks` 0。
