@@ -1,5 +1,70 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十二、本轮追加（执行器，2026-11-21 06:0x–）—— Windows 车道的红是**断言拿机器速度当判据**：慢行家族最后两处没有确定性时钟的站点已收
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == eec53a99`（上一轮自己的 sweep 演练那笔）；工作树 18 个改动仍是会话在制
+  （`src/main/settings/**` 的 `authorKind` 那套、`src/main/ro-crate/ipc*`、`GeneralPanel.tsx`、`stores/settings-*`、
+  `src/shared/settings.ts`）⇒ **一个字节没碰**。本轮只碰 `src/main/notebook/`、`src/main/reviewer/` 的用例与一个接缝字段。
+- 进轮车道读数（完整 40 位 SHA，`gh api …?head_sha=`）：`eec53a99` → `Nightly` **success**、
+  `Windows Full Test` **failure**（run `44807866845`，红在分片 6/8 的作业 `136536485186`）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已无可取单元；4.x 机构接线要动 `src/main/ro-crate/ipc.ts` 与设置面 ——
+  正在会话手上 ⇒ 不认领。本轮先收主干红（红挡所有人）。
+
+### 一 定因：唯一的红是一条**用真实墙钟量真实冷读**的断言
+
+- 作业级日志现取：`1 failed | 164 passed | 9 skipped (174)`，唯一红是
+  `src/main/notebook/state-read-attribution.test.ts > reports a warm read as not cold and stays silent below the threshold`，
+  报 `expected "vi.fn()" to not be called at all, but actually been called 1 times` —— 即静默腿那句
+  `expect(warn).not.toHaveBeenCalled()`（文件 `138` 行）。
+- 读源：该腿用**默认 repository**（真实 `mkdir` / 写 `run.json` / 读）在**真实 `performance.now()`** 上跑，
+  阈值 `SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200`。Windows runner 上一次冷读就跨过 200 ms ⇒
+  这条断言测的是「这台机器有多快」，不是「阈值以下不说话」。**不是产品缺陷**：同一棵树在 Linux 的 `Nightly` 上绿，
+  同一提交本机 5 例全绿。
+
+### 二 交付（两笔）
+
+| 提交       | 内容                                                                                                                                                                                                                                     | 自证                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `964d73a2` | `NotebookRuntimeService` 加 `now?: () => number` 接缝（`state()` 三处单调读数都走它，生产缺省 `performance.now`，与 `src/main/**` 既有 `now` 惯例同形）；用例静默腿改步进时钟（5 ms/次），**新增一腿**证明接缝真被消费（便宜读 + 500 ms 步进 ⇒ 仍出慢读行、`totalMs ≥ 1000`） | 该文件 5 例；变异 ①（三处改回 `performance.now()`）⇒ 恰好新腿红；变异 ②（去掉阈值判断）⇒ 静默腿红 |
+| `22f72b18` | 同族审计找到的最后一处：`reviewer/ipc.test.ts` 的 `stays quiet when the load is fast` 用真实 `Date.now()`（阈值 250 ms），而慢的那半早已 `useFakeTimers({toFake:['Date']})` ⇒ 静默腿也冻结 `Date`（`totalMs = 0`）                     | 该文件 35 例；变异（阈值判断恒真）⇒ 恰好这一条红                                                        |
+
+### 三 同族审计（13 条慢行逐条看，结论可复查）
+
+做法：`grep -rn "SLOW_*_MS *=" src --include=*.ts | grep -v test` 取全部慢行阈值 → 每条的消息串在测试树里找断言 →
+看那条断言是否由注入时钟/冻结时间取数。**结论：静默腿依赖真实墙钟的只有本轮这两处，其余早已是确定性时钟**：
+
+| 慢行消息 | 用例文件 | 时钟 |
+| --- | --- | --- |
+| `preflight step slow` / `environment check step slow` | `settings/agent-runtime-manager.test.ts` | 注入 `preflightNow`（冻结/步进） |
+| `artifact version resolve was slow` | `artifacts/provenance-repository.test.ts` | 有 |
+| `project files read was slow` | `project-files/ipc.test.ts` | `vi.spyOn(Date,'now')` 逐段给值 |
+| `ipc handler was slow` | `diagnostics/ipc-rejection.test.ts` | 注入 `now` |
+| `storage info was slow` | `storage/ipc.test.ts` | 有 |
+| `managed preview acquire was slow` | `managed-preview-resources.test.ts` | 有 |
+| `session catalog read was slow` | `session-persistence/catalog-index.test.ts` | 只有慢腿（真实 300 ms 延迟），**没有静默腿** ⇒ 无该风险 |
+| `session runtime context read was slow` / `session save was slow` | `session-persistence/coordinator.test.ts` | `vi.spyOn(Date,'now')` |
+| `notebook state read was slow` | `notebook/state-read-attribution.test.ts` | **本轮修**（`now` 接缝 + 步进时钟） |
+| `review load segments` | `reviewer/ipc.test.ts` | 慢腿本就冻结 `Date`，**静默腿本轮修** |
+| `project file overviews read was slow` | 无用例断言该消息 | — |
+
+### 四 门禁与边界
+
+- 本机：`src/main/notebook` 全目录 **98 文件 / 1506 例通过（9 skipped）**；`reviewer/ipc.test.ts` **35 例**；
+  `eslint --no-cache` 三个文件 **0 problem**；`typecheck:node` / `typecheck:web` 均 **0**；`pre-push-checks.sh` EXIT=0。
+- facade 行数门（`≤ 1200`）仍绿：`runtime-service.ts` 现 **1200 行**（净增 1 行 = 接缝那一个字段；阈值的 6 行注释无损重排成 4 行换出空间）。
+- 边界：本机**复现不出**那条跨阈值冷读（它是 runner 侧的机器特性），所以本条修的是**断言的确定性**，
+  **不声称产品侧有任何缺陷或被修好**；两笔都只动用例（`964d73a2` 另加一个可选接缝字段，生产行为不变）。
+- 慢行家族**只审了「静默腿是否确定性」这一件事**，没有审「阈值取多少」「消息里字段够不够」——那是两件不同的事。
+
+### 五 下一轮第一步
+
+- ① 先 `git status --short` 现查：会话那 18 个在制若仍脏，继续只做 `scripts/**` / `docs/**` / 测试台。
+- ② 按完整 40 位 SHA 读 `964d73a2` / `22f72b18` 的 `Nightly` + `Windows Full Test` 终态（`cancelled` 不算绿）。
+- ③ 下一候选：`docs/evidence/2026-11-20-acp-probe-real-binary.md` 的最后一格（谁写入真实 `opencodePath`；
+  按源码把「写入方集合」列全即可结案，不必起实例）；再往后扫 v3.5 里不碰会话在制文件的项。
+
 ## 一百九十一、本轮追加（执行器，2026-11-21 03:4x–）—— 本地 sweep 演练从「目录空了」升级成「应用自报它清了哪个目录、多少字节」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
