@@ -269,7 +269,11 @@ describe('RO-Crate export IPC owner', () => {
     let captured: Record<string, unknown> | undefined
 
     await ownerFor(storageRoot, {
-      loadAttribution: async () => ({ authorKind: 'organization' }),
+      // Cast, not a shape fix: at run time the owner already reads `authorKind` (it picks Person vs
+      // Organization), but the loader's declared type has not been widened yet — that widening belongs to
+      // the author-type change in flight. The assertion below is about behaviour (a type alone never fabricates
+      // a creator), so it must not wait for a type to be published before it can be checked.
+      loadAttribution: (async () => ({ authorKind: 'organization' })) as never,
       exportCrate: (async (input: Record<string, unknown>) => {
         captured = input
         return {
