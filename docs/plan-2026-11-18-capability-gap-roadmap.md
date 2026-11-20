@@ -166,6 +166,14 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 别忘了它的反面：`ci` 档的基线来自 runner 自己，所以**本机跑不出「CI 基线是否过期」的结论**；要判断产品视觉
 是否变了，得两边各自跑、各自看 —— 这是分档的代价，写在方案 B 的账上。
 
+### v2.31.2 发版回执（run `44778050362` @ `7f1f93ad`）
+
+- 六作业 + `notarize-mac` + `windows-upgrade-smoke` 全 success；`publish` success，release `v2.31.2` 非草稿、17 个资产。
+- `RELEASE-CERTIFICATION.json`：`macos-arm64` → `p0: passed`、`visual: passed`、`smoke: passed`；其余三平台 `smoke: passed`。
+- 视觉那一步本轮仍是 `success` 且 `Upload visual regression failure` **skipped** ⇒ 分档基线在第二个真实 runner 上没有失手。
+- 本机门禁（发版前）：`typecheck` 0 错、`test:gate` 0（226 s）、`lint` 0 error（100 条既有 warning）、`pre-push-checks` 0。
+- 这一版没有新功能，CHANGELOG 与双语 README 横幅都按「三处读数分不出两种意思」如实写；**不写**任何未落地的能力。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
