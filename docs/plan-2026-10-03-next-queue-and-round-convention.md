@@ -20824,3 +20824,58 @@ AssertionError: expected 45410861056 to be 45410869248
 - ② 工作树若仍被会话占着，继续只做文档/取证或 CI 侧读数；`src/main/settings/**`、`ro-crate/ipc*`、i18n 仍不碰。
 - ③ 下一个候选：让演练把「应用自报清理目录」这条交叉核对补回来（要么走应用自己的 IPC，要么在主进程侧留一个
   读得出来的读数），使清缓存证据不再依赖包内配置推断。
+
+## 三百六十、本轮追加（执行器，2026-11-21 00:3x–01:0x）—— 那条交叉核对：探针在打包态永远答不出来，改成判应用自己的交接记录
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 2ba57ead`；工作树 17 个改动**全是会话在制**（`src/main/settings/**` 的传输校验与
+  偏好、`ro-crate/ipc*`、`stores/settings-*`、`GeneralPanel.tsx`、`shared/settings.ts`）⇒ 一个字节没碰；本轮只碰
+  `scripts/macos-update-cache-drill.mjs` 与它那两支 `scripts/**` 用例（与它不相交）。
+- 在飞车道：`2ba57ead` 的 Nightly `44772409549` 仍在跑（Verify 16:45:34Z success，四个打包作业在跑）、
+  Windows Full Test success；另有会话在发的 **v2.31.2 发布 run `44778050362`**（tag 已打、页未出）。
+  ⇒ **本轮不往 main 推**：代码推在探针分支 `probe/drill-cache-dir-cross-check`、演练也派发在该分支上，
+  等这些落定后再并入。`d60e0539` 的三条判决已现取：Update Drill success / Windows success / Nightly success（§五① 结案）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽；C 段外部阻塞 ⇒ 取上一节 §五③ 留下的候选单元。
+
+### 一 交付（`1efea1ae`）
+
+1. **缺口**：`readUpdaterCacheDirFromApp` 在打包产物里 `require('electron-updater')` 失败 ⇒ 真机恒返回
+   `unavailable: Cannot find module 'electron-updater'`，两处调用点只把它写进日志/evidence、**从不参与判决**；
+   注释写着「应用自己的解析才是权威」，判据里只有安装后的 purge 记录（只覆盖一半）。
+2. **修法**：判应用自己写的交接记录（`markInstallPending` 的 `update cache: recorded the pending install`，
+   info 级，带 `version` + `cacheDir`）—— 三态 matched / mismatch（点名两个目录）/ unavailable（目录只是从包内
+   配置推断，清空不能归给应用），后两态**具名失败**；删掉两处调用点与导出里的死探针。
+3. **守卫**：`scripts/ci/update-drill-workflow.test.ts` 新增一条源码级契约（新步骤名 + 失败行 + 不得再出现旧探针）。
+
+### 二 读数
+
+| 项 | 读数 |
+| --- | --- |
+| 本机单测 | `vitest run scripts/update-drill-purge-cross-check.test.ts scripts/ci/update-drill-workflow.test.ts` ⇒ 2 files / **19 passed**（新增 4 例判据 + 1 例契约） |
+| 变异（去版本过滤） | **1 failed**；恢复后 19 passed |
+| 变异（目录比较置恒假） | **1 failed**；恢复后 19 passed |
+| 真机派发 `44778180323`（提交 `1efea1ae`，2.31.0→2.31.1） | **success**；`[drill] app cache-dir resolution: the app resolved /Users/runner/Library/Caches/purescience-updater before installing 2.31.1`；`Squirrel.Mac replaced the bundle with 2.31.1 after 3738ms`；应用自报清除 590,922,884 字节（3 文件）后目录 0 文件 0 字节；`macos update drill: ok 2.31.0-2.31.1` |
+
+读数落档：`docs/evidence/2026-11-21-update-drill-cache-dir-cross-check.md`（含逐字日志与三态判据表）。
+
+### 三 门禁
+
+`vitest` 两文件 19 passed / `npx eslint --no-cache`（三个改动文件）0 problem / `npm run typecheck:node` 0 /
+`bash scripts/pre-push-checks.sh` EXIT=0（敏感词零命中、脚本入口可解析、新增文件 lint 0）。
+
+### 四 边界与具名未办
+
+1. **本地 sweep 诊断路径（`runSweepDrill`）的交叉核对仍是记录式**（读 purge 行、读不到不致命）：它不在 CI 里跑、
+   本机也没有已签名的包能驱动它，这一轮改它的判定语义就没有真机读数支撑 ⇒ 具名立案，下一轮先给这条路径造读数。
+2. 只覆盖 macOS arm64→arm64；Windows 有 `windows-upgrade-smoke`，Linux 无就地更新演练。
+3. **v2.31.2 未发版**：就绪件 `7f1f93ad` 已在 main、tag 已打、发布 run `44778050362` 在跑，页与资产尚未出现 ⇒
+   归发版窗口（会话在制），本轮不重复派发、不重打 tag。
+
+### 五 下一轮第一步
+
+- ① 等 `44778050362` 落定后按「发布核验」口径读页与资产（`gh release view v2.31.2 --json …`，`isLatest` 用
+  `gh release list` 判），页没出再按 §三百五十三 的回收流程处理。
+- ② 确认 Nightly `44772409549` 的判决，然后把 `probe/drill-cache-dir-cross-check` 并入 main（一次推送），
+  读 `1efea1ae` 并入后那笔的 Nightly + Windows 判决（完整 40 位 SHA）。
+- ③ 下一个候选：§四① 的 sweep 诊断路径交叉核对（需要先造一条可驱动的读数）。
