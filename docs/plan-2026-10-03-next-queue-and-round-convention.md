@@ -1,5 +1,57 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百八十七、本轮追加（执行器，2026-11-20 12:4x–）—— 门禁的 `repo-checks` 汇总行曾与它自己跑的脚本不符：按退出码判 + 三情形自证
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 7f20cd8e`（会话 11:10 推的「冒烟单请求预算 15s→60s、视觉基线补导出署名段」），
+  工作树 28 个改动 + 1 个未跟踪**仍是会话在制**（mtime 停在 11-19 22:17）⇒ 一个字节没碰，本轮不碰 `src/**`。
+- 进轮时 `Release` run `44665948101` 正 in_progress（会话把 tag `v2.31.0` 移到 `7f20cd8e` 重发）⇒
+  **不推送任何东西**，先等它落定并核页，再谈别的单元。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）与 v3.0–v3.4 排期已收口；1.4（`session_activity` / `list_schedules`）
+  与 4.3（ro-crate 作者/许可）的正主是桌面会话 ⇒ 不认领。
+- 故本轮取**技能自带门禁的仪器缺陷**（队列档与技能正文都写着「那一环的汇总行不可采信」）作为单元：它不进产品、
+  不碰共享树、且每一轮发版都在用。
+
+### 一 发版核验（会话发的版，我只取读数）
+
+| 项 | 读数 |
+| --- | --- |
+| 运行 | `44665948101`：四平台 build / 两个 notarize / `publish` 全 success，`windows-upgrade-smoke` 后续不阻塞；终态 success |
+| 页状态 | `isDraft=false` / `isPrerelease=false` / `gh release list` 判 **Latest**（进轮时它还是 `Draft`，publish 收尾才翻） |
+| 资产 | 17 个，含 `arm64-mac.yml` 与 `x64-mac.yml`（两架构 feed 都在）、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json` |
+| 页与提交绑定 | `RELEASE-CERTIFICATION.json` 的 `sourceSha = 7f20cd8e2eba576c784497ba02d63c798631c379`，与 `git rev-parse 'v2.31.0^{commit}'` 逐字符一致（该文件无 `version` 字段，不据此断言版本号） |
+| 正文 | 73,763 字符，首段即成熟度块 |
+| 三条主干车道 | `7f20cd8e`：Nightly success / Windows Full Test success / Release success（现取） |
+
+### 二 本单元：`repo-checks` 环改成按被封装命令的退出码判（技能 `scripts/release-gate.sh`）
+
+- **定因**：那一环的判据是 `grep -q '全部通过\|pre-push'`。`pre-push-checks.sh` 的每一行都带 `[pre-push]` 前缀 ⇒
+  成功与失败**同形**；脚本也可以先打成功行、再在收尾某一查上 `exit 1`。于是汇总打印 `repo-checks|OK`、门禁退出 0，
+  而真实拦截（品牌禁用词扫描那次）被读成通过。
+- **修法**：`[ $rc -eq 0 ]` **且**输出里真的有它自己那条 `全部通过`；两者缺一即 FAIL。顺带把「`rc=0` 却没有汇总行」
+  单独写成 `FAIL (rc=0 却没有该环的汇总行)` —— 否则 `FAIL (rc=0)` 读起来像门禁自己有毛病。
+- **自证（新增 `scripts/selftest-release-gate.sh`）**：三个一次性小仓库真跑这一环（各只有 `package.json` + 假
+  `pre-push-checks.sh`）① 成功行+`exit 0` ⇒ OK；② 成功行+`exit 1` ⇒ FAIL；③ 只打前缀行、`exit 0` ⇒ FAIL。
+  **改前 1 passed / 2 failed**（②③ 都判成 `repo-checks|OK`、门禁退出 0，盲区当场复现）；**改后 3 passed / 0 failed**。
+- **真仓回归**：`RELEASE_GATE_RINGS=repo-checks bash scripts/release-gate.sh 7f20cd8e` ⇒ `repo-checks|OK`，
+  被封装脚本尾行 `[pre-push] 全部通过。`，自证行 `cwd=/tmp/ps-release-gate version=2.31.0`，门禁 EXIT=0；工作树已自清。
+- 技能正文那句「汇总行不可采信」已同步改成「现按退出码判」，细节落 `references/release-gate-blind-spots.md` §4。
+
+### 三 边界
+
+1. 这一笔在**技能目录**里，不在本仓 ⇒ 无 CI、无产品行为改动；本仓本轮**零代码改动**。
+2. 它证明的是「汇总行回落到被封装命令的退出码」，**不证明** pre-push 那五查本身覆盖够（那是另一件事）。
+3. 发现一处预算风险：`SKILL.md` 现值 **99,950 字符**（上限 100,000）⇒ 下一轮若还要改正文，**必须先把某段抽到
+   `references/`** 换出空间，否则任何 patch 都会被原子回滚（本轮就撞了一次，靠把替换文本写短才落地）。
+
+### 四 下一轮第一步
+
+- ① 先 `git status --short` 现查：会话那 28 个路径若仍脏，只做 `scripts/**` / `docs/**` / 取证。
+- ② 若需改技能正文：先抽段（目标把 SKILL.md 压回 < 95,000）再改。
+- ③ `git worktree list` 现为 10 条、其中 4 条标 `prunable`（旧会话留下的元数据）⇒ 空闲时可 `git worktree prune`，
+  但要先确认没有别的执行体正在那些路径上跑。
+
 ## 一百八十六、本轮追加（执行器，2026-11-20 09:1x–）—— 演练的「清缓存」证据从「目录空了」升级成「应用自报清了哪个目录、多少字节」，第一次派发就被自己的新断言打红
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
