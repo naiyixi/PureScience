@@ -1,5 +1,39 @@
 # PureScience 更新日记
 
+## v2.31.2 — 2026-11-20
+
+### 这一版没有新功能：它让「我们说自己验过」这句话经得起查
+
+三件事都属于同一类问题 —— **读数分不出两种意思**。
+
+**一、认证记录不再把「比过但没通过」写成「根本没跑」。** 视觉回归那一步带 `continue-on-error`，
+步骤的 `outcome` 是 `failure`、`conclusion` 才是 `success`；认证步骤当时只在 `outcome == success` 时写
+`passed`，其余一律落成 `not-applicable`。于是「跑了、像素不一致」和「这一步没跑」在
+`RELEASE-CERTIFICATION.json` 里是同一个值。现在视觉步骤把自己的**退出码**写进文件，认证步骤读那个数：
+`0` → `passed`，非 0 → **`failed`**（新状态，只对 macos-arm64 放行，仍不阻塞发布，但不再混同），
+文件缺失或空 → `not-applicable`，内容不是数字则**失败关闭**。这个映射从三段 shell 搬进了
+`scripts/ci/visual-regression-status.mjs`，三态各有用例 —— shell 没法测，正是它错了两版没人发现的原因。
+
+**二、视觉基线按机器分档，红线从此表示「这台机器上产品变了」。** 同一提交、同一台 macos-arm64 runner，
+比较红过也绿过。把三张图两两比对：本机新拍 / 仓库基线 / runner 实际，差异 **4309 / 7359 / 10639 px** ——
+两台都在「无 provider」状态下仍差 7359 px，所以**不是**模型是否配置的问题（两侧界面底部都写着
+`No model available`）。为什么这台 runner 把同一段文字画得不同，至今**未定因**，因此不改阈值、不宣称
+「渲染一致」，而是让每台机器认自己的像素：`<name>-<ci|local>-darwin.png`。`ci` 档直接用 runner 那次
+的真像素。
+
+**三、notebook 的 python 单元在没有种子包的机器上真的跑起来了。** 新增一条 CI 用例，让应用自己去
+provision 运行时（新装机器的路径），断言由夹具侧保证「内核真起来、真打印」；runner 上 [58/137]，45 秒，
+与本机一致。
+
+### 读数
+
+- 分档后首轮：run `44757359740` @ `5e6d5402`，六作业全绿；macos-arm64 `P0 success`、
+  `Run desktop visual regression success`、`Upload visual regression failure skipped`（没触发 ⇒ 真通过）、
+  记录 `visualRegression: passed`。
+- 分档代价：`ci` 档基线来自 runner 自己，**本机无法判断 CI 基线是否过期**；要判产品视觉是否变了，
+  两边各跑各看。
+- 取证与未定因条目：`docs/plan-2026-11-18-capability-gap-roadmap.md`。
+
 ## v2.31.1 — 2026-11-20
 
 ### 我们的导出包，现在按社区验证器也是合规的
