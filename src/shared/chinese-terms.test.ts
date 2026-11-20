@@ -161,6 +161,32 @@ describe('the Chinese term table (read from source)', () => {
   })
 })
 
+describe('the institution the table points at', () => {
+  it('answers every spelling of the hospital with one English term of record', () => {
+    // 一机构一行、一行三种写法：官方全称、医院自用简称、口语说法，都落到同一个英文检索词。
+    for (const spelling of [
+      '浙江大学医学院附属第二医院',
+      '浙大二院',
+      '浙医二院',
+      '浙江大学第二附属医院'
+    ]) {
+      const result = normaliseTerm(spelling)
+      expect(result.ok, spelling).toBe(true)
+      if (!result.ok) continue
+      expect(result.english, spelling).toBe(
+        'Second Affiliated Hospital, Zhejiang University School of Medicine'
+      )
+      // 三种写法都必须落到同一个规范中文名上，否则「同一机构」只是英文那一侧看起来一致。
+      expect(result.canonical, spelling).toBe('浙江大学医学院附属第二医院')
+    }
+  })
+
+  it('does not answer a hospital this table never listed', () => {
+    // 表里没有的机构必须被点名拒绝，而不是悄悄放过中文——那会变成一次查不到任何东西的检索。
+    expect(normaliseTerm('某某市第三人民医院')).toMatchObject({ ok: false, reason: 'unknown-term' })
+  })
+})
+
 describe('normaliseTerm: one term in, one term out, with what changed', () => {
   it('reports "already canonical" as zero substitutions rather than as a hit', () => {
     const result = normaliseTerm('阿司匹林')

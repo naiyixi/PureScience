@@ -360,7 +360,13 @@ const INSTITUTIONS: readonly ChineseTermEntry[] = [
   entry('国家癌症中心', 'institution', 'National Cancer Center of China'),
   entry('北京协和医院', 'institution', 'Peking Union Medical College Hospital'),
   entry('四川大学华西医院', 'institution', 'West China Hospital, Sichuan University'),
-  entry('复旦大学附属中山医院', 'institution', 'Zhongshan Hospital, Fudan University'),
+  entry(
+    '浙江大学医学院附属第二医院',
+    'institution',
+    'Second Affiliated Hospital, Zhejiang University School of Medicine',
+    // 三种写法都要能命中：官方全称、医院自用简称、以及口语里常见的「浙江大学第二附属医院」。
+    ['浙大二院', '浙医二院', '浙江大学第二附属医院']
+  ),
   entry(
     '中国人民解放军总医院',
     'institution',
