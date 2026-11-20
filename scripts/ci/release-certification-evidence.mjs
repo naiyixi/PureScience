@@ -15,6 +15,12 @@ import {
 const PLATFORMS = ['linux-x64', 'macos-arm64', 'macos-x64', 'windows-x64']
 const DISTRIBUTABLE = /\.(?:AppImage|deb|dmg|exe|zip)$/
 const CHECK_STATES = ['passed', 'not-applicable']
+// Visual regression is the one check that can be honestly observed as failing without blocking a release:
+// it compares pixels against baselines captured on a different machine, and the workflow keeps its step
+// soft (`continue-on-error`) so a rendering-variance red does not sink an otherwise good build. 'failed'
+// exists so the record can say that instead of writing 'passed' for a comparison that did not pass — a
+// record that cannot distinguish the two is worth nothing.
+const VISUAL_STATES = ['passed', 'failed', 'not-applicable']
 
 const argumentValue = (argv, name) => {
   const index = argv.indexOf(name)
@@ -47,14 +53,14 @@ const writePlatformEvidence = async ({ argv, environment = process.env }) => {
     !artifactDirectoryArgument ||
     !outputArgument ||
     !CHECK_STATES.includes(electronP0) ||
-    !CHECK_STATES.includes(visualRegression) ||
+    !VISUAL_STATES.includes(visualRegression) ||
     !['passed', 'not-applicable'].includes(packageSmoke) ||
     !['passed', 'not-required', 'not-applicable'].includes(authenticode)
   ) {
     throw new Error(
       'Usage: --platform <platform> --artifact-dir <path> --output <path> ' +
         '--electron-p0 <passed|not-applicable> ' +
-        '--visual-regression <passed|not-applicable> ' +
+        '--visual-regression <passed|failed|not-applicable> ' +
         '--package-smoke <passed|not-applicable> ' +
         '--authenticode <passed|not-required|not-applicable> ' +
         '[--mac-signing-credentials <present|absent> --mac-signature-reading <path>] ' +
@@ -244,7 +250,7 @@ const aggregateEvidence = async ({ argv }) => {
     const record = byPlatform.get(platform)
     const expectedPortableCheck = platform === 'macos-arm64' ? 'passed' : 'not-applicable'
     const expectedVisualCheck =
-      platform === 'macos-arm64' ? ['passed', 'not-applicable'] : ['not-applicable']
+      platform === 'macos-arm64' ? ['passed', 'failed', 'not-applicable'] : ['not-applicable']
     if (
       record.schemaVersion !== 1 ||
       record.source?.sha !== expectedSha ||

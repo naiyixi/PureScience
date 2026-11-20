@@ -225,6 +225,59 @@ describe('release certification evidence', () => {
     })
   })
 
+  const writeReading = async (directory: string): Promise<string> => {
+    const reading = join(directory, 'mac-signature.json')
+    await writeFile(
+      reading,
+      JSON.stringify({ signed: false, teamIdentifier: null, note: 'unsigned local build' })
+    )
+    return reading
+  }
+
+  it('records a visual comparison that failed instead of calling it passed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'release-evidence-visual-failed-'))
+    const output = join(directory, 'certification.json')
+    await writeFile(join(directory, 'purescience-2.31.1-arm64.dmg'), 'artifact')
+    const environment = {
+      GITHUB_SHA: 'abc123',
+      GITHUB_RUN_ID: '42',
+      GITHUB_RUN_ATTEMPT: '1',
+      GITHUB_REPOSITORY: 'naiyixi/PureScience',
+      GITHUB_REF: 'refs/tags/v2.31.1'
+    }
+
+    await writePlatformEvidence({
+      argv: [
+        '--platform',
+        'macos-arm64',
+        '--artifact-dir',
+        directory,
+        '--output',
+        output,
+        '--electron-p0',
+        'passed',
+        // The step is `continue-on-error`, so its outcome is `success` even when the comparison failed.
+        // `failed` is the only state that says what happened.
+        '--visual-regression',
+        'failed',
+        '--package-smoke',
+        'passed',
+        '--authenticode',
+        'not-applicable',
+        '--mac-signing-credentials',
+        'absent',
+        '--mac-signature-reading',
+        await writeReading(directory)
+      ],
+      environment
+    })
+
+    const record = JSON.parse(await readFile(output, 'utf8'))
+    expect(record.checks.visualRegression).toBe('failed')
+    // The aggregate's accepted-state list now carries `failed` for exactly this platform, so a truthful
+    // record still aggregates; `passed` remains the only thing a reader can mistake for a green comparison.
+  })
+
   it('fails closed on missing platforms, mismatched SHA, or incomplete stable evidence', async () => {
     const root = await mkdtemp(join(tmpdir(), 'release-evidence-aggregate-'))
     const output = join(root, 'RELEASE-CERTIFICATION.json')

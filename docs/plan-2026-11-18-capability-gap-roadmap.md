@@ -114,7 +114,11 @@
   差异分布：529 个连通块，最大两处在 `x1109-1173 y723-754`（右下角一枚小 chip）与 `x321-1186 y669-763`
   （底部输入条一带），其余为零散字形边沿；放大对照看是抗锯齿级差别、没有内容增减。同一提交在本机
   `test:e2e:visual` 通过（9.0s）⇒ 判断为 runner 侧渲染差异，**但「为什么这台 runner 渲染不同」仍未定因**，
-  故只记读数，不改基线、不宣布视觉门禁恢复。
+  故只记读数、不宣布视觉门禁恢复。
+  **顺带修掉一个假绿**：认证步骤原来看 `steps.visual.outcome`，而该步 `continue-on-error: true` ⇒ 结论恒为
+  `success`，于是「比较没通过」也会被写成 `visualRegression: passed`。现在视觉步骤把自己的**退出码**写进
+  `$RUNNER_TEMP/visual-regression-exit-code`，认证步骤读那个数：`0` → `passed`，非 0 → **`failed`**（新状态，
+  只对 `macos-arm64` 放行，仍不阻塞发布，但记录不再说谎），文件缺失 → `not-applicable`。用例覆盖 `failed` 的写入。
 - 关掉的红链（我自己造成，共三笔）：`88d90c21` 改示例身份时把执行器工作区版本的整份测试文件一并提交，
   引用了只存在于他未提交代码里的 `readExportAuthorKind` / `ExportAuthorKind` / 加宽后的 `AttributionLoader`，
   于是 Verify 连红四笔（TS2305 / TS2322 / TS2551 + 一条断言产出 `Person` 而非 `Organization`）。
