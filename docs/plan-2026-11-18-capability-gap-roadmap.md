@@ -169,13 +169,15 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 ### v2.31.2 发版回执（run `44778050362` @ `7f1f93ad`）
 
 - 六作业 + `notarize-mac` + `windows-upgrade-smoke` 全 success；`publish` success，release `v2.31.2` 非草稿、17 个资产。
-  **但 `notarize-mac` 的 success 是「没做事」**：作业日志写着 `APPLE_API_KEY_P8_BASE64 is not set —
-notarization, stapling and the Gatekeeper smoke are SKIPPED … assets ship UNSIGNED (ad-hoc signature only)`。
-  与认证记录并不矛盾，但必须分开读：`macSignature: signed` 说的是 **Developer ID 签名**
-  （`TeamIdentifier=UGQZPJ74DF`，`readingSource=shipped-zip`，`credentialsPresent=true`），
-  而**公证/装订/Gatekeeper 冒烟这三件全被跳过**。⇒ 结论只能是「已签名、未公证」，
-  不能读成「公证成功」。这条与「视觉上传步骤 skipped 才是真通过」是同一类陷阱的两种方向：
-  **一个 success 的含义要读到它下面那行**。
+  `notarize-mac` 是**真做了事**：`submission id: 808aa009-2442-458d-aac2-d42fdfe8579b`，
+  dmg 与 zip 各一条 `The staple and validate action worked!` + `The validate action worked!`。
+  **我在这条上错了两次，记录经过**：第一次把作业 success 读成「公证成功」（没验证），第二次反过来读成
+  「没做事、资产仅 ad-hoc」，依据是日志里那行 `APPLE_API_KEY_P8_BASE64 is not set … SKIPPED` ——
+  可那行前面紧跟着 `##[group]Run if [ "$CREDENTIALS_ENABLED" = "true" ]; then`，**它是 GitHub 打出来的
+  「整个脚本体」，不是执行输出**（`${ARCH}` 都没展开）。门控那步在 `CREDENTIALS_ENABLED=true` 时就 `exit 0`
+  了，SKIPPED 分支从未执行。
+  ⇒ 判据：**日志里出现某段文字 ≠ 那个分支跑了**。要下结论必须找脚本体之外的**正值证据**（提交 id、
+  `stapled`/`worked` 的实际输出），或者看记录里的 `credentialsPresent` 与 `readingSource`。
 - `RELEASE-CERTIFICATION.json`：`macos-arm64` → `p0: passed`、`visual: passed`、`smoke: passed`；其余三平台 `smoke: passed`。
 - 视觉那一步本轮仍是 `success` 且 `Upload visual regression failure` **skipped** ⇒ 分档基线在第二个真实 runner 上没有失手。
 - 本机门禁（发版前）：`typecheck` 0 错、`test:gate` 0（226 s）、`lint` 0 error（100 条既有 warning）、`pre-push-checks` 0。
