@@ -72,6 +72,17 @@
 - 首次尝试（`a1c325d5`）红在 e2e 把校验条数写死成 30（校验器已 31 条），`15d8e80a` 改成与验证器清单自洽；
   同轮视觉门禁 2526/7289 px **未定因**，本版起失败即上传 diff 图（`468ce153`）。
 
+## v3.5 候选（官网验证器读数的后续）
+
+- **4.x 作者机构**：作者实体把机构塞在 `name` 里（`"Li Wei, Fudan University"`），社区验证器要求
+  `author → Person` + `affiliation → Organization` 独立实体（`ro-crate-1.1.27.2` / `27.3`）。
+  `RoCrateCreator` 目前只有 `type`/`id`/`name`，需与人「作者类型可选 Organization」一并改；改完复量
+  `22.1`/`27.2`/`27.3`。**未开工**（`ipc.ts` 在执行器手上）。
+- **验证器 profile 覆盖**：只跑了 base `ro-crate-1.1` 的 REQUIRED（已全绿）与一份 RECOMMENDED/OPTIONAL 建议清单
+  （`docs/evidence/2026-11-19-official-validator.md` 末节）；1.2 / 1.3 profile 与 Process Run Crate 等扩展未跑。
+- **`publisher` 按决定保留为空**：发布者是一项署名主张，不替用户声明；要支持时做成用户自填字段。
+- **notebook 整段会话在 CI 重跑**：未开工。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
