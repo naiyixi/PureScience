@@ -44,11 +44,26 @@ schema:CreativeWork` 与 `sh:qualifiedValueShape [ sh:pattern "^https://w3id.org
   且只有真要宣称本 profile 时才有意义。
 - 只量了 REQUIRED 与 RECOMMENDED；`may/` 级没逐条过，多文件多 Action 的包没复测。
 
-### 四 下一轮第一步
+### 四 顺手定因：main 上连红三笔是**同一件事**（测试被提交、实现还留在工作区）
+
+现取三条作业级读数（`Nightly` 的 `build / Verify`）：
+
+| 提交 | 红在 | 原文 |
+| --- | --- | --- |
+| `e2815cac` | 类型检查 | `src/main/ro-crate/ipc.test.ts(314,7): error TS2322: Type '() => Promise<{ authorKind: string; }>' is not assignable to type '() => Promise<{ author?: string; license?: string }>'` |
+| `f139d66c` | 类型检查 | `settings-preferences-slice.test.ts(7,3): error TS2305: Module '"../../../shared/settings"' has no exported member 'ExportAuthorKind'`（另两条 `exportAuthorKind` / `setExportAuthorKind` 不在 `SettingsSnapshot` 上） |
+| `be9d48dd` | 运行 | `src/main/ro-crate/ipc.test.ts:258` `expected [ { type: 'Person', …(2) } ] to deeply equal [ { type: 'Organization', …(2) } ]`（两车道同一条：Nightly `44724957700`、Windows `44724957264`） |
+
+三次都是同一个形状：**断言那一半进了提交，被它断言的那一半（`shared/settings` 的类型、`settings-*` slice、`ro-crate/ipc.ts` 的 `authorKind` 读取）还留在工作区**。
+工作区里那份实现是齐的（`git diff -- src/main/ro-crate/ipc.ts` 能看到 `authorKind === 'organization' ? 'Organization' : 'Person'`），
+所以修法只有一条：**把实现与测试放进同一笔提交**；不许改断言、也不许把类型放宽成可选来让红消失。
+
+### 五 下一轮第一步
 
 - ① 先 `git status --short` 现查；会话那批仍脏就继续只做 `docs/**` / `scripts/**`。
-- ② 本轮那笔 docs 提交**尚未推送**（进轮时两条车道在飞）⇒ 下一轮先看 `gh run list` 有无在飞，落定后一并推。
-- ③ `git worktree prune` 可做（7 条 prunable 的目录现查全已不在盘上）。
+- ② 本轮三笔 docs 提交已推（进轮时两条车道都已落定，纯 docs 不新建 run）。main 仍红在 `be9d48dd` 上，
+  **归属是会话的 `authorKind` 批次**（见 §四），要等它把实现同笔推上来才转绿 —— 不替它提交在制品。
+- ③ `git worktree prune` 已做（7 条 prunable，目录都不在盘上），现余 4 条。
 
 
 ## 一百八十八、本轮追加（执行器，2026-11-20 15:0x–17:1x）—— v2.31.1 无页的真因是**一条写死的检查条数**：`Report platform certification` 只是下游后果
