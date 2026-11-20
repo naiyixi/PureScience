@@ -74,7 +74,34 @@
 本机探针是「同一个存储根里既有带夹具的启动、也有不带夹具的启动」，于是真实路径先被写进去，
 后面夹具那一次就再也赢不回来 —— 这是**夹具场景的假阴性**，不是产品缺陷。
 
-## 五 仍未取证的一格（下一轮只需读两个值）
+## 五 「谁写的」已按源码结案（2026-11-21 补），两条实机读数仍未取
+
+**写入方集合只有一处实现、四个调用点，全部由检测驱动；没有任何夹具/探针脚本写过这个字段**
+（`git grep -n opencodePath scripts e2e` 零命中）：
+
+| 位置 | 谁调它 |
+| --- | --- |
+| `src/main/settings/repository.ts:1494` `setOpencodeInfo` | **唯一的写入实现**（`mutate` 里写 `opencodePath` + `opencodeVersion`） |
+| `agent-runtime-manager.ts:548` | 预检里 `detectOpencode` 有结果 ⇒ 落盘 |
+| `agent-runtime-manager.ts:651` | 修复/重装流程的 `outcome.resolvedPath` ⇒ 落盘 |
+| `agent-runtime-manager.ts:1054` | 刷新版本号时沿用**已存在的** `cachedPath`（只改版本，不改路径） |
+| `agent-runtime-manager.ts:1062` | 未命中缓存时再检测一次 ⇒ 落盘 |
+
+⇒ 那条 `/opt/homebrew/bin/opencode` **只可能来自一次检测**：某个启动时刻 PATH 里没有夹具目录
+（或夹具目录排在真实安装之后），检测命中真实二进制并落盘；之后同根的每一次启动都直接读持久化值
+（`backend-resolver.ts:727`），夹具再也赢不回来。**这与 §四 的解释一致，且不再依赖那次探针的隔离根**
+（根已清理这件事从此不影响结论）。
+
+**仍然缺的两条实机读数**（本节原先列的取法，本轮没取）：
+
+1. 夹具启动后 `<隔离根>/storage/settings.json` 的 `opencodePath` 是夹具路径还是真实路径；
+2. 同一份应用日志里 `[acp] agent spawn` 的 `executablePath` 与 `pathEntryCount`。
+
+**没取的原因**（具名，不是「忽略」）：取它们要起一个 Electron 实例，而本轮现取空闲物理页
+**4,353（≈68 MB）**、swap 可用 **547 MB** ⇒ 按本仓的内存纪律不起实例。等下一次空白窗口再取；
+在取到之前，上面第 1 项落在哪一侧仍属未取证。
+
+## 五·旧 原计划的两个读数
 
 **谁**在那个存储根里写入了 `/opt/homebrew/bin/opencode`，没有取到证：那次探针的隔离根
 （`purescience-electron-e2e-*`）已被清理，`settings.json` 不在盘上。这一格不影响上面的判据
