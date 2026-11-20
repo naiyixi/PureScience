@@ -176,7 +176,12 @@ describe('post-merge Windows validation', () => {
     expect(p0.if).toContain("matrix.name == 'macos-arm64'")
     expect(visual.if).toContain("matrix.name == 'macos-arm64'")
     expect(p0.run).toBe('npm run test:e2e:p0')
-    expect(visual.run).toBe('npm run test:e2e:visual')
+    // The visual step is `continue-on-error`, so its own outcome cannot say whether the comparison
+    // passed. It writes the exit code down for the certification step, and that capture is part of the
+    // contract this test pins — not an implementation detail.
+    expect(visual.run).toContain('npm run test:e2e:visual')
+    expect(visual.run).toContain('$RUNNER_TEMP/visual-regression-exit-code')
+    expect(visual.run).toContain('exit "$rc"')
     expect(macos.if).toBe("${{ matrix.platform == 'mac' && !inputs.skip_verify }}")
     expect(macos.run).toBe(
       'node scripts/macos-package-smoke.mjs --artifact-dir dist ' +
