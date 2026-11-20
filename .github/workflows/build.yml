@@ -599,15 +599,11 @@ jobs:
             # runner images); baselines are refreshed locally. Informational, not a release gate — but
             # the record must still be true, and `steps.visual.outcome` cannot tell the difference
             # because the step is `continue-on-error`. The exit code the step wrote is the reading.
-            visual_exit_code_file="$RUNNER_TEMP/visual-regression-exit-code"
-            if [ ! -f "$visual_exit_code_file" ]; then
-              # The step did not run at all (no packaged app, dirty tree): that is "not applicable".
-              visual_regression=not-applicable
-            elif [ "$(cat "$visual_exit_code_file")" = "0" ]; then
-              visual_regression=passed
-            else
-              visual_regression=failed
-            fi
+            # The mapping lives in a module with tests (scripts/ci/visual-regression-status.mjs) rather than
+            # in three shell branches: `not-applicable` (never ran) and `failed` (ran, disagreed) must not be
+            # confusable, and shell cannot be tested here.
+            visual_regression="$(node scripts/ci/visual-regression-status.mjs "$RUNNER_TEMP/visual-regression-exit-code")"
+            echo "visual regression reading: $visual_regression"
           fi
           package_smoke=passed
           authenticode=not-applicable

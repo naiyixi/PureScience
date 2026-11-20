@@ -182,6 +182,10 @@ describe('post-merge Windows validation', () => {
     expect(visual.run).toContain('npm run test:e2e:visual')
     expect(visual.run).toContain('$RUNNER_TEMP/visual-regression-exit-code')
     expect(visual.run).toContain('exit "$rc"')
+    // The certification step must read that exit code through the tested mapping, not by re-deriving a
+    // status from `steps.visual.outcome` — under `continue-on-error` that outcome cannot tell a disagreement
+    // from a pass.
+    expect(evidence.run).toContain('scripts/ci/visual-regression-status.mjs')
     expect(macos.if).toBe("${{ matrix.platform == 'mac' && !inputs.skip_verify }}")
     expect(macos.run).toBe(
       'node scripts/macos-package-smoke.mjs --artifact-dir dist ' +
