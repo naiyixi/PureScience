@@ -118,6 +118,23 @@ export type RoCrateCreator = {
   id: string
   name: string
   url?: string
+  /**
+   * Where the author works, kept as its own Organization entity rather than folded into `name`.
+   * The profile asks for exactly this split (`ro-crate-1.1.27.2`/`27.3`): a `Person` with an
+   * `affiliation` that resolves to an `Organization`. `"Li Wei, Fudan University"` in `name` is one
+   * string that answers two questions and lets neither be checked.
+   */
+  affiliation?: { id: string; name: string; url?: string }
+}
+
+/** Keeps the first entity per `@id`, in input order — two authors at one lab are one institution. */
+const dedupeById = <T extends { id: string }>(items: readonly T[]): T[] => {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false
+    seen.add(item.id)
+    return true
+  })
 }
 
 export type RoCrateBuildInput = {
@@ -532,7 +549,25 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
           '@id': creator.id,
           '@type': creator.type,
           name: creator.name,
-          ...(creator.url ? { url: creator.url } : {})
+          ...(creator.url ? { url: creator.url } : {}),
+          ...(creator.affiliation ? { affiliation: { '@id': creator.affiliation.id } } : {})
+        }) satisfies RoCrateJsonLdEntity
+    ),
+    // One Organization entity per distinct affiliation, however many authors share it: two people at
+    // the same lab are the same institution, and writing it twice makes a reader think they differ.
+    ...dedupeById(
+      (input.creators ?? [])
+        .map((creator) => creator.affiliation)
+        .filter((affiliation): affiliation is NonNullable<RoCrateCreator['affiliation']> =>
+          Boolean(affiliation)
+        )
+    ).map(
+      (affiliation) =>
+        ({
+          '@id': affiliation.id,
+          '@type': 'Organization',
+          name: affiliation.name,
+          ...(affiliation.url ? { url: affiliation.url } : {})
         }) satisfies RoCrateJsonLdEntity
     )
   ]
@@ -616,6 +651,8 @@ const RO_CRATE_REQUIREMENTS = {
     'RO-Crate 1.1 §Data Entities: File entities MUST have "File" as a @type value and MUST be linked from the Root Data Entity through hasPart; Data Entities MUST be payload files inside the crate root or web-based, and contentSize/encodingFormat SHOULD describe the encoding.',
   contextual:
     'RO-Crate 1.1 §Contextual Entities: the @graph MUST NOT list two entities with the same @id, and a referenced entity SHOULD be described in the same metadata file and linked from at least one other entity.',
+  author:
+    'RO-Crate 1.1 §Author: an author SHOULD be a Person or Organization described as a Contextual Entity, and a Person SHOULD name where they work through an `affiliation` that resolves to an Organization entity rather than by folding the institution into their name.',
   provenance:
     'RO-Crate 1.1 §Provenance of entities: software used to create a file SHOULD be a SoftwareApplication with a version, associated with the file through a CreateAction instrument/result, and an Action SHOULD have a name and an endTime.',
   exportContract:
@@ -832,6 +869,28 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
   // `ro-crate-1.1.8.3` for a crate whose Root Data Entity carries no licence at all. A licence is
   // satisfied by a URI, by an entity reference that resolves, or by a textual description — not by
   // silence, and not by an `@id` with a space in it (which is neither a URI nor a literal).
+  // The profile asks for the split, so the split has to hold: an `affiliation` that points at nothing is
+  // worse than none at all — a reader follows it and lands on air, and nothing in the file says so.
+  const affiliationProblems: string[] = []
+  for (const entity of document['@graph']) {
+    for (const affiliationId of referencesOf(entity['affiliation'])) {
+      const target = byId.get(affiliationId)
+      if (!target) {
+        affiliationProblems.push(`${entity['@id']} → ${affiliationId} (no such entity)`)
+      } else if (target['@type'] !== 'Organization') {
+        affiliationProblems.push(
+          `${entity['@id']} → ${affiliationId} (typed ${String(target['@type'])})`
+        )
+      }
+    }
+  }
+  assert(
+    'author-affiliation-resolves',
+    'spec-should',
+    RO_CRATE_REQUIREMENTS.author,
+    affiliationProblems.length === 0,
+    affiliationProblems.length > 0 ? affiliationProblems.join('; ') : 'every affiliation resolves'
+  )
   assert(
     'root-license-declared',
     'spec-must',

@@ -521,6 +521,91 @@ describe('validateRoCrate', () => {
     expect(validateRoCrate({ document: undeclared }).ok).toBe(true)
   })
 
+  it('keeps an author’s name and their institution as two entities, not one string', () => {
+    const content = [contentFor(evidenceFor({ filename: 'assay.csv', body: 'a,b\n1,2\n' }))]
+    const document = buildRoCrateMetadata({
+      projectId: 'project-1',
+      name: 'Project One',
+      description: 'Files produced for project one.',
+      datePublished: '2026-09-30T00:00:00.000Z',
+      app: { name: 'PureScience', version: '2.31.1', url: 'https://www.zerolink.com/purescience' },
+      creators: [
+        {
+          type: 'Person',
+          id: '#author',
+          name: 'Abel Wang',
+          affiliation: { id: '#author-affiliation', name: 'zerolink Bio' }
+        }
+      ],
+      entities: content
+    })
+
+    // The person carries the name; the institution is its own Organization entity, reached by an id.
+    expect(entityById(document, '#author')).toMatchObject({
+      '@type': 'Person',
+      name: 'Abel Wang',
+      affiliation: { '@id': '#author-affiliation' }
+    })
+    expect(entityById(document, '#author-affiliation')).toMatchObject({
+      '@type': 'Organization',
+      name: 'zerolink Bio'
+    })
+    // The name is the person's alone: an institution folded into it is what the profile asks us to stop
+    // doing (`ro-crate-1.1.27.2`/`27.3`).
+    expect(String(entityById(document, '#author')?.['name'])).not.toContain('zerolink')
+    expect(validateRoCrate({ document }).ok).toBe(true)
+
+    // Two authors at one institution produce ONE Organization entity — writing it twice would suggest
+    // two different institutions that happen to share a name.
+    const shared = buildRoCrateMetadata({
+      projectId: 'project-1',
+      name: 'Project One',
+      description: 'Files produced for project one.',
+      datePublished: '2026-09-30T00:00:00.000Z',
+      app: { name: 'PureScience', version: '2.31.1', url: 'https://www.zerolink.com/purescience' },
+      creators: [
+        {
+          type: 'Person',
+          id: '#author',
+          name: 'Abel Wang',
+          affiliation: { id: '#author-affiliation', name: 'zerolink Bio' }
+        },
+        {
+          type: 'Person',
+          id: '#author-2',
+          name: 'Second Author',
+          affiliation: { id: '#author-affiliation', name: 'zerolink Bio' }
+        }
+      ],
+      entities: content
+    })
+    expect(
+      shared['@graph'].filter((entity) => entity['@id'] === '#author-affiliation')
+    ).toHaveLength(1)
+  })
+
+  it('names an affiliation that resolves to nothing, instead of writing a dangling link', () => {
+    const content = [contentFor(evidenceFor({ filename: 'assay.csv', body: 'a,b\n1,2\n' }))]
+    const document = buildRoCrateMetadata({
+      projectId: 'project-1',
+      name: 'Project One',
+      description: 'Files produced for project one.',
+      datePublished: '2026-09-30T00:00:00.000Z',
+      app: { name: 'PureScience', version: '2.31.1', url: 'https://www.zerolink.com/purescience' },
+      creators: [{ type: 'Person', id: '#author', name: 'Abel Wang' }],
+      entities: content
+    })
+    // Break it the way a hand-edited or older crate breaks: point at an id nobody describes.
+    const author = entityById(document, '#author') as Record<string, unknown>
+    author['affiliation'] = { '@id': '#missing-institution' }
+
+    const failed = failedRoCrateAssertions(validateRoCrate({ document }))
+    expect(failed.map((assertion) => assertion.id)).toContain('author-affiliation-resolves')
+    expect(failed.find((a) => a.id === 'author-affiliation-resolves')?.detail).toContain(
+      '#missing-institution'
+    )
+  })
+
   it('fails when datePublished is not an ISO 8601 string', () => {
     const broken: RoCrateMetadataDocument = {
       ...document,

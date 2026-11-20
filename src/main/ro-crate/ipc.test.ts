@@ -67,7 +67,11 @@ describe('RO-Crate export IPC owner', () => {
     expect(result.metadataPath).toBe(join(outputDir, 'ro-crate-metadata.json'))
     expect(result.fileCount).toBe(1)
     expect(result.totalBytes).toBe('a,b\n1,2\n'.length)
-    expect(result.validation).toEqual({ passed: 31, failed: 0 })
+    // The payload carries counts, not the assertion list, so this number cannot be derived here. It moved
+    // from 30 → 31 (root-license-declared) → 32 (author-affiliation-resolves); each move is a rule added by
+    // the validator, and the shared suite pins what each rule means. Kept as a literal on purpose: a wrong
+    // count here means a rule silently stopped running.
+    expect(result.validation).toEqual({ passed: 32, failed: 0 })
     expect(result.refusedCount).toBe(0)
     // The crate is really on disk, and the payload is the stored bytes rather than a re-encoding.
     expect(await readFile(join(outputDir, 'files/assay.csv'), 'utf8')).toBe('a,b\n1,2\n')
@@ -251,6 +255,79 @@ describe('RO-Crate export IPC owner', () => {
       { type: 'Person', id: '#author', name: 'Li Wei, Fudan University' }
     ])
     expect(captured?.license).toEqual({ id: 'CC BY 4.0', name: 'CC BY 4.0' })
+  })
+
+  it('writes an institution as an Organization, and keeps a person as a Person', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    await ownerFor(storageRoot, {
+      loadAttribution: async () => ({
+        author: 'Fudan University',
+        authorKind: 'organization',
+        license: 'CC-BY-4.0'
+      }),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    // Only `@type` changes: the text the user typed is passed through byte for byte.
+    expect(captured?.creators).toEqual([
+      { type: 'Organization', id: '#author', name: 'Fudan University' }
+    ])
+  })
+
+  it('never writes a creator from an author type alone', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    await ownerFor(storageRoot, {
+      loadAttribution: async () => ({ authorKind: 'organization' }),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    expect(captured?.creators).toBeUndefined()
   })
 
   it('omits author and license entirely when the user never filled them in', async () => {

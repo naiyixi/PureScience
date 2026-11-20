@@ -149,3 +149,30 @@ none => RO-Crate is a valid ro-crate-1.1
 
 - 三配置的包是临时 harness 写的，**harness 没传 `publisher`**——`22.3` 在它那里必然失败。真实导出同样没有
   `publisher`，但原因不同（应用不替用户声明发布者），两件事在档里分开写了，不混成一条。
+
+## 作者与机构分成两个实体之后（2026-11-20）
+
+规范要的是 `author → Person` + `affiliation → Organization`；这一步把它做出来了，并量了前后。
+
+| 配置                                                                | REQUIRED | RECOMMENDED 里与作者/机构有关的                      |
+| ------------------------------------------------------------------- | -------- | ---------------------------------------------------- |
+| 作者机构塞在名字里（`"Li Wei, Fudan University"`）                  | 全过     | `27.2`、`27.3` 两条报「应有机构 / 机构应是独立实体」 |
+| 拆成 `Person "Abel Wang"` + `Organization "zerolink Bio"`（无 URL） | 全过     | `27.2`、`27.3` 消失；剩 `28.2`「机构 SHOULD 有 URL」 |
+| 同上 + 机构 URL `https://www.zerolink.com`                          | 全过     | `28.2` 也消失                                        |
+
+剩余三条 RECOMMENDED 都是**有意接受**的：`22.1`×2（文本许可，不是实体）与 `22.3`（不替用户声明发布者），
+理由见上一节。
+
+### 代码
+
+- `RoCrateCreator` 增加可选 `affiliation: { id, name, url? }`；构建时写成独立 `Organization` 实体，作者实体上只留
+  `affiliation: {"@id": …}`。同机构多人**只写一个实体**（重复写会让读者以为是两家同名机构）。
+- 校验侧新增 `author-affiliation-resolves`（spec-should）：`affiliation` 指向不存在的实体、或指向的不是
+  `Organization`，都会被点名并写出是哪个作者指到哪个 id——悬空链接比没有链接更糟，读者会顺着它落到空气上。
+- 用例：`src/shared/ro-crate.test.ts` 两例（拆分成立 + 悬空被点名），全库 `ro-crate` 64 passed | 1 skipped。
+
+### 还没接上的一截（照实说）
+
+`ipc.ts` 目前只把设置里的「作者」与「作者类型」传给 crate，**没有机构字段**，所以真实导出现在还不会写 `affiliation`。
+要接上需要：设置页加一栏机构（+ 可选 URL）→ `loadAttribution` 带出来 → `ipc.ts` 映射到 `affiliation`。
+`ipc.ts` 正在执行器手上（作者类型那条线），这次没有同批改，避免互踩。
