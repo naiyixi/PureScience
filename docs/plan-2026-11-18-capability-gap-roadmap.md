@@ -306,14 +306,14 @@ windows-x64 允许 `passed | failed | not-applicable` —— 拒绝的是「没�
 111 passed，58.7 分钟**。也就是说：车道一通就照出 12 个 Windows 上此前一律被写成
 `not-applicable` 的失败。
 
-| 失败用例 | 初判 |
-| --- | --- |
-| `env-provision-cancel` | 环境托管包请求 500（`notebook-env:provision`），另一类问题 |
-| `notebook-declined-copy` | 引擎报错改述 |
-| `pdf-annotation-narrow-pane` ×2、`pdf-annotation-overlay-pane` ×2、`pdf-annotation-silent-paths` | 注释面板在窄栏下的可达性 |
-| `runtime-selection`、`settings-download-detail` | 面板/设置卡片 |
-| `storage-migration`、`storage-migration-unfinished` | 数据迁移 |
-| `support-bundle-kernel-cpu` | 支持包采集 |
+| 失败用例                                                                                         | 初判                                                       |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `env-provision-cancel`                                                                           | 环境托管包请求 500（`notebook-env:provision`），另一类问题 |
+| `notebook-declined-copy`                                                                         | 引擎报错改述                                               |
+| `pdf-annotation-narrow-pane` ×2、`pdf-annotation-overlay-pane` ×2、`pdf-annotation-silent-paths` | 注释面板在窄栏下的可达性                                   |
+| `runtime-selection`、`settings-download-detail`                                                  | 面板/设置卡片                                              |
+| `storage-migration`、`storage-migration-unfinished`                                              | 数据迁移                                                   |
+| `support-bundle-kernel-cpu`                                                                      | 支持包采集                                                 |
 
 **同时被这趟抓出来的两个真东西**（都已修）：
 
@@ -323,11 +323,23 @@ windows-x64 允许 `passed | failed | not-applicable` —— 拒绝的是「没�
    自己拼 URL），并补了两条测试：盘符归一、真调用必须打印。
 2. 缺 tesseract 时那句提示在**九种语言里都写死 `brew install tesseract`** —— Windows 上等于让
    用户去装一个不存在的东西。现在按 `window.api.platform` 给出 `winget install
-   UB-Mannheim.TesseractOCR` / `brew install tesseract` / `sudo apt install tesseract-ocr`，
+UB-Mannheim.TesseractOCR` / `brew install tesseract` / `sudo apt install tesseract-ocr`，
    未知平台只说程序名（编一条可能不存在的包管理器命令比不说更糟）。
 
 **不是产品问题的**：`cupsfilter ENOENT` 只出现在测试夹具里（`file-ocr.spec.ts` 用它把文字印成
 PDF），那条用例本身按「tool-missing」分支正常通过。
+
+**12 个失败的根因（逐条从 job 日志读出来的，不是猜的）**
+
+| 类别       | 用例                                                                         | 日志里的实情                                                                                                                                  | 性质                                             |
+| ---------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 硬编码几何 | `pdf-annotation-{narrow-pane,overlay-pane,silent-paths}` 共 5 个             | `Expected: 1100 / Received: 1084` —— 断言 `window.innerWidth === 1100`，而 Windows 给窗口画 16px 边框，外层 1100 对应视口 1084                | **测试脆**                                       |
+| 平台未实现 | `support-bundle-kernel-cpu`                                                  | `status=unsupported-platform, monitor=never-started` —— 内核 CPU 环在 Windows 上根本没实现（探针是 `ps`）                                     | **产品缺口**                                     |
+| 文件锁语义 | `storage-migration-unfinished`                                               | `EBUSY: resource busy or locked, unlink '…\purescience.db'` —— Windows 不允许删还开着的文件，迁移/清理没先关句柄                              | **产品缺口**                                     |
+| 路径形态   | `runtime-selection`                                                          | `Requested …\RUNNER~1\…` vs `Actual …\runneradmin\…` —— 8.3 短路径与长路径不一致                                                              | 待定（测试比较 vs 产品存原样）                   |
+| 运行时包   | `env-provision-cancel`、`notebook-declined-copy`、`settings-download-detail` | `runtime manifest request failed (500)`、种子运行时未被识别（`pythonReady:false, provisioning:true`）、`0 carried the nested download detail` | 待定（三条都指向托管包在 Windows 上的探测/预置） |
+
+**已动手的一类**：5 个 `pdf-annotation` 失败改成「等视口两次读数一致 → 断言不超过请求宽度、且差距在一副窗框（48px）之内」。这条断言原来是「必须正好 1100」，它测的不是「窗口在最窄处」，而是「这台机器的窗框恰好不占视口」—— 换平台必红，而红的原因与被测功能无关。
 
 **下一步**：这 12 个失败是真工作项，不是把闸门放松的理由 —— Windows 车道保持「读数可见、不挡发版」，
 一项一项查完再考虑把它提升成硬门。
