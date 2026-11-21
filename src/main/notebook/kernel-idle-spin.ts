@@ -550,6 +550,65 @@ const psCpuProbe: KernelCpuProbe = (pid) =>
     })
   })
 
+// Windows 没有 `ps`。`Get-Process` 的 `CPU` 是累计处理器秒数（正是窗口要的差值输入），
+// `WorkingSet64` 就是常驻内存 —— 两者一次读回，省一次进程启动。
+//
+// 为什么能接受一次 PowerShell 启动：这套采样默认 15 秒一轮（DEFAULT_IDLE_SPIN_INTERVAL_MS），
+// 一次 -NoProfile 调用在 200–400ms 量级，摊到 15 秒里可以忽略；而每 250ms 一轮的用法在这套代码里
+// 只出现在测试的显式参数里。
+export const windowsCpuAndMemoryScript = (pid: number): string =>
+  [
+    '$ErrorActionPreference = "Stop"',
+    `$p = Get-Process -Id ${pid}`,
+    // A process that has not been scheduled yet reports `$null` CPU, and `-f` would render that as an empty
+    // field — indistinguishable from a short line once it is split on whitespace. '-' is an explicit
+    // "no reading", so a missing CPU never shifts the memory number into its place.
+    '$cpu = if ($null -eq $p.CPU) { "-" } else { [int64]([math]::Round($p.CPU * 1000)) }',
+    '$rss = if ($null -eq $p.WorkingSet64) { "-" } else { [int64]$p.WorkingSet64 }',
+    '"{0} {1}" -f $cpu, $rss'
+  ].join('; ')
+
+/** Parses the `cpuMs residentBytes` line `windowsCpuAndMemoryScript` prints; `-` means "no reading". */
+export const parseWindowsProcessOutput = (
+  stdout: string
+): { cpuMs?: number; residentBytes?: number } => {
+  const [cpuToken, residentToken] = stdout.trim().split(/\s+/)
+  const asNumber = (token: string | undefined): number | undefined => {
+    if (token === undefined || token === '-' || !/^-?\d+$/.test(token)) return undefined
+    return Number(token)
+  }
+  return { cpuMs: asNumber(cpuToken), residentBytes: asNumber(residentToken) }
+}
+
+type WindowsReading = { cpuMs?: number; residentBytes?: number }
+
+const readWindowsProcess = (pid: number): Promise<WindowsReading | undefined> =>
+  new Promise((resolve) => {
+    execFile(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-Command', windowsCpuAndMemoryScript(pid)],
+      { timeout: 10_000, windowsHide: true },
+      (error, stdout) => {
+        if (error) return resolve(undefined)
+        resolve(parseWindowsProcessOutput(stdout))
+      }
+    )
+  })
+
+const windowsCpuProbe: KernelCpuProbe = (pid) =>
+  readWindowsProcess(pid).then((reading) =>
+    reading?.cpuMs === undefined
+      ? { status: 'unsampled', reason: 'probe-failed' }
+      : { status: 'observed', cpuMs: reading.cpuMs }
+  )
+
+const windowsResidentProbe: KernelMemoryProbe = (pid) =>
+  readWindowsProcess(pid).then((reading) =>
+    reading?.residentBytes === undefined
+      ? { status: 'unmeasured', reason: 'probe-failed' }
+      : { status: 'observed', residentBytes: reading.residentBytes }
+  )
+
 type IntervalHandle = { cancel: () => void }
 type IntervalScheduler = (tick: () => void, ms: number) => IntervalHandle
 
@@ -617,10 +676,14 @@ export class KernelIdleSpinMonitor {
     this.listIdleKernels = options.listIdleKernels
     this.onSpin = options.onSpin
     this.onUnsampled = options.onUnsampled
-    this.probe = options.probe ?? psCpuProbe
-    this.memoryProbe = options.memoryProbe ?? psResidentProbe
+    // `this.platform` is not assigned yet at this point in the constructor: read the resolved platform
+    // once, so the probe matches the host rather than the default of `undefined`.
+    const platform = options.platform ?? process.platform
+    this.probe = options.probe ?? (platform === 'win32' ? windowsCpuProbe : psCpuProbe)
+    this.memoryProbe =
+      options.memoryProbe ?? (platform === 'win32' ? windowsResidentProbe : psResidentProbe)
     this.memoryRing = options.memoryRing ?? sharedKernelMemory
-    this.platform = options.platform ?? process.platform
+    this.platform = platform
     this.intervalMs = options.intervalMs ?? DEFAULT_IDLE_SPIN_INTERVAL_MS
     this.thresholdPercent = options.thresholdPercent ?? DEFAULT_IDLE_SPIN_THRESHOLD_PERCENT
     this.consecutiveSamples = options.consecutiveSamples ?? DEFAULT_IDLE_SPIN_CONSECUTIVE_SAMPLES
@@ -632,7 +695,10 @@ export class KernelIdleSpinMonitor {
   // Idempotent: the executor calls this whenever it spawns a kernel.
   start(): void {
     if (this.handle) return
-    if (this.platform === 'win32') {
+    // Windows has a probe now (`Get-Process` reports cumulative cpu time and the working set), so the only
+    // hosts left without one are the ones this file has never measured. Saying `unsupported-platform` there
+    // is a fact about the probe, not a discount on the reading.
+    if (this.platform !== 'darwin' && this.platform !== 'linux' && this.platform !== 'win32') {
       this.ring.noteUnsampled('unsupported-platform')
       this.memoryRing.noteUnsampled('unsupported-platform')
       this.reportUnsampled('unsupported-platform')
@@ -744,9 +810,7 @@ export class KernelIdleSpinMonitor {
       // Memory, measured in the same round and over the same target list: the executor's `pending` field is
       // the only authority on "idle", and a second ticker would re-derive it. A failed memory probe never
       // touches the cpu baselines above — the two readings are independent on purpose.
-      if (this.platform === 'win32') {
-        this.memoryRing.noteUnsampled('unsupported-platform')
-      } else {
+      {
         const memoryReadings = await Promise.all(
           targets.map(async (target) => ({
             target,

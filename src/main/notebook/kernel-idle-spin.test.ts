@@ -9,6 +9,8 @@ import {
   createKernelMemoryRing,
   parseCumulativeCpuTime,
   parseResidentBytes,
+  parseWindowsProcessOutput,
+  windowsCpuAndMemoryScript,
   type IdleKernelTarget,
   type IdleSpinReport,
   type IdleSpinUnsampledReason,
@@ -243,7 +245,9 @@ describe('KernelIdleSpinMonitor', () => {
   })
 
   it('reports the platform without a probe as unsupported and never samples', () => {
-    const harness = makeHarness({ platform: 'win32' })
+    // `aix`, not `win32`: Windows now has a probe (`Get-Process`), so using it here would assert the old
+    // gap as if it were the design.
+    const harness = makeHarness({ platform: 'aix' })
     harness.monitor.start()
     expect(harness.monitor.running).toBe(false)
     expect(harness.unsampled).toEqual(['unsupported-platform'])
@@ -419,7 +423,7 @@ describe('KernelIdleSpinMonitor memory rounds', () => {
   })
 
   it('does not sample memory on a platform without a probe', async () => {
-    const harness = makeHarness({ platform: 'win32' })
+    const harness = makeHarness({ platform: 'aix' })
     harness.monitor.start()
     expect(harness.memoryProbeCalls()).toBe(0)
     expect(harness.memoryRing.summary().status).toBe('unsupported-platform')
@@ -719,3 +723,48 @@ describe.skipIf(process.platform === 'win32')(
     })
   }
 )
+
+describe('Windows probe (Get-Process)', () => {
+  // Windows has no `ps`, so the monitor used to answer `unsupported-platform` there and the support bundle
+  // carried no kernel CPU at all. `Get-Process` reports cumulative processor seconds (`CPU`) and the
+  // working set — the two numbers this monitor needs.
+  it('asks for cumulative cpu time and the working set in one call', () => {
+    const script = windowsCpuAndMemoryScript(4242)
+    expect(script).toContain('Get-Process -Id 4242')
+    expect(script).toContain('$p.CPU * 1000')
+    expect(script).toContain('WorkingSet64')
+    // No profile: a user's $PROFILE must not be able to slow this down or print into the reading.
+    expect(script).not.toContain('Import-Module')
+  })
+
+  it('reads the printed pair', () => {
+    expect(parseWindowsProcessOutput('1234 56789\r\n')).toEqual({
+      cpuMs: 1234,
+      residentBytes: 56789
+    })
+  })
+
+  it('treats the "-" sentinel as no reading, not as zero', () => {
+    // A process that has not been scheduled reports $null CPU. Rendering that as 0 would look like a
+    // measured idle window; and rendering it as an empty field used to shift the memory number leftwards.
+    expect(parseWindowsProcessOutput('- 56789')).toEqual({ cpuMs: undefined, residentBytes: 56789 })
+    expect(parseWindowsProcessOutput('1234 -')).toEqual({ cpuMs: 1234, residentBytes: undefined })
+  })
+
+  it('rejects anything that is not the two-number line', () => {
+    expect(parseWindowsProcessOutput('')).toEqual({ cpuMs: undefined, residentBytes: undefined })
+    expect(parseWindowsProcessOutput('Get-Process : Cannot find a process')).toEqual({
+      cpuMs: undefined,
+      residentBytes: undefined
+    })
+  })
+
+  it('actually samples on win32 instead of declaring the platform unsupported', async () => {
+    // The regression this pins: `start()` returned early on win32, so a Windows bundle could only ever say
+    // `unsupported-platform` — a real gap, not a reading.
+    const harness = makeHarness({ platform: 'win32' })
+    harness.monitor.start()
+    expect(harness.monitor.running).toBe(true)
+    harness.monitor.stop()
+  })
+})

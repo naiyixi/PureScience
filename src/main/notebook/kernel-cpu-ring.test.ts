@@ -170,7 +170,9 @@ describe('kernel cpu ring', () => {
   })
 
   it('records the platform with no probe as a named reason, once, and samples nothing', async () => {
-    const harness = makeHarness({ platform: 'win32' })
+    // `aix` rather than `win32`: Windows gained a probe (`Get-Process`), so asserting the old gap there
+    // would have kept a fixed gap looking like the design.
+    const harness = makeHarness({ platform: 'aix' })
     harness.monitor.start()
 
     const summary = harness.ring.summary()
