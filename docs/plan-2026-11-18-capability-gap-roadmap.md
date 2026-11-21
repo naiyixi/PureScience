@@ -236,6 +236,31 @@ IEEE 把一卷一期印成 `21 21, 21, 3 3` 时仍被判 verified。仍未修并
 **这一轮没验的（需要跑真机/真服务，不硬猜）**：
 「用户自己装在 PATH 上的 `codex-acp` 仍不可用」；per-purpose 模型那五条里剩下的一条。
 
+### 4.x 作者机构：接线完成（v2.32.0），以及它此前为什么是空的
+
+**结论先说**：机构字段接完了，实机闭合。但这条路走下来发现，「导出包写明谁做的」这句
+早在 v2.31.0 就写进 README 和发布页的话，**在实机上从来不成立**，断了三层：
+
+| 层     | 断点                                                                                  | 为什么一路绿                                                                                  |
+| ------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 运行时 | `settings/ipc.ts` 里没有 `settings:set-export-author` / `-license` 的 `ipcMainHandle` | 抽象命令表（`application-commands.ts`）有定义、有单测；运行时注册是另一处，没人在真窗口里点过 |
+| 读路径 | `sanitizeSettings()` 不读 `exportAuthor` / `exportAuthorKind` / `exportLicense`       | 旧用例用 harness 直喂 `loadAttribution`，绕过了设置读取                                       |
+| 视图   | `getSettingsView()` 建快照不带这四个字段                                              | 快照字段表是手写的，没有用例盯着它                                                            |
+
+**怎么发现的**：不是读代码读出来的，是**实机 e2e 跑出来的** —— 真窗口里往机构栏打字，控制台报
+`No handler registered for 'settings:set-export-author'`。补上注册后值仍读回为空，才顺藤摸到后两层。
+
+**实机读数（隔离存储根）**：填机构 → 关设置重开有值 → 重启应用仍有值 → `settings.getSettings()`
+快照三项都对；导出侧读磁盘 JSON：`#author` 是 `Person` 且 `name` 不含机构名、`#affiliation` 是
+`Organization`、验证器 `author-affiliation-resolves` **判为真**。
+
+**为什么我先替执行器提交了他的 WIP**：那批 settings 改动自 11-19 22:19 起搁置一天半（期间他的活动全在
+logger/diagnostics），而它正是机构字段要落的同一处。若继续等他，他手里的旧副本会在下次提交时
+**静默覆盖**我的改动。先入库（`98e0a203`，提交信息写明代为入库及理由）才有干净基线。
+
+**留给下一版的边界**：`exportAuthorKind = organization` 时 `affiliation` 的语义变成「上级单位」，
+界面还没有为这种情况提示；Windows 车道的 P0 认证仍是 `not-applicable`（未覆盖）。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
