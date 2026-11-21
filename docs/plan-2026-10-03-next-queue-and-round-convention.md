@@ -1,5 +1,69 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十四、本轮追加（执行器，2026-11-21 14:5x–）—— CSL 标签从样式自己的 locale 取词：`vol. 21, no. 3, pp. 145-158` 与「卷 3」「2 版」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == ce5e8baa`（会话 v2.32.0 发版后的四笔文档）；工作树 **4 个改动 + 2 个新文件仍是会话在制**
+  （`src/main/crash-diagnostics.ts`、`src/main/index.ts`、`src/main/logger{,.test}.ts`、`src/main/diagnostics/module-load{,.test}.ts`）
+  ⇒ **一个字节没碰**。本轮只碰 `src/shared/citation/**` 与 `docs/**`。
+- 进轮车道读数（完整 40 位 SHA）：`036f078b` → `Windows Full Test` **success**、`Nightly` **cancelled**（被后一笔顶掉，
+  不声称有判决）；`357a29cf`（v2.32.0 发版提交）→ `Release` **success**，`gh release list` 现取 **v2.32.0 = Latest**。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可取单元；上一轮 §一百九十三 ③ 留下的「CSL 同族两条立案」里，
+  **分隔符丢失**与 **`(as)` 残留**已由会话 `978261b3`（分组语义那笔，12:54，早于发版提交）修掉 ⇒ 只剩
+  「`vol.`/`no.`/`pp.` 这类标签」（当时写明「留给按样式的 default-locale 取词条那一版」）——本轮取它。
+
+### 一 同一句话里，两句已过期、一句当时仍真
+
+- README 与 v2.32.0 发布正文里那句：「Still named rather than fixed: the localized labels (`vol.`, `no.`, `pp.`) …;
+  a separator is lost after macro expansion (AMA reads `Nature Methods2024`); and one branch still emits a stray `(as)` fragment.」
+- **后两句在 v2.32.0 里已不成立**（`978261b3` 就在 v2.32.0 里）：现取 AMA 渲染 `Nature Methods. 2024;21(3)`、APA 渲染里没有 `(as)`。
+- **前一句在 v2.32.0 里成立**（标签确实不印），本轮才做掉。所以 README 的正确改法是**只删后两句**，
+  标签那句随下一次发版的叙事一起更新——**本轮没有改 README/发布正文**：改成熟度块必须重跑 `release:notes … --apply`
+  去动已发布的 v2.32.0 页，而会话正在同一棵树上做发版后收尾。**立案给下一次发版**，判据：README 与 v2.32.0 正文里
+  那句话只剩标签一项，且下一次发版的 ✅ 段写的是「标签已按 locale 印出」。
+
+### 二 交付（`src/shared/citation/`）
+
+| # | 原来的形状 | 现在的形状 |
+| --- | --- | --- |
+| 1 | 渲染器不带任何 locale 词条 ⇒ `<label>` 与 `<text term>` 恒为空串，只在导入报告里具名 | 新增 `csl-locale-terms.ts`：en-US / zh-CN 的标签词条（volume/issue/page/edition/chapter/section/paragraph/and/in/et-al/accessed/page-range-delimiter，各带 single/multiple）；渲染时按 `CslProgram.locale` 取表 |
+| 2 | 任何 `<label>` 都输出空 | 按变量值判数（页区间 ⇒ `pp.`、单个卷号 ⇒ `vol.`），`plural="always"/"never"` 覆盖；变量为空时不印标签 |
+| 3 | 样式自带的 `<locale><terms>` 不读（`terms`/`term` 被当「跳过的构造」） | 导入时按 `xml:lang` 与 `default-locale` 的语言部分匹配（`zh` 命中 `zh-CN`，无 `xml:lang` 对所有语言生效）并折进词表；四个元素名不再算跳过 |
+| 4 | `text:term` / `label` 笼统具名 | 逐条具名 `term:<name>` / `label:<variable>`；`<names>` 里的 `<label>`（`eds.` 角色词）另记 `label:names` |
+| 5 | `renderVariables()` 不提供 `edition` ⇒ `<number variable="edition">` 与 edition 标签永远拿不到值 | 补上 `edition`（GB/T 书型记录修复前少印「2 版」） |
+
+- 词条来源逐份核字节：`locales-en-US.xml` sha256 `ac864c7c…`、`locales-zh-CN.xml` sha256 `95cebc66…`
+  （`citation-style-language/locales`，2026-11-21 取）。**中文表里没有的词条不回落到英文**，只具名。
+
+### 三 读数（真样式 + 产品自己的导入/渲染路径，修复前后都是现取）
+
+| 样式 | 修复前（`ce5e8baa` 隔离工作树） | 修复后 |
+| --- | --- | --- |
+| IEEE | `… Nature Methods, 21, 3, 145-158, 2024, doi: …` | `… Nature Methods, vol. 21, no. 3, pp. 145-158, 2024, doi: …` |
+| MLA | `… Nature Methods, 21, 3, 2024, 145-158, …` | `… Nature Methods, vol. 21, no. 3, 2024, pp. 145-158, …` |
+| harvard-cite-them-right | `… Nature Methods, 21(3), 145-158. …` | `… Nature Methods, 21(3), pp. 145-158. …` |
+| GB/T 7714（中文，书型记录） | `李航, 王伟. 机器学习方法: 3. 清华大学出版社, 2012: 45-67.` | `李航, 王伟. 机器学习方法: 卷 3. 2 版. 清华大学出版社, 2012: 45-67.` |
+
+- 真库探针（九份公开/中文样式）：**9 imported / 9 rows / 重导入 `replacedExisting=true` / 删除后 8 行**，
+  九份 `fidelity=verified`、无 skip。其余五份样式（AMA/APA/Chicago/elsevier-vancouver/nature）逐字不变。
+- 证据档：`docs/evidence/2026-11-21-csl-locale-terms.md`（含逐份 sha256、导入报告变化、边界）。
+
+### 四 门禁与边界
+
+- 定向：`src/shared/citation` + `src/main/references` **35 文件 / 466 例通过（1 skipped）**；新增四条用例
+  （术语缺词具名而不印英文 / zh 标签「卷 期 页」/ 单复数与 `plural` 覆盖 / 变量为空时不印标签）。
+- `typecheck:node` + `typecheck:web` 均 **0**；`eslint --no-cache` 三个改动文件 **0 problem**。
+- 边界：只带 12 个词条（不是整份 locale）；locale 的**日期形式**仍未读（`date:default-year` 照旧具名）；
+  `<names>` 里的角色标签未实现（`label:names`）；词条取值没有与第二台引擎逐条对拍——这四条都在证据档 §五。
+
+### 五 下一轮第一步
+
+- ① 先 `git status --short` 现查：会话那 6 个在制若仍脏，继续只做不相交路径（`src/shared/citation/**`、`docs/**`）。
+- ② 按完整 40 位 SHA 读本轮提交的 `Nightly` + `Windows Full Test` 终态（`cancelled` 不算绿；被顶掉就找包含它的后一笔）。
+- ③ 下一候选：locale 的日期形式（GB/T 的「2024年1月」）——先给一条可驱动读数再改；或 README/发布正文那句话的过期更正，
+  与下一次发版一起做。
+
 ## 一百九十三、本轮追加（执行器，2026-11-21 10:3x–）—— 八份真实 CSL 样式一起跑，揪出三种「字段进了错的位置」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
