@@ -139,9 +139,20 @@ export type CslNode =
       term?: string
       value?: string
     } & CslFormatting)
-  | ({ kind: 'group'; children: CslNode[] } & CslFormatting)
+  | ({
+      kind: 'group'
+      children: CslNode[]
+      // Variables this subtree renders (directly or through a macro that was expanded into it).
+      // CSL makes a group implicitly conditional on them — see `groupIsSuppressed`.
+      calledVariables?: string[]
+    } & CslFormatting)
   | {
       kind: 'choose'
+      // The delimiter of the frame this choose is rendered in (the nearest enclosing group). CSL
+      // applies it between a branch's children too — but not across a macro boundary: a macro body
+      // is its own frame, which is why a macro that prints volume and issue stays "21(3)" while an
+      // APA branch printing a group and a DOI gets ". " between them.
+      delimiter?: string
       branches: { condition: CslCondition; children: CslNode[] }[]
       otherwise?: CslNode[]
     }
@@ -321,13 +332,17 @@ const expandMacroNodes = (context: CompileContext, macroName: string, depth: num
     return []
   }
   context.expanding.add(macroName)
-  const nodes = childElements(macro).flatMap((child) => compileNode(child, context, depth + 1))
+  // A macro body is its own delimiter frame: the caller's group delimiter separates the macro's
+  // output from its siblings, never the elements the macro itself prints.
+  const nodes = childElements(macro).flatMap((child) => compileNode(child, context, depth + 1, ''))
   context.expanding.delete(macroName)
   context.macroCache.set(macroName, nodes)
   return nodes
 }
 
-// A macro call carries its own affixes; they wrap the expansion so its punctuation survives.
+// A macro call is a single unit of output in the caller's frame: its affixes wrap it, and even
+// without affixes a multi-element body is grouped, because the caller's group delimiter separates the
+// macro's output from its siblings — not the elements the macro itself printed.
 const compileMacroCall = (call: XmlElement, context: CompileContext, depth = 0): CslNode[] => {
   const expanded = expandMacroNodes(context, call.attributes.macro ?? '', depth)
   if (expanded.length === 0) return []
@@ -335,13 +350,66 @@ const compileMacroCall = (call: XmlElement, context: CompileContext, depth = 0):
   const hasAffixes = Boolean(
     formatting.prefix || formatting.suffix || formatting.delimiter || formatting.textCase
   )
-  return hasAffixes ? [{ kind: 'group', children: expanded, ...formatting }] : expanded
+  if (!hasAffixes && expanded.length === 1) return expanded
+  // The wrapper deliberately carries no `calledVariables`: a macro is not a group, so CSL's implicit
+  // group condition must not suppress the literal text a macro prints beside an empty variable.
+  return [{ kind: 'group', children: expanded, ...formatting }]
 }
 
-const compileChildren = (element: XmlElement, context: CompileContext, depth = 0): CslNode[] =>
-  childElements(element).flatMap((child) => compileNode(child, context, depth))
+const compileChildren = (
+  element: XmlElement,
+  context: CompileContext,
+  depth = 0,
+  frameDelimiter = ''
+): CslNode[] =>
+  childElements(element).flatMap((child) => compileNode(child, context, depth, frameDelimiter))
 
-const compileNode = (element: XmlElement, context: CompileContext, depth = 0): CslNode[] => {
+// The variables a compiled subtree renders. CSL makes a group implicitly conditional on them: when
+// every variable a group calls is empty, the group renders nothing — literal text inside it
+// included. Real styles depend on this ("(as …)" must not print a bare "as" when there is no
+// original title/date/publisher), and without it an imported APA entry grew a stray "(as)".
+const variablesCalledBy = (node: CslNode): string[] => {
+  switch (node.kind) {
+    case 'text':
+      return node.value === undefined && node.variable ? [node.variable] : []
+    case 'number':
+    case 'date':
+    case 'label':
+      return [node.variable]
+    case 'names': {
+      // A names element with a substitute can print any of the fallback variables, so the group's
+      // implicit condition has to see them: APA writes `<names variable="composer">` with the author
+      // as its substitute, and counting only `composer` suppressed the rendered author list.
+      const own = node.variable.split(/\s+/).filter(Boolean)
+      const substituted = node.substitute ? variablesCalledIn(node.substitute) : []
+      return [...new Set([...own, ...substituted])]
+    }
+    case 'group':
+      return variablesCalledIn(node.children)
+    case 'choose':
+      return variablesCalledIn([
+        ...node.branches.flatMap((branch) => branch.children),
+        ...(node.otherwise ?? [])
+      ])
+    default:
+      return []
+  }
+}
+
+const variablesCalledIn = (nodes: CslNode[]): string[] => {
+  const seen = new Set<string>()
+  for (const node of nodes) {
+    for (const variable of variablesCalledBy(node)) seen.add(variable)
+  }
+  return [...seen]
+}
+
+const compileNode = (
+  element: XmlElement,
+  context: CompileContext,
+  depth = 0,
+  frameDelimiter = ''
+): CslNode[] => {
   if (!SUPPORTED_ELEMENTS.has(element.name)) {
     context.unsupported.add(element.name)
     return []
@@ -383,29 +451,43 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
       // literal becomes a leaf.
       if (element.attributes.macro) return compileMacroCall(element, context, depth + 1)
       return [{ kind: 'text', ...element.attributes, ...formattingOf(element) }]
-    case 'group':
+    case 'group': {
+      const formatting = formattingOf(element)
+      // A group opens a new delimiter frame for its children (a group without a delimiter means
+      // "concatenate", not "inherit the outer one").
+      const children = compileChildren(element, context, depth, formatting.delimiter ?? '')
+      const calledVariables = variablesCalledIn(children)
       return [
         {
           kind: 'group',
-          children: compileChildren(element, context, depth),
-          ...formattingOf(element)
+          children,
+          ...(calledVariables.length > 0 ? { calledVariables } : {}),
+          ...formatting
         }
       ]
+    }
     case 'choose': {
       const branches = childElements(element, 'if').map((branch) => ({
         condition: compileCondition(branch, context),
-        children: compileChildren(branch, context, depth)
+        children: compileChildren(branch, context, depth, frameDelimiter)
       }))
       for (const branch of childElements(element, 'else-if')) {
         branches.push({
           condition: compileCondition(branch, context),
-          children: compileChildren(branch, context, depth)
+          children: compileChildren(branch, context, depth, frameDelimiter)
         })
       }
       const otherwise = childElements(element, 'else').flatMap((branch) =>
-        compileChildren(branch, context, depth)
+        compileChildren(branch, context, depth, frameDelimiter)
       )
-      return [{ kind: 'choose', branches, otherwise: otherwise.length ? otherwise : undefined }]
+      return [
+        {
+          kind: 'choose',
+          delimiter: frameDelimiter || undefined,
+          branches,
+          otherwise: otherwise.length ? otherwise : undefined
+        }
+      ]
     }
     case 'names': {
       const nameElement = firstChild(element, 'name')
@@ -690,6 +772,21 @@ const renderDate = (
   return applyFormatting(rendered, node)
 }
 
+// CSL processors drop a delimiter's leading punctuation when the output before it already ends with
+// that character: a child closed with "." inside a group whose delimiter is ". " must read "A. B",
+// never "A.. B" (a real AMA entry printed "145-158.. doi:").
+const joinWithDelimiter = (parts: string[], delimiter: string): string => {
+  if (parts.length === 0) return ''
+  if (!delimiter) return parts.join('')
+  const leading = /^[.,;:]/.exec(delimiter)?.[0]
+  if (!leading) return parts.join(delimiter)
+  let out = parts[0] ?? ''
+  for (const part of parts.slice(1)) {
+    out = out.endsWith(leading) ? `${out}${delimiter.slice(1)}${part}` : `${out}${delimiter}${part}`
+  }
+  return out
+}
+
 const renderNode = (node: CslNode, state: RenderState): string => {
   switch (node.kind) {
     case 'text': {
@@ -707,23 +804,37 @@ const renderNode = (node: CslNode, state: RenderState): string => {
       return applyFormatting(state.variables[variable] ?? '', node)
     }
     case 'group': {
+      // CSL's implicit condition: a group that calls variables and gets none of them back renders
+      // nothing at all — the literal text inside it is part of the same suppression.
+      const called = node.calledVariables
+      if (
+        called !== undefined &&
+        called.length > 0 &&
+        called.every((variable) => !state.variables[variable]?.trim())
+      ) {
+        return ''
+      }
+      // The delimiter a group uses between its children is also the one CSL puts between the
+      // children of a <choose> inside it; the compiler recorded that frame delimiter on the choose
+      // node (a macro body is a frame of its own, so it never inherits the caller's).
       const rendered = node.children.map((child) => renderNode(child, state)).filter(Boolean)
       if (rendered.length === 0) return ''
-      return applyFormatting(rendered.join(node.delimiter ?? ''), node)
+      return applyFormatting(joinWithDelimiter(rendered, node.delimiter ?? ''), node)
     }
     case 'choose': {
+      const delimiter = node.delimiter ?? ''
       for (const branch of node.branches) {
         if (evaluateCondition(branch.condition, state)) {
-          return branch.children
-            .map((child) => renderNode(child, state))
-            .filter(Boolean)
-            .join('')
+          return joinWithDelimiter(
+            branch.children.map((child) => renderNode(child, state)).filter(Boolean),
+            delimiter
+          )
         }
       }
-      return (node.otherwise ?? [])
-        .map((child) => renderNode(child, state))
-        .filter(Boolean)
-        .join('')
+      return joinWithDelimiter(
+        (node.otherwise ?? []).map((child) => renderNode(child, state)).filter(Boolean),
+        delimiter
+      )
     }
     case 'names':
       return renderNames(node, state)
@@ -902,13 +1013,20 @@ export const importCslStyle = (
 
   // Every layout body is compiled through compileNode, which expands macro references wherever they
   // appear (top level, inside groups, inside branches) and records the call's affixes.
-  const layoutNodes: CslNode[] = compileChildren(layout, context)
+  const layoutNodes: CslNode[] = compileChildren(
+    layout,
+    context,
+    0,
+    layout.attributes.delimiter ?? ''
+  )
 
   // The in-text layout is compiled for one purpose: deciding whether this convention numbers its
   // entries. We do not render in-text markers from an imported style (documented limitation).
   const citation = firstChild(style, 'citation')
   const citationLayout = citation ? firstChild(citation, 'layout') : undefined
-  const citationNodes: CslNode[] = citationLayout ? compileChildren(citationLayout, context) : []
+  const citationNodes: CslNode[] = citationLayout
+    ? compileChildren(citationLayout, context, 0, citationLayout.attributes.delimiter ?? '')
+    : []
 
   // The layout's own affixes are part of the style: a trailing delimiter on <layout> is what closes
   // a bibliography entry, and dropping it silently would truncate every rendered entry. The children
@@ -916,7 +1034,13 @@ export const importCslStyle = (
   const layoutFormatting = formattingOf(layout)
   const citationFormatting = citationLayout ? formattingOf(citationLayout) : {}
   if (layoutFormatting.prefix || layoutFormatting.suffix || layoutFormatting.delimiter) {
-    const wrapped: CslNode = { kind: 'group', children: [...layoutNodes], ...layoutFormatting }
+    const calledVariables = variablesCalledIn(layoutNodes)
+    const wrapped: CslNode = {
+      kind: 'group',
+      children: [...layoutNodes],
+      ...(calledVariables.length > 0 ? { calledVariables } : {}),
+      ...layoutFormatting
+    }
     layoutNodes.length = 0
     layoutNodes.push(wrapped)
   }
@@ -924,7 +1048,13 @@ export const importCslStyle = (
     citationLayout &&
     (citationFormatting.prefix || citationFormatting.suffix || citationFormatting.delimiter)
   ) {
-    const wrapped: CslNode = { kind: 'group', children: [...citationNodes], ...citationFormatting }
+    const calledVariables = variablesCalledIn(citationNodes)
+    const wrapped: CslNode = {
+      kind: 'group',
+      children: [...citationNodes],
+      ...(calledVariables.length > 0 ? { calledVariables } : {}),
+      ...citationFormatting
+    }
     citationNodes.length = 0
     citationNodes.push(wrapped)
   }

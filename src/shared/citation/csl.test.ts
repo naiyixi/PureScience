@@ -452,3 +452,108 @@ describe('rendering an imported style', () => {
     expect(formatted.text).toBe('Deep learning for protein design (2024) [accessed 2026].')
   })
 })
+
+// Group semantics, found by rendering eight real published styles against a second engine
+// (citeproc-js) as the reference: an APA entry glued its page range to the DOI
+// ("145-158.https://doi.org/…"), an AMA entry glued the journal to its year, and APA grew a stray
+// "(as)" fragment out of a branch whose variables were all empty.
+describe('group semantics in imported styles', () => {
+  const render = (bibliography: string, extra = ''): string => {
+    const xml = styleDocument({ bibliography, extra })
+    const outcome = importCslStyle(xml, 'groups.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    return formatCitation(item(), style.id, { index: 1, retrievedAt: '2019-05-04' }, [style]).text
+  }
+
+  it('applies the enclosing group delimiter between the children of a choose branch', () => {
+    const text = render(`<bibliography>
+    <layout>
+      <group delimiter=". ">
+        <text variable="title"/>
+        <choose>
+          <if type="article-journal">
+            <text variable="container-title"/>
+            <text variable="volume"/>
+          </if>
+        </choose>
+      </group>
+    </layout>
+  </bibliography>`)
+    expect(text).toBe('Deep learning for protein design. Nature Methods. 21')
+  })
+
+  it('does not carry the caller delimiter across a macro boundary', () => {
+    // A macro body is its own frame: the real harvard style prints volume and issue as "21(3)"
+    // inside a `locator` macro, even though the macro is called from a group delimited by ", ".
+    const text = render(
+      `<bibliography>
+    <layout>
+      <group delimiter=", ">
+        <text macro="locator"/>
+        <text variable="page"/>
+      </group>
+    </layout>
+  </bibliography>`,
+      `<macro name="locator"><text variable="container-title"/><text variable="volume" prefix="(" suffix=")"/></macro>`
+    )
+    expect(text).toBe('Nature Methods(21), 145-158')
+  })
+
+  it('renders nothing for a group whose variables are all empty, literal text included', () => {
+    const text = render(`<bibliography>
+    <layout>
+      <text variable="title"/>
+      <group prefix=" (" suffix=")" delimiter=", ">
+        <text value="as"/>
+        <text variable="original-title"/>
+        <text variable="original-publisher"/>
+      </group>
+    </layout>
+  </bibliography>`)
+    expect(text).toBe('Deep learning for protein design')
+  })
+
+  it('keeps the literal text when at least one variable in the group has a value', () => {
+    const text = render(`<bibliography>
+    <layout>
+      <text variable="title"/>
+      <group prefix=" (" suffix=")" delimiter=", ">
+        <text value="as"/>
+        <text variable="container-title"/>
+        <text variable="original-publisher"/>
+      </group>
+    </layout>
+  </bibliography>`)
+    expect(text).toBe('Deep learning for protein design (as, Nature Methods)')
+  })
+
+  it('counts the variables a names substitute can render, so a substituted author is not suppressed', () => {
+    // APA asks for `composer` and substitutes `author`; counting only `composer` made the group look
+    // empty and the whole author list disappeared from a verified APA entry.
+    const text = render(`<bibliography>
+    <layout>
+      <group delimiter=", ">
+        <names variable="composer">
+          <name/>
+          <substitute><names variable="author"/></substitute>
+        </names>
+        <text variable="publisher"/>
+      </group>
+    </layout>
+  </bibliography>`)
+    expect(text).toBe('W. Zhang, L. Chen, J. A. Smith, M. Huang')
+  })
+
+  it('does not double a period the previous child already ended with', () => {
+    const text = render(`<bibliography>
+    <layout>
+      <group delimiter=". ">
+        <text variable="container-title" suffix="."/>
+        <text variable="volume"/>
+      </group>
+    </layout>
+  </bibliography>`)
+    expect(text).toBe('Nature Methods. 21')
+  })
+})

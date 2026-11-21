@@ -65,6 +65,14 @@ describe.skipIf(!available)(
         imported.push(outcome.style.id)
         const style = citationStyleFromImport(outcome.style)
         const rendered = formatCitation(reference, style.id, { index: 1 }, [style])
+        // Two defects this probe was blind to until the group semantics were fixed: a doubled
+        // separator (a group suffix "." followed by a ". " delimiter printed "145-158.. doi:") and a
+        // delimiter lost at a choose boundary (an APA page range glued to its DOI, ".https://").
+        // They are asserted here, on real documents, so the class cannot come back silently.
+        expect(rendered.text, `${file} printed a doubled separator`).not.toMatch(/\.\.[\s.]/)
+        expect(rendered.text, `${file} glued punctuation to the next element`).not.toMatch(
+          /\.https?:\/\//
+        )
         console.log(
           `[probe] ${file}\n        id=${outcome.style.id}\n        licence=${outcome.style.license}\n` +
             `        fidelity=${outcome.style.fidelity}${outcome.style.fidelityNotes.length ? ` (${outcome.style.fidelityNotes.join(', ')})` : ''}\n` +
