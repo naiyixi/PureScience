@@ -34,6 +34,9 @@ test.setTimeout(240_000)
 const REGION_PROMPT = 'Create a region drawing PDF.'
 // The app's own minimum width (src/main/windows.ts), i.e. the narrowest window a user can reach.
 const APP_MINIMUM_WINDOW_WIDTH = 1100
+// 一副窗口边框的宽容量：Windows 上 1100 的外层宽度对应 1084 的视口（实测差 16），macOS 上差 0。
+// 取 48 是给高 DPI 缩放与不同主题的窗框留量，而不是给「窗口没到最窄」留后门 —— 上限仍卡死在请求宽度。
+const WINDOW_FRAME_SLACK = 48
 // A run can put the window at a width below that minimum (`PURESCIENCE_E2E_NARROW_WINDOW_WIDTH=1000`),
 // which no reader can drag the window to — a window the app itself never lays out. Everything below reads
 // its geometry back from the pane this window produced, so it has to hold there too: that run is the check
@@ -167,9 +170,26 @@ const hitAt = (page: Page, x: number, y: number): Promise<string> =>
  */
 const setNarrowWindow = async (app: ElectronApp, page: Page): Promise<void> => {
   await app.setMainWindowSize(NARROW_WINDOW, { belowMinimum: NARROW_WINDOW_BELOW_MINIMUM })
+  // 外层窗口宽度不等于渲染器视口：Windows 给窗口画 16px 边框，macOS 画在哪都不占视口，
+  // 所以 1100 的窗口在 Windows 上 innerWidth 读到 1084（run 44879328011 的实机读数）。
+  // 这条断言真正要的是「窗口已经在它最窄处」，不是「innerWidth 正好 1100」—— 于是等视口稳定，
+  // 再要求它不超过请求宽度、且差距在一副窗框之内。
+  // 等到两次读数相同再量：一次读数可能落在 resize 还没传到渲染器的那一帧上，量到的就是上一个窗口。
+  let previousWidth = -1
   await expect
-    .poll(() => page.evaluate(() => window.innerWidth), { timeout: 10_000 })
-    .toBe(NARROW_WINDOW.width)
+    .poll(
+      async () => {
+        const width = await page.evaluate(() => window.innerWidth)
+        const settled = width === previousWidth
+        previousWidth = width
+        return settled ? width : 0
+      },
+      { timeout: 10_000, interval: 200 }
+    )
+    .toBeGreaterThan(0)
+  const viewportWidth = await page.evaluate(() => window.innerWidth)
+  expect(viewportWidth).toBeLessThanOrEqual(NARROW_WINDOW.width)
+  expect(viewportWidth).toBeGreaterThanOrEqual(NARROW_WINDOW.width - WINDOW_FRAME_SLACK)
 }
 
 /**

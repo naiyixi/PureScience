@@ -35,6 +35,9 @@ const REGION_PROMPT = 'Create a region drawing PDF.'
 // The app's own minimum width (src/main/windows.ts), i.e. the narrowest window a user can reach — the pane
 // the issue measured, where the annotation panel covers most of the page.
 const NARROW_WINDOW = { width: 1100, height: 800 }
+// 一副窗口边框的宽容量：Windows 上 1100 的外层宽度对应 1084 的视口（实测差 16），macOS 上差 0。
+// 取 48 是给高 DPI 缩放与不同主题的窗框留量，而不是给「窗口没到最窄」留后门 —— 上限仍卡死在请求宽度。
+const WINDOW_FRAME_SLACK = 48
 
 const MISSED_PRESS = 'That press was not on a page — nothing was started'
 const EMPTY_GESTURE = 'No area was dragged — nothing was drawn'
@@ -150,9 +153,26 @@ test('names the three gestures that used to be dropped without a word', async ({
   // 320 CSS px against the pane's right edge, and on a 423px pane it covers most of the page — which is
   // how a reader aiming at the page ends up pressing the panel.
   await app.setMainWindowSize(NARROW_WINDOW)
+  // 外层窗口宽度不等于渲染器视口：Windows 给窗口画 16px 边框，macOS 画在哪都不占视口，
+  // 所以 1100 的窗口在 Windows 上 innerWidth 读到 1084（run 44879328011 的实机读数）。
+  // 这条断言真正要的是「窗口已经在它最窄处」，不是「innerWidth 正好 1100」—— 于是等视口稳定，
+  // 再要求它不超过请求宽度、且差距在一副窗框之内。
+  // 等到两次读数相同再量：一次读数可能落在 resize 还没传到渲染器的那一帧上，量到的就是上一个窗口。
+  let previousWidth = -1
   await expect
-    .poll(() => page.evaluate(() => window.innerWidth), { timeout: 10_000 })
-    .toBe(NARROW_WINDOW.width)
+    .poll(
+      async () => {
+        const width = await page.evaluate(() => window.innerWidth)
+        const settled = width === previousWidth
+        previousWidth = width
+        return settled ? width : 0
+      },
+      { timeout: 10_000, interval: 200 }
+    )
+    .toBeGreaterThan(0)
+  const viewportWidth = await page.evaluate(() => window.innerWidth)
+  expect(viewportWidth).toBeLessThanOrEqual(NARROW_WINDOW.width)
+  expect(viewportWidth).toBeGreaterThanOrEqual(NARROW_WINDOW.width - WINDOW_FRAME_SLACK)
 
   const panel = page.getByTestId('pdf-annotation-panel')
   const panelToggle = page.locator('[data-slot="pdf-annotation-panel-toggle"]')
