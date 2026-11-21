@@ -462,8 +462,9 @@ const SkillEditLoader = ({ skillId, onDone }: SkillEditLoaderProps): React.JSX.E
 
   useEffect(() => {
     let active = true
-    void window.api.settings.getSkillDetail(skillId).then((detail) => {
-      if (active) {
+    void window.api.settings.getSkillDetail(skillId).then(
+      (detail) => {
+        if (!active) return
         setDraft({
           id: detail.id,
           name: detail.name,
@@ -472,8 +473,10 @@ const SkillEditLoader = ({ skillId, onDone }: SkillEditLoaderProps): React.JSX.E
           metadata: detail.metadata,
           references: detail.references.map((ref) => ({ path: ref.path }))
         })
-      }
-    })
+      },
+      // Same window-boundary race as SkillDetailView: never leave the rejection unhandled.
+      (error: unknown) => console.warn('[skills] draft probe failed', error)
+    )
     return () => {
       active = false
     }

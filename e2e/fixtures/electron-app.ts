@@ -721,15 +721,11 @@ class ElectronAppHarness implements ElectronApp {
     await this.closeForCleanup().catch(() => undefined)
     await makeTreeWritable(this.testRoot)
     // Windows keeps Chromium's own files (`electron-profile\DIPS` is written by the network service) locked
-    // for a moment after the process is gone, so one second of retries is not enough: measured on run
-    // 44902338624 the teardown threw `EBUSY … unlink 'DIPS'` and the test was reported as a product failure.
-    // Node's `rm` retries exactly these lock errors, so give it a real window instead of a token one.
-    await rm(this.testRoot, {
-      force: true,
-      maxRetries: 40,
-      recursive: true,
-      retryDelay: 250
-    })
+    // for a moment after the process is gone: measured on run 44902338624 the teardown threw
+    // `EBUSY … unlink 'DIPS'` and the test was reported as a product failure. The fix has to bound the WHOLE
+    // tree, not each file — `maxRetries` retries per entry, so a generous value let a locked profile eat the
+    // 5-minute test timeout instead (run 44909343155: `Tearing down "app" exceeded the test timeout`).
+    await removeTreeWithDeadline(this.testRoot)
     this.rendererFailures.assertNoFailures()
   }
 
@@ -801,6 +797,30 @@ class ElectronAppHarness implements ElectronApp {
       },
       { gracefulTimeoutMs: 10_000, forcedTimeoutMs: 10_000 }
     )
+  }
+}
+
+// Deleting a Windows temp tree races Chromium's own file handles. Retry the whole tree for a bounded time and
+// then say which path is still held, so a teardown red names a lock instead of a 300-second timeout.
+const removeTreeWithDeadline = async (root: string, budgetMs = 20_000): Promise<void> => {
+  const deadline = Date.now() + budgetMs
+  for (;;) {
+    try {
+      await rm(root, { force: true, recursive: true })
+      return
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'EACCES' && code !== 'ENOTEMPTY')
+        throw error
+      if (Date.now() >= deadline) {
+        const held = (error as { path?: string }).path ?? root
+        throw new Error(
+          `E2E teardown could not delete ${held} within ${budgetMs}ms (${code}). ` +
+            'A process still holds this file; the runtime tree is left in place for inspection.'
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
   }
 }
 

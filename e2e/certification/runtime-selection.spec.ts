@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
+import { pythonBin } from '../../src/main/notebook/runtime-paths'
 import { test } from '../fixtures/electron-app'
 
 // Acceptance for choosing a notebook runtime in Settings, on a real window with the real IPC surface.
@@ -64,10 +65,19 @@ test('the panel chooses a notebook interpreter and can take it back out', async 
   // links or junctions" and answers nothing — the app then reads the interpreter as not runnable
   // (measured on runs 44891067647 and 44902338624: `runnable: false`, and no `Python 3.x` line at all).
   const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), 'u10-runtime-')))
-  const INTERPRETER = join(scratch, 'venv', 'bin', 'python3')
+  const venv = join(scratch, 'venv')
   // --copies matters: a default venv symlinks its interpreter, and the app identifies interpreters by
   // real path, so a symlinked venv collapses into the Homebrew install the scan already found.
-  execFileSync('python3', ['-m', 'venv', '--copies', join(scratch, 'venv')])
+  execFileSync('python3', ['-m', 'venv', '--copies', venv])
+  // The app's own layout helper: on Windows a venv keeps its interpreter at the prefix root
+  // (`<venv>\python.exe`), on Unix under `bin/`. Hand-writing `bin/python3` asks the app to register a file
+  // that does not exist on a Windows runner and the failure only shows up as `runnable: false`
+  // (runs 44891067647 / 44902338624 / 44909343155) — so build the path the same way the product does, and
+  // prove the fixture's own interpreter answers before blaming the registry.
+  const INTERPRETER = pythonBin(venv)
+  const probe = execFileSync(INTERPRETER, ['--version'], { encoding: 'utf8', stdio: 'pipe' })
+  console.log(`[runtime-selection] fixture interpreter: ${INTERPRETER} -> ${probe.trim()}`)
+  expect(probe).toMatch(/Python 3\./)
 
   const page = await app.completeOnboarding()
 

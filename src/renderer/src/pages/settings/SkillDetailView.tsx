@@ -71,9 +71,16 @@ const SkillDetailView = ({ skillId, onForked }: SkillDetailViewProps): React.JSX
 
   useEffect(() => {
     let active = true
-    void window.api.settings.getSkillDetail(skillId).then((result) => {
-      if (active) setDetail(result)
-    })
+    // A rejected probe must not become an unhandled rejection: the same window-boundary race as the data-root
+    // probe (main has released the previous window's handlers while this is in flight) surfaced as a
+    // renderer page error and failed a certification run that retried green (skill-imported-copy,
+    // run 44909343155). The view keeps its empty state; the reason goes to the console at warn level.
+    void window.api.settings.getSkillDetail(skillId).then(
+      (result) => {
+        if (active) setDetail(result)
+      },
+      (error: unknown) => console.warn('[skills] detail probe failed', error)
+    )
     return () => {
       active = false
     }
