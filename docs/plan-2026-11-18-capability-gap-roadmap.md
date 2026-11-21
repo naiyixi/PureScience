@@ -214,6 +214,20 @@ README 的成熟度段（发布页正文直接由它生成）里有两句话与�
 `node scripts/release-notes.mjs v2.31.2 --apply --keep-generated` 把发布页正文重新生成 —— 实测新句在、旧句 0 次。
 教训：成熟度段是**累积叙事**，最老的句子最容易过期；抽查只查「能不能当场验」的那种，不逐句质疑。
 
+**同一轮抽查里「验完为真」的（不是只看文档，是看代码/工作流/CI）**：
+
+| 声称                                                       | 判据                                                                                                                                                                                | 结论 |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| 检索**只有词法**，每行带 `lexicalOnly`                     | `knowledge-search-service.ts:54-63,124`（注释说明「按决定而非遗漏」），全仓无 embedding 源接入                                                                                      | 真   |
+| 批量移除是**一次写**                                       | `knowledge-repository.ts:310-330` 只有一处 `await this.save({ sources })`，剪枝在循环里但基于「移除后剩下谁引用」                                                                   | 真   |
+| 扫除会**留下读数**                                         | `knowledge-repository.ts:472-504` 的 `lastSweep` / `lastSweepUnreadable`；`sweepContents()` 计数到 `scanned`                                                                        | 真   |
+| **九种语言**                                               | `i18n/languages.ts:59` 的 `LANGUAGES` = de/en/es/fr/ja/ko/ru/zh/zh-Hant                                                                                                             | 真   |
+| agent 能**自己写 PPTX**                                    | `src/main/slides/pptx-deck.ts` + `slides/mcp-server.ts`                                                                                                                             | 真   |
+| 封存记录能在**干净 Linux 与 Windows** 重放并被同一比较判定 | `.github/workflows/replay-cross-machine.yml`：matrix 双 runner，跑产品自己的 `compareReplayOutputs`，另含「改 digest 必须判 differs」的反向对照；最近两次运行 success（2026-11-19） | 真   |
+
+**这一轮没验的（需要跑真机/真服务，不硬猜）**：CSL 八种真实期刊样式「五种通过、三种标草稿」；
+「用户自己装在 PATH 上的 `codex-acp` 仍不可用」；per-purpose 模型那五条里剩下的一条。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
