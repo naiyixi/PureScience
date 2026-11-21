@@ -2583,6 +2583,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': '作成者',
   'settings.exportAuthorPlaceholder': 'あなたの名前',
   'settings.exportAffiliationLabel': '所属機関',
+  'settings.exportAffiliationParentHint':
+    '上位組織 —— 任意。上位組織がなければ空欄のままで構いません',
   'settings.exportAffiliationPlaceholder': '著者の所属機関（病院・研究室・企業など）',
   'settings.exportLicenseLabel': '既定のエクスポートライセンス',
   'settings.exportLicensePlaceholder':

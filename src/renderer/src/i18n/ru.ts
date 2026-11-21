@@ -2585,6 +2585,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': 'Автор',
   'settings.exportAuthorPlaceholder': 'Ваше имя',
   'settings.exportAffiliationLabel': 'Организация',
+  'settings.exportAffiliationParentHint':
+    'Вышестоящая организация — необязательно; оставьте пустым, если её нет',
   'settings.exportAffiliationPlaceholder':
     'Где работает автор — больница, лаборатория или компания',
   'settings.exportLicenseLabel': 'Лицензия экспорта по умолчанию',

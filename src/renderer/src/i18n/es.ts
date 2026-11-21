@@ -2644,6 +2644,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': 'Autor',
   'settings.exportAuthorPlaceholder': 'Su nombre',
   'settings.exportAffiliationLabel': 'Institución',
+  'settings.exportAffiliationParentHint':
+    'Organización superior: opcional; déjalo vacío si no hay ninguna',
   'settings.exportAffiliationPlaceholder':
     'Dónde trabaja el autor: hospital, laboratorio o empresa',
   'settings.exportLicenseLabel': 'Licencia de exportación predeterminada',

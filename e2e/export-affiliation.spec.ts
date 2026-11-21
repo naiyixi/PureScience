@@ -53,4 +53,12 @@ test('keeps the export affiliation across a settings reopen, and hands it to the
   expect(snapshot.exportAuthor).toBe('Abel Wang')
   expect(snapshot.exportAuthorKind).toBe('person')
   expect(snapshot.exportAffiliation).toBe('浙江大学医学院附属第二医院')
+
+  // 类型切到「机构」时，同一栏的含义变成「上级单位」——提示要在真窗口里出现，
+  // 否则用户会把自己单位再填一遍，导出里就多一个没有意义的 Organization。
+  await settings.getByRole('combobox', { name: 'Author type' }).click()
+  await page.getByRole('option', { name: 'Institution' }).click()
+  await expect(
+    settings.getByText('Parent organisation — optional; leave it empty if this publisher has none')
+  ).toBeVisible()
 })

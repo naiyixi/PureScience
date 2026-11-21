@@ -2392,6 +2392,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': '作者',
   'settings.exportAuthorPlaceholder': '你的名字',
   'settings.exportAffiliationLabel': '機構',
+  'settings.exportAffiliationParentHint': '上級單位 —— 選填；沒有上級單位就留空',
   'settings.exportAffiliationPlaceholder': '作者所在機構（醫院、實驗室或公司）',
   'settings.exportLicenseLabel': '預設匯出授權',
   'settings.exportLicensePlaceholder': '例：CC BY 4.0 或 https://spdx.org/licenses/CC-BY-4.0.html',

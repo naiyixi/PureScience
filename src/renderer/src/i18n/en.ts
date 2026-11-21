@@ -1189,6 +1189,8 @@ export const en: Record<ZhKey, string> = {
   'settings.exportAuthorLabel': 'Author',
   'settings.exportAuthorPlaceholder': 'Your name',
   'settings.exportAffiliationLabel': 'Institution',
+  'settings.exportAffiliationParentHint':
+    'Parent organisation — optional; leave it empty if this publisher has none',
   'settings.exportAffiliationPlaceholder': 'Where the author works — hospital, lab or company',
   'settings.exportLicenseLabel': 'Default export license',
   'settings.exportLicensePlaceholder': 'e.g. CC BY 4.0 or https://spdx.org/licenses/CC-BY-4.0.html',

@@ -2543,6 +2543,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': '저자',
   'settings.exportAuthorPlaceholder': '이름',
   'settings.exportAffiliationLabel': '소속 기관',
+  'settings.exportAffiliationParentHint': '상위 기관 — 선택 사항. 상위 기관이 없으면 비워 두세요',
   'settings.exportAffiliationPlaceholder': '저자가 소속된 기관(병원, 연구소, 회사 등)',
   'settings.exportLicenseLabel': '기본 내보내기 라이선스',
   'settings.exportLicensePlaceholder':

@@ -180,6 +180,13 @@ const GeneralPanel = (): React.JSX.Element => {
               placeholder={t('settings.exportAffiliationPlaceholder')}
               onChange={(event) => void setExportAffiliation(event.target.value)}
             />
+            {/* 署名类型是「机构」时，这一栏的含义变了：这个机构属于哪个上级单位。
+                不提示的话，用户会把自己单位再填一遍，导出里就多出一个没有意义的 Organization。 */}
+            {exportAuthorKind === 'organization' ? (
+              <p className="text-xs text-muted-foreground">
+                {t('settings.exportAffiliationParentHint')}
+              </p>
+            ) : null}
           </label>
           {/* 类型只决定导出里那个实体的 @type。它不改用户写下的文字，所以不放进同一个输入框。 */}
           <div className="space-y-1.5">

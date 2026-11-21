@@ -1122,6 +1122,7 @@ export const zh = {
   'settings.exportAuthorLabel': '作者',
   'settings.exportAuthorPlaceholder': '你的名字',
   'settings.exportAffiliationLabel': '机构',
+  'settings.exportAffiliationParentHint': '上级单位 —— 可选；没有上级单位就留空',
   'settings.exportAffiliationPlaceholder': '作者所在机构（医院、实验室或公司）',
   'settings.exportLicenseLabel': '默认导出许可',
   'settings.exportLicensePlaceholder': '例：CC BY 4.0 或 https://spdx.org/licenses/CC-BY-4.0.html',

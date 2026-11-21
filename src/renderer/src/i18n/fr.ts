@@ -2660,6 +2660,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.exportAuthorLabel': 'Auteur',
   'settings.exportAuthorPlaceholder': 'Votre nom',
   'settings.exportAffiliationLabel': 'Établissement',
+  'settings.exportAffiliationParentHint':
+    "Organisation parente — facultatif ; laissez vide s'il n'y en a pas",
   'settings.exportAffiliationPlaceholder':
     "Où travaille l'auteur : hôpital, laboratoire ou entreprise",
   'settings.exportLicenseLabel': "Licence d'export par défaut",
