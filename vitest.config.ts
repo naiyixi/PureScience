@@ -59,6 +59,15 @@ const PROCESS_TEST_GLOBS = [
   'src/main/notebook/host-mcp.integration.test.ts',
   'src/main/notebook/windows-shell.integration.test.ts',
   'src/main/notebook/shell-process.test.ts',
+  // The three below measure a REAL child with a REAL `ps`/clock probe and assert the measured value
+  // against a threshold. They are not slow — they are load-sensitive: inside the parallel swarm a
+  // spinning child can be sampled as 0% CPU, and an event-loop window can come back empty. Observed
+  // once each in a full gate on an otherwise-idle machine (19032 passed / 1 failed); all three pass
+  // repeatedly when run alone. This group exists for exactly that: wall-clock measurements taken
+  // where no other file is competing for the CPU.
+  'src/main/notebook/kernel-idle-spin.test.ts',
+  'src/main/notebook/kernel-cpu-ring.test.ts',
+  'src/main/diagnostics/event-loop-stall-watchdog.test.ts',
   'src/main/notebook/micromamba-cache-acl.integration.test.ts',
   'src/main/notebook/runtime-service-logging.integration.test.ts',
   'src/main/agents/agents-repl.integration.test.ts',
