@@ -248,13 +248,22 @@ const aggregateEvidence = async ({ argv }) => {
 
   for (const platform of PLATFORMS) {
     const record = byPlatform.get(platform)
-    const expectedPortableCheck = platform === 'macos-arm64' ? 'passed' : 'not-applicable'
+    // macos-arm64 is the lane that gates the release: it must be a pass. windows-x64 runs the same
+    // journeys for evidence, so all three readings are admissible — what is refused is silence about a
+    // Windows-only failure, not the failure itself. A platform outside this map must say `not-applicable`,
+    // because a `passed` claim for a lane that never ran there would be the same lie in the other direction.
+    const expectedPortableCheck =
+      platform === 'macos-arm64'
+        ? ['passed']
+        : platform === 'windows-x64'
+          ? ['passed', 'failed', 'not-applicable']
+          : ['not-applicable']
     const expectedVisualCheck =
       platform === 'macos-arm64' ? ['passed', 'failed', 'not-applicable'] : ['not-applicable']
     if (
       record.schemaVersion !== 1 ||
       record.source?.sha !== expectedSha ||
-      record.checks?.electronP0 !== expectedPortableCheck ||
+      !expectedPortableCheck.includes(record.checks?.electronP0) ||
       !expectedVisualCheck.includes(record.checks?.visualRegression) ||
       !Array.isArray(record.artifacts) ||
       record.artifacts.length === 0

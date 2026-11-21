@@ -287,6 +287,9 @@ describe('release certification evidence', () => {
       platform,
       source: { sha },
       checks: {
+        // macos-arm64 gates the release; windows-x64 runs the same journeys for evidence, so its
+        // record may say passed, failed or not-applicable — never a claim of `passed` on a platform
+        // where the lane did not run, which is what the rejections below pin.
         electronP0: platform === 'macos-arm64' ? 'passed' : 'not-applicable',
         visualRegression: platform === 'macos-arm64' ? 'passed' : 'not-applicable',
         packageSmoke: 'passed',
@@ -328,6 +331,31 @@ describe('release certification evidence', () => {
       platforms: expect.arrayContaining([expect.objectContaining({ platform: 'windows-x64' })])
     })
 
+    // Windows now runs the P0 journeys, so `passed` there is an admissible reading...
+    await writeFile(
+      join(root, 'certification-windows-x64.json'),
+      JSON.stringify({
+        ...recordFor('windows-x64'),
+        checks: { ...recordFor('windows-x64').checks, electronP0: 'passed' }
+      })
+    )
+    await expect(aggregateEvidence({ argv: args })).resolves.toMatchObject({
+      sourceSha: 'abc123',
+      platforms: expect.arrayContaining([expect.objectContaining({ platform: 'windows-x64' })])
+    })
+    // ...and so is `failed` — a Windows-only red must be recorded, not silenced.
+    await writeFile(
+      join(root, 'certification-windows-x64.json'),
+      JSON.stringify({
+        ...recordFor('windows-x64'),
+        checks: { ...recordFor('windows-x64').checks, electronP0: 'failed' }
+      })
+    )
+    await expect(aggregateEvidence({ argv: args })).resolves.toMatchObject({
+      sourceSha: 'abc123',
+      platforms: expect.arrayContaining([expect.objectContaining({ platform: 'windows-x64' })])
+    })
+    // What is still refused: a visual-regression claim from a platform that never ran that lane.
     await writeFile(
       join(root, 'certification-windows-x64.json'),
       JSON.stringify({

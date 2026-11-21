@@ -174,8 +174,15 @@ describe('post-merge Windows validation', () => {
       '${{ steps.packaged_app.outputs.executable }}'
     )
     expect(p0.if).toContain("matrix.name == 'macos-arm64'")
+    // Windows runs the same portable journeys: the lane gates nothing there, but a Windows-only red
+    // has to be visible in the record instead of hiding behind "not applicable".
+    expect(p0.if).toContain("matrix.name == 'windows-x64'")
     expect(visual.if).toContain("matrix.name == 'macos-arm64'")
-    expect(p0.run).toBe('npm run test:e2e:p0')
+    expect(p0.run).toContain('npm run test:e2e:p0')
+    // Same trap as the visual lane: `continue-on-error` flattens the outcome, so the exit code is the
+    // reading the certification step must use.
+    expect(p0.run).toContain('$RUNNER_TEMP/p0-exit-code')
+    expect(p0.run).toContain('exit "$rc"')
     // The visual step is `continue-on-error`, so its own outcome cannot say whether the comparison
     // passed. It writes the exit code down for the certification step, and that capture is part of the
     // contract this test pins — not an implementation detail.
@@ -194,6 +201,8 @@ describe('post-merge Windows validation', () => {
     expect(linux.run).toContain('scripts/linux-package-smoke.mjs')
     expect(evidence.run).toContain('package_smoke=passed')
     expect(evidence.run).toContain('electron_p0=not-applicable')
+    // The P0 reading, like the visual one, comes from the tested mapping rather than from an outcome.
+    expect(evidence.run).toContain('scripts/ci/lane-status.mjs')
     expect(evidence.run).toContain('visual_regression=not-applicable')
     expect(evidence.run).toContain('--electron-p0 "$electron_p0"')
     expect(evidence.run).toContain('--visual-regression "$visual_regression"')

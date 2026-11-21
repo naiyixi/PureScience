@@ -394,13 +394,23 @@ jobs:
         id: p0
         if: >-
           ${{ !inputs.skip_verify &&
-              matrix.name == 'macos-arm64' &&
+              (matrix.name == 'macos-arm64' || matrix.name == 'windows-x64') &&
               steps.packaged_app.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
-        run: npm run test:e2e:p0
+        # The journeys are portable; the machine they run on is not. macos-arm64 is the lane that gates a
+        # release, windows-x64 runs the same journeys for evidence only — a Windows-only failure (path
+        # handling, installer dialogs, the single-instance lock) must be visible in the record instead of
+        # being covered by "P0 is not applicable here". Like the visual lane, the exit code is written
+        # down: `continue-on-error` flattens the step outcome, so the code is the only honest reading.
+        run: |
+          set +e
+          npm run test:e2e:p0
+          rc=$?
+          echo "$rc" > "$RUNNER_TEMP/p0-exit-code"
+          exit "$rc"
 
       # A failing P0 lane used to be undiagnosable from the log alone: Playwright's own failure context —
       # `test-results/**/error-context.md`, the failure screenshots and the traces — goes away with the
@@ -579,7 +589,9 @@ jobs:
               steps.packaged_app.outcome == 'success' &&
               ((matrix.name == 'macos-arm64' &&
                 steps.p0.outcome == 'success') ||
-               (matrix.name != 'macos-arm64' &&
+               (matrix.name == 'windows-x64' &&
+                contains(fromJSON('["success","failure"]'), steps.p0.outcome)) ||
+               (matrix.name != 'macos-arm64' && matrix.name != 'windows-x64' &&
                 steps.p0.outcome == 'skipped')) &&
               ((matrix.platform == 'mac' && steps.macos_smoke.outcome == 'success') ||
                (matrix.platform == 'win' && steps.windows_smoke.outcome == 'success') ||
@@ -593,8 +605,14 @@ jobs:
         run: |
           electron_p0=not-applicable
           visual_regression=not-applicable
+          if [ "${{ matrix.name }}" = "macos-arm64" ] || [ "${{ matrix.name }}" = "windows-x64" ]; then
+            # Same reason as the visual reading below: `steps.p0.outcome` cannot distinguish a
+            # disagreement from a pass under `continue-on-error`, and `not-applicable` must never be
+            # used for "it ran and was red".
+            electron_p0="$(node scripts/ci/lane-status.mjs "$RUNNER_TEMP/p0-exit-code")"
+            echo "electron P0 reading: $electron_p0"
+          fi
           if [ "${{ matrix.name }}" = "macos-arm64" ]; then
-            electron_p0=passed
             # Visual regression is environment-sensitive (font/antialiasing variance across macOS
             # runner images); baselines are refreshed locally. Informational, not a release gate — but
             # the record must still be true, and `steps.visual.outcome` cannot tell the difference
