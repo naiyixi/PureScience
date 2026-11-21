@@ -1,5 +1,74 @@
 # PureScience 更新日记
 
+## v2.33.0 — 2026-11-22
+
+### 这一版让 Windows 那条车道第一次说出真话，并把导出包的 Process Run Crate 要求清到零
+
+**Windows 车道此前一律记 `not-applicable`。** 也就是说「在 Windows 上跑过、通过」和「在 Windows 上
+根本没跑」在记录里是同一个值 —— 十三种语言、四个平台都写着同一行字。这一版把它接上真跑，并把首跑抓出
+的 12 个失败逐条修到零。**这条线值得留下的不是「全绿」，而是每一步的读数与其中两条我写错过的结论**：
+
+| 趟次 | HEAD | Windows 车道读数 |
+| --- | --- | --- |
+| 44891067647 | `eac5e8a6` | `failed` — 12 failed / 1 flaky / 111 passed / 58.7min |
+| 44902338624 | `f301b137` | `failed` — 3 failed / 1 flaky / 121 passed (42.0m) |
+| 44909343155 | `209f1a6c` | `failed` — 2 failed / 1 flaky / 121 passed |
+| 44918012666 | `7eeed30d` | `failed` — 2 failed / 1 flaky / 121 passed (45.3m) |
+| 44926387947 | `51e4e64d` | **`passed` — 124 passed / 0 failed / 0 flaky / 13 skipped (47.0m)** |
+| 44934613520 | `cde222a7` | **`passed`（44.1m），同趟 `windows-upgrade-smoke = success`** |
+
+**产品侧真的缺的三件**（不是测试脆）：内核 CPU 与内存环在 Windows 上根本没实现（探针是 `ps`，
+那格直接写 `unsupported-platform`）；缺 tesseract 的提示在九种语言里都写死 `brew install tesseract`
+（Windows 机器上弹的正是这句，改成按平台给 winget / brew / apt，未知平台只说程序名）；解释器探测把
+`--version` 的整段输出（含 CPython 对 8.3 短路径的告警，bpo-45337）当成版本串，现在只摘版本 token。
+
+**测试与夹具侧**（这几类占了大多数，且**两条我一开始判错了，照原样改在这里**）：`pdf-annotation` 五条
+断言 `window.innerWidth === 1100`，而 Windows 给窗口画 16px 边框 —— 改为「两次读数一致 + 不超过请求
+宽度且差距在一副窗框内」；七个运行时 spec 手写 `darwin ? osx-arm64 : linux-64`，桩 manifest 缺 win-64
+必需的路径预算，现在一律调应用自己的 `runtimeSubdir()` / `pythonBin()`。
+
+- **`storage-migration-unfinished` 不是「产品没先关句柄」。** `EBUSY … purescience.db` 出自夹具拆卸：
+  Chromium 网络服务还开着 `DIPS`，以及应用自重启出来的实例还开着 db。修法是拆卸前收掉「命令行含本次
+  测试根」的实例，删除按**整棵树**给 20 秒总时限 —— Node 的 `rm` 是按条目重试的，给每个文件 40×250ms
+  会让一棵树吃掉 5 分钟（`Tearing down "app" exceeded the test timeout of 300000ms`）。
+- **`runtime-selection` 不是「8.3 短路径」。** 夹具手写 `/bin/python3` 让 Windows 去注册不存在的文件；
+  改用应用的 `pythonBin()` 又错在它是 **conda 环境**的布局（解释器在 prefix 根），而 **venv 在 Windows
+  上把 `python.exe` 放在 `Scripts\` 下**（`spawnSync … ENOENT`）。现在按平台取，并在夹具里 `--version`
+  自证：`fixture interpreter: …\venv\Scripts\python.exe -> Python 3.12.10`。
+
+**升级演练的三处判据，一处一处换掉错的那一层**：没有 tag 的 dispatch 会把自己当上一版（`github.ref_name`
+回落成 `main`），改成解析出的 `v2.32.0`；交棒原来等 Playwright 的 `close` 事件，而应用交棒后驱动侧句柄
+不关 —— 日志证明升级真的发生了（`installed=2.32.0`、注册表 2.32.0、`recorded the pending install`），
+判据改成「`close` 事件或应用自己写的 `install-pending.json` 含目标版本」，实机打印
+`hand-over confirmed by pending-install-marker`；缓存清空原来要求「首次启动即清空」，而 Windows 上
+NSIS 安装器当时还捏着自己的 setup.exe（`EPERM … unlink '…\pending\…-setup.exe'`），应用如实写了
+「下次启动重试」—— 判据改成按应用的承诺给三次启动机会，`update cache: purged after a completed
+install, removedFiles=3, removedBytes=489774958`。**没有放宽**：验的是应用声明的重试语义。
+
+**导出包声明 Process Run Crate 0.5。** 官方验证器上，Process Run Crate 的 REQUIRED 从 **2 条降到 0**，
+RECOMMENDED **12 → 7**；根实体的 `conformsTo` 变成列表（base + `wfrun/process/0.5`），只在包真的记录了
+`CreateAction` 时才写，两条 permalink 各写一条 `CreativeWork`（profile 的 `sh:class` 逐值判）。自有
+验证器同步加 `root-named-profiles-described`（32→33 条断言），而它的级别按 1.1 自己的 SHOULD 判 ——
+把 profile 的 MUST 印成「RO-Crate 1.1 要求」是另一种说谎。两个第二读者（`rocrate` 0.16.0 与 `pyld`）仍全过。
+
+**引文按样式自己的 locale 印标签与日期。** `<label>` 与 `<text term>` 此前一律渲染空串：IEEE 少了
+`vol. 21, no. 3, pp. 145-158` 的每个标签，中文 GB/T 书型记录缺「卷 3」「2 版」。现在词条逐条抄自公开
+locale 文件（`en-US` / `zh-CN` 各 12 条，两份 sha256 记在文件头与证据档），中文表缺词不回落到英文，
+`<label>` 按变量值判数（页区间 `pp.`、单卷 `vol.`），`edition` 终于取得到值。日期同理：IEEE
+「Accessed: 2026」→「Accessed: Nov. 21, 2026」，GB/T「[2026]」→「[2026-11-21]」，其余七份逐字节不变。
+分组语义补齐三条（`choose` 分支继承外层分隔符；组内变量全空则整组不渲染，连字面文本一起），此前 APA 印出
+`145-158.https://doi.org/…`、AMA 印出 `Nature Methods2024` —— 对齐用的是第二台引擎（citeproc-js）渲染
+同一批八份真实样式。
+
+**设置里「机构」的含义随类型变。** 署名类型选「机构」时，机构栏的占位与提示变成「上级单位」并给出说明：
+不提示的后果是可预期的 —— 用户会把自己单位再填一遍，导出里就多出一个指向自己的 `Organization`。
+九种语言同步，真窗口 e2e 验过。
+
+**仍然红的、仍然没做的，都写在这里**：`references-page-selection:13` 偶发红（PDF 选择器里的复选框
+20 秒未出现），**未复现、未修、没加重试**；Windows 车道现在是「读数可见且全绿」，但我没有把它提升成
+硬门（`not-applicable` 的语义同时被十三种语言使用，改语义要单独一版）；Linux 和 Windows 仍没有内核写
+防护，也不宣称有。
+
 ## v2.32.0 — 2026-11-21
 
 ### 这一版把「导出包写明谁做的」从一句话变成实机事实，并修好了它此前的三层断链

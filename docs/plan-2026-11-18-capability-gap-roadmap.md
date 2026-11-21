@@ -377,8 +377,11 @@ PDF），那条用例本身按「tool-missing」分支正常通过。
 `settings-download-detail` / 七个运行时 spec —— 桩 manifest 声明 `linux-64`、缺 win-64 必需的路径
 预算、按 Unix 布局播种解释器。全部改成调应用自己的 `runtimeSubdir()` / `pythonBin()`。
 
-**仍是红的**：`windows-upgrade-smoke`（升级本身已成功：注册表与安装记录都读出 2.32.0；判据一处一处
-换成应用自己写下的证词 —— `install-pending.json` 交棒、缓存清空按「下次启动重试」的承诺给三次机会）。
+**已收口**：`windows-upgrade-smoke` 在 run **44934613520**（HEAD `cde222a7`）上 **success** —— 同一趟
+Windows P0 也是 `passed`（124 passed / 44.1m）。升级判据三处换的都是「应用自己写下的证词」：
+`install-pending.json` 交棒（实机 `hand-over confirmed by pending-install-marker`）、缓存清空按应用
+「下次启动重试」的承诺给三次启动机会（`purged after a completed install, removedFiles=3,
+removedBytes=489774958`）、重开应用时它不自己退出不再被当成失败。
 **没有结论的**：`references-page-selection:13` 偶发红（复选框 20 秒未出现），未复现、未修复、没加重试。
 
 ## 排期纪律
