@@ -10,6 +10,15 @@
 // main process, the renderer, and tests alike.
 
 import { locatorFor, parseAuthorName } from './names'
+import {
+  baseCslTerms,
+  localeBlockMatches,
+  resolveCslTerm,
+  type CslTerm,
+  type CslTermForm,
+  type CslTermTable,
+  type CslTermValue
+} from './csl-locale-terms'
 import type {
   CitationFormatResult,
   CitationItem,
@@ -137,6 +146,10 @@ export type CslNode =
       variable?: string
       macro?: string
       term?: string
+      // A term node names a locale label; `form` picks its long/short/symbol wording, and `plural`
+      // ("true") forces the plural word where the style says so.
+      form?: string
+      plural?: string
       value?: string
     } & CslFormatting)
   | ({
@@ -167,6 +180,10 @@ export type CslProgram = {
   // its entries (citation-number) or reads author-date, which the list renderer needs to know.
   citationLayout?: CslNode[]
   locale: string
+  // The locale terms this style can print, resolved at import: the built-in table for its language
+  // plus the style's own <locale><terms> overrides. Programs stored before terms were rendered have
+  // no such field; rendering falls back to the built-in table for `locale`.
+  terms?: CslTermTable
 }
 
 export type ImportedCitationStyle = {
@@ -222,7 +239,16 @@ const SUPPORTED_ELEMENTS = new Set([
   'et-al',
   'date',
   'date-part',
-  'number'
+  'number',
+  'label',
+  // <locale><terms><term> are read at import (they override the built-in label table) rather than
+  // rendered, so they are constructs this engine does consume — not ones it skips.
+  'locale',
+  'terms',
+  'term',
+  // <single>/<multiple> are the plural forms inside a <term>; read at import like the term itself.
+  'single',
+  'multiple'
 ])
 
 // <info> is metadata we read rather than render; its children are never "unsupported constructs".
@@ -258,12 +284,44 @@ type CompileContext = {
   macros: Map<string, XmlElement>
   unsupported: Set<string>
   defaultLocale: string
+  // The locale terms this style can print (built-in language table + the style's own overrides),
+  // resolved before anything is compiled so an unresolvable term is named in the import report.
+  terms: CslTermTable
   // A macro body is compiled once and reused: real styles reference the same macro from many
   // branches, and expanding it per reference multiplies the tree until the depth guard truncates it
   // (which showed up as duplicated author lists against the real documents).
   macroCache: Map<string, CslNode[]>
   // Names currently being compiled, so a cycle is reported by name instead of recursing forever.
   expanding: Set<string>
+}
+
+// Reads a style's own <locale> blocks into the term table. CSL lets a style override any locale
+// term — GB/T 7714 spells the edition label 版 where the zh-CN locale spells it 版本 — and the
+// override is folded into the built-in table so rendering needs a single lookup.
+const readStyleTerms = (style: XmlElement, locale: string): CslTermTable => {
+  const table: Record<string, CslTerm> = { ...baseCslTerms(locale) }
+  for (const block of childElements(style, 'locale')) {
+    if (!localeBlockMatches(block.attributes['xml:lang'], locale)) continue
+    for (const terms of childElements(block, 'terms')) {
+      for (const term of childElements(terms, 'term')) {
+        const name = term.attributes.name
+        if (!name) continue
+        const form = (term.attributes.form ?? 'long') as CslTermForm
+        const single = firstChild(term, 'single')
+        const multiple = firstChild(term, 'multiple')
+        const value: CslTermValue =
+          single || multiple
+            ? {
+                single: single ? textOf(single) : textOf(multiple!),
+                multiple: multiple ? textOf(multiple) : textOf(single!)
+              }
+            : { single: textOf(term), multiple: textOf(term) }
+        if (value.single === '' && value.multiple === '') continue
+        table[name] = { ...table[name], [form]: value }
+      }
+    }
+  }
+  return table
 }
 
 // Records every construct the document uses that this engine does not render, so an imported style
@@ -274,6 +332,25 @@ const scanUnsupported = (element: XmlElement, context: CompileContext): void => 
       if (!SUPPORTED_ELEMENTS.has(child.name)) context.unsupported.add(child.name)
       for (const attribute of Object.keys(child.attributes)) {
         if (FLATTENED_ATTRIBUTES.has(attribute)) context.unsupported.add(`attribute:${attribute}`)
+      }
+      // A term or label node is supported only as far as the term table reaches: the ones it cannot
+      // spell print nothing, and the report says which (a Chinese entry must not fall back to an
+      // English label, and a silent gap is how a missing label used to read as a rendering quirk).
+      if (child.name === 'text' && child.attributes['term'] !== undefined) {
+        const term = child.attributes['term']
+        const resolved = resolveCslTerm(
+          context.terms,
+          term,
+          child.attributes.form,
+          child.attributes.plural === 'true'
+        )
+        if (resolved === undefined) context.unsupported.add(`term:${term}`)
+      }
+      if (child.name === 'label' && child.attributes.variable !== undefined) {
+        const variable = child.attributes.variable
+        if (resolveCslTerm(context.terms, variable, child.attributes.form, false) === undefined) {
+          context.unsupported.add(`label:${variable}`)
+        }
       }
       scanUnsupported(child, context)
     }
@@ -421,12 +498,6 @@ const compileNode = (
     context.unsupported.add('variable:locator')
     return []
   }
-  if (element.name === 'text' && element.attributes['term'] !== undefined) {
-    // <text term="volume"> prints a localised label ("vol."), and this renderer carries no locale
-    // terms. Named here so a reader knows the entry lost its label rather than being shown the
-    // number where the label belonged.
-    context.unsupported.add('text:term')
-  }
   if (element.name === 'names' && firstChild(element, 'substitute') !== undefined) {
     // The substitute itself is honoured (see renderNames). What we do not implement is CSL's rule that a
     // variable consumed by substitution is suppressed from the rest of the rendering, so the note names
@@ -492,6 +563,9 @@ const compileNode = (
     case 'names': {
       const nameElement = firstChild(element, 'name')
       const etAl = firstChild(element, 'et-al')
+      // A <label> inside <names> prints the contributor-role word ("eds." after editor names). This
+      // renderer does not print that word, and naming it keeps a role label from vanishing silently.
+      if (firstChild(element, 'label') !== undefined) context.unsupported.add('label:names')
       const nameAsSortOrder = nameElement?.attributes['name-as-sort-order']
       return [
         {
@@ -594,6 +668,7 @@ type RenderState = {
   retrievedAt?: string
   variables: Record<string, string>
   numeric: Set<string>
+  terms: CslTermTable
 }
 
 const renderVariables = (
@@ -609,6 +684,7 @@ const renderVariables = (
     issue: item.issue ?? '',
     page: item.pages ?? '',
     'page-first': item.pages?.split(/[-–]/)[0] ?? '',
+    edition: item.edition ?? '',
     DOI: item.doi ?? '',
     URL: item.url ?? '',
     publisher: item.publisher ?? '',
@@ -787,15 +863,23 @@ const joinWithDelimiter = (parts: string[], delimiter: string): string => {
   return out
 }
 
+// CSL's contextual plural: a page range ("145-158") takes the plural word, one number does not. A
+// comma/ampersand list is plural too; "e145" is a single page.
+const valueLooksPlural = (value: string): boolean => /[-–—,;&]/.test(value)
+
 const renderNode = (node: CslNode, state: RenderState): string => {
   switch (node.kind) {
     case 'text': {
       if (node.value !== undefined) return applyFormatting(node.value, node)
-      // A <text term="volume"> node prints the style's localised label ("vol."), never a value. This
-      // renderer carries no locale terms, so such a node prints nothing and the omission is named in
-      // the import report (`text:term`). Reading the same-named variable instead — which is what this
-      // did — put the number where the label belonged and printed it a second time: a real IEEE
+      // A <text term="volume"> node prints the style's localised label ("vol.", 卷), never a value.
+      // The wording comes from the style's locale table; one it cannot spell prints nothing and was
+      // named at import (`term:<name>`). Reading the same-named variable instead — which is what this
+      // once did — put the number where the label belonged and printed it a second time: a real IEEE
       // document rendered "21 21, 21, 3 3" out of one volume and one issue.
+      if (node.term !== undefined) {
+        const resolved = resolveCslTerm(state.terms, node.term, node.form, node.plural === 'true')
+        return resolved === undefined ? '' : applyFormatting(resolved, node)
+      }
       if (node.variable === undefined) return ''
       const variable = node.variable
       if (variable === 'citation-number') {
@@ -842,8 +926,16 @@ const renderNode = (node: CslNode, state: RenderState): string => {
       return renderDate(node, state)
     case 'number':
       return applyFormatting(state.variables[node.variable] ?? '', node)
-    case 'label':
-      return ''
+    case 'label': {
+      const value = state.variables[node.variable] ?? ''
+      // CSL prints a label only beside a variable that has a value ("pp." with no pages is noise),
+      // and its plurality follows that value: a page range takes the plural word, one volume does not.
+      if (!value.trim()) return ''
+      const plural =
+        node.plural === 'always' ? true : node.plural === 'never' ? false : valueLooksPlural(value)
+      const resolved = resolveCslTerm(state.terms, node.variable, node.form, plural)
+      return resolved === undefined ? '' : applyFormatting(resolved, node)
+    }
     default:
       return ''
   }
@@ -860,7 +952,10 @@ const renderProgram = (
     index,
     retrievedAt,
     variables: renderVariables(item, index, retrievedAt),
-    numeric: new Set()
+    numeric: new Set(),
+    // A program stored before terms were rendered carries none: it renders with the built-in table
+    // for its own locale rather than with English labels.
+    terms: program.terms ?? baseCslTerms(program.locale)
   }
   return renderProgramNodes(program, state)
 }
@@ -1000,10 +1095,14 @@ export const importCslStyle = (
     return { status: 'rejected', reason: 'builtin-id-collision', detail: id }
   }
 
+  const defaultLocale = style.attributes['default-locale'] ?? 'en-US'
   const context: CompileContext = {
     macros: new Map(childElements(style, 'macro').map((macro) => [macro.attributes.name, macro])),
     unsupported: new Set<string>(),
-    defaultLocale: style.attributes['default-locale'] ?? 'en-US',
+    defaultLocale,
+    // The style's own <locale> overrides are folded in before anything is scanned, so a term it
+    // redefines is neither reported as missing nor rendered with the generic word.
+    terms: readStyleTerms(style, defaultLocale),
     macroCache: new Map<string, CslNode[]>(),
     expanding: new Set<string>()
   }
@@ -1062,7 +1161,8 @@ export const importCslStyle = (
   const program: CslProgram = {
     layout: layoutNodes,
     locale: context.defaultLocale,
-    citationLayout: citationNodes
+    citationLayout: citationNodes,
+    terms: context.terms
   }
   // Fidelity probe: the compiled subset is run against a record whose fields we control. A style that
   // cannot reproduce its title, an author surname and its year is stored, but labelled a draft — the

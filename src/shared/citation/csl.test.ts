@@ -199,10 +199,37 @@ describe('importing a CSL style', () => {
     expect(outcome.style.unsupported).toContain('substitute:no-source-suppression')
     expect(outcome.style.unsupported).not.toContain('names:substitute')
     expect(outcome.style.unsupported).toContain('attribute:font-style')
-    // <locale>/<terms>/<term> are outside the renderer's subset and are named too.
-    expect(outcome.style.unsupported.some((name) => name === 'locale' || name === 'terms')).toBe(
-      true
-    )
+    // <locale>/<terms>/<term> are read at import now (they override the label table), so they are
+    // no longer reported as skipped; what is reported is a term the table still cannot spell.
+    expect(outcome.style.unsupported).not.toContain('locale')
+    expect(outcome.style.unsupported).not.toContain('terms')
+  })
+
+  it('names a term the locale table cannot spell instead of printing an English word', () => {
+    const xml = styleDocument({
+      defaultLocale: 'zh-CN',
+      extra:
+        '<locale xml:lang="zh"><terms><term name="edition" form="short">版</term></terms></locale>',
+      bibliography: `<bibliography>
+    <layout>
+      <group delimiter=", ">
+        <group delimiter=" "><label variable="edition" form="short"/><text variable="edition"/></group>
+        <text term="no-such-term"/>
+      </group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'named-terms.csl', { hash: hasher })
+    expect(outcome.status).toBe('imported')
+    if (outcome.status !== 'imported') return
+    // The style's own override is what the edition label prints; a term nobody defines is named and
+    // prints nothing, so a Chinese entry never falls back to an English label.
+    expect(outcome.style.unsupported).toContain('term:no-such-term')
+    expect(outcome.style.unsupported).not.toContain('label:edition')
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation({ ...item(), edition: '2' }, style.id, {}, [style])
+    expect(rendered.text).toContain('版 2')
+    expect(rendered.text).not.toContain('no-such-term')
   })
 
   it('refuses a style it cannot attribute, with a named reason', () => {
@@ -424,14 +451,80 @@ describe('rendering an imported style', () => {
     if (outcome.status !== 'imported') throw new Error('import expected')
     const style = citationStyleFromImport(outcome.style)
     const formatted = formatCitation(item(), style.id, { index: 1 }, [style])
-    // The volume and the page appear once each: the term nodes contribute nothing, because a label
-    // this renderer cannot localise must not be replaced by the value it labels.
+    // The volume and the page appear once each, now with the locale's own label in front of them:
+    // the term node prints "vol.", <label> prints the plural "pp." for a page range, and neither is
+    // replaced by the value it labels (which is what printed "21 21, 21, 3 3" once).
     expect(formatted.text).toBe(
-      'Zhang, W., Chen, L., Smith, J. A. and Huang, M. Deep learning for protein design. 21, 145-158.'
+      'Zhang, W., Chen, L., Smith, J. A. and Huang, M. Deep learning for protein design. vol. 21, pp. 145-158.'
     )
-    // The omission is named rather than silent — and so is <label>, which the subset never rendered.
-    expect(outcome.style.unsupported).toContain('text:term')
-    expect(outcome.style.unsupported).toContain('label')
+    // Neither construct is a gap any more, so neither is named as one.
+    expect(outcome.style.unsupported).not.toContain('text:term')
+    expect(outcome.style.unsupported).not.toContain('label')
+  })
+
+  it('uses the style locale for labels: a single page is singular, a Chinese style says 卷 and 页', () => {
+    const xml = styleDocument({
+      defaultLocale: 'zh-CN',
+      bibliography: `<bibliography>
+    <layout>
+      <group delimiter=", ">
+        <group delimiter=" "><label variable="volume" form="short"/><text variable="volume"/></group>
+        <group delimiter=" "><label variable="issue" form="short"/><text variable="issue"/></group>
+        <group delimiter=" "><label variable="page" form="short"/><text variable="page"/></group>
+      </group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'zh-labels.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation({ ...item(), issue: '3' }, style.id, {}, [style])
+    expect(rendered.text).toContain('卷 21')
+    expect(rendered.text).toContain('期 3')
+    // The page range takes the plural form; Chinese spells it the same either way.
+    expect(rendered.text).toContain('页 145-158')
+    expect(rendered.text).not.toContain('vol.')
+  })
+
+  it('picks the plural label from the value and honours an explicit plural attribute', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <group delimiter=" | ">
+        <group delimiter=" "><label variable="page" form="short"/><text variable="page"/></group>
+        <label variable="volume" form="short" plural="always"/>
+        <label variable="issue" form="short" plural="never"/>
+      </group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'plural.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    // One page renders the singular "p."; a forced plural prints "vols." for a single volume, and a
+    // forced singular keeps "no." for an issue.
+    const single = formatCitation({ ...item(), pages: '145', issue: '3' }, style.id, {}, [style])
+    expect(single.text).toContain('p. 145')
+    expect(single.text).toContain('vols.')
+    expect(single.text).toContain('no.')
+    const range = formatCitation(item(), style.id, {}, [style])
+    expect(range.text).toContain('pp. 145-158')
+  })
+
+  it('prints no label beside a variable the record does not carry', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <group delimiter=" "><label variable="page" form="short"/><text variable="volume"/></group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'empty-label.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const rendered = formatCitation({ ...item(), pages: undefined }, style.id, {}, [style])
+    // A label with no value to label is noise: the volume prints, the page label does not.
+    expect(rendered.text).toBe('21')
   })
 
   it('prints only the dates the record carries, never the issued year under another date variable', () => {
