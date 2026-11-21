@@ -131,9 +131,14 @@ const diffRegion = async (
   testInfo: TestInfo
 ): Promise<Record<string, unknown>> => {
   try {
-    const expected = await readFile(testInfo.snapshotPath(name, { kind: 'snapshot' }))
+    // The baseline on disk carries the profile suffix (`-ci` / `-local`) exactly as toHaveScreenshot
+    // resolved it; asking for the unsuffixed name missed and reported "unavailable" on every CI red
+    // (measured on run 44951327728: `settings-general-darwin.png` does not exist). Playwright appends the
+    // platform suffix to whatever name it is given, so the profiled stem is the one that resolves.
+    const stem = baselineName(name).replace(/\.png$/, '')
+    const expected = await readFile(testInfo.snapshotPath(`${stem}.png`, { kind: 'snapshot' }))
     // Playwright writes `<stem>-actual.png`: the extension is dropped, not doubled.
-    const actual = await readFile(testInfo.outputPath(`${name.replace(/\.png$/, '')}-actual.png`))
+    const actual = await readFile(testInfo.outputPath(`${stem}-actual.png`))
     return await page.evaluate(
       async (payload: { expected: string; actual: string }) => {
         // No fetch here: the app page's CSP refuses data: URLs, and this only needs the bytes decoded.
