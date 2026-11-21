@@ -2652,12 +2652,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.saveFailedDefaultPermissionProfile':
     'Impossible d’enregistrer le mode d’autorisation par défaut. Réessayez.',
   'settings.saveFailedExportAuthor': "L'auteur de l'export n'a pas pu être enregistré",
+  'settings.saveFailedExportAffiliation': "Échec de l'enregistrement de l'institution",
   'settings.saveFailedExportLicense': "La licence d'export n'a pas pu être enregistrée",
   'settings.exportAttributionTitle': 'Attribution des exports',
   'settings.exportAttributionIntro':
     "Écrit dans les exports RO-Crate comme author et license. Laissé vide, les deux champs sont omis — rien n'est déduit ni prérempli.",
-  'settings.exportAuthorLabel': 'Auteur ou institution',
+  'settings.exportAuthorLabel': 'Auteur',
   'settings.exportAuthorPlaceholder': 'Votre nom',
+  'settings.exportAffiliationLabel': 'Établissement',
+  'settings.exportAffiliationPlaceholder':
+    "Où travaille l'auteur : hôpital, laboratoire ou entreprise",
   'settings.exportLicenseLabel': "Licence d'export par défaut",
   'settings.exportLicensePlaceholder': 'ex. CC BY 4.0 ou https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch':

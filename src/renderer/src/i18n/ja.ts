@@ -2575,12 +2575,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.saveFailedDefaultPermissionProfile':
     '既定の権限モードを保存できませんでした。再試行してください。',
   'settings.saveFailedExportAuthor': 'エクスポート作成者を保存できませんでした',
+  'settings.saveFailedExportAffiliation': '所属機関の保存に失敗しました',
   'settings.saveFailedExportLicense': 'エクスポートライセンスを保存できませんでした',
   'settings.exportAttributionTitle': 'エクスポートの帰属情報',
   'settings.exportAttributionIntro':
     'RO-Crate に author と license として書き込まれます。空欄なら両方とも出力しません。推測も既定値の補完もしません。',
-  'settings.exportAuthorLabel': '作成者または所属機関',
+  'settings.exportAuthorLabel': '作成者',
   'settings.exportAuthorPlaceholder': 'あなたの名前',
+  'settings.exportAffiliationLabel': '所属機関',
+  'settings.exportAffiliationPlaceholder': '著者の所属機関（病院・研究室・企業など）',
   'settings.exportLicenseLabel': '既定のエクスポートライセンス',
   'settings.exportLicensePlaceholder':
     '例：CC BY 4.0 または https://spdx.org/licenses/CC-BY-4.0.html',

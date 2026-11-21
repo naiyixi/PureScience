@@ -5,6 +5,7 @@ import {
   readConversationSkillImportEnabled,
   readDefaultPermissionProfile,
   readAppIconVariant,
+  readExportAffiliation,
   readExportAuthorKind,
   readIsolatedClaudeToken,
   readNotificationsEnabled,
@@ -69,6 +70,30 @@ describe('Settings transport validation', () => {
     )
     expect(() => readExportAuthorKind({ authorKind: true })).toThrow(
       'Invalid export author kind: true'
+    )
+  })
+
+  it('keeps "affiliation not stated" apart from "affiliation cleared"', () => {
+    // 缺失 = 这次没提机构：命令必须保留已存的那个值。
+    expect(readExportAffiliation({ value: 'Abel Wang' })).toBeUndefined()
+    expect(readExportAffiliation(undefined)).toBeUndefined()
+    // 空串 = 用户清空了机构：返回空串而不是 undefined，否则清空会变成「什么都没发生」。
+    expect(readExportAffiliation({ value: 'Abel Wang', affiliation: '   ' })).toBe('')
+    expect(readExportAffiliation({ affiliation: '' })).toBe('')
+    expect(readExportAffiliation({ affiliation: ' 浙江大学医学院附属第二医院 ' })).toBe(
+      '浙江大学医学院附属第二医院'
+    )
+  })
+
+  it('refuses an affiliation that would corrupt the JSON-LD field', () => {
+    expect(() => readExportAffiliation({ affiliation: 42 })).toThrow(
+      'Invalid export affiliation: 42'
+    )
+    expect(() => readExportAffiliation({ affiliation: 'a\nb' })).toThrow(
+      'Export affiliation contains control characters'
+    )
+    expect(() => readExportAffiliation({ affiliation: 'x'.repeat(201) })).toThrow(
+      'Export affiliation is longer than 200 characters'
     )
   })
 

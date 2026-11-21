@@ -1181,12 +1181,15 @@ export const en: Record<ZhKey, string> = {
   'settings.saveFailedDefaultPermissionProfile':
     'Could not save the default permission mode. Try again.',
   'settings.saveFailedExportAuthor': 'Failed to save the export author',
+  'settings.saveFailedExportAffiliation': 'Failed to save the affiliation',
   'settings.saveFailedExportLicense': 'Failed to save the export license',
   'settings.exportAttributionTitle': 'Export attribution',
   'settings.exportAttributionIntro':
     'Written into RO-Crate exports as author and license. Left empty, the export simply omits both — nothing is inferred or defaulted.',
-  'settings.exportAuthorLabel': 'Author or institution',
+  'settings.exportAuthorLabel': 'Author',
   'settings.exportAuthorPlaceholder': 'Your name',
+  'settings.exportAffiliationLabel': 'Institution',
+  'settings.exportAffiliationPlaceholder': 'Where the author works — hospital, lab or company',
   'settings.exportLicenseLabel': 'Default export license',
   'settings.exportLicensePlaceholder': 'e.g. CC BY 4.0 or https://spdx.org/licenses/CC-BY-4.0.html',
   'settings.saveFailedProviderSwitch': 'Could not switch active provider or model. Try again.',

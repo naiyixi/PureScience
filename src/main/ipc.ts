@@ -3814,6 +3814,7 @@ const createApplicationModules = async (
           return {
             ...(settings.exportAuthor ? { author: settings.exportAuthor } : {}),
             ...(settings.exportAuthorKind ? { authorKind: settings.exportAuthorKind } : {}),
+            ...(settings.exportAffiliation ? { affiliation: settings.exportAffiliation } : {}),
             ...(settings.exportLicense ? { license: settings.exportLicense } : {})
           }
         },

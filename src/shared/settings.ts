@@ -548,6 +548,9 @@ export type SettingsSnapshot = {
   exportAuthor?: string
   // 署名的类型：个人（缺省，与历史行为一致）或机构。没有署名时它不产生任何写入。
   exportAuthorKind?: ExportAuthorKind
+  // 作者所在机构。与署名分开存：导出里它是一个独立的 Organization 实体，让 `affiliation` 能解析到
+  // 类型正确的目标（RO-Crate 1.1 §Author），而不是把机构折进 `name` 变成一句无法核验的长串。
+  exportAffiliation?: string
   exportLicense?: string
   // The default permission profile for new sessions. Valid values: 'ask', 'auto', 'full'.
   // Absent or invalid falls back to 'ask' (the most restrictive mode).
@@ -606,6 +609,8 @@ export type SetExportAttributionRequest = {
   value?: string
   // 只对署名那条命令有意义（许可那条忽略它）：个人还是机构。缺省 = 不改动已存的类型。
   authorKind?: ExportAuthorKind
+  // 同上，只对署名那条命令有意义：作者所在机构。缺省 = 不改动已存的机构；空串 = 清掉。
+  affiliation?: string
 }
 
 export type SetDefaultPermissionProfileRequest = {

@@ -295,6 +295,84 @@ describe('RO-Crate export IPC owner', () => {
     ])
   })
 
+  it('writes the affiliation as its own Organization entity instead of folding it into the name', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    await ownerFor(storageRoot, {
+      loadAttribution: async () => ({
+        author: 'Abel Wang',
+        affiliation: '浙江大学医学院附属第二医院'
+      }),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    // 一个作者、一个机构，各自一个实体：`affiliation` 指向它，而不是把机构名拼进 name。
+    expect(captured?.creators).toEqual([
+      {
+        type: 'Person',
+        id: '#author',
+        name: 'Abel Wang',
+        affiliation: { id: '#affiliation', name: '浙江大学医学院附属第二医院' }
+      }
+    ])
+  })
+
+  it('writes no affiliation when the field is blank, even with an author set', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+    let captured: Record<string, unknown> | undefined
+
+    await ownerFor(storageRoot, {
+      loadAttribution: async () => ({ author: 'Abel Wang', affiliation: '   ' }),
+      exportCrate: (async (input: Record<string, unknown>) => {
+        captured = input
+        return {
+          outputDir: String(input.outputDir),
+          metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
+          files: [],
+          validation: { passed: [], failed: [] },
+          skipped: []
+        }
+      }) as never
+    }).exportProject(
+      { projectId: 'project-1', destinationPath: join(storageRoot, 'crate') },
+      SENDER
+    )
+
+    // 空白不等于一个叫「空白」的机构：键本身不该出现。
+    expect(captured?.creators).toEqual([{ type: 'Person', id: '#author', name: 'Abel Wang' }])
+  })
+
   it('never writes a creator from an author type alone', async () => {
     const storageRoot = await createScratch()
     await writeDurableVersion({

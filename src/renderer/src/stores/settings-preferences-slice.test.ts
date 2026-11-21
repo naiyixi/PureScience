@@ -44,6 +44,7 @@ type TestStore = SettingsPreferencesActions & {
   appIconVariant: AppIconVariant
   exportAuthor: string
   exportAuthorKind: ExportAuthorKind
+  exportAffiliation: string
   exportLicense: string
   defaultPermissionProfile: PermissionProfileId
   settingsWriteError: string | undefined
@@ -100,9 +101,13 @@ const createCommands = (): CommandMocks => ({
   setDefaultPermissionProfile: vi.fn(({ profile }) =>
     Promise.resolve(snapshot({ defaultPermissionProfile: profile }))
   ),
-  setExportAuthor: vi.fn(({ value, authorKind }) =>
+  setExportAuthor: vi.fn(({ value, authorKind, affiliation }) =>
     Promise.resolve(
-      snapshot({ exportAuthor: value, ...(authorKind ? { exportAuthorKind: authorKind } : {}) })
+      snapshot({
+        exportAuthor: value,
+        ...(authorKind ? { exportAuthorKind: authorKind } : {}),
+        ...(affiliation === undefined ? {} : { exportAffiliation: affiliation })
+      })
     )
   ),
   setExportLicense: vi.fn(({ value }) => Promise.resolve(snapshot({ exportLicense: value }))),
@@ -128,6 +133,7 @@ const createHarness = (): {
       appIconVariant: next.appIconVariant,
       exportAuthor: next.exportAuthor ?? '',
       exportAuthorKind: next.exportAuthorKind ?? 'person',
+      exportAffiliation: next.exportAffiliation ?? '',
       exportLicense: next.exportLicense ?? '',
       defaultPermissionProfile: next.defaultPermissionProfile ?? 'ask'
     })
@@ -141,6 +147,7 @@ const createHarness = (): {
     appIconVariant: 'light',
     exportAuthor: '',
     exportAuthorKind: 'person',
+    exportAffiliation: '',
     exportLicense: '',
     defaultPermissionProfile: 'ask',
     settingsWriteError: undefined,
@@ -185,19 +192,46 @@ describe('settings preferences slice', () => {
     expect(reconcileSnapshot).toHaveBeenCalledTimes(6)
   })
 
+  it('carries the affiliation through every writer, so changing the name or the kind cannot drop it', async () => {
+    await store.getState().setExportAffiliation('浙江大学医学院附属第二医院')
+    await store.getState().setExportAuthor('Abel Wang')
+    await store.getState().setExportAuthorKind('person')
+
+    // 三次写入都必须带上机构：省略 affiliation 在主进程那里的含义是「这次没提，保留旧值」，
+    // 而清空是空串 —— 所以只要少带一次，用户就会看到「机构自己没了」或「清不掉」。
+    expect(commands.setExportAuthor).toHaveBeenNthCalledWith(1, {
+      value: '',
+      authorKind: 'person',
+      affiliation: '浙江大学医学院附属第二医院'
+    })
+    expect(commands.setExportAuthor).toHaveBeenNthCalledWith(2, {
+      value: 'Abel Wang',
+      authorKind: 'person',
+      affiliation: '浙江大学医学院附属第二医院'
+    })
+    expect(commands.setExportAuthor).toHaveBeenNthCalledWith(3, {
+      value: 'Abel Wang',
+      authorKind: 'person',
+      affiliation: '浙江大学医学院附属第二医院'
+    })
+    expect(store.getState().exportAffiliation).toBe('浙江大学医学院附属第二医院')
+  })
+
   it('carries the author type and the author text in the same write, so neither silently overwrites the other', async () => {
     await store.getState().setExportAuthor('zerolink Bio')
     await store.getState().setExportAuthorKind('organization')
 
     expect(commands.setExportAuthor).toHaveBeenNthCalledWith(1, {
       value: 'zerolink Bio',
-      authorKind: 'person'
+      authorKind: 'person',
+      affiliation: ''
     })
     // The second write names the text it is not changing, and the kind it is: a partial payload would
     // let the main process clear whichever half it did not receive.
     expect(commands.setExportAuthor).toHaveBeenNthCalledWith(2, {
       value: 'zerolink Bio',
-      authorKind: 'organization'
+      authorKind: 'organization',
+      affiliation: ''
     })
     expect(store.getState().exportAuthorKind).toBe('organization')
   })

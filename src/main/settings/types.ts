@@ -218,6 +218,8 @@ export type StoredSettings = {
   exportAuthor?: string
   // 署名类型（个人/机构）。只改变导出里那个实体的 `@type`，不影响用户写下的文字。
   exportAuthorKind?: ExportAuthorKind
+  // 作者所在机构：导出里一个独立的 Organization 实体，由作者的 `affiliation` 指过去。
+  exportAffiliation?: string
   exportLicense?: string
   connectors?: StoredConnectors
   // Non-secret package-mirror overrides (conda/pypi/cran). Absent means public hosts.

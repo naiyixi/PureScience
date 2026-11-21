@@ -57,6 +57,7 @@ import {
   readAppIconVariant,
   readUiLanguage,
   readAttributionValue,
+  readExportAffiliation,
   readExportAuthorKind,
   readClosePreference,
   readDefaultPermissionProfile,
@@ -753,7 +754,8 @@ const registerCoreSettingsApplicationCommands = (
       'settings:set-export-author': ({ args }) =>
         dependencies.service.setExportAuthor(
           readAttributionValue(args[0]),
-          readExportAuthorKind(args[0])
+          readExportAuthorKind(args[0]),
+          readExportAffiliation(args[0])
         ),
       'settings:set-export-license': ({ args }) =>
         dependencies.service.setExportLicense(readAttributionValue(args[0])),

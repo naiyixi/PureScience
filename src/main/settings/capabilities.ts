@@ -47,7 +47,8 @@ export interface SettingsPreferences {
   setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot>
   setExportAuthor(
     author: string | undefined,
-    kind?: ExportAuthorKind
+    kind?: ExportAuthorKind,
+    affiliation?: string
   ): Promise<SettingsPreferencesSnapshot>
   setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot>
   setDefaultPermissionProfile(profile: PermissionProfileId): Promise<SettingsPreferencesSnapshot>

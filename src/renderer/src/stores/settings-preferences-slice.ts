@@ -27,6 +27,8 @@ type SettingsPreferencesState = {
   exportAuthor: string
   // 署名类型：只决定导出里那个实体的 `@type`；没选过按 'person'（与历史行为一致）。
   exportAuthorKind: ExportAuthorKind
+  // 作者所在机构：导出里独立的 Organization 实体。'' = 用户清空了。
+  exportAffiliation: string
   exportLicense: string
   defaultPermissionProfile: PermissionProfileId
 }
@@ -41,6 +43,7 @@ type OptimisticPreferenceField =
   | 'defaultPermissionProfile'
   | 'exportAuthor'
   | 'exportAuthorKind'
+  | 'exportAffiliation'
   | 'exportLicense'
 
 export type SettingsPreferencesActions = {
@@ -53,6 +56,7 @@ export type SettingsPreferencesActions = {
   setDefaultPermissionProfile: (profile: PermissionProfileId) => Promise<void>
   setExportAuthor: (author: string) => Promise<void>
   setExportAuthorKind: (kind: ExportAuthorKind) => Promise<void>
+  setExportAffiliation: (affiliation: string) => Promise<void>
   setExportLicense: (license: string) => Promise<void>
   completeOnboarding: () => Promise<void>
   setPackageMirror: (mirror: PackageMirror) => Promise<void>
@@ -92,6 +96,7 @@ const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, SettingsWriteErr
   exportAuthor: SETTINGS_WRITE_ERROR_KEYS.exportAuthor,
   // 类型与文字是同一条命令的两次写入，失败提示也共用一句：分开报会让读者以为存了两份东西。
   exportAuthorKind: SETTINGS_WRITE_ERROR_KEYS.exportAuthor,
+  exportAffiliation: SETTINGS_WRITE_ERROR_KEYS.exportAffiliation,
   exportLicense: SETTINGS_WRITE_ERROR_KEYS.exportLicense
 }
 
@@ -195,13 +200,19 @@ export const createSettingsPreferencesSlice = ({
       ),
 
     // 空串就是「清除」：主进程会把 '' 存成 undefined，导出时也就不写这两个字段。
+    // 三条（文字/类型/机构）共用一条命令，所以每次都要把另外两条的当前值带上 —— 少了哪个，
+    // 主进程就会把那个当成「这次没提」并保留旧值，看起来像「改了没生效」。
     setExportAuthor: (author) =>
       runOptimisticWrite(
         'exportAuthor',
         'exportAuthor',
         author,
         () =>
-          getCommands().setExportAuthor({ value: author, authorKind: getState().exportAuthorKind }),
+          getCommands().setExportAuthor({
+            value: author,
+            authorKind: getState().exportAuthorKind,
+            affiliation: getState().exportAffiliation
+          }),
         'Failed to set export author'
       ),
 
@@ -211,8 +222,28 @@ export const createSettingsPreferencesSlice = ({
         'exportAuthorKind',
         'exportAuthorKind',
         kind,
-        () => getCommands().setExportAuthor({ value: getState().exportAuthor, authorKind: kind }),
+        () =>
+          getCommands().setExportAuthor({
+            value: getState().exportAuthor,
+            authorKind: kind,
+            affiliation: getState().exportAffiliation
+          }),
         'Failed to set export author kind'
+      ),
+
+    // 机构：空白时传空串（明确「清掉」），而不是省略 —— 省略等于「这次没提，保留旧值」。
+    setExportAffiliation: (affiliation) =>
+      runOptimisticWrite(
+        'exportAffiliation',
+        'exportAffiliation',
+        affiliation,
+        () =>
+          getCommands().setExportAuthor({
+            value: getState().exportAuthor,
+            authorKind: getState().exportAuthorKind,
+            affiliation
+          }),
+        'Failed to set export affiliation'
       ),
 
     setExportLicense: (license) =>

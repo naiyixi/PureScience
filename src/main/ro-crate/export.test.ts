@@ -28,6 +28,63 @@ const sha256Bytes = (bytes: Uint8Array): string => createHash('sha256').update(b
 const APP = { name: 'PureScience', version: '1.75.0', url: 'https://www.zerolink.com/purescience' }
 
 describe('RO-Crate export from durable provenance storage', () => {
+  it('writes the author’s institution as a separate Organization entity that the validator resolves', async () => {
+    const storageRoot = await createScratch()
+    await writeDurableVersion({
+      storageRoot,
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1',
+      filename: 'assay.csv',
+      body: 'a,b\n1,2\n'
+    })
+
+    const outputDir = join(storageRoot, 'crate')
+    const result = await writeRoCrateExport({
+      storageRoot,
+      outputDir,
+      projectId: 'project-1',
+      projectName: 'Project One',
+      app: APP,
+      generatedAt: '2026-09-30T00:00:00.000Z',
+      creators: [
+        {
+          type: 'Person',
+          id: '#author',
+          name: 'Abel Wang',
+          affiliation: { id: '#affiliation', name: '浙江大学医学院附属第二医院' }
+        }
+      ]
+    })
+
+    // 读的是磁盘上那份 JSON，不是内存里的输入：这条要证明的是「用户填的机构真的落进了包」。
+    const written = await readFile(join(outputDir, 'ro-crate-metadata.json'), 'utf8')
+    const graph = (JSON.parse(written) as { '@graph': Record<string, unknown>[] })['@graph']
+    const author = graph.find((entity) => entity['@id'] === '#author')
+    const institution = graph.find((entity) => entity['@id'] === '#affiliation')
+
+    expect(author).toMatchObject({
+      '@type': 'Person',
+      name: 'Abel Wang',
+      affiliation: { '@id': '#affiliation' }
+    })
+    expect(institution).toMatchObject({
+      '@type': 'Organization',
+      name: '浙江大学医学院附属第二医院'
+    })
+    // 机构没有折进姓名里：姓名就是一个人的名字。
+    expect(String((author as Record<string, unknown>).name)).not.toContain('浙江大学')
+
+    // 判据来自产品自己的验证器：`author-affiliation-resolves` 必须真的通过，而不是「没报错」。
+    expect(failedRoCrateAssertions(result.validation)).toEqual([])
+    // `passed` 是个计数，断言本体在 `assertions` 里 —— 这条要证明的是那条规则真的被判过且为真。
+    const resolved = result.validation.assertions.find(
+      (assertion) => assertion.id === 'author-affiliation-resolves'
+    )
+    expect(resolved?.ok).toBe(true)
+  })
+
   it('exports every published Version with its recorded hash, and nothing else', async () => {
     const storageRoot = await createScratch()
     await writeDurableVersion({

@@ -65,6 +65,8 @@ export type RoCrateExportOwnerDeps = Readonly<{
   loadAttribution?: () => Promise<{
     author?: string
     authorKind?: 'person' | 'organization'
+    /** 作者所在机构：写成一个独立的 Organization 实体，由 creator 的 `affiliation` 指过去。 */
+    affiliation?: string
     license?: string
   }>
   now?: () => Date
@@ -211,12 +213,17 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
         const attribution = await deps.loadAttribution?.()
         const author = attribution?.author?.trim()
         const licenseText = attribution?.license?.trim()
+        const affiliation = attribution?.affiliation?.trim()
         if (author) {
           creators = [
             {
               type: attribution?.authorKind === 'organization' ? 'Organization' : 'Person',
               id: '#author',
-              name: author
+              name: author,
+              // 机构只在这个人确实有机构时写；写成独立实体的理由见 RoCrateCreator.affiliation。
+              ...(affiliation && affiliation.length > 0
+                ? { affiliation: { id: '#affiliation', name: affiliation } }
+                : {})
             }
           ]
         }

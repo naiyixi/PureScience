@@ -12,6 +12,7 @@ export type SettingsWriteKey =
   | 'appIcon'
   | 'exportAuthor'
   | 'exportAuthorKind'
+  | 'exportAffiliation'
   | 'exportLicense'
 
 export type OptimisticSettingsWriteKey =
@@ -24,6 +25,7 @@ export type OptimisticSettingsWriteKey =
   | 'appIcon'
   | 'exportAuthor'
   | 'exportAuthorKind'
+  | 'exportAffiliation'
   | 'exportLicense'
 
 type SettingsWriteToken = {

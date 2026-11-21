@@ -45,7 +45,9 @@ const GeneralPanel = (): React.JSX.Element => {
   const exportAuthor = useSettingsStore((state) => state.exportAuthor)
   const exportLicense = useSettingsStore((state) => state.exportLicense)
   const exportAuthorKind = useSettingsStore((state) => state.exportAuthorKind)
+  const exportAffiliation = useSettingsStore((state) => state.exportAffiliation)
   const setExportAuthor = useSettingsStore((state) => state.setExportAuthor)
+  const setExportAffiliation = useSettingsStore((state) => state.setExportAffiliation)
   const setExportAuthorKind = useSettingsStore((state) => state.setExportAuthorKind)
   const setExportLicense = useSettingsStore((state) => state.setExportLicense)
   const isMac = window.api.platform === 'darwin'
@@ -166,6 +168,17 @@ const GeneralPanel = (): React.JSX.Element => {
               value={exportAuthor}
               placeholder={t('settings.exportAuthorPlaceholder')}
               onChange={(event) => void setExportAuthor(event.target.value)}
+            />
+          </label>
+          {/* 机构与署名分开两栏：导出里它是独立的 Organization 实体，拼进署名就再也拆不开了。 */}
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t('settings.exportAffiliationLabel')}
+            </span>
+            <Input
+              value={exportAffiliation}
+              placeholder={t('settings.exportAffiliationPlaceholder')}
+              onChange={(event) => void setExportAffiliation(event.target.value)}
             />
           </label>
           {/* 类型只决定导出里那个实体的 @type。它不改用户写下的文字，所以不放进同一个输入框。 */}

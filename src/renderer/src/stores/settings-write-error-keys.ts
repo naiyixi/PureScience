@@ -10,6 +10,7 @@ export const SETTINGS_WRITE_ERROR_KEYS = {
   appIcon: 'settings.saveFailedAppIcon',
   defaultPermissionProfile: 'settings.saveFailedDefaultPermissionProfile',
   exportAuthor: 'settings.saveFailedExportAuthor',
+  exportAffiliation: 'settings.saveFailedExportAffiliation',
   exportLicense: 'settings.saveFailedExportLicense',
   providerSwitch: 'settings.saveFailedProviderSwitch',
   agentFrameworkSwitch: 'settings.saveFailedAgentFrameworkSwitch',

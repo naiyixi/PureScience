@@ -104,9 +104,12 @@ class SettingsPreferencesModule implements SettingsPreferences {
 
   async setExportAuthor(
     author: string | undefined,
-    kind?: ExportAuthorKind
+    kind?: ExportAuthorKind,
+    affiliation?: string
   ): Promise<SettingsPreferencesSnapshot> {
-    return toSettingsPreferencesSnapshot(await this.repository.setExportAuthor(author, kind))
+    return toSettingsPreferencesSnapshot(
+      await this.repository.setExportAuthor(author, kind, affiliation)
+    )
   }
 
   async setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot> {

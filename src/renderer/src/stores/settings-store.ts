@@ -127,6 +127,8 @@ type SettingsStoreData = RuntimeSetupState &
     exportAuthor: string
     // 署名类型。没选过按 'person' 显示与导出（历史行为）；它不是文本，不进任何文案。
     exportAuthorKind: ExportAuthorKind
+    // 作者所在机构（空串 = 没填）。与署名一样原样透传，不给默认值。
+    exportAffiliation: string
     exportLicense: string
     defaultPermissionProfile: PermissionProfileId
     // Declared licensed-skill use intent; absent means commercial (the safe default).
@@ -185,6 +187,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   appIconVariant: DEFAULT_APP_ICON_VARIANT,
   exportAuthor: '',
   exportAuthorKind: 'person',
+  exportAffiliation: '',
   exportLicense: '',
   defaultPermissionProfile: DEFAULT_PERMISSION_PROFILE
 })
@@ -212,6 +215,7 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   exportAuthor: snapshot.exportAuthor ?? '',
   // 缺省按个人：与主进程的导出侧判定一致，也与 v2.31.0 的行为逐字一致。
   exportAuthorKind: snapshot.exportAuthorKind ?? 'person',
+  exportAffiliation: snapshot.exportAffiliation ?? '',
   exportLicense: snapshot.exportLicense ?? '',
   defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
   agentFrameworkId: snapshot.agentFrameworkId,

@@ -59,13 +59,30 @@ const UI_LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$/
 // 导出署名/许可的入参校验：这是会逐字进入导出包的自由文本，所以裁掉首尾空白、拒绝控制字符、长度封顶
 // （200 字符足够写下机构名或许可证标识）。空值返回 undefined = 清除。
 const ATTRIBUTION_MAX_LENGTH = 200
+const holdsControlCharacter = (text: string): boolean =>
+  [...text].some((character) => {
+    const code = character.codePointAt(0) ?? 0
+    return code <= 0x1f || code === 0x7f || (code >= 0x202a && code <= 0x202e)
+  })
+// 会逐字进导出包的文本统一走这里：裁空白、长度封顶、拒控制字符。机构名与署名是同一种东西，
+// 只是落到 JSON-LD 的不同位置，所以不该有两套规则。
+const requireAttributionText = (value: string, what: string): string => {
+  const trimmed = value.trim()
+  if (trimmed.length > ATTRIBUTION_MAX_LENGTH) {
+    throw new Error(`${what} is longer than ${ATTRIBUTION_MAX_LENGTH} characters`)
+  }
+  if (holdsControlCharacter(trimmed)) {
+    throw new Error(`${what} contains control characters`)
+  }
+  return trimmed
+}
 const readAttributionValue = (request: unknown): string | undefined => {
   const value = readField(request, 'value')
   if (value === undefined || value === null) return undefined
   if (typeof value !== 'string') {
     throw new Error(`Invalid export attribution value: ${String(value)}`)
   }
-  const trimmed = value.trim()
+  const trimmed = requireAttributionText(value, 'Export attribution value')
   if (trimmed.length === 0) return undefined
   if (trimmed.length > ATTRIBUTION_MAX_LENGTH) {
     throw new Error(`Export attribution value is longer than ${ATTRIBUTION_MAX_LENGTH} characters`)
@@ -89,6 +106,17 @@ const readExportAuthorKind = (request: unknown): ExportAuthorKind | undefined =>
   if (kind === undefined || kind === null) return undefined
   if (kind === 'person' || kind === 'organization') return kind
   throw new Error(`Invalid export author kind: ${String(kind)}`)
+}
+
+// 作者机构：与署名一样是自由文本，但多一个语义 —— 空串表示「用户清空了机构」，
+// 而字段缺失表示「这次没提机构，保留已存的」。把两者折成同一个 undefined，清空就会失败。
+const readExportAffiliation = (request: unknown): string | undefined => {
+  const value = readField(request, 'affiliation')
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string') {
+    throw new Error(`Invalid export affiliation: ${String(value)}`)
+  }
+  return requireAttributionText(value, 'Export affiliation')
 }
 
 const readUiLanguage = (request: unknown): string | undefined => {
@@ -130,5 +158,6 @@ export {
   readReasoningEffort,
   readUiLanguage,
   readAttributionValue,
+  readExportAffiliation,
   readExportAuthorKind
 }

@@ -2577,12 +2577,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.saveFailedDefaultPermissionProfile':
     'Не удалось сохранить режим разрешений по умолчанию. Повторите попытку.',
   'settings.saveFailedExportAuthor': 'Не удалось сохранить автора экспорта',
+  'settings.saveFailedExportAffiliation': 'Не удалось сохранить организацию',
   'settings.saveFailedExportLicense': 'Не удалось сохранить лицензию экспорта',
   'settings.exportAttributionTitle': 'Авторство и лицензия экспорта',
   'settings.exportAttributionIntro':
     'Записывается в экспорт RO-Crate как author и license. Если оставить пустым, оба поля не добавляются — ничего не подставляется по умолчанию.',
-  'settings.exportAuthorLabel': 'Автор или организация',
+  'settings.exportAuthorLabel': 'Автор',
   'settings.exportAuthorPlaceholder': 'Ваше имя',
+  'settings.exportAffiliationLabel': 'Организация',
+  'settings.exportAffiliationPlaceholder':
+    'Где работает автор — больница, лаборатория или компания',
   'settings.exportLicenseLabel': 'Лицензия экспорта по умолчанию',
   'settings.exportLicensePlaceholder':
     'напр. CC BY 4.0 или https://spdx.org/licenses/CC-BY-4.0.html',

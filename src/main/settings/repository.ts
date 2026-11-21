@@ -685,6 +685,10 @@ export const sanitizeMemorySettings = (value: unknown): MemorySettings | undefin
 }
 
 // Rebuilds the whole settings document, keeping activeProviderId only when it points at a provider.
+// 与 settings/transport-validation.ts 的 ATTRIBUTION_MAX_LENGTH 同一个数：写入时封顶，读回时复核。
+// 两处各写一遍常量是刻意的 —— 一条规则两个执行点，任何一处漏了都能被这里的用例抓到。
+const EXPORT_ATTRIBUTION_MAX_LENGTH = 200
+
 const sanitizeSettings = (value: unknown): StoredSettings => {
   if (!isRecord(value)) return createEmptySettings()
 
@@ -924,6 +928,39 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
 
   if (uiLanguage !== undefined && uiLanguage.length > 0 && uiLanguage.length <= 35) {
     settings.uiLanguage = uiLanguage
+  }
+
+  // 导出署名 / 机构 / 许可：这三个字段会被逐字写进导出包，所以只在通过同一套规则时保留
+  // （裁空白、非空、长度封顶；控制字符由 transport 层在入参处就挡掉了，手改文件里的则在这里被丢弃）。
+  // 缺了这段，`setExportAuthor` 写下的值读回来就没了 —— 用户填的署名永远进不了导出包，
+  // 而只用 harness 直连 writer 的测试看不出这件事。
+  const exportAuthor = asString(value.exportAuthor)?.trim()
+  if (
+    exportAuthor &&
+    exportAuthor.length > 0 &&
+    exportAuthor.length <= EXPORT_ATTRIBUTION_MAX_LENGTH
+  ) {
+    settings.exportAuthor = exportAuthor
+    const exportAuthorKind = value.exportAuthorKind
+    if (exportAuthorKind === 'person' || exportAuthorKind === 'organization') {
+      settings.exportAuthorKind = exportAuthorKind
+    }
+    const exportAffiliation = asString(value.exportAffiliation)?.trim()
+    if (
+      exportAffiliation &&
+      exportAffiliation.length > 0 &&
+      exportAffiliation.length <= EXPORT_ATTRIBUTION_MAX_LENGTH
+    ) {
+      settings.exportAffiliation = exportAffiliation
+    }
+  }
+  const exportLicense = asString(value.exportLicense)?.trim()
+  if (
+    exportLicense &&
+    exportLicense.length > 0 &&
+    exportLicense.length <= EXPORT_ATTRIBUTION_MAX_LENGTH
+  ) {
+    settings.exportLicense = exportLicense
   }
 
   // New-conversation approval default; only known profiles survive hand-edited settings.json.
@@ -1456,15 +1493,31 @@ class SettingsRepository {
   // 清空署名时也一并清掉——没有署名时留着一个类型是悬空的偏好。
   async setExportAuthor(
     author: string | undefined,
-    kind?: ExportAuthorKind
+    kind?: ExportAuthorKind,
+    affiliation?: string
   ): Promise<StoredSettings> {
     const trimmed = author?.trim()
-    return this.mutate((settings) => ({
-      ...settings,
-      exportAuthor: trimmed && trimmed.length > 0 ? trimmed : undefined,
-      exportAuthorKind:
-        trimmed && trimmed.length > 0 ? (kind ?? settings.exportAuthorKind) : undefined
-    }))
+    const trimmedAffiliation = affiliation?.trim()
+    return this.mutate((settings) => {
+      // 三种情况必须分得开（否则「清空机构」与「这次没提机构」会落到同一个存储结果）：
+      //   affiliation === undefined → 这次只改署名，已存的机构保留；
+      //   affiliation === '' 或空白 → 用户清空了机构，存 undefined；
+      //   没有署名 → 机构一并清掉，留着是悬空的偏好。
+      const hasAuthor = Boolean(trimmed && trimmed.length > 0)
+      const nextAffiliation = !hasAuthor
+        ? undefined
+        : affiliation === undefined
+          ? settings.exportAffiliation
+          : trimmedAffiliation && trimmedAffiliation.length > 0
+            ? trimmedAffiliation
+            : undefined
+      return {
+        ...settings,
+        exportAuthor: hasAuthor ? trimmed : undefined,
+        exportAuthorKind: hasAuthor ? (kind ?? settings.exportAuthorKind) : undefined,
+        exportAffiliation: nextAffiliation
+      }
+    })
   }
 
   // 导出许可：同上。不提供默认许可证——猜一个许可证比缺一个更糟。

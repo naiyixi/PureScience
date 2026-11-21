@@ -1294,3 +1294,47 @@ describe('execution protection settings', () => {
     })
   })
 })
+
+describe('settings repository — export attribution', () => {
+  it('stores the affiliation beside the author and keeps it across a reload', async () => {
+    const root = await createStorageRoot()
+    const repository = new SettingsRepository(root)
+    await repository.setExportAuthor('Abel Wang', 'person', '浙江大学医学院附属第二医院')
+
+    // 重新开一个仓库读同一个根：验的是「写进文件了」，不是「进程里记住了」。
+    const reloaded = await new SettingsRepository(root).getSettings()
+    expect(reloaded.exportAuthor).toBe('Abel Wang')
+    expect(reloaded.exportAuthorKind).toBe('person')
+    expect(reloaded.exportAffiliation).toBe('浙江大学医学院附属第二医院')
+  })
+
+  it('leaves a stored affiliation alone when the call does not mention it', async () => {
+    const root = await createStorageRoot()
+    const repository = new SettingsRepository(root)
+    await repository.setExportAuthor('Abel Wang', 'person', 'zerolink Bio')
+
+    // 只改署名文字，不带 affiliation —— 机构不能被顺手抹掉。
+    await repository.setExportAuthor('Abel Wang (NEOlab)', 'person')
+    const settings = await repository.getSettings()
+    expect(settings.exportAuthor).toBe('Abel Wang (NEOlab)')
+    expect(settings.exportAffiliation).toBe('zerolink Bio')
+  })
+
+  it('clears the affiliation on an empty string, and on clearing the author', async () => {
+    const root = await createStorageRoot()
+    const repository = new SettingsRepository(root)
+    await repository.setExportAuthor('Abel Wang', 'person', 'zerolink Bio')
+
+    // 空串 = 用户清空了这一栏（与「这次没提机构」是两件事）。
+    await repository.setExportAuthor('Abel Wang', 'person', '')
+    expect((await repository.getSettings()).exportAffiliation).toBeUndefined()
+
+    await repository.setExportAuthor('Abel Wang', 'person', 'zerolink Bio')
+    // 没有署名时机构一并清掉：留着一个没有作者的机构是悬空的偏好。
+    await repository.setExportAuthor(undefined, 'person')
+    const cleared = await repository.getSettings()
+    expect(cleared.exportAuthor).toBeUndefined()
+    expect(cleared.exportAuthorKind).toBeUndefined()
+    expect(cleared.exportAffiliation).toBeUndefined()
+  })
+})
