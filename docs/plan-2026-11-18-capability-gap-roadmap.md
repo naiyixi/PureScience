@@ -267,7 +267,7 @@ logger/diagnostics），而它正是机构字段要落的同一处。若继续�
 - 涉及新 IPC 通道：必须同时跑 `application-command-composition`（v2.30.0 的启动即死事故就是漏了这一步）；
 - 任何「完成」必须附真机证据；没有真机就写 UNVERIFIED，不许写成已验。
 
-## 4.3 crate 的作者与许可（2026-11-18 由第三方读校验发现，未开工）
+## 4.3 crate 的作者与许可（2026-11-18 由第三方读校验发现；**2026-11-21 交付于 v2.32.0**，见上文「4.x 作者机构」）
 
 4.2 已完成：导出包被 `rocrate 0.16.0` 与 `pyld 3.3.0` 两个独立实现完整读出（593 实体 / 278 文件 /
 校验和全对 / 引用零悬空），读数见 `docs/evidence/2026-11-18-ro-crate-third-party-read.md`。
@@ -320,7 +320,7 @@ logger/diagnostics），而它正是机构字段要落的同一处。若继续�
 `isAbsoluteLocalPath`），PDF 那条收成单一实现 `resolvePdfSourcePath`，两处调用同一份。
 1.3 的其余读数与判据不变；**没有** Windows 真机 ⇒ 该平台上的实际效果只由 Windows 车道证明。
 
-## 4.3 开工单（执行器，2026-11-19 立，未开工）
+## 4.3 开工单（执行器，2026-11-19 立；**已由主线完成**：署名/类型/许可三条链路在 v2.32.0 打通，机构作为独立 `Organization` 实体落地，实机 e2e 与读磁盘的 crate 用例均过）
 
 **为什么还没开工**：开工前置是「`src/shared/ro-crate.ts`、`SettingsPage.tsx`、`i18n/*` 三条干净」，
 2026-11-19 中午这三条里有两条正被并发会话改（`src/shared/ro-crate.ts` 在读侧校验上做 1.x 兼容），
