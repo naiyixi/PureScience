@@ -209,7 +209,6 @@ const SUPPORTED_ELEMENTS = new Set([
   'names',
   'name',
   'et-al',
-  'label',
   'date',
   'date-part',
   'number'
@@ -353,6 +352,12 @@ const compileNode = (element: XmlElement, context: CompileContext, depth = 0): C
   if (element.name === 'text' && element.attributes['variable'] === 'locator') {
     context.unsupported.add('variable:locator')
     return []
+  }
+  if (element.name === 'text' && element.attributes['term'] !== undefined) {
+    // <text term="volume"> prints a localised label ("vol."), and this renderer carries no locale
+    // terms. Named here so a reader knows the entry lost its label rather than being shown the
+    // number where the label belonged.
+    context.unsupported.add('text:term')
   }
   if (element.name === 'names' && firstChild(element, 'substitute') !== undefined) {
     // The substitute itself is honoured (see renderNames). What we do not implement is CSL's rule that a
@@ -655,11 +660,23 @@ const renderOwnNames = (node: CslNameOptions, state: RenderState): string => {
   return applyFormatting(`${withAnd}${etAlText}`, node)
 }
 
+// The year a <date> node may print. A CSL date node names its own variable, and our records carry
+// exactly two dates: `issued` (the record's year) and `accessed` (when a reading was retrieved).
+// Any other variable renders nothing — the previous code printed the issued year for every date
+// variable, which duplicated the year under labels that mean something else ("Original work
+// published 2024"), and the fidelity probe could not see it because the year it looks for was there.
+const dateYear = (variable: string, state: RenderState): number | undefined => {
+  if (variable === 'issued') return state.item.year
+  const stamp = state.variables[variable]?.trim()
+  const match = stamp ? /(\d{4})/.exec(stamp) : null
+  return match ? Number(match[1]) : undefined
+}
+
 const renderDate = (
   node: { variable: string; parts: { name: string; form?: string }[] } & CslFormatting,
   state: RenderState
 ): string => {
-  const year = state.item.year
+  const year = dateYear(node.variable, state)
   if (!year) return ''
   const rendered = node.parts
     .map((part) => {
@@ -677,7 +694,13 @@ const renderNode = (node: CslNode, state: RenderState): string => {
   switch (node.kind) {
     case 'text': {
       if (node.value !== undefined) return applyFormatting(node.value, node)
-      const variable = node.variable ?? node.term ?? ''
+      // A <text term="volume"> node prints the style's localised label ("vol."), never a value. This
+      // renderer carries no locale terms, so such a node prints nothing and the omission is named in
+      // the import report (`text:term`). Reading the same-named variable instead — which is what this
+      // did — put the number where the label belonged and printed it a second time: a real IEEE
+      // document rendered "21 21, 21, 3 3" out of one volume and one issue.
+      if (node.variable === undefined) return ''
+      const variable = node.variable
       if (variable === 'citation-number') {
         return applyFormatting(state.index ? String(state.index) : '', node)
       }
@@ -762,7 +785,9 @@ const FIDELITY_PROBE_ITEM: CitationItem = {
 // This is what lets an import be labelled a draft instead of being presented as the style's real
 // output: the checks are mechanical, and a style that fails them is named as failing them.
 export const probeCslStyleFidelity = (program: CslProgram): string[] => {
-  const text = renderProgram(program, FIDELITY_PROBE_ITEM, 1, '2026-09-20')
+  // The retrieval stamp is deliberately in another year: an accessed date that equals the issued year
+  // would make a style that prints the publication year twice look like it printed a date once.
+  const text = renderProgram(program, FIDELITY_PROBE_ITEM, 1, '2019-05-04')
   if (!text.trim()) return ['render-empty']
   const lower = text.toLowerCase()
   const notes: string[] = []
@@ -770,6 +795,18 @@ export const probeCslStyleFidelity = (program: CslProgram): string[] => {
   if (!lower.includes('quillmark')) notes.push('missing:authors')
   if (!text.includes('2026')) notes.push('missing:year')
   if (!text.includes('45-67') && !text.includes('45–67')) notes.push('missing:pages')
+  // Presence is not the same as fidelity: four real styles printed one volume and one issue as
+  // "12 12, 12, 3 3" and still passed every check above, because the value the probe looked for was
+  // there — twice. A value printed more than once is reported as what it is.
+  for (const [name, pattern] of [
+    ['volume', /\b12\b/g],
+    ['issue', /\b3\b/g],
+    ['pages', /45[-–]67/g],
+    ['year', /\b2026\b/g]
+  ] as const) {
+    const matches = text.match(pattern) ?? []
+    if (matches.length > 1) notes.push(`duplicate:${name}`)
+  }
   return notes
 }
 

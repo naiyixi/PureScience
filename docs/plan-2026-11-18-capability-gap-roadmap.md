@@ -225,7 +225,15 @@ README 的成熟度段（发布页正文直接由它生成）里有两句话与�
 | agent 能**自己写 PPTX**                                    | `src/main/slides/pptx-deck.ts` + `slides/mcp-server.ts`                                                                                                                             | 真   |
 | 封存记录能在**干净 Linux 与 Windows** 重放并被同一比较判定 | `.github/workflows/replay-cross-machine.yml`：matrix 双 runner，跑产品自己的 `compareReplayOutputs`，另含「改 digest 必须判 differs」的反向对照；最近两次运行 success（2026-11-19） | 真   |
 
-**这一轮没验的（需要跑真机/真服务，不硬猜）**：CSL 八种真实期刊样式「五种通过、三种标草稿」；
+**CSL 那一格已核（2026-11-21，`docs/evidence/2026-11-21-csl-real-styles-render.md`）**：八份真实公开发布样式
+（公开样式仓库 `15ea5749`，逐份 sha256 在证据档里）走真 SQLite + 产品自己的导入/渲染路径，**八种全部
+`fidelity=verified`**；README 里「五种通过、三种标草稿」是 2026-09-20 的旧读数，当天 16:34 的替换修复之后已不成立。
+同一次核对还揪出三种「字段进了错的位置」的缺陷并修掉（`<text term>` 被当成同名变量、任何 `<date>` 都渲染出版年、
+`<label>` 在支持清单里却恒渲染空），并把探针从「值是否出现」升级为「值是否只出现一次」——正是这条盲区让
+IEEE 把一卷一期印成 `21 21, 21, 3 3` 时仍被判 verified。仍未修并已立案：locale 标签（`vol.`/`no.`/`pp.`）缺失、
+宏展开后的组分隔符丢失、APA 残留 `(as)` 片段、作者姓名形态。
+
+**这一轮没验的（需要跑真机/真服务，不硬猜）**：
 「用户自己装在 PATH 上的 `codex-acp` 仍不可用」；per-purpose 模型那五条里剩下的一条。
 
 ## 排期纪律

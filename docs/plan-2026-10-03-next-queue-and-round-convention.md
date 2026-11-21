@@ -1,5 +1,68 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十三、本轮追加（执行器，2026-11-21 10:3x–）—— 八份真实 CSL 样式一起跑，揪出三种「字段进了错的位置」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 98e0a203`（会话把执行器 11-19 那批署名类型的半成品收进主干）；工作树 **32 个改动 + 2 个新文件仍是会话在制**
+  （`src/main/settings/**` 又在加 `exportAffiliation`、`src/main/ro-crate/ipc*`、`crash-diagnostics`、`logger`、`diagnostics/module-load*`、
+  `GeneralPanel.tsx`、`stores/settings-*`、九个 i18n 文件）⇒ **一个字节没碰**。本轮只碰 `src/shared/citation/**`、`docs/**`、两份 README。
+- 进轮车道读数：`98e0a203` 的 `Windows Full Test` **success**，`Nightly` 在跑；`416f9955` 的双车道 **success**。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可取单元；v3.5 里「机构接线」正在会话手上 ⇒ 取上一轮写下的第三条：
+  「`docs/plan-2026-11-18-capability-gap-roadmap.md` 里那条**未验**的 CSL 自陈」。
+
+### 一 定因：那句自陈是 2026-09-20 的旧读数，且它掩盖了真缺陷
+
+- README 的 🚧 段写着「八种真实样式，五种通过、三种标草稿（作者宏按我们未建模的记录类型分支）」。
+  查来源：`c9096702`（2026-09-20 13:32）写下这句；同一天 16:34 的 `8d8c45e6`（honour CSL substitutes）已经修掉了那些分支 ⇒
+  自那以后这句就不成立。`docs/evidence/2026-09-20-citation-style-probe.log`（gitignored 的 `*.log`）里当天的探针读数就是 **8/8 `verified`**。
+- 现取（2026-11-21）：八份公开样式（公开样式仓库 `15ea5749`，逐份 sha256 入证据档）走**真 SQLite + 产品自己的导入/渲染路径**
+  ⇒ 八种**全部 `verified`**。但同一批渲染里，**四种把字段印了两遍**：IEEE `21 21, 21, 3 3`、Chicago `Huang(2024) 2024“…”`、
+  MLA 年份两遍、APA 尾部多一段 `(as, 2024)`。
+
+### 二 三个缺陷与修法（都在 `src/shared/citation/csl.ts`）
+
+| # | 形状 | 落点 | 修法 |
+| --- | --- | --- | --- |
+| 1 | `<text term="volume"/>` 被当成同名变量渲染 ⇒ 数字出现在标签位、并印第二遍 | `renderNode` 的 `node.variable ?? node.term` | 只有带 `variable` 的 text 节点取变量；`term` 节点输出空，并具名 `text:term` |
+| 2 | 任何 `<date variable="X">` 都渲染 `item.year` ⇒ 年份印两遍（第二遍挂在「原始出处」那种标签下） | `renderDate` 恒用 `state.item.year` | 只认记录真有的两个日期（`issued` / `accessed`），其余输出空 |
+| 3 | `<label>` 在「支持的构造」清单里，渲染恒为空串 | `SUPPORTED_ELEMENTS` 含 `label`，`renderNode` 的 `label` 分支 `return ''` | 移出支持清单 ⇒ 导入报告具名 `label` |
+
+- 顺带把**探针自己**补上盲区：旧探针只查「值是否出现」，所以「值出现两遍」照样判 verified。现在同一条 item 的卷/期/页/年在渲染里
+  出现多于一次 ⇒ `duplicate:volume` 一类具名注记、保真度降 `partial`；检索时间戳挪到另一个年份（否则「访问日期」与出版年同年，重复年份看不出来）。
+
+### 三 读数（修复前后逐字，证据档 `docs/evidence/2026-11-21-csl-real-styles-render.md`）
+
+| 样式 | 修复前 | 修复后 |
+| --- | --- | --- |
+| IEEE | `…, 21 21, 21, 3 3, 145-158, 2024, …` | `…, 21, 3, 145-158, 2024, …` |
+| Chicago | `… M. Huang(2024) 2024“…”` | `… M. Huang2024“…”` |
+| MLA | `…”. 2024. Nature Methods, 21, 3, 2024, 145-158` | `…”. Nature Methods, 21, 3, 2024, 145-158` |
+| APA | `…145-158.https://doi.org/…(as, 2024)` | `…145-158.https://doi.org/…(as)` |
+
+- 真库探针（`citation-style-probe.test.ts`，八份样式）：8 imported / 8 rows / 重导入 `replacedExisting=true` / 删除后 7 行，八个 `verified`。
+- 仍未修并已立案（机制不同，不在本轮）：locale 标签 `vol.`/`no.`/`pp.` 缺失（本渲染器不带任何 locale 词条，中文样式要的是「第 21 卷」）；
+  **宏展开后组分隔符丢失**（AMA `Nature Methods2024`、APA `.https://`）——修复前后逐字相同，非本轮引入；APA 那段 `(as)`
+  说明分支选择把「原始出处」走成了，与分隔符同族；作者姓名形态（`W. Zhang` vs `Zhang, W.`）。
+
+### 四 门禁与边界
+
+- 定向：`src/shared/citation` + `src/main/references` **35 文件 / 456 例通过（1 skipped）**；新增三条（term 节点不打印数值 + 标签具名、
+  日期变量各印各的、同字段两遍 ⇒ `partial`）；`eslint --no-cache` 两个改动文件 **0**；`typecheck:node` **0**。
+- `typecheck:web` 在共享树里**红**，两处都在 `src/renderer/src/stores/settings-preferences-slice.test.ts`（会话正在加的 `exportAffiliation`），
+  **不是本轮引入**；本轮的 web 侧读数改在隔离工作树里对我这一笔取（见第四节末尾）。
+- 边界：探针是真 SQLite + 真样式字节 + 产品自己的 `importCslStyle`/`formatCitation`，**不是窗口截图**；窗口侧只有认证 spec
+  `references-citation-styles.spec.ts`，它用自写样式文档覆盖导入/比较/导出闭环，不覆盖第三方样式的排版细节。
+- README 的成熟度块**没有**回头重发 v2.31.2 的发布正文：这条修复不在 v2.31.2 里，重发正文等于让旧版本页认领它。
+  下一次发版时按常规 `release:notes … --apply` 生成即可（那时这段才是「上一版」的叙事）。
+
+### 五 下一轮第一步
+
+- ① 先 `git status --short` 现查：会话那 32 个在制若仍脏，继续只做不相交路径（`src/shared/citation`、`src/main/notebook`、`src/main/reviewer`、`docs/**`）。
+- ② 按完整 40 位 SHA 读本轮这一笔的 `Nightly` + `Windows Full Test` 终态（`cancelled` 不算绿）。
+- ③ 下一候选：CSL 同族的两条立案（宏展开后的分隔符 / 分支选择）需要先给「真实样式里那一层 delimiter 为什么没生效」造一条可驱动的读数；
+  或者取 v3.5 里仍开着的「per-purpose 模型那五条里剩下的一条」。
+
 ## 一百九十二、本轮追加（执行器，2026-11-21 06:0x–）—— Windows 车道的红是**断言拿机器速度当判据**：慢行家族最后两处没有确定性时钟的站点已收
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

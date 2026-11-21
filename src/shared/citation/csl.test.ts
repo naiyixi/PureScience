@@ -306,6 +306,25 @@ describe('fidelity probe', () => {
     expect(outcome.style.fidelityNotes).toEqual(['render-empty'])
   })
 
+  it('calls a style partial when it prints the same field twice', () => {
+    // The probe used to look only for presence, so a style that printed one volume twice was called
+    // verified. Four real styles did exactly that.
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout suffix=".">
+      <text variable="title"/>
+      <text variable="volume" prefix=" "/>
+      <text variable="volume" prefix=" "/>
+      <date variable="issued" prefix=" "><date-part name="year"/></date>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'twice.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.fidelity).toBe('partial')
+    expect(outcome.style.fidelityNotes).toContain('duplicate:volume')
+  })
+
   it('renders the year when a style leaves its date parts to the locale, and names that substitution', () => {
     const xml = styleDocument({
       bibliography: `<bibliography>
@@ -382,5 +401,54 @@ describe('rendering an imported style', () => {
     expect(formatCitation(item(), 'csl-import:test-journal', {}, [style]).styleLabel).toBe(
       'Imported Journal Style'
     )
+  })
+
+  // Two shapes that used to print a field twice. Both were found by rendering eight real published
+  // styles (the probe in `src/main/references/citation-style-probe.test.ts`): one IEEE entry came out
+  // as "21 21, 21, 3 3" for a record with one volume and one issue, and one Chicago entry printed its
+  // year twice, the second time under a label that means "original work published".
+  it('does not print a term node as if it were the variable it labels', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout suffix=".">
+      <text macro="author" suffix=". "/>
+      <text variable="title" suffix=". "/>
+      <group delimiter=", ">
+        <group delimiter=" "><text term="volume" form="short"/><text variable="volume"/></group>
+        <group delimiter=" "><label variable="page" form="short"/><text variable="page"/></group>
+      </group>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'terms.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(item(), style.id, { index: 1 }, [style])
+    // The volume and the page appear once each: the term nodes contribute nothing, because a label
+    // this renderer cannot localise must not be replaced by the value it labels.
+    expect(formatted.text).toBe(
+      'Zhang, W., Chen, L., Smith, J. A. and Huang, M. Deep learning for protein design. 21, 145-158.'
+    )
+    // The omission is named rather than silent — and so is <label>, which the subset never rendered.
+    expect(outcome.style.unsupported).toContain('text:term')
+    expect(outcome.style.unsupported).toContain('label')
+  })
+
+  it('prints only the dates the record carries, never the issued year under another date variable', () => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout suffix=".">
+      <text variable="title"/>
+      <date variable="issued" prefix=" (" suffix=")"><date-part name="year"/></date>
+      <date variable="original-date" prefix=" (original: " suffix=")"><date-part name="year"/></date>
+      <date variable="accessed" prefix=" [accessed " suffix="]"><date-part name="year"/></date>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'dates.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(item(), style.id, { retrievedAt: '2026-09-20' }, [style])
+    expect(formatted.text).toBe('Deep learning for protein design (2024) [accessed 2026].')
   })
 })
