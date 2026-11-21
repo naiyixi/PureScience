@@ -60,7 +60,10 @@ v3.5 那条「仍未取证：谁在那个隔离根写入了真实路径」的**�
   136893439936：首跑 `element(s) not found` 20 s，失败快照的对话框写着 `No PDF files in this project.`；
   链路是 picker → `projectFiles.listFiles` → `ManagedFile` 投影）。修法 ①（spec 先等投影收进再开 picker）
   需一条 Windows 车道判决才可认，**本轮不改 spec**；或 `codex-acp` 用户自装不可用那条
-  （先核 `codex-detect.ts` 与检测准入，再决定是否立案）。
+  —— **本轮已核为「真」，不是陈旧自陈**：`codex-detect.ts:86-90`（与 `:163-164` 同形）在选择适配器时是
+  `managedAdapterPath ? [managedAdapterPath] : discovered`，注释写明「PureScience supplies managedAdapterPath
+  in production. Once present, that path is the only …」⇒ 有受管适配器时用户自装的那份根本不进候选。
+  README 的 🚧 那句**不改**；要支持它属产品决定（谁的版本优先），不是 bug 修复。
 
 ## 一百九十六、本轮追加（执行器，2026-11-21 21:5x–）—— 导出包声明 Process Run Crate 0.5 并把它自己的 REQUIRED 检查清零
 
