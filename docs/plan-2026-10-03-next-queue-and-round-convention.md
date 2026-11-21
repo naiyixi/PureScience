@@ -1,5 +1,52 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十五、本轮追加（执行器，2026-11-21 17:0x–）—— CSL 日期不再只剩年份：按样式自己的 locale 日期格式印出月与日
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 54cae4d1`；工作树里**三批会话在制**（08:2x 的 `crash-diagnostics` + `logger` +
+  `diagnostics/module-load*` + `index.ts`；16:4x 的 `scripts/ci/lane-status*` + `release-certification-evidence*` +
+  `visual-regression-status`；17:00 的 `ocr-install-command*` + `FileOcrAction.tsx` + 九个 i18n 文件）
+  ⇒ **一个字节没碰**。本轮只碰 `src/shared/citation/**`、`src/main/references/citation-style-service.test.ts`、`docs/**`。
+- 进轮车道读数（完整 40 位 SHA）：`54cae4d1` → `Windows Full Test` **success**，`Nightly` 的 **Verify 已 success**
+  （macos-x64 / linux-x64 打包 success，windows-x64 与 macos-arm64 仍在跑）；`a9c1255b` → `Nightly` cancelled、
+  `Windows Full Test` failure（该笔是会话的 CI 改动，本轮不动它）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可取单元；取上一节 §一百九十四 §五 ③ 自己写下的第一条候选：
+  「locale 的日期形式（`<locale><date form="text">`）仍未读取」——先给一条可驱动读数再改，本轮照此做。
+
+### 一 交付（`src/shared/citation/`）
+
+| # | 原来的形状 | 现在的形状 |
+| --- | --- | --- |
+| 1 | 不带 `<date-part>` 的 `<date>` 只印年份，并把这件事记成 `date:no-parts` + `date:default-year` | 按 `form="text"` / `form="numeric"` 取 locale 的日期格式（月份词、顺序、`年`/`月`/`日`、`/`、`-`），`form` 缺省按 `text` |
+| 2 | `<date-part name="month"|"day">` 恒输出空串（注释说「由调用方报告」，但没有调用方报告过） | 按值渲染月份词 / 缩写 / 数字与日；值里没有的部分不印也不编；`date-parts="year"` 等按 CSL 收窄 |
+| 3 | 样式自己的 `<locale><date>` 覆盖完全不读 | 导入时折进编译后的程序（与词条同一处），存盘后每次渲染都按该样式自己的格式 |
+
+### 二 读数（九份真样式，产品自己的导入/渲染路径，修复前后现取）
+
+- IEEE：`Accessed: 2026` → **`Accessed: Nov. 21, 2026`**（它自己在 `<locale xml:lang="en">` 里把月份改成缩写）。
+- GB/T 7714-2015（zh-CN）：`145-158[2026]` → **`145-158[2026-11-21]`**（中文 locale 的 numeric 写法）。
+- 其余七份（AMA / APA / Chicago / elsevier-vancouver / harvard / MLA / nature）**逐字节不变**：修复前后同一份
+  探针的九段文本 `diff` 只有上面两行。
+- 证据档：`docs/evidence/2026-11-21-csl-locale-date-forms.md`（含两份 locale 文件的 sha256、九份样式 sha256 前 16、
+  边界五条）。
+
+### 三 门禁与边界
+
+- 定向：`src/shared/citation` + `src/main/references` **35 文件 / 473 例通过（1 skipped）**；新增 7 例 + 1 条经过
+  `CitationStyleService` 的**存盘程序**往返读数。
+- `typecheck:node` + `typecheck:web` 均 **0**；`eslint --no-cache` 四个改动文件 **0 problem**。
+- 边界：记录模型仍只有年份（`issued` 上的完整日期只印年份，与 CSL 对 year-only 日期的行为一致）；`ordinal` 等
+  枚举外的 day 形式具名后仍印数字；`range-delimiter`/日期区间未做；月日只从 `accessed` 的 ISO 串解析；
+  仍未与第二台引擎逐条对拍。
+
+### 四 下一轮第一步
+
+- ① 先 `git status --short` 现查：会话那三批若仍脏，继续只做不相交路径（`src/shared/citation/**`、`docs/**`）。
+- ② 按完整 40 位 SHA 读本轮提交的 `Nightly` + `Windows Full Test` 终态（`cancelled` 不算绿；被顶掉就找包含它的后一笔）。
+- ③ 下一候选：CSL 的 `range-delimiter` 与日期区间（先给一条可驱动读数）；或把月份/日接进记录模型（`CitationItem`
+  与导入链路一起动，连锁最大，需先量）；或 README/发布正文里那句过期自陈的更正（与下一次发版一起做）。
+
 ## 一百九十四、本轮追加（执行器，2026-11-21 14:5x–）—— CSL 标签从样式自己的 locale 取词：`vol. 21, no. 3, pp. 145-158` 与「卷 3」「2 版」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

@@ -11,9 +11,12 @@
 
 import { locatorFor, parseAuthorName } from './names'
 import {
+  baseCslDateForms,
   baseCslTerms,
   localeBlockMatches,
   resolveCslTerm,
+  type CslDateForms,
+  type CslDatePartSpec,
   type CslTerm,
   type CslTermForm,
   type CslTermTable,
@@ -170,7 +173,16 @@ export type CslNode =
       otherwise?: CslNode[]
     }
   | ({ kind: 'names' } & CslNameOptions)
-  | ({ kind: 'date'; variable: string; parts: { name: string; form?: string }[] } & CslFormatting)
+  | ({
+      kind: 'date'
+      variable: string
+      // The parts to print, in the style's own order. A node without date-part children carries the
+      // locale's date format instead, resolved at import time (see baseCslDateForms).
+      parts: CslDatePartSpec[]
+      // `<date date-parts="year">` narrows the parts a date may print; CSL 1.0.2 also allows
+      // `year-month` and `year-month-day`.
+      dateParts?: string
+    } & CslFormatting)
   | ({ kind: 'number'; variable: string } & CslFormatting)
   | ({ kind: 'label'; variable: string; form?: string; plural?: string } & CslFormatting)
 
@@ -287,6 +299,10 @@ type CompileContext = {
   // The locale terms this style can print (built-in language table + the style's own overrides),
   // resolved before anything is compiled so an unresolvable term is named in the import report.
   terms: CslTermTable
+  // The locale date formats, with the style's own `<locale><date>` overrides folded in — IEEE and
+  // MLA each redefine the text form (month abbreviation and day-first order), and GB/T 7714
+  // redefines both forms for Chinese.
+  dateForms: CslDateForms
   // A macro body is compiled once and reused: real styles reference the same macro from many
   // branches, and expanding it per reference multiplies the tree until the depth guard truncates it
   // (which showed up as duplicated author lists against the real documents).
@@ -322,6 +338,29 @@ const readStyleTerms = (style: XmlElement, locale: string): CslTermTable => {
     }
   }
   return table
+}
+
+// Reads the locale date formats, including the style's own `<locale><date form="…">` overrides.
+// A `<date>` with no date-part children names a format rather than its parts, so the words and the
+// order come from here; IEEE asks for `Nov. 21, 2026`, MLA for `21 Nov. 2026`, and a zh-CN style
+// for `2026年11月21日`.
+const readStyleDateForms = (style: XmlElement, locale: string): CslDateForms => {
+  const forms: Record<string, readonly CslDatePartSpec[]> = { ...baseCslDateForms(locale) }
+  for (const block of childElements(style, 'locale')) {
+    if (!localeBlockMatches(block.attributes['xml:lang'], locale)) continue
+    for (const date of childElements(block, 'date')) {
+      const form = date.attributes.form
+      if (form !== 'text' && form !== 'numeric') continue
+      const parts = childElements(date, 'date-part').map((part) => ({
+        name: part.attributes.name ?? 'day',
+        ...(part.attributes.form === undefined ? {} : { form: part.attributes.form }),
+        ...(part.attributes.prefix === undefined ? {} : { prefix: part.attributes.prefix }),
+        ...(part.attributes.suffix === undefined ? {} : { suffix: part.attributes.suffix })
+      }))
+      if (parts.length > 0) forms[form] = parts
+    }
+  }
+  return forms
 }
 
 // Records every construct the document uses that this engine does not render, so an imported style
@@ -512,10 +551,6 @@ const compileNode = (
       if (name !== 'author') context.unsupported.add(`names-variable:${name}`)
     }
   }
-  if (element.name === 'date' && firstChild(element, 'date-part') === undefined) {
-    context.unsupported.add('date:no-parts')
-  }
-
   switch (element.name) {
     case 'text':
       // A macro reference nested inside a group or branch expands here; only a plain variable or
@@ -609,21 +644,53 @@ const compileNode = (
       ]
     }
     case 'date': {
-      const parts = childElements(element, 'date-part').map((part) => ({
+      const variable = element.attributes.variable ?? 'issued'
+      const declared: CslDatePartSpec[] = childElements(element, 'date-part').map((part) => ({
         name: part.attributes.name ?? 'year',
-        form: part.attributes.form
+        ...(part.attributes.form === undefined ? {} : { form: part.attributes.form }),
+        ...(part.attributes.prefix === undefined ? {} : { prefix: part.attributes.prefix }),
+        ...(part.attributes.suffix === undefined ? {} : { suffix: part.attributes.suffix })
       }))
+      // A date with no date-part children prints the locale's own format. `form` defaults to `text`
+      // the way a CSL processor treats a missing form; a form the locale does not carry is named,
+      // because printing nothing would look like a record with no date at all.
+      const requestedForm = element.attributes.form
+      if (requestedForm !== undefined && requestedForm !== 'text' && requestedForm !== 'numeric') {
+        // CSL defines only these two forms for a date; anything else falls back to `text` here and
+        // is named, so a style asking for something exotic is not silently rendered in our default.
+        context.unsupported.add(`date:form:${requestedForm}`)
+      }
+      let parts = declared
+      if (parts.length > 0) {
+        for (const part of parts) {
+          if (
+            part.form !== undefined &&
+            part.form !== 'numeric' &&
+            part.form !== 'numeric-leading-zeros' &&
+            part.form !== 'short' &&
+            part.form !== 'long'
+          ) {
+            context.unsupported.add(`date-part:${part.name}:${part.form}`)
+          }
+        }
+      }
       if (parts.length === 0) {
-        // CSL lets a style leave the parts to the locale's default date form. We do not carry locale
-        // date forms, so the year is rendered — and the substitution is named, because it is our
-        // choice rather than the style's.
-        context.unsupported.add('date:default-year')
+        const form = requestedForm === 'numeric' ? 'numeric' : 'text'
+        const localized = context.dateForms[form]
+        if (localized === undefined) {
+          context.unsupported.add(`date:form:${requestedForm ?? 'text'}`)
+        } else {
+          parts = [...localized]
+        }
       }
       return [
         {
           kind: 'date',
-          variable: element.attributes.variable ?? 'issued',
-          parts: parts.length > 0 ? parts : [{ name: 'year' }],
+          variable,
+          parts,
+          ...(element.attributes['date-parts'] === undefined
+            ? {}
+            : { dateParts: element.attributes['date-parts'] }),
           ...formattingOf(element)
         }
       ]
@@ -818,33 +885,83 @@ const renderOwnNames = (node: CslNameOptions, state: RenderState): string => {
   return applyFormatting(`${withAnd}${etAlText}`, node)
 }
 
-// The year a <date> node may print. A CSL date node names its own variable, and our records carry
-// exactly two dates: `issued` (the record's year) and `accessed` (when a reading was retrieved).
-// Any other variable renders nothing — the previous code printed the issued year for every date
-// variable, which duplicated the year under labels that mean something else ("Original work
-// published 2024"), and the fidelity probe could not see it because the year it looks for was there.
-const dateYear = (variable: string, state: RenderState): number | undefined => {
-  if (variable === 'issued') return state.item.year
+// The parts of a date a record can supply. A CSL date node names its own variable, and our records
+// carry exactly two dates: `issued` (the record's year, with no month or day) and `accessed` (the
+// retrieval stamp the window passes as an ISO date). Any other variable renders nothing — the
+// previous code printed the issued year for every date variable, which duplicated the year under
+// labels that mean something else ("Original work published 2024").
+type DateValue = { year?: number; month?: number; day?: number }
+
+const dateValueOf = (variable: string, state: RenderState): DateValue => {
+  if (variable === 'issued') return state.item.year === undefined ? {} : { year: state.item.year }
   const stamp = state.variables[variable]?.trim()
-  const match = stamp ? /(\d{4})/.exec(stamp) : null
-  return match ? Number(match[1]) : undefined
+  if (!stamp) return {}
+  // `2026-11-21` or `2026/11/21`, optionally followed by a time. A stamp without a month keeps its
+  // year, so a style still prints the year it could have printed before.
+  const match = /^(\d{4})(?:[-/](\d{1,2})(?:[-/](\d{1,2}))?)?/.exec(stamp)
+  if (!match) return {}
+  const value: DateValue = { year: Number(match[1]) }
+  if (match[2] !== undefined) value.month = Number(match[2])
+  if (match[3] !== undefined) value.day = Number(match[3])
+  return value
+}
+
+const monthTermName = (month: number): string => `month-${String(month).padStart(2, '0')}`
+
+// One date-part, in the form the style asked for: a month prints its locale name unless the form is
+// numeric, a day prints without leading zeros unless the style asks for them. A part the value
+// cannot supply prints nothing rather than a placeholder.
+const renderDatePart = (part: CslDatePartSpec, value: DateValue, terms: CslTermTable): string => {
+  if (part.name === 'year') {
+    if (value.year === undefined) return ''
+    return part.form === 'short' ? String(value.year).slice(-2) : String(value.year)
+  }
+  if (part.name === 'month') {
+    if (value.month === undefined) return ''
+    const form = part.form ?? 'long'
+    if (form === 'numeric') return String(value.month)
+    if (form === 'numeric-leading-zeros') return String(value.month).padStart(2, '0')
+    return resolveCslTerm(terms, monthTermName(value.month), form, false) ?? ''
+  }
+  if (part.name === 'day') {
+    if (value.day === undefined) return ''
+    return part.form === 'numeric-leading-zeros'
+      ? String(value.day).padStart(2, '0')
+      : String(value.day)
+  }
+  return ''
+}
+
+// `<date date-parts="year">` narrows which parts a date may print (CSL also allows `year-month` and
+// `year-month-day`), so a numeric locale format on a year-only field does not leave stray separators.
+const allowedDateParts = (dateParts: string | undefined): Set<string> | undefined => {
+  if (dateParts === undefined) return undefined
+  const first = dateParts.trim().split(/\s+/)[0] ?? ''
+  const names = new Set<string>(['year'])
+  if (first.includes('month')) names.add('month')
+  if (first.includes('day')) names.add('day')
+  return names
 }
 
 const renderDate = (
-  node: { variable: string; parts: { name: string; form?: string }[] } & CslFormatting,
+  node: { variable: string; parts: CslDatePartSpec[]; dateParts?: string } & CslFormatting,
   state: RenderState
 ): string => {
-  const year = dateYear(node.variable, state)
-  if (!year) return ''
+  const value = dateValueOf(node.variable, state)
+  if (value.year === undefined && value.month === undefined && value.day === undefined) return ''
+  const allowed = allowedDateParts(node.dateParts)
   const rendered = node.parts
+    .filter((part) => allowed === undefined || allowed.has(part.name))
     .map((part) => {
-      if (part.name === 'year') return part.form === 'short' ? String(year).slice(2) : String(year)
-      // Our records carry a year, not a full publication date: a style asking for month/day gets the
-      // parts it can have and the omission is reported by the caller.
-      return ''
+      const text = renderDatePart(part, value, state.terms)
+      if (text === '') return ''
+      return applyFormatting(text, {
+        ...(part.prefix === undefined ? {} : { prefix: part.prefix }),
+        ...(part.suffix === undefined ? {} : { suffix: part.suffix })
+      })
     })
     .filter(Boolean)
-    .join(node.delimiter ?? ' ')
+    .join(node.delimiter ?? '')
   return applyFormatting(rendered, node)
 }
 
@@ -1103,6 +1220,9 @@ export const importCslStyle = (
     // The style's own <locale> overrides are folded in before anything is scanned, so a term it
     // redefines is neither reported as missing nor rendered with the generic word.
     terms: readStyleTerms(style, defaultLocale),
+    // Same for the locale's date formats: a style that redefines `text` (month abbreviation, day
+    // first) or `numeric` decides the shape of every date it prints without date-part children.
+    dateForms: readStyleDateForms(style, defaultLocale),
     macroCache: new Map<string, CslNode[]>(),
     expanding: new Set<string>()
   }

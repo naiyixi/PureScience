@@ -352,21 +352,24 @@ describe('fidelity probe', () => {
     expect(outcome.style.fidelityNotes).toContain('duplicate:volume')
   })
 
-  it('renders the year when a style leaves its date parts to the locale, and names that substitution', () => {
+  it('prints a full date through the locale format instead of substituting the year', () => {
+    // A <date> with no date-part children names one of the locale's formats, not a part: the words
+    // and the order come from the locale file. It used to print the year and report that as a
+    // substitution; now the substitution no longer exists, so the note must be gone too.
     const xml = styleDocument({
       bibliography: `<bibliography>
     <layout suffix=".">
       <text variable="title" suffix=". "/>
-      <date variable="issued" prefix="(" suffix=")"/>
+      <date variable="accessed" prefix="Accessed " form="text"/>
     </layout>
   </bibliography>`
     })
     const outcome = importCslStyle(xml, 'locale-date.csl', { hash: hasher })
     if (outcome.status !== 'imported') throw new Error('import expected')
+    expect(outcome.style.unsupported).not.toContain('date:default-year')
     const style = citationStyleFromImport(outcome.style)
-    const formatted = formatCitation(item(), style.id, { retrievedAt: '2026-09-20' }, [style])
-    expect(formatted.text).toContain('(2024)')
-    expect(outcome.style.unsupported).toContain('date:default-year')
+    const formatted = formatCitation(item(), style.id, { retrievedAt: '2026-11-21' }, [style])
+    expect(formatted.text).toContain('Accessed November 21, 2026')
   })
 
   it('names condition attributes it cannot evaluate', () => {
@@ -648,5 +651,117 @@ describe('group semantics in imported styles', () => {
     </layout>
   </bibliography>`)
     expect(text).toBe('Nature Methods. 21')
+  })
+})
+
+// Dates: a `<date>` node either names its parts or names one of the locale's formats. Both were
+// partly fictional before — a node without parts printed the year and called that a substitution,
+// and a date-part asking for a month printed nothing at all, so every style that prints an access
+// date could only ever print its year (IEEE, MLA, APA, AMA, Chicago, Harvard, Vancouver all do).
+describe('locale date formats', () => {
+  const renderDate = (
+    dateNode: string,
+    options: {
+      retrievedAt?: string
+      defaultLocale?: string
+      extra?: string
+      bibliography?: string
+    } = {}
+  ): { text: string; unsupported: readonly string[] } => {
+    const xml = styleDocument({
+      bibliography:
+        options.bibliography ??
+        `<bibliography>
+    <layout suffix=".">
+      <text variable="title" suffix=". "/>
+      ${dateNode}
+    </layout>
+  </bibliography>`,
+      ...(options.defaultLocale === undefined ? {} : { defaultLocale: options.defaultLocale }),
+      ...(options.extra === undefined ? {} : { extra: options.extra })
+    })
+    const outcome = importCslStyle(xml, 'date-format.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(
+      item(),
+      style.id,
+      options.retrievedAt === undefined ? {} : { retrievedAt: options.retrievedAt },
+      [style]
+    )
+    return { text: formatted.text, unsupported: outcome.style.unsupported }
+  }
+
+  it('prints an English access date in the locale text format', () => {
+    expect(
+      renderDate('<date variable="accessed" form="text"/>', { retrievedAt: '2026-11-21' }).text
+    ).toBe('Deep learning for protein design. November 21, 2026.')
+  })
+
+  it('prints the numeric locale format with zero-padded month and day', () => {
+    expect(
+      renderDate('<date variable="accessed" form="numeric"/>', { retrievedAt: '2026-05-04' }).text
+    ).toContain('05/04/2026')
+  })
+
+  it('prints a Chinese access date in the zh-CN text and numeric formats', () => {
+    const text = renderDate('<date variable="accessed" form="text"/>', {
+      retrievedAt: '2026-11-21',
+      defaultLocale: 'zh-CN'
+    })
+    expect(text.text).toContain('2026年11月21日')
+    const numeric = renderDate('<date variable="accessed" form="numeric"/>', {
+      retrievedAt: '2026-11-21',
+      defaultLocale: 'zh-CN'
+    })
+    expect(numeric.text).toContain('2026-11-21')
+  })
+
+  it('lets a style redefine the text format (month abbreviation, day first)', () => {
+    // IEEE and MLA each carry their own `<locale><date form="text">`; without reading it their
+    // entries would print the generic "November 21, 2026" instead of their own shape.
+    const ieee = renderDate('<date variable="accessed" form="text"/>', {
+      retrievedAt: '2026-11-21',
+      extra: `<locale xml:lang="en">
+    <date form="text">
+      <date-part name="month" form="short" suffix=" "/>
+      <date-part name="day" form="numeric-leading-zeros" suffix=", "/>
+      <date-part name="year"/>
+    </date>
+  </locale>`
+    })
+    expect(ieee.text).toContain('Nov. 21, 2026')
+    const mla = renderDate('<date variable="accessed" form="text"/>', {
+      retrievedAt: '2026-11-21',
+      extra: `<locale xml:lang="en">
+    <date form="text">
+      <date-part name="day" suffix=" "/>
+      <date-part name="month" form="short" suffix=" "/>
+      <date-part name="year"/>
+    </date>
+  </locale>`
+    })
+    expect(mla.text).toContain('21 Nov. 2026')
+  })
+
+  it('honours date-parts and never invents a month the record does not carry', () => {
+    // `issued` is a year in our model: a text-format date on it prints the year alone, which is what
+    // a CSL processor does with a year-only date.
+    const yearOnly = renderDate('<date variable="issued" form="text"/>')
+    expect(yearOnly.text).toBe('Deep learning for protein design. 2024.')
+    const narrowed = renderDate('<date variable="accessed" form="numeric" date-parts="year"/>', {
+      retrievedAt: '2026-11-21'
+    })
+    expect(narrowed.text).toBe('Deep learning for protein design. 2026.')
+  })
+
+  it('names a date-part form it cannot render instead of printing something else', () => {
+    const { text, unsupported } = renderDate(
+      '<date variable="accessed"><date-part name="day" form="ordinal"/></date>',
+      { retrievedAt: '2026-11-21' }
+    )
+    expect(unsupported).toContain('date-part:day:ordinal')
+    // The day still prints as a plain number rather than disappearing.
+    expect(text).toContain('21')
   })
 })

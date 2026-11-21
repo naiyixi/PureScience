@@ -13,6 +13,11 @@
 // word. A style's own `<locale><terms>` block overrides these at import time (GB/T 7714 spells the
 // edition label 版 while the zh-CN locale spells it 版本).
 //
+// The same files also carry the locale's month names and date formats. A `<date>` node with no
+// `<date-part>` children asks for one of those formats (`form="text"` / `form="numeric"`), and a
+// date-part asking for a month prints a name; without both, every style that prints an access date
+// could only ever print its year.
+//
 // Environment-free on purpose: the renderer runs in the main process, the window and tests alike.
 
 export type CslTermValue = { readonly single: string; readonly multiple: string }
@@ -23,6 +28,74 @@ export type CslTermTable = Readonly<Record<string, CslTerm>>
 // Chinese labels do not inflect, so single and multiple are the same word; keeping both fields means
 // the plural rule stays one rule for every language.
 const both = (value: string): CslTermValue => ({ single: value, multiple: value })
+
+// Month names, spelled the way the locale file spells them (`month-01` … `month-12`, long and short
+// forms). A `<date-part name="month"/>` with the default long form prints these, which is why a date
+// without them could only ever print its year.
+const monthTerms = (long: readonly string[], short: readonly string[]): Record<string, CslTerm> =>
+  Object.fromEntries(
+    long.map((name, index) => [
+      `month-${String(index + 1).padStart(2, '0')}`,
+      { long: both(name), short: both(short[index] ?? name) }
+    ])
+  )
+
+const EN_MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+] as const
+const EN_MONTHS_SHORT = [
+  'Jan.',
+  'Feb.',
+  'Mar.',
+  'Apr.',
+  'May',
+  'June',
+  'July',
+  'Aug.',
+  'Sept.',
+  'Oct.',
+  'Nov.',
+  'Dec.'
+] as const
+const ZH_MONTHS_LONG = [
+  '一月',
+  '二月',
+  '三月',
+  '四月',
+  '五月',
+  '六月',
+  '七月',
+  '八月',
+  '九月',
+  '十月',
+  '十一月',
+  '十二月'
+] as const
+const ZH_MONTHS_SHORT = [
+  '1月',
+  '2月',
+  '3月',
+  '4月',
+  '5月',
+  '6月',
+  '7月',
+  '8月',
+  '9月',
+  '10月',
+  '11月',
+  '12月'
+] as const
 
 const EN_TERMS: CslTermTable = {
   volume: {
@@ -56,7 +129,8 @@ const EN_TERMS: CslTermTable = {
   accessed: { long: both('accessed') },
   // APA prints this one directly (`<text prefix="1" term="page-range-delimiter"/>`) rather than as a
   // label, so it lives here as well as in the locale file.
-  'page-range-delimiter': { long: both('–') }
+  'page-range-delimiter': { long: both('–') },
+  ...monthTerms(EN_MONTHS_LONG, EN_MONTHS_SHORT)
 }
 
 const ZH_TERMS: CslTermTable = {
@@ -71,11 +145,49 @@ const ZH_TERMS: CslTermTable = {
   in: { long: both('收入') },
   'et-al': { long: both('等') },
   accessed: { long: both('见于') },
-  'page-range-delimiter': { long: both('～') }
+  'page-range-delimiter': { long: both('～') },
+  ...monthTerms(ZH_MONTHS_LONG, ZH_MONTHS_SHORT)
+}
+
+// A `<date>` node with no `<date-part>` children takes its parts from the locale's own date format
+// (`<locale><date form="text">` / `form="numeric"`). Copied verbatim from the two published locale
+// files named at the top of this file, affixes included: en-US text reads `November 21, 2026`,
+// numeric `11/21/2026`; zh-CN text reads `2026年11月21日`, numeric `2026-11-21`.
+export type CslDatePartSpec = {
+  readonly name: string
+  readonly form?: string
+  readonly prefix?: string
+  readonly suffix?: string
+}
+export type CslDateForms = Readonly<Partial<Record<'text' | 'numeric', readonly CslDatePartSpec[]>>>
+
+const EN_DATE_FORMS: CslDateForms = {
+  text: [{ name: 'month', suffix: ' ' }, { name: 'day', suffix: ', ' }, { name: 'year' }],
+  numeric: [
+    { name: 'month', form: 'numeric-leading-zeros', suffix: '/' },
+    { name: 'day', form: 'numeric-leading-zeros', suffix: '/' },
+    { name: 'year' }
+  ]
+}
+
+const ZH_DATE_FORMS: CslDateForms = {
+  text: [
+    { name: 'year', suffix: '年' },
+    { name: 'month', form: 'numeric', suffix: '月' },
+    { name: 'day', suffix: '日' }
+  ],
+  numeric: [
+    { name: 'year' },
+    { name: 'month', form: 'numeric-leading-zeros', prefix: '-' },
+    { name: 'day', form: 'numeric-leading-zeros', prefix: '-' }
+  ]
 }
 
 export const localeLanguage = (locale: string): string =>
   (locale.split(/[-_]/)[0] ?? '').toLowerCase()
+
+export const baseCslDateForms = (locale: string): CslDateForms =>
+  localeLanguage(locale) === 'zh' ? ZH_DATE_FORMS : EN_DATE_FORMS
 
 export const baseCslTerms = (locale: string): CslTermTable =>
   localeLanguage(locale) === 'zh' ? ZH_TERMS : EN_TERMS

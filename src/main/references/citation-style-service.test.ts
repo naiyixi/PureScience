@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { BUILTIN_CITATION_STYLES } from '../../shared/citation/builtin-styles'
+import { citationStyleFromImport } from '../../shared/citation/csl'
+import { citationItemFromReference, formatCitation } from '../../shared/citation/format'
 import { citationStyleDocumentHash, CitationStyleService } from './citation-style-service'
 import {
   CitationStyleRepository,
@@ -148,5 +150,45 @@ describe('citation style import', () => {
     expect(listed.map((style) => style.id)).toEqual(['csl-import:a', 'csl-import:b'])
     await service.removeStyle('csl-import:a')
     expect((await service.listStyles()).map((style) => style.id)).toEqual(['csl-import:b'])
+  })
+})
+
+// A stored program is compiled once, at import: if the locale's date format is not resolved there,
+// every render of that style afterwards is stuck with whatever the compile chose. So the format
+// has to survive the round trip through the store, not only exist in the shared module.
+describe('stored date formats', () => {
+  it('keeps the resolved locale date format in the stored program and renders with it', async () => {
+    const { service } = createService()
+    const xml = `<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" default-locale="zh-CN">
+  <info>
+    <title>Zh date style</title>
+    <id>http://example.org/styles/zh-date</id>
+    <rights license="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</rights>
+  </info>
+  <citation><layout><text variable="citation-number"/></layout></citation>
+  <bibliography>
+    <layout suffix=".">
+      <text variable="title" suffix=". 引用日期："/>
+      <date variable="accessed" form="text"/>
+    </layout>
+  </bibliography>
+</style>`
+    const outcome = await service.importStyle({ fileName: 'zh-date.csl', xml })
+    expect(outcome.status).toBe('imported')
+    if (outcome.status !== 'imported') return
+    const style = citationStyleFromImport(outcome.style)
+    const formatted = formatCitation(
+      citationItemFromReference({
+        title: '中文条目',
+        authors: [{ name: '李航' }],
+        year: 2012,
+        itemType: 'book'
+      }),
+      style.id,
+      { retrievedAt: '2026-11-21' },
+      [style]
+    )
+    expect(formatted.text).toContain('2026年11月21日')
+    expect(outcome.style.unsupported).not.toContain('date:default-year')
   })
 })
