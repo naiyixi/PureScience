@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { laneStatus } from './lane-status.mjs'
+import { laneStatus, moduleUrlFor } from './lane-status.mjs'
 import { visualRegressionStatus } from './visual-regression-status.mjs'
 
 const writeCode = async (contents: string): Promise<string> => {
@@ -42,5 +42,30 @@ describe('soft lane certification status', () => {
     // visual lane and `passed` for the P0 lane on identical input.
     expect(visualRegressionStatus(await writeCode('0\n'))).toBe('passed')
     expect(visualRegressionStatus(await writeCode('1\n'))).toBe(laneStatus(await writeCode('1\n')))
+  })
+
+  it('normalises a Windows argv path so the CLI entry still fires there', () => {
+    // The bug this pins: on the Windows runner `process.argv[1]` comes back as `D:\\a\\...\\lane-status.mjs`,
+    // so the naive `file://${argv[1]}` comparison was false, the script printed nothing, and the record
+    // writer rejected an empty `--electron-p0` (run 44879328011, windows-x64).
+    expect(moduleUrlFor('D:\\a\\PureScience\\scripts\\ci\\lane-status.mjs')).toBe(
+      'file:///D:/a/PureScience/scripts/ci/lane-status.mjs'
+    )
+    // The POSIX form must keep working, since the visual lane reads it on macOS.
+    expect(moduleUrlFor('/Users/x/lane-status.mjs')).toBe('file:///Users/x/lane-status.mjs')
+    expect(moduleUrlFor(undefined)).toBe('')
+  })
+
+  it('prints a reading when invoked as a program, and prints nothing when imported', async () => {
+    const { execFile } = await import('node:child_process')
+    const { promisify } = await import('node:util')
+    const { fileURLToPath } = await import('node:url')
+    const run = promisify(execFile)
+    const { stdout } = await run(process.execPath, [
+      fileURLToPath(new URL('./lane-status.mjs', import.meta.url)),
+      await writeCode('1\n')
+    ])
+    // "printed nothing" is exactly how the Windows job failed: silence must not be mistakable for a pass.
+    expect(stdout.trim()).toBe('failed')
   })
 })

@@ -40,6 +40,16 @@ const artifactEvidence = async (directory) => {
   )
 }
 
+// Which readings a platform's P0 share may carry. macos-arm64 is the lane that gates a release, so it
+// may only claim a pass; windows-x64 runs the same journeys for evidence, so a red there is a reading to
+// record (twelve Windows-only failures found the day the lane was switched on) — not something to hide
+// behind `not-applicable`, and not something that silently blocks a release either.
+const portableStatesFor = (platform) => {
+  if (platform === 'macos-arm64') return ['passed']
+  if (platform === 'windows-x64') return ['passed', 'failed', 'not-applicable']
+  return ['not-applicable']
+}
+
 const writePlatformEvidence = async ({ argv, environment = process.env }) => {
   const platform = argumentValue(argv, '--platform')
   const artifactDirectoryArgument = argumentValue(argv, '--artifact-dir')
@@ -52,14 +62,14 @@ const writePlatformEvidence = async ({ argv, environment = process.env }) => {
     !PLATFORMS.includes(platform) ||
     !artifactDirectoryArgument ||
     !outputArgument ||
-    !CHECK_STATES.includes(electronP0) ||
+    !portableStatesFor(platform).includes(electronP0) ||
     !VISUAL_STATES.includes(visualRegression) ||
     !['passed', 'not-applicable'].includes(packageSmoke) ||
     !['passed', 'not-required', 'not-applicable'].includes(authenticode)
   ) {
     throw new Error(
       'Usage: --platform <platform> --artifact-dir <path> --output <path> ' +
-        '--electron-p0 <passed|not-applicable> ' +
+        '--electron-p0 <passed|failed|not-applicable> ' +
         '--visual-regression <passed|failed|not-applicable> ' +
         '--package-smoke <passed|not-applicable> ' +
         '--authenticode <passed|not-required|not-applicable> ' +

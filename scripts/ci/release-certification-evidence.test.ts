@@ -496,8 +496,10 @@ describe('release certification evidence', () => {
       root,
       '--output',
       output,
+      // macos-arm64 is the lane that gates a release: `not-applicable` there is now refused by the
+      // writer, because that is the one reading which must never be a pass by another name.
       '--electron-p0',
-      'not-applicable',
+      'passed',
       '--visual-regression',
       'not-applicable',
       '--package-smoke',

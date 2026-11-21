@@ -6,10 +6,10 @@
 // three-state reading (`passed` / `failed` / `not-applicable`) and two copies of a judge is how the two
 // drift apart. This file keeps its own name so the workflow, the record writer and the workflow contract
 // test keep pointing at the visual lane explicitly.
-import { visualRegressionStatus } from './lane-status.mjs'
+import { moduleUrlFor, visualRegressionStatus } from './lane-status.mjs'
 
 export { visualRegressionStatus }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (moduleUrlFor(process.argv[1]) === import.meta.url) {
   process.stdout.write(`${visualRegressionStatus(process.argv[2])}\n`)
 }

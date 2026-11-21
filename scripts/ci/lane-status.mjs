@@ -13,6 +13,7 @@
 //   failed          — it ran and disagreed: the product moved, or the machine's environment differs
 //   not-applicable  — it did not run at all (no packaged app, lane skipped for this platform)
 import { readFileSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 
 const MISSING = 'not-applicable'
 
@@ -38,6 +39,25 @@ export const laneStatus = (path) => {
 // existing test file keep working unchanged.
 export const visualRegressionStatus = laneStatus
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Whether this file was invoked as a program: `import.meta.url` against the argv path, normalised through
+// pathToFileURL. The obvious `` `file://${process.argv[1]}` `` comparison is false on Windows (argv comes
+// back as D:\\a\\...\, the URL as file:///D:/a/.../), which made this script print nothing at all there —
+// the Windows P0 record was then refused for an empty `--electron-p0` and the whole job went red on a
+// correct lane reading.
+const WINDOWS_ABSOLUTE = /^[A-Za-z]:[\\/]/
+
+export const moduleUrlFor = (argv1) => {
+  if (!argv1) return ''
+  // pathToFileURL only understands Windows paths when it is *running* on Windows; a POSIX host treats
+  // `D:\a\x` as a relative path and produces file:///<cwd>/D:%5Ca%5Cx. The drive-letter form is
+  // normalised here so the comparison means the same thing on both hosts (and can be tested on either).
+  if (WINDOWS_ABSOLUTE.test(argv1)) {
+    const [drive, ...rest] = argv1.replace(/\\/g, '/').split('/')
+    return `file:///${drive}/${rest.map((segment) => encodeURIComponent(segment)).join('/')}`
+  }
+  return pathToFileURL(argv1).href
+}
+
+if (moduleUrlFor(process.argv[1]) === import.meta.url) {
   process.stdout.write(`${laneStatus(process.argv[2])}\n`)
 }
