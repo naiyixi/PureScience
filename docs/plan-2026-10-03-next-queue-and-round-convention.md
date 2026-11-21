@@ -55,8 +55,12 @@ v3.5 那条「仍未取证：谁在那个隔离根写入了真实路径」的**�
 - ② 页落定后按「发布核验」数资产（四平台 + `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` /
   `latest*.yml` / `arm64-mac.yml`+`x64-mac.yml`），并把 `sourceSha` 与 `git rev-parse 'v2.33.0^{commit}'` 逐字符比对；
   然后 `release-notes … --apply` 重发正文并回读字节数，确认旧句 0 次。
-- ③ 下一候选（都不撞会话在制）：`references-page-selection:13` 偶发红（认证 spec，未复现、未修复、没加重试）
-  先给一条可驱动读数；或 `codex-acp` 用户自装不可用那条（先核 `codex-detect.ts` 与检测准入，再决定是否立案）。
+- ③ 下一候选（都不撞会话在制）：`references-page-selection:13` 偶发红 —— **本轮已定因到「空态」一层**，
+  读数与修法方向在 `docs/evidence/2026-11-22-references-page-selection-flake.md`（run 44918012666 作业
+  136893439936：首跑 `element(s) not found` 20 s，失败快照的对话框写着 `No PDF files in this project.`；
+  链路是 picker → `projectFiles.listFiles` → `ManagedFile` 投影）。修法 ①（spec 先等投影收进再开 picker）
+  需一条 Windows 车道判决才可认，**本轮不改 spec**；或 `codex-acp` 用户自装不可用那条
+  （先核 `codex-detect.ts` 与检测准入，再决定是否立案）。
 
 ## 一百九十六、本轮追加（执行器，2026-11-21 21:5x–）—— 导出包声明 Process Run Crate 0.5 并把它自己的 REQUIRED 检查清零
 
