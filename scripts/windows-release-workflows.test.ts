@@ -390,7 +390,16 @@ describe('post-merge Windows validation', () => {
     // Release this very run just created, and the certification then fails with
     // `Updater certification needs two versions` — a red that reads like a product defect while the
     // drill's own install / rollback / restart steps passed (measured on the v2.21.0 publish).
-    expect(previous.env?.CURRENT_TAG).toBe('${{ inputs.release_tag || github.ref_name }}')
+    // The exclusion now names a RESOLVED tag, because `release_tag || github.ref_name` has a third shape
+    // the comment above did not cover: a dispatch with no tag at all (build-only, used to take a
+    // certification reading without publishing). There `github.ref_name` is `main`, the exclusion matches
+    // nothing, and the drill compares the new build against a copy of itself — measured on run
+    // 44891067647, where that showed up as `Updater certification needs two versions`.
+    expect(previous.env?.CURRENT_TAG).toBe('${{ steps.version.outputs.tag }}')
+    const version = upgrade.steps?.find((candidate) => candidate.id === 'version')
+    expect(version.run).toContain('RELEASE_TAG')
+    expect(version.run).toContain('tag=$tag')
+    expect(version.run).toContain('package.json')
     expect(previous.run).toContain('gh release download')
     expect(previous.run).toContain('*-win-x64-setup.exe.blockmap')
     expect(previous.run).not.toContain('Get-AuthenticodeSignature')

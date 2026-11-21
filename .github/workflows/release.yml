@@ -117,6 +117,26 @@ jobs:
           name: windows-x64
           path: current
 
+      # Which version these artifacts ARE. A tag run publishes the tag it was pushed for; a dispatch that
+      # names a tag publishes that tag; a dispatch with NO tag (the build-only shape, used to take
+      # certification readings without publishing) builds whatever `package.json` says. With `github.ref_name`
+      # in that third shape the value is `main`, the previous-release exclusion below matches nothing, and
+      # the drill compares the new build against a second copy of itself — `Updater certification needs two
+      # versions`, a red that says nothing about the product (measured on run 44891067647).
+      - name: Resolve the version this run builds
+        id: version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+            $tag = "v$version"
+          }
+          Write-Host "this run builds $tag"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
       - name: Download previous stable Windows installer
         id: previous
         shell: pwsh
@@ -129,7 +149,7 @@ jobs:
           # `Updater certification needs two versions` -- a red that says nothing about the product
           # (measured on the v2.21.0 publish). Taking the published tag keeps the exclusion meaningful in
           # both shapes: a tag run publishes the tag it was pushed for, a dispatch publishes the tag it names.
-          CURRENT_TAG: ${{ inputs.release_tag || github.ref_name }}
+          CURRENT_TAG: ${{ steps.version.outputs.tag }}
           PREVIOUS_VERSION: ${{ inputs.previous_version }}
         run: |
           New-Item -ItemType Directory -Force previous | Out-Null
@@ -188,7 +208,7 @@ jobs:
           $arguments = @(
             'scripts/ci/release-certification-evidence.mjs', 'write-windows-update',
             '--output', 'certification-windows-update.json',
-            '--current-tag', '${{ github.ref_name }}',
+            '--current-tag', '${{ steps.version.outputs.tag }}',
             '--status', $status
           )
           if ($available) {
