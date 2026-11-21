@@ -479,7 +479,14 @@ describe('post-merge Windows validation', () => {
     })
     expect(release.jobs.build.needs).toBe('release-preflight')
     expect(release.jobs.build.with?.require_windows_signing).toBeUndefined()
-    expect(release.jobs['notarize-mac'].if).toBe(stableTagCondition)
+    // Notarization follows the TAG, not the event that started the run. v2.33.0 was published from a
+    // dispatch ON the tag (`--ref v2.33.0 -f release_tag=v2.33.0`) and shipped mac assets that were signed
+    // but never stapled: the record stayed honest (`macSignature: signed`, no notarization claimed) while the
+    // dmg/zip users got were worse than the previous release's. Both events now notarize; a dispatch on a
+    // branch still skips, because there would be no tag to notarize against.
+    expect(release.jobs['notarize-mac'].if).toContain("startsWith(github.ref, 'refs/tags/')")
+    expect(release.jobs['notarize-mac'].if).toContain("github.event_name == 'push'")
+    expect(release.jobs['notarize-mac'].if).toContain("github.event_name == 'workflow_dispatch'")
     // The drill must not become unreachable again. It still certifies the published path on a stable tag push
     // (and still only after publish succeeded), and it is additionally dispatchable on demand so that a red
     // drill can be read without cutting a release — five releases of red went unnoticed precisely because the
