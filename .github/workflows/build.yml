@@ -397,6 +397,10 @@ jobs:
               (matrix.name == 'macos-arm64' || matrix.name == 'windows-x64') &&
               steps.packaged_app.outcome == 'success' }}
         continue-on-error: true
+        # Without a bound, a hung journey sits on the runner until the job's six-hour limit: the macOS
+        # lane has been observed at 110 minutes (a main-process review turn stretches it), so 150 leaves
+        # room for the slow-but-alive case and still fails long before six hours.
+        timeout-minutes: 150
         shell: bash
         env:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
