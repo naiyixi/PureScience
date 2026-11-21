@@ -111,7 +111,13 @@ const OnboardingWizard = (): React.JSX.Element => {
   // Fetch the default data location once, up front, so the Location step has something to show
   // and the provider step can later tell whether the user's choice actually differs from it.
   useEffect(() => {
-    void window.api.storage.getInfo().then(setDataRootInfo)
+    // Same window-boundary race as App's probe: the wizard's renderer can be torn down while this is in
+    // flight, and an uncaught rejection here surfaces as a renderer page error (see the note in App.tsx).
+    void window.api.storage
+      .getInfo()
+      .then(setDataRootInfo, (error: unknown) =>
+        console.warn('[onboarding] data root probe skipped', error)
+      )
   }, [])
 
   // App starts this check on every launch. This local fallback also keeps the wizard self-contained in

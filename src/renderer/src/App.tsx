@@ -323,15 +323,24 @@ const App = (): React.JSX.Element | null => {
   // explicitly-configured root, which implies onboarding already completed - never during the
   // wizard itself.
   useEffect(() => {
-    void window.api.storage.getInfo().then((info) => {
-      if (info.dataRootMissing) setMissingDataRoot(info.dataRoot)
-      else if (info.legacyDataMovePrompt) {
-        setLegacyMove({
-          currentDataRoot: info.dataRoot,
-          defaultParent: info.defaultParent
-        })
-      }
-    })
+    // The startup probes below sit on a window boundary: during onboarding → workspace swaps (and on the way
+    // out) main has already released the previous window's handlers, so a query can land with
+    // `No handler registered for 'storage:get-info'`. Without a catch that becomes an unhandled rejection
+    // in the renderer — measured as a flaky certification failure on Windows (lock-import, run 44902338624,
+    // retried green). A missing handler means "this window is going away", not "storage is broken": the
+    // panels re-read when opened, so log it and let the window finish closing.
+    void window.api.storage.getInfo().then(
+      (info) => {
+        if (info.dataRootMissing) setMissingDataRoot(info.dataRoot)
+        else if (info.legacyDataMovePrompt) {
+          setLegacyMove({
+            currentDataRoot: info.dataRoot,
+            defaultParent: info.defaultParent
+          })
+        }
+      },
+      (error: unknown) => console.warn('[storage] data root probe skipped', error)
+    )
   }, [])
 
   // Subscribe once to connector approval requests from the main-process gate; they surface as a
