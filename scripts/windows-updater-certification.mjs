@@ -681,16 +681,20 @@ const main = async () => {
     // U3 (#17): the new version, on its first launch, must have purged the package it was installed
     // from — the ~150 MB that used to stay in the updater cache forever.
     const cacheAfterApply = await waitForPurgedUpdateCache(updaterCache, async () => {
+      // The app is a GUI process: it does not exit on its own, so `runProcess` timing out at 25s is the
+      // EXPECTED outcome of "open it, let its startup sweep run, then close it" — letting that timeout
+      // propagate failed the drill with `purescience.exe timed out after 25000ms` right after the purge had
+      // succeeded (run 44926387947).
       await runProcess(join(installDirectory, 'purescience.exe'), [], {
         allowNonZero: true,
         env,
         timeoutMs: 25_000
-      })
+      }).catch(() => undefined)
       await runProcess('taskkill.exe', ['/IM', 'purescience.exe', '/T', '/F'], {
         allowNonZero: true,
         env,
         timeoutMs: 10_000
-      })
+      }).catch(() => undefined)
     })
     observation.installerCachePurged = cacheAfterApply.files.length === 0
     observation.installerCacheBytesAfter = cacheAfterApply.bytes
