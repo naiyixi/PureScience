@@ -11,6 +11,7 @@ import {
   selectClaudeSubscriptionProvider
 } from '../../../shared/settings'
 import type { PackageMirror } from '../../../shared/mirror'
+import type { ExportAuthorKind } from '../../../shared/settings'
 import type { CloseActionPreference } from '../../../shared/window-controls'
 import {
   DEFAULT_PERMISSION_PROFILE,
@@ -124,6 +125,8 @@ type SettingsStoreData = RuntimeSetupState &
     // Approval profile applied only when creating a new conversation.
     // 导出署名与许可（空串 = 没填）。这两个值会逐字进入导出包，所以只是原样透传，不做任何默认值。
     exportAuthor: string
+    // 署名类型。没选过按 'person' 显示与导出（历史行为）；它不是文本，不进任何文案。
+    exportAuthorKind: ExportAuthorKind
     exportLicense: string
     defaultPermissionProfile: PermissionProfileId
     // Declared licensed-skill use intent; absent means commercial (the safe default).
@@ -181,6 +184,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   useIntent: undefined,
   appIconVariant: DEFAULT_APP_ICON_VARIANT,
   exportAuthor: '',
+  exportAuthorKind: 'person',
   exportLicense: '',
   defaultPermissionProfile: DEFAULT_PERMISSION_PROFILE
 })
@@ -206,6 +210,8 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   useIntent: snapshot.useIntent,
   appIconVariant: snapshot.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
   exportAuthor: snapshot.exportAuthor ?? '',
+  // 缺省按个人：与主进程的导出侧判定一致，也与 v2.31.0 的行为逐字一致。
+  exportAuthorKind: snapshot.exportAuthorKind ?? 'person',
   exportLicense: snapshot.exportLicense ?? '',
   defaultPermissionProfile: getDefaultPermissionProfile(snapshot),
   agentFrameworkId: snapshot.agentFrameworkId,

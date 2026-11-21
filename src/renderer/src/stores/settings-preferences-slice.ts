@@ -1,5 +1,10 @@
 import type { PackageMirror } from '../../../shared/mirror'
-import type { AppIconVariant, ReasoningEffort, SettingsSnapshot } from '../../../shared/settings'
+import type {
+  AppIconVariant,
+  ExportAuthorKind,
+  ReasoningEffort,
+  SettingsSnapshot
+} from '../../../shared/settings'
 import type { CloseActionPreference } from '../../../shared/window-controls'
 import type { PermissionProfileId } from '../../../shared/permission-profiles'
 import { isMirrorConfigured } from '../pages/settings/mirror-view'
@@ -20,6 +25,8 @@ type SettingsPreferencesState = {
   appIconVariant: AppIconVariant
   // 导出署名与许可：'' 表示用户清空了；undefined 表示从没设过。两者导出时都不写字段。
   exportAuthor: string
+  // 署名类型：只决定导出里那个实体的 `@type`；没选过按 'person'（与历史行为一致）。
+  exportAuthorKind: ExportAuthorKind
   exportLicense: string
   defaultPermissionProfile: PermissionProfileId
 }
@@ -33,6 +40,7 @@ type OptimisticPreferenceField =
   | 'appIconVariant'
   | 'defaultPermissionProfile'
   | 'exportAuthor'
+  | 'exportAuthorKind'
   | 'exportLicense'
 
 export type SettingsPreferencesActions = {
@@ -44,6 +52,7 @@ export type SettingsPreferencesActions = {
   setAppIconVariant: (variant: AppIconVariant) => Promise<void>
   setDefaultPermissionProfile: (profile: PermissionProfileId) => Promise<void>
   setExportAuthor: (author: string) => Promise<void>
+  setExportAuthorKind: (kind: ExportAuthorKind) => Promise<void>
   setExportLicense: (license: string) => Promise<void>
   completeOnboarding: () => Promise<void>
   setPackageMirror: (mirror: PackageMirror) => Promise<void>
@@ -81,6 +90,8 @@ const SETTINGS_WRITE_ERRORS: Record<OptimisticSettingsWriteKey, SettingsWriteErr
   appIcon: SETTINGS_WRITE_ERROR_KEYS.appIcon,
   defaultPermissionProfile: SETTINGS_WRITE_ERROR_KEYS.defaultPermissionProfile,
   exportAuthor: SETTINGS_WRITE_ERROR_KEYS.exportAuthor,
+  // 类型与文字是同一条命令的两次写入，失败提示也共用一句：分开报会让读者以为存了两份东西。
+  exportAuthorKind: SETTINGS_WRITE_ERROR_KEYS.exportAuthor,
   exportLicense: SETTINGS_WRITE_ERROR_KEYS.exportLicense
 }
 
@@ -189,8 +200,19 @@ export const createSettingsPreferencesSlice = ({
         'exportAuthor',
         'exportAuthor',
         author,
-        () => getCommands().setExportAuthor({ value: author }),
+        () =>
+          getCommands().setExportAuthor({ value: author, authorKind: getState().exportAuthorKind }),
         'Failed to set export author'
+      ),
+
+    // 类型跟着同一条命令走：只改 `@type`，文字一个字节不动，所以这里把当前文字一起带上。
+    setExportAuthorKind: (kind) =>
+      runOptimisticWrite(
+        'exportAuthorKind',
+        'exportAuthorKind',
+        kind,
+        () => getCommands().setExportAuthor({ value: getState().exportAuthor, authorKind: kind }),
+        'Failed to set export author kind'
       ),
 
     setExportLicense: (license) =>

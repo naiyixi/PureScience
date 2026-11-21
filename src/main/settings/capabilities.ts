@@ -4,6 +4,7 @@ import type { RuntimeEnablement, RuntimeSelection } from '../../shared/notebook-
 import type { PermissionProfileId } from '../../shared/permission-profiles'
 import type {
   AppIconVariant,
+  ExportAuthorKind,
   ReasoningEffort,
   SetPackageMirrorRequest
 } from '../../shared/settings'
@@ -24,6 +25,8 @@ export type SettingsPreferencesSnapshot = {
   uiLanguage?: string
   // 导出署名与许可。undefined = 用户没填过；调用方必须保持「没填就不写进 crate」。
   exportAuthor?: string
+  // 署名类型（个人/机构）。缺省由导出侧按个人处理，与历史行为逐字一致。
+  exportAuthorKind?: ExportAuthorKind
   exportLicense?: string
   defaultPermissionProfile: PermissionProfileId
 }
@@ -42,7 +45,10 @@ export interface SettingsPreferences {
   ): Promise<SettingsPreferencesSnapshot>
   setAppIconVariant(variant: AppIconVariant): Promise<SettingsPreferencesSnapshot>
   setUiLanguage(language: string): Promise<SettingsPreferencesSnapshot>
-  setExportAuthor(author: string | undefined): Promise<SettingsPreferencesSnapshot>
+  setExportAuthor(
+    author: string | undefined,
+    kind?: ExportAuthorKind
+  ): Promise<SettingsPreferencesSnapshot>
   setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot>
   setDefaultPermissionProfile(profile: PermissionProfileId): Promise<SettingsPreferencesSnapshot>
 }

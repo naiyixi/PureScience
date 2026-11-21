@@ -57,6 +57,7 @@ import {
   readAppIconVariant,
   readUiLanguage,
   readAttributionValue,
+  readExportAuthorKind,
   readClosePreference,
   readDefaultPermissionProfile,
   readNotificationsEnabled
@@ -748,8 +749,12 @@ const registerCoreSettingsApplicationCommands = (
         return dependencies.service.setUiLanguage(language)
       },
       // 署名与许可会逐字写进导出包，所以在这里封顶长度、拒绝控制字符；不做「猜一个默认值」这种事。
+      // 署名那条还带「个人/机构」，它只影响导出里的 `@type`；许可那条不带。
       'settings:set-export-author': ({ args }) =>
-        dependencies.service.setExportAuthor(readAttributionValue(args[0])),
+        dependencies.service.setExportAuthor(
+          readAttributionValue(args[0]),
+          readExportAuthorKind(args[0])
+        ),
       'settings:set-export-license': ({ args }) =>
         dependencies.service.setExportLicense(readAttributionValue(args[0])),
       'settings:set-close-preference': ({ args, callerContext }) => {

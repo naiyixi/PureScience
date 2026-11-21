@@ -4,6 +4,7 @@ import {
   DEFAULT_NOTIFICATIONS_ENABLED,
   DEFAULT_REASONING_EFFORT,
   type AppIconVariant,
+  type ExportAuthorKind,
   type ReasoningEffort
 } from '../../shared/settings'
 import type { CloseActionPreference } from '../../shared/window-controls'
@@ -37,6 +38,9 @@ const toSettingsPreferencesSnapshot = (settings: StoredSettings): SettingsPrefer
   appIconVariant: settings.appIconVariant ?? DEFAULT_APP_ICON_VARIANT,
   ...(settings.uiLanguage === undefined ? {} : { uiLanguage: settings.uiLanguage }),
   ...(settings.exportAuthor === undefined ? {} : { exportAuthor: settings.exportAuthor }),
+  ...(settings.exportAuthorKind === undefined
+    ? {}
+    : { exportAuthorKind: settings.exportAuthorKind }),
   ...(settings.exportLicense === undefined ? {} : { exportLicense: settings.exportLicense }),
   defaultPermissionProfile: getDefaultPermissionProfile(settings)
 })
@@ -98,8 +102,11 @@ class SettingsPreferencesModule implements SettingsPreferences {
     return toSettingsPreferencesSnapshot(await this.repository.setUiLanguage(language))
   }
 
-  async setExportAuthor(author: string | undefined): Promise<SettingsPreferencesSnapshot> {
-    return toSettingsPreferencesSnapshot(await this.repository.setExportAuthor(author))
+  async setExportAuthor(
+    author: string | undefined,
+    kind?: ExportAuthorKind
+  ): Promise<SettingsPreferencesSnapshot> {
+    return toSettingsPreferencesSnapshot(await this.repository.setExportAuthor(author, kind))
   }
 
   async setExportLicense(license: string | undefined): Promise<SettingsPreferencesSnapshot> {

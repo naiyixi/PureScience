@@ -44,7 +44,9 @@ const GeneralPanel = (): React.JSX.Element => {
   // 导出署名与许可：主进程存的就是这两栏，导出 RO-Crate 时逐字写进 author / license。
   const exportAuthor = useSettingsStore((state) => state.exportAuthor)
   const exportLicense = useSettingsStore((state) => state.exportLicense)
+  const exportAuthorKind = useSettingsStore((state) => state.exportAuthorKind)
   const setExportAuthor = useSettingsStore((state) => state.setExportAuthor)
+  const setExportAuthorKind = useSettingsStore((state) => state.setExportAuthorKind)
   const setExportLicense = useSettingsStore((state) => state.setExportLicense)
   const isMac = window.api.platform === 'darwin'
   const [logPath, setLogPath] = useState<string | null>(null)
@@ -166,6 +168,32 @@ const GeneralPanel = (): React.JSX.Element => {
               onChange={(event) => void setExportAuthor(event.target.value)}
             />
           </label>
+          {/* 类型只决定导出里那个实体的 @type。它不改用户写下的文字，所以不放进同一个输入框。 */}
+          <div className="space-y-1.5">
+            <span className="text-sm font-medium text-foreground">
+              {t('settings.exportAuthorKindLabel')}
+            </span>
+            <Select
+              value={exportAuthorKind}
+              onValueChange={(value) =>
+                void setExportAuthorKind(value as 'person' | 'organization')
+              }
+            >
+              <SelectTrigger aria-label={t('settings.exportAuthorKindLabel')}>
+                <span>
+                  {exportAuthorKind === 'organization'
+                    ? t('settings.exportAuthorKindOrganization')
+                    : t('settings.exportAuthorKindPerson')}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="person">{t('settings.exportAuthorKindPerson')}</SelectItem>
+                <SelectItem value="organization">
+                  {t('settings.exportAuthorKindOrganization')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-foreground">
               {t('settings.exportLicenseLabel')}

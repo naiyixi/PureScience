@@ -62,7 +62,11 @@ export type RoCrateExportOwnerDeps = Readonly<{
    * 是可核验的事实，编一个署名或猜一个许可证不可核验。读取失败同样按「没填」处理，不让设置读取
    * 问题挡住一次导出。
    */
-  loadAttribution?: () => Promise<{ author?: string; license?: string }>
+  loadAttribution?: () => Promise<{
+    author?: string
+    authorKind?: 'person' | 'organization'
+    license?: string
+  }>
   now?: () => Date
   log?: Readonly<{ warn: (message: string, fields?: unknown) => void }>
 }>
@@ -200,13 +204,22 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
       }
 
       // 署名/许可：用户填过的才写。不设默认值，不从项目名或 git 身份去猜 —— 编一个署名不可核验。
-      let creators: { type: 'Person'; id: string; name: string }[] | undefined
+      // 作者类型同理来自用户自己的选择：没选过就按个人写（与已发布的行为逐字一致）。
+      let creators: { type: 'Person' | 'Organization'; id: string; name: string }[] | undefined
       let license: { id: string; name: string } | undefined
       try {
         const attribution = await deps.loadAttribution?.()
         const author = attribution?.author?.trim()
         const licenseText = attribution?.license?.trim()
-        if (author) creators = [{ type: 'Person', id: '#author', name: author }]
+        if (author) {
+          creators = [
+            {
+              type: attribution?.authorKind === 'organization' ? 'Organization' : 'Person',
+              id: '#author',
+              name: author
+            }
+          ]
+        }
         if (licenseText) license = { id: licenseText, name: licenseText }
       } catch (error) {
         // 读设置失败不该挡住一次导出：按「没填」处理，导出照常进行，只是没有这两个字段。

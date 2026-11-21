@@ -11,6 +11,7 @@ export type SettingsWriteKey =
   | 'defaultPermissionProfile'
   | 'appIcon'
   | 'exportAuthor'
+  | 'exportAuthorKind'
   | 'exportLicense'
 
 export type OptimisticSettingsWriteKey =
@@ -22,6 +23,7 @@ export type OptimisticSettingsWriteKey =
   | 'defaultPermissionProfile'
   | 'appIcon'
   | 'exportAuthor'
+  | 'exportAuthorKind'
   | 'exportLicense'
 
 type SettingsWriteToken = {

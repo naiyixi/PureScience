@@ -3813,6 +3813,7 @@ const createApplicationModules = async (
           const settings = await settingsService.getStoredSettings()
           return {
             ...(settings.exportAuthor ? { author: settings.exportAuthor } : {}),
+            ...(settings.exportAuthorKind ? { authorKind: settings.exportAuthorKind } : {}),
             ...(settings.exportLicense ? { license: settings.exportLicense } : {})
           }
         },

@@ -9,6 +9,7 @@ import type {
   ClaudeSubscriptionProviderId,
   ClaudeInfo,
   CredentialServiceId,
+  ExportAuthorKind,
   MemoryCategory,
   MemoryNote,
   MemorySettings,
@@ -1451,11 +1452,18 @@ class SettingsRepository {
 
   // 导出署名：RO-Crate 的 author 只能来自用户自己填的内容。空串与空白一律存成 undefined，
   // 因为「用户清空了这一栏」和「从没填过」在下游是同一件事：都不写这个字段。
-  async setExportAuthor(author: string | undefined): Promise<StoredSettings> {
+  // 类型（个人/机构）与文字分开存：它只决定导出里的 `@type`。没给就保留已存的那一个，
+  // 清空署名时也一并清掉——没有署名时留着一个类型是悬空的偏好。
+  async setExportAuthor(
+    author: string | undefined,
+    kind?: ExportAuthorKind
+  ): Promise<StoredSettings> {
     const trimmed = author?.trim()
     return this.mutate((settings) => ({
       ...settings,
-      exportAuthor: trimmed && trimmed.length > 0 ? trimmed : undefined
+      exportAuthor: trimmed && trimmed.length > 0 ? trimmed : undefined,
+      exportAuthorKind:
+        trimmed && trimmed.length > 0 ? (kind ?? settings.exportAuthorKind) : undefined
     }))
   }
 

@@ -67,7 +67,8 @@ import type {
   CustomServerTestResult,
   SetCredentialRequest,
   StoredCredential,
-  EgressSettings
+  EgressSettings,
+  ExportAuthorKind
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
@@ -1342,8 +1343,11 @@ class SettingsService {
   }
 
   // Persists the reported interface language; the renderer keeps showing it (this only records it).
-  async setExportAuthor(author: string | undefined): Promise<SettingsSnapshot> {
-    await this.preferences.setExportAuthor(author)
+  async setExportAuthor(
+    author: string | undefined,
+    kind?: ExportAuthorKind
+  ): Promise<SettingsSnapshot> {
+    await this.preferences.setExportAuthor(author, kind)
     return this.getSettingsView()
   }
 

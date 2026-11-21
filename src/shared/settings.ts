@@ -546,6 +546,8 @@ export type SettingsSnapshot = {
   appIconVariant: AppIconVariant
   // 导出署名（作者/机构）与默认导出许可。undefined = 用户没填过；导出时必须保持不写。
   exportAuthor?: string
+  // 署名的类型：个人（缺省，与历史行为一致）或机构。没有署名时它不产生任何写入。
+  exportAuthorKind?: ExportAuthorKind
   exportLicense?: string
   // The default permission profile for new sessions. Valid values: 'ask', 'auto', 'full'.
   // Absent or invalid falls back to 'ask' (the most restrictive mode).
@@ -595,10 +597,15 @@ export type SetUiLanguageRequest = {
   language?: string
 }
 
+// 署名的类型。个人是缺省值（历史行为），机构只影响导出里的 `@type`，不改任何文本。
+export type ExportAuthorKind = 'person' | 'organization'
+
 // 导出署名与默认许可：自由文本，但会被逐个字符写进 RO-Crate，所以由主进程裁剪空白、长度封顶。
 // 省略/空串表示「没填」——调用方必须把这两种情况都当成「不写这个字段」。
 export type SetExportAttributionRequest = {
   value?: string
+  // 只对署名那条命令有意义（许可那条忽略它）：个人还是机构。缺省 = 不改动已存的类型。
+  authorKind?: ExportAuthorKind
 }
 
 export type SetDefaultPermissionProfileRequest = {

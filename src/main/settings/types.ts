@@ -5,6 +5,7 @@ import type {
   ClaudeInfo,
   CodexSubscriptionAuthMode,
   CodexInfo,
+  ExportAuthorKind,
   MemorySettings,
   ProviderType,
   ProviderValidationFailure,
@@ -215,6 +216,8 @@ export type StoredSettings = {
   // 导出署名与许可：RO-Crate 的 author / license 只能来自用户自己填的东西。没设过就是 undefined，
   // 不写空串、也不猜一个默认许可证——编一个许可证比缺一个更糟。
   exportAuthor?: string
+  // 署名类型（个人/机构）。只改变导出里那个实体的 `@type`，不影响用户写下的文字。
+  exportAuthorKind?: ExportAuthorKind
   exportLicense?: string
   connectors?: StoredConnectors
   // Non-secret package-mirror overrides (conda/pypi/cran). Absent means public hosts.

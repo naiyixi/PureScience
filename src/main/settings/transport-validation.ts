@@ -2,6 +2,7 @@ import {
   isAppIconVariant,
   isReasoningEffort,
   type AppIconVariant,
+  type ExportAuthorKind,
   type ReasoningEffort
 } from '../../shared/settings'
 import type { CloseActionPreference } from '../../shared/window-controls'
@@ -82,6 +83,14 @@ const readAttributionValue = (request: unknown): string | undefined => {
   return trimmed
 }
 
+// 署名类型：只接受两个值。缺失/空表示「不改动已存的类型」——不是「按个人」。
+const readExportAuthorKind = (request: unknown): ExportAuthorKind | undefined => {
+  const kind = readField(request, 'authorKind')
+  if (kind === undefined || kind === null) return undefined
+  if (kind === 'person' || kind === 'organization') return kind
+  throw new Error(`Invalid export author kind: ${String(kind)}`)
+}
+
 const readUiLanguage = (request: unknown): string | undefined => {
   const language = readField(request, 'language')
   if (language === undefined || language === null) return undefined
@@ -120,5 +129,6 @@ export {
   readNotificationsEnabled,
   readReasoningEffort,
   readUiLanguage,
-  readAttributionValue
+  readAttributionValue,
+  readExportAuthorKind
 }
