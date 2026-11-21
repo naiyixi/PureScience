@@ -84,13 +84,25 @@ export const probeInterpreterVersion = async (
       windowsHide: true
     })
     const output = `${stdout}\n${stderr}`
-    return isPython3Version(output) ? output.trim().replace(/^Python\s+/i, '') : undefined
+    // The 3-check stays in front: `parsePythonVersion` happily returns `2.7.18`, and a python2 interpreter
+    // must not become "runnable with version 2.7.18".
+    return isPython3Version(output) ? parsePythonVersion(output) : undefined
   } catch {
     return undefined
   }
 }
 
-export { isPython3Version }
+// The version TOKEN, not the whole output. An interpreter can print unrelated lines and still be fine: a
+// venv created under a DOS 8.3 path (C:\Users\RUNNER~1\…) makes CPython's own `venv` module emit
+// "Actual environment location may have moved due to redirects, links or junctions" on stderr — spurious,
+// per CPython's tracker (bpo-45337) — and the old `output.replace(/^Python\s+/i, '')` then reported that
+// whole warning as the interpreter's version, which made a perfectly good interpreter read as not
+// runnable (measured on a Windows runner: runtime-selection).
+const PYTHON_VERSION = /\bPython\s+(\d+\.\d+(?:\.\d+)?(?:[a-z]+\d*)?)/i
+
+const parsePythonVersion = (output: string): string | undefined => PYTHON_VERSION.exec(output)?.[1]
+
+export { isPython3Version, parsePythonVersion }
 
 // Resolves the first usable interpreter. Falls back to the platform's preferred command when none
 // respond, so Notebook execution still produces a clear ENOENT error rather than silently doing
