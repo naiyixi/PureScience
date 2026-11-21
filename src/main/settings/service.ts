@@ -465,6 +465,12 @@ class SettingsService {
       conversationSkillImportEnabled: preferences.conversationSkillImportEnabled,
       closePreference: preferences.closePreference,
       appIconVariant: preferences.appIconVariant,
+      // 导出署名/机构/许可：视图里必须带上，否则渲染进程每次拿到快照都当成「没填」，
+      // 界面上就是输入框永远是空的（写进去了，读回来没有）。
+      exportAuthor: preferences.exportAuthor,
+      exportAuthorKind: preferences.exportAuthorKind,
+      exportAffiliation: preferences.exportAffiliation,
+      exportLicense: preferences.exportLicense,
       defaultPermissionProfile: preferences.defaultPermissionProfile,
       useIntent: settings.useIntent,
       agentFrameworkId: settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID,

@@ -41,6 +41,9 @@ const toSettingsPreferencesSnapshot = (settings: StoredSettings): SettingsPrefer
   ...(settings.exportAuthorKind === undefined
     ? {}
     : { exportAuthorKind: settings.exportAuthorKind }),
+  ...(settings.exportAffiliation === undefined
+    ? {}
+    : { exportAffiliation: settings.exportAffiliation }),
   ...(settings.exportLicense === undefined ? {} : { exportLicense: settings.exportLicense }),
   defaultPermissionProfile: getDefaultPermissionProfile(settings)
 })

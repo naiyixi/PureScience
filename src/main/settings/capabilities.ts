@@ -27,6 +27,8 @@ export type SettingsPreferencesSnapshot = {
   exportAuthor?: string
   // 署名类型（个人/机构）。缺省由导出侧按个人处理，与历史行为逐字一致。
   exportAuthorKind?: ExportAuthorKind
+  // 作者所在机构（导出里一个独立的 Organization 实体）。
+  exportAffiliation?: string
   exportLicense?: string
   defaultPermissionProfile: PermissionProfileId
 }

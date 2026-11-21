@@ -21,6 +21,7 @@ import type { ProxySettings } from '../../shared/proxy'
 import {
   type AppIconPreview,
   type SetAppIconVariantRequest,
+  type SetExportAttributionRequest,
   type SetUiLanguageRequest,
   type CreateSkillRequest,
   type DeleteProviderRequest,
@@ -83,6 +84,9 @@ import type { SkillExportArchive } from '../skills/export'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import {
   readAppIconVariant,
+  readAttributionValue,
+  readExportAffiliation,
+  readExportAuthorKind,
   readClosePreference,
   readDefaultPermissionProfile,
   readConversationSkillImportEnabled,
@@ -293,6 +297,31 @@ const registerSettingsIpcHandlers = ({
       const variant = readAppIconVariant(request)
       log.info('set app icon variant requested', { variant })
       return workflows.appearance.setAppIconVariant(variant)
+    }
+  )
+  // 导出署名 / 机构 / 许可：RO-Crate 里 author、affiliation、license 的唯一来源。
+  // 这两个通道此前**只在抽象层里定义过**，没有在这里注册 —— 于是渲染进程每次调用都是
+  // `No handler registered`，用户填的署名从来没进过包。校验走与抽象层同一套函数，避免两条路径分叉。
+  ipcMainHandle(
+    'settings:set-export-author',
+    async (_event, request: SetExportAttributionRequest) => {
+      const author = readAttributionValue(request)
+      const kind = readExportAuthorKind(request)
+      const affiliation = readExportAffiliation(request)
+      log.info('set export author requested', {
+        hasAuthor: !!author,
+        kind,
+        hasAffiliation: !!affiliation
+      })
+      return service.setExportAuthor(author, kind, affiliation)
+    }
+  )
+  ipcMainHandle(
+    'settings:set-export-license',
+    async (_event, request: SetExportAttributionRequest) => {
+      const license = readAttributionValue(request)
+      log.info('set export license requested', { hasLicense: !!license })
+      return service.setExportLicense(license)
     }
   )
   // The interface language the renderer is showing. Recorded so main-process prose written while no
