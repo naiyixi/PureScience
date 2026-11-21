@@ -396,7 +396,15 @@ class ElectronAppHarness implements ElectronApp {
     testTitle: string
     retry: number
   }): Promise<ElectronAppHarness> {
-    const testRoot = await mkdtemp(join(tmpdir(), 'purescience-electron-e2e-'))
+    // Windows keeps two budgets in view here: MAX_PATH for every nested file the app creates, and the app's
+    // own up-front refusal to move data to a root that leaves no room under it. The runner's TEMP is
+    // `C:\Users\RUNNER~1\AppData\Local\Temp`, so a long instance name plus `\storage\PureScience` plus a
+    // target folder name is enough to make a legal move dialog render "path is too long for Windows" and a
+    // disabled Continue (measured on run 44891067647: storage-migration's stale-evidence case). Keep the
+    // instance root short on Windows so the specs measure the product, not the runner's temp path.
+    const testRoot = await mkdtemp(
+      join(tmpdir(), process.platform === 'win32' ? 'ps-e2e-' : 'purescience-electron-e2e-')
+    )
     const harness = new ElectronAppHarness(
       testRoot,
       {
