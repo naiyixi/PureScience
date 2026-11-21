@@ -1,6 +1,8 @@
 import { test as base } from '@playwright/test'
 import { spawn } from 'node:child_process'
 import { createWriteStream } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { chmod, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
@@ -719,6 +721,8 @@ class ElectronAppHarness implements ElectronApp {
 
   async dispose(): Promise<void> {
     await this.closeForCleanup().catch(() => undefined)
+    // A self-relaunched instance outlives the handle Playwright knew about; stop it before touching the tree.
+    await terminateStraysForRoot(this.testRoot)
     await makeTreeWritable(this.testRoot)
     // Windows keeps Chromium's own files (`electron-profile\DIPS` is written by the network service) locked
     // for a moment after the process is gone: measured on run 44902338624 the teardown threw
@@ -798,6 +802,38 @@ class ElectronAppHarness implements ElectronApp {
       { gracefulTimeoutMs: 10_000, forcedTimeoutMs: 10_000 }
     )
   }
+}
+
+// The product can relaunch itself (finishing an unfinished data move restarts the app through its own
+// launcher), and that new process is not the one Playwright holds. It keeps `storage/purescience.db` open, so
+// the teardown used to fail with `EBUSY … purescience.db` even though everything the harness knew about was
+// closed (run 44918012666). Kill only processes that mention THIS test's root and look like our app: the
+// runner's own command line never carries a test root, so nothing else is touched.
+const execFileAsync = promisify(execFile)
+
+const terminateStraysForRoot = async (root: string): Promise<number> => {
+  if (process.platform === 'win32') {
+    const script =
+      `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${root}*' -and ` +
+      `$_.CommandLine -match 'purescience|Electron' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`
+    await execFileAsync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script
+    ]).catch(() => undefined)
+    return 0
+  }
+  const listing = await execFileAsync('ps', ['-eo', 'pid=,args=']).catch(() => undefined)
+  const killed: number[] = []
+  for (const line of listing?.stdout.split('\n') ?? []) {
+    if (!line.includes(root) || !/purescience|Electron/i.test(line)) continue
+    const pid = Number(line.trim().split(/\s+/, 1)[0])
+    if (!Number.isInteger(pid) || pid === process.pid) continue
+    await execFileAsync('kill', ['-9', String(pid)]).catch(() => undefined)
+    killed.push(pid)
+  }
+  return killed.length
 }
 
 // Deleting a Windows temp tree races Chromium's own file handles. Retry the whole tree for a bounded time and

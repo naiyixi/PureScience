@@ -6,7 +6,6 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
-import { pythonBin } from '../../src/main/notebook/runtime-paths'
 import { test } from '../fixtures/electron-app'
 
 // Acceptance for choosing a notebook runtime in Settings, on a real window with the real IPC surface.
@@ -69,12 +68,15 @@ test('the panel chooses a notebook interpreter and can take it back out', async 
   // --copies matters: a default venv symlinks its interpreter, and the app identifies interpreters by
   // real path, so a symlinked venv collapses into the Homebrew install the scan already found.
   execFileSync('python3', ['-m', 'venv', '--copies', venv])
-  // The app's own layout helper: on Windows a venv keeps its interpreter at the prefix root
-  // (`<venv>\python.exe`), on Unix under `bin/`. Hand-writing `bin/python3` asks the app to register a file
-  // that does not exist on a Windows runner and the failure only shows up as `runnable: false`
-  // (runs 44891067647 / 44902338624 / 44909343155) — so build the path the same way the product does, and
-  // prove the fixture's own interpreter answers before blaming the registry.
-  const INTERPRETER = pythonBin(venv)
+  // A *venv* on Windows keeps its interpreter in `Scripts\python.exe` — not at the prefix root: that is the
+  // conda-env layout `pythonBin()` implements, and asking for it here made the runner look for a file that
+  // never exists (`spawnSync …\venv\python.exe ENOENT`, run 44918012666). Hand-writing `/bin/python3` had
+  // the mirror-image problem (runs 44891067647 / 44902338624 / 44909343155). Build the path per platform,
+  // then prove the fixture's own interpreter answers before blaming the registry.
+  const INTERPRETER =
+    process.platform === 'win32'
+      ? join(venv, 'Scripts', 'python.exe')
+      : join(venv, 'bin', 'python3')
   const probe = execFileSync(INTERPRETER, ['--version'], { encoding: 'utf8', stdio: 'pipe' })
   console.log(`[runtime-selection] fixture interpreter: ${INTERPRETER} -> ${probe.trim()}`)
   expect(probe).toMatch(/Python 3\./)
