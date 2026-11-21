@@ -759,6 +759,38 @@ export const readStagedMoveAt = async (
   return { status: marker.status, token: marker.token, target: marker.target }
 }
 
+// Codes Windows uses to say "a handle still holds this file". POSIX lets an open file be unlinked, so this
+// only ever fires there for permission problems — either way the answer is the same: the lock is short,
+// try again, and if it persists say which file is held instead of failing on a raw fs error.
+const LOCKED_FILE_CODES = new Set(['EBUSY', 'EPERM', 'EACCES'])
+
+/**
+ * Removes a staged copy, waiting out the short-lived handle Windows puts on a file it just read.
+ *
+ * The staged copy was verified by opening it (its SQLite file included). On Windows an open handle makes
+ * `unlink` fail with EBUSY, which used to surface as a raw filesystem error from the discard button — the
+ * removal never happened and nothing said why. A few attempts, a second apart, cover the close; the last
+ * failure is reported with the code so a real lock is diagnosable.
+ */
+export const removeStagedCopy = async (
+  target: string,
+  options: { attempts?: number; delayMs?: number; remove?: (path: string) => Promise<void> } = {}
+): Promise<void> => {
+  const attempts = options.attempts ?? 4
+  const delayMs = options.delayMs ?? 250
+  const remove = options.remove ?? ((path: string) => rm(path, { recursive: true, force: true }))
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await remove(target)
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? ''
+      if (!LOCKED_FILE_CODES.has(code) || attempt >= attempts) throw error
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt))
+    }
+  }
+}
+
 export const discardStagedCopy = async (
   deps: { currentDataRoot: string; expectedToken: string },
   parent: string
@@ -783,6 +815,16 @@ export const discardStagedCopy = async (
     return { ok: false, error: 'Refused: not a completed, matching staged copy.' }
   }
 
-  await rm(target, { recursive: true, force: true })
+  try {
+    await removeStagedCopy(target)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code ?? ''
+    return {
+      ok: false,
+      error: `Could not remove the staged copy${code ? ` (${code})` : ''}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    }
+  }
   return { ok: true }
 }

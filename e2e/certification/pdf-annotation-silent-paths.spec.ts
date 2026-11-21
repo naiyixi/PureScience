@@ -167,7 +167,7 @@ test('names the three gestures that used to be dropped without a word', async ({
         previousWidth = width
         return settled ? width : 0
       },
-      { timeout: 10_000, interval: 200 }
+      { timeout: 10_000, intervals: [200] }
     )
     .toBeGreaterThan(0)
   const viewportWidth = await page.evaluate(() => window.innerWidth)

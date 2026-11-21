@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
@@ -51,8 +52,12 @@ describe('soft lane certification status', () => {
     expect(moduleUrlFor('D:\\a\\PureScience\\scripts\\ci\\lane-status.mjs')).toBe(
       'file:///D:/a/PureScience/scripts/ci/lane-status.mjs'
     )
-    // The POSIX form must keep working, since the visual lane reads it on macOS.
-    expect(moduleUrlFor('/Users/x/lane-status.mjs')).toBe('file:///Users/x/lane-status.mjs')
+    // A non-drive path keeps going through pathToFileURL untouched — asserted against pathToFileURL itself,
+    // because the literal `file:///Users/...` form is only what a POSIX host produces: on the Windows runner
+    // this same assertion read `file:///D:/Users/x/...` and failed the Windows full suite (run 44894304976).
+    expect(moduleUrlFor('/Users/x/lane-status.mjs')).toBe(
+      pathToFileURL('/Users/x/lane-status.mjs').href
+    )
     expect(moduleUrlFor(undefined)).toBe('')
   })
 

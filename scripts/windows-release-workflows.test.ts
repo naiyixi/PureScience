@@ -397,9 +397,9 @@ describe('post-merge Windows validation', () => {
     // 44891067647, where that showed up as `Updater certification needs two versions`.
     expect(previous.env?.CURRENT_TAG).toBe('${{ steps.version.outputs.tag }}')
     const version = upgrade.steps?.find((candidate) => candidate.id === 'version')
-    expect(version.run).toContain('RELEASE_TAG')
-    expect(version.run).toContain('tag=$tag')
-    expect(version.run).toContain('package.json')
+    expect(version?.run).toContain('RELEASE_TAG')
+    expect(version?.run).toContain('tag=$tag')
+    expect(version?.run).toContain('package.json')
     expect(previous.run).toContain('gh release download')
     expect(previous.run).toContain('*-win-x64-setup.exe.blockmap')
     expect(previous.run).not.toContain('Get-AuthenticodeSignature')

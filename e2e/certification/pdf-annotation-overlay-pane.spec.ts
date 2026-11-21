@@ -356,7 +356,7 @@ const setNarrowWindow = async (app: ElectronApp, page: Page): Promise<void> => {
         previousWidth = width
         return settled ? width : 0
       },
-      { timeout: 10_000, interval: 200 }
+      { timeout: 10_000, intervals: [200] }
     )
     .toBeGreaterThan(0)
   const viewportWidth = await page.evaluate(() => window.innerWidth)

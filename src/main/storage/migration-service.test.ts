@@ -18,6 +18,7 @@ import {
   DATA_ROOT_DIRS,
   discardStagedCopy,
   MIGRATED_DIRS,
+  removeStagedCopy,
   PROJECT_DATABASE_FILE,
   RUNTIME_ENVIRONMENT_MANIFESTS_DIR,
   runDataRootMigration,
@@ -1844,5 +1845,66 @@ describe('runtime preservation + old-runtime cleanup', () => {
     )
 
     expect(deleteSources).toHaveBeenCalledWith(currentDataRoot, [...MIGRATED_DIRS])
+  })
+})
+
+describe('removeStagedCopy', () => {
+  // Windows refuses to unlink a file another handle still holds open, and the staged copy was just read
+  // by the verification pass. The raw EBUSY used to reach the discard button (measured on a Windows
+  // runner: `EBUSY: resource busy or locked, unlink '…\purescience.db'`), where the removal simply had not
+  // happened and nothing said why.
+  const lockedError = (): NodeJS.ErrnoException =>
+    Object.assign(new Error('EBUSY: resource busy or locked, unlink'), { code: 'EBUSY' })
+
+  it('waits out a handle that releases within the retry budget', async () => {
+    let calls = 0
+    await removeStagedCopy('/staged', {
+      delayMs: 1,
+      remove: async () => {
+        calls += 1
+        if (calls < 3) throw lockedError()
+      }
+    })
+    expect(calls).toBe(3)
+  })
+
+  it('gives up after the budget and lets the real lock through', async () => {
+    let calls = 0
+    await expect(
+      removeStagedCopy('/staged', {
+        attempts: 3,
+        delayMs: 1,
+        remove: async () => {
+          calls += 1
+          throw lockedError()
+        }
+      })
+    ).rejects.toThrow(/EBUSY/)
+    expect(calls).toBe(3)
+  })
+
+  it('does not retry a failure that is not a lock', async () => {
+    // Retrying ENOENT/ENOTDIR would turn a real bug into a slow one.
+    let calls = 0
+    await expect(
+      removeStagedCopy('/staged', {
+        delayMs: 1,
+        remove: async () => {
+          calls += 1
+          throw Object.assign(new Error('ENOTDIR'), { code: 'ENOTDIR' })
+        }
+      })
+    ).rejects.toThrow(/ENOTDIR/)
+    expect(calls).toBe(1)
+  })
+
+  it('reports a locked staged copy as a refusal instead of throwing from the discard path', async () => {
+    // The IPC caller branches on `ok`; a throw here would surface as an unhandled fs error in the renderer.
+    const result = await discardStagedCopy(
+      { currentDataRoot: '/home/user/.purescience', expectedToken: 'token-1' },
+      '/mnt/elsewhere'
+    )
+    expect(result.ok).toBe(false)
+    expect(result.error).toMatch(/Refused/)
   })
 })
