@@ -560,3 +560,18 @@ describe('post-merge Windows validation', () => {
     }
   })
 })
+
+describe('updater certification script', () => {
+  it('reads the same pending-install marker the app writes', () => {
+    // The drill accepts the marker instead of the driver's `close` event when a hand-over detaches into the
+    // installer. A copied file name would silently stop matching and turn a real hand-over into a timeout.
+    const script = readFileSync(join(__dirname, 'windows-updater-certification.mjs'), 'utf8')
+    const maintenance = readFileSync(
+      join(__dirname, '..', 'src', 'main', 'update', 'cache-maintenance.ts'),
+      'utf8'
+    )
+    const marker = /export const INSTALL_MARKER_FILE = '([^']+)'/.exec(maintenance)?.[1]
+    expect(marker).toBeTruthy()
+    expect(script).toContain(`const INSTALL_MARKER_NAME = '${marker}'`)
+  })
+})

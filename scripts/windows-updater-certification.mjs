@@ -202,6 +202,11 @@ const withTimeout = (promise, description, timeoutMs = UPDATE_TIMEOUT_MS) =>
     )
   })
 
+// Mirrors `INSTALL_MARKER_FILE` in src/main/update/cache-maintenance.ts — that file is the app's own
+// statement that a downloaded package is pending install, which is what this drill reads when the driver
+// never sees the app close.
+const INSTALL_MARKER_NAME = 'install-pending.json'
+
 const runElectronUpdater = async ({ executable, env, expectedVersion, cacheDir }) => {
   const application = await electron.launch({ executablePath: executable, env, timeout: 60_000 })
   let cacheBeforeApply
@@ -253,7 +258,31 @@ const runElectronUpdater = async ({ executable, env, expectedVersion, cacheDir }
         `The updater refused to install (state=error): ${applied.error ?? '(no reason given)'}`
       )
     }
-    await closed
+    // Playwright's `close` event is not guaranteed when the hand-over goes through the installer: on
+    // Windows `quitAndInstall` detaches into it and the app's process can leave the driver's handle behind
+    // (measured on run 44902338624 — the app logged a completed `application-shutdown` and
+    // "recorded the pending install {version: 2.32.0}" while `waitForEvent('close')` timed out after 30s).
+    // The app writing its own pending-install marker IS the hand-over, so accept either signal: the close
+    // event when it comes, the marker when it does not. A drill that fails on the driver's silence reports
+    // the wrong party.
+    if (cacheDir) {
+      const handover = await Promise.race([
+        closed.then(() => 'close-event'),
+        waitFor(
+          `the pending-install marker in ${cacheDir}`,
+          async () => {
+            const recorded = await readFile(join(cacheDir, INSTALL_MARKER_NAME), 'utf8').catch(
+              () => ''
+            )
+            return recorded.includes(expectedVersion)
+          },
+          UPDATE_TIMEOUT_MS
+        ).then(() => 'pending-install-marker')
+      ])
+      console.log(`[updater] hand-over confirmed by ${handover}`)
+    } else {
+      await closed
+    }
   } catch (error) {
     await application.close().catch(() => {})
     throw error

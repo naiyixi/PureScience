@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -58,7 +58,12 @@ const openRuntimes = async (page: Page): Promise<ReturnType<Page['getByRole']>> 
 }
 
 test('the panel chooses a notebook interpreter and can take it back out', async ({ app }) => {
-  const scratch = mkdtempSync(join(tmpdir(), 'u10-runtime-'))
+  // The real path, not the temp path Windows hands back: a runner's TEMP is a DOS 8.3 short name
+  // (`C:\Users\RUNNER~1\…`) while a venv records and then re-resolves its base interpreter by long path, so a
+  // venv created under the short name prints "Actual environment location may have moved due to redirects,
+  // links or junctions" and answers nothing — the app then reads the interpreter as not runnable
+  // (measured on runs 44891067647 and 44902338624: `runnable: false`, and no `Python 3.x` line at all).
+  const scratch = realpathSync.native(mkdtempSync(join(tmpdir(), 'u10-runtime-')))
   const INTERPRETER = join(scratch, 'venv', 'bin', 'python3')
   // --copies matters: a default venv symlinks its interpreter, and the app identifies interpreters by
   // real path, so a symlinked venv collapses into the Homebrew install the scan already found.

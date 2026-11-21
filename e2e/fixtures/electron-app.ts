@@ -720,7 +720,16 @@ class ElectronAppHarness implements ElectronApp {
   async dispose(): Promise<void> {
     await this.closeForCleanup().catch(() => undefined)
     await makeTreeWritable(this.testRoot)
-    await rm(this.testRoot, { force: true, maxRetries: 5, recursive: true, retryDelay: 200 })
+    // Windows keeps Chromium's own files (`electron-profile\DIPS` is written by the network service) locked
+    // for a moment after the process is gone, so one second of retries is not enough: measured on run
+    // 44902338624 the teardown threw `EBUSY … unlink 'DIPS'` and the test was reported as a product failure.
+    // Node's `rm` retries exactly these lock errors, so give it a real window instead of a token one.
+    await rm(this.testRoot, {
+      force: true,
+      maxRetries: 40,
+      recursive: true,
+      retryDelay: 250
+    })
     this.rendererFailures.assertNoFailures()
   }
 

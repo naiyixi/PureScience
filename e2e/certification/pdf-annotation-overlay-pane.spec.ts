@@ -555,9 +555,27 @@ test('covers the page instead of narrowing it, with both surfaces reachable and 
   // height. It still is, and it is still the same 320px — the old 85% bound could only bite on panes below
   // 377px, so above the threshold the two bounds are the same number.
   await app.setMainWindowSize(WIDE_WINDOW)
+  // Same reason as the narrow cases above: on Windows the outer window width and the viewport differ by the
+  // window frame (measured 1600 → 1584), so an exact comparison can only pass on a frameless platform.
+  // Wait for the viewport to stop moving, then hold it to the request and no more than one frame below it.
+  let previousWidth = -1
   await expect
-    .poll(() => page.evaluate(() => window.innerWidth), { timeout: 10_000 })
-    .toBe(WIDE_WINDOW.width)
+    .poll(
+      async () => {
+        const width = await page.evaluate(() => window.innerWidth)
+        const settled = width === previousWidth
+        previousWidth = width
+        return settled
+      },
+      { timeout: 10_000, intervals: [200] }
+    )
+    .toBe(true)
+  const wideViewport = await page.evaluate(() => window.innerWidth)
+  expect(
+    wideViewport,
+    `the viewport is ${wideViewport}px for a ${WIDE_WINDOW.width}px window (frame slack ${WINDOW_FRAME_SLACK}px)`
+  ).toBeLessThanOrEqual(WIDE_WINDOW.width)
+  expect(wideViewport).toBeGreaterThanOrEqual(WIDE_WINDOW.width - WINDOW_FRAME_SLACK)
   await settledPaneWidth(page)
   const wideClosed = await readWidths(page)
   expect(wideClosed.paneWidth, 'the wide pane is not wider than the threshold').toBeGreaterThan(
