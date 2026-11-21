@@ -8,6 +8,7 @@ import type { Page } from 'playwright'
 import { test } from '../fixtures/electron-app'
 import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
+import { runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // V6, second attempt. The first attempt reached the last step and produced a NEGATIVE result: the kernel
 // was started on the environment (`notebook.execute` returned ok with a real runId) and the removal still
@@ -31,7 +32,9 @@ import { createProject, sendPrompt } from './helpers'
 // Both paths pass; a run where the status table says "live" and the removal succeeds anyway fails — which
 // is the defect this test exists to catch. The reading is printed either way, so the cause names itself.
 const REAL_RUNTIME_ROOT = join(homedir(), '.purescience', 'runtime')
-const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
+// The app's own subdir mapping. A hand-written `darwin ? osx-arm64 : linux-64` hands a Windows runner
+// linux-64, so the pack this spec seeds is looked for under win-64 and the runtime never reads as ready.
+const PACK_SUBDIR = runtimeSubdir()
 const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12')
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 const ENV_NAME = 'lock-import-env'

@@ -8,6 +8,7 @@ import { expect } from '@playwright/test'
 import { test } from '../fixtures/electron-app'
 import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
+import { runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // IC14 real-window acceptance for the session's runtime binding.
 //
@@ -20,7 +21,9 @@ import { createProject, sendPrompt } from './helpers'
 // flat pkgs cache so the app-managed environment is built with zero downloads and nothing on this
 // machine's own environments is touched.
 const REAL_RUNTIME_ROOT = join(homedir(), '.purescience', 'runtime')
-const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
+// The app's own subdir mapping. A hand-written `darwin ? osx-arm64 : linux-64` hands a Windows runner
+// linux-64, so the pack this spec seeds is looked for under win-64 and the runtime never reads as ready.
+const PACK_SUBDIR = runtimeSubdir()
 const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12')
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 const MANAGED_ENV = 'default-python'

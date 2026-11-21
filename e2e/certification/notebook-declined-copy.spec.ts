@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test'
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
+import { pythonBin } from '../../src/main/notebook/runtime-paths'
 import { test } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
 
@@ -42,12 +43,15 @@ type NotebookEnvStatus = {
 
 const seedReadyRuntime = (dataRoot: string): string => {
   const root = join(dataRoot, 'runtime')
-  const bin = join(root, 'envs', 'default-python', 'bin')
-  mkdirSync(bin, { recursive: true })
-  // A placeholder interpreter: nothing here is ever spawned (the run is declined first), the gate only
-  // asks whether the file is there.
-  writeFileSync(join(bin, 'python'), '#!/bin/sh\nexit 0\n')
-  chmodSync(join(bin, 'python'), 0o755)
+  // The app's own layout helper. A hand-written `envs/default-python/bin/python` is the Unix conda layout;
+  // a Windows env keeps its interpreter at the prefix root as `python.exe`, so the seeded marker was there
+  // while the interpreter the gate looks for was not — the app reported `pythonReady: false` and started
+  // provisioning on a runner whose runtime was, as far as this spec was concerned, already ready
+  // (measured on run 44879328011).
+  const interpreter = pythonBin(join(root, 'envs', 'default-python'))
+  mkdirSync(dirname(interpreter), { recursive: true })
+  writeFileSync(interpreter, process.platform === 'win32' ? '' : '#!/bin/sh\nexit 0\n')
+  if (process.platform !== 'win32') chmodSync(interpreter, 0o755)
   writeFileSync(
     join(root, '.env-ready'),
     `${JSON.stringify(

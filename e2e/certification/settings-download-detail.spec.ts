@@ -6,6 +6,11 @@ import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
 import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
+import {
+  DEFAULT_MAX_CACHE_RELATIVE_PATH,
+  DEFAULT_MAX_ENV_RELATIVE_PATH
+} from '../../src/main/notebook/bundle-manifest'
+import { runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // IC17 real-window acceptance for the SETTINGS page's download detail.
 //
@@ -48,7 +53,11 @@ test.afterAll(() => {
   restoreEnvironment()
 })
 
-const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
+// The app's own mapping, not a hand-written pair: a `darwin ? osx-arm64 : linux-64` line sends win-64 to a
+// Windows runner, where the app then refuses the stub manifest as the wrong subdir and the state this spec
+// needs never arrives (measured on run 44879328011: the gate stayed in its error state and no Cancel
+// button was ever rendered / no broadcast carried a download detail).
+const PACK_SUBDIR = runtimeSubdir()
 const PACK_BYTES = 16_777_216
 const DRIP_INTERVAL_MS = 200
 const DRIP_CHUNK = 'x'.repeat(8 * 1024)
@@ -72,7 +81,12 @@ test.beforeAll(async () => {
         version,
         file: `python-${version}.tar.zst`,
         sha256: '0'.repeat(64),
-        size: PACK_BYTES
+        size: PACK_BYTES,
+        // win-64 refuses a pack that declares no path budget (bundle-manifest's pathBudgetForPack), and
+        // these values are the app's own conservative defaults. Without them a Windows run gets no pack at
+        // all — the state this spec is about never arrives and the failure reads like a UI bug.
+        maxCacheRelativePath: DEFAULT_MAX_CACHE_RELATIVE_PATH,
+        maxEnvRelativePath: DEFAULT_MAX_ENV_RELATIVE_PATH
       })
       response.writeHead(200, { 'content-type': 'application/json' })
       response.end(

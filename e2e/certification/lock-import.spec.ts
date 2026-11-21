@@ -8,6 +8,7 @@ import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
 import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
+import { runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // A7 real-window acceptance for the Runtimes lock-import entry.
 //
@@ -20,7 +21,9 @@ import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 // archive set; it is hard-linked (read-only) into the ISOLATED instance's flat pkgs cache so the import
 // runs with zero downloads.
 const REAL_RUNTIME_ROOT = join(homedir(), '.purescience', 'runtime')
-const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
+// The app's own subdir mapping. A hand-written `darwin ? osx-arm64 : linux-64` hands a Windows runner
+// linux-64, so the pack this spec seeds is looked for under win-64 and the runtime never reads as ready.
+const PACK_SUBDIR = runtimeSubdir()
 const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12')
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 

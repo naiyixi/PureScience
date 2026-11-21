@@ -9,6 +9,7 @@ import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
 import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
+import { runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // V5 / A7: the DOWNLOAD half of the lock import. v1.81.0's release page carries this as an open item —
 // 「A7 的下载路径未实测（`allowDownload:true` 时从锁里的 URL 取包并建成环境）：验收用例刻意关掉下载以保证
@@ -26,7 +27,9 @@ import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 // missing entry instead of building something partial; and a corrupted byte is refused whole, naming the
 // entry, with no environment left behind.
 const REAL_RUNTIME_ROOT = join(homedir(), '.purescience', 'runtime')
-const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
+// The app's own subdir mapping. A hand-written `darwin ? osx-arm64 : linux-64` hands a Windows runner
+// linux-64, so the pack this spec seeds is looked for under win-64 and the runtime never reads as ready.
+const PACK_SUBDIR = runtimeSubdir()
 const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12')
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 
