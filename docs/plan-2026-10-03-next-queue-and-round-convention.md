@@ -1,5 +1,63 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十七、本轮追加（执行器，2026-11-22 04:2x–）—— v2.33.0 的成熟度自陈纠两处失真：三处「仍未修」其实是本版修的，头条还停在上一版
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == db36a4cb`（`chore(release): v2.33.0`，03:53），`package.json` = 2.33.0，
+  `v2.33.0^{commit}` 与远端 tag 逐字一致。工作树里**会话一大批在制**（`src/shared/citation/*`、`ris-import*`、
+  `zotero-import*`、`src/shared/ro-crate*`、`RoCrateExportDialog*`、九份 i18n、`settings/provider-env*`、
+  `logger*`、`crash-diagnostics`、`index.ts`、`notebook/mcp-server.ts`、`diagnostics/module-load*`、
+  `prisma/schema.prisma`、`references/repository.ts`）⇒ **一个字节没碰**。本轮只碰 `README.md`、`README.en.md`、本档。
+- 进轮车道（完整 40 位 SHA `db36a4cbbda364ec47721ccf0e3d2b57a6e05a16`）：`Windows Full Test` **success**、
+  `Release`(44943351879) 与 `Nightly`(44943352222) **in_progress**（本档落笔时约 35 分钟）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔）与 v3.0–v3.4 已收口；§一百九十五/一百九十六 §四 自己写下的下一候选要么要动
+  `src/shared/citation/**`（会话在制），要么要等页落定 ⇒ 取它自己写下的第三条：**「README/发布正文里那句过期自陈的更正」**。
+
+### 一 交付（两份 README 的成熟度块，纯文档）
+
+两条失真，方向相反但同一种错 —— 一条把**已交付**写成未做，一条把**上一版**写成本版：
+
+| # | 原来的句子 | 事实（都在 `v2.32.0..HEAD` 区间里） | 改法 |
+| --- | --- | --- | --- |
+| 1 | 🚧 段：`Still named rather than fixed: the localized labels (vol./no./pp.) stay out …; a separator is lost after macro expansion (AMA reads Nature Methods2024); and one branch still emits a stray (as) fragment.` | 三件**本版全修了**：`908942f4` 标签按样式自己的 locale 取词（`vol./no./pp.` 与「卷」「版」）、`978261b3` 分组语义（`choose` 继承外层分隔符 + 全空组连字面文本一起不渲染 ⇒ 分隔符与 `(as)` 一起收）、`e2b35226` 日期按 locale 形式 | 改为「Three of those named gaps closed in this version …」，并把**仍开**的逐条写清（`issued` 只印年份、月日只来自 accessed 串、日期区间与样式自带 range delimiter 未做、枚举外 day 形态印数字、未与第二台引擎逐条对拍），附两档证据路径 |
+| 2 | ✅ 段头条：`**This version makes an exported crate say who made it …**` | 那是 **v2.32.0** 的头条；v2.33.0 的头条（Windows 车道 124 passed / 0 failed / 0 flaky 44.1 min + 升练 success；crate profile REQUIRED 2→0 / RECOMMENDED 12→7；引文印样式自己的标签与日期）只存在于 💡 横幅里，而横幅不进正文 | 前插 v2.33.0 头条，原句降级为 `**The previous version made …**`；两条我判错过的结论（文件锁、8.3 短路径）与仍开的 `references-page-selection` 一并写在同一句里 |
+
+### 二 读数（同一份 preview，改前/改后）
+
+- `node scripts/release-notes.mjs v2.33.0 --keep-generated`（页尚未落，故只 preview、不 `--apply`）：
+  正文 82,015 字节；新句 **1** 次、旧句 **0** 次、v2.33.0 头条 **1** 次。
+- 两份 README 的成熟度块逐字节一致（`sed -n 30p | md5` 两侧同为 `5b43ad7e353b91fc40b703ef448275f8`）；
+  `node scripts/check-readme-sync.mjs` → `README 双语头部锚点（徽章/引言/横幅/DOI）逐字一致`。
+
+### 三 顺带定因（归档，零代码）：谁写入了 `opencodePath`
+
+v3.5 那条「仍未取证：谁在那个隔离根写入了真实路径」的**写侧**已定死：
+
+- 唯一写入方是 `agent-runtime-manager.ts:1048-1067` 的 `resolveOpencodeRuntime` —— 无缓存值时调
+  `detectOpencode`，命中即 `repository.setOpencodeInfo(...)`；落盘函数在 `repository.ts:1547-1553`，
+  全仓 grep `opencodePath` 的写入只有这一处。
+- 该检测是**每次启动都跑的步骤**：本机日志 `slowest: '… detect-opencode=4ms'`（`logs/headless.out.log:4026750`）。
+- 候选目录顺序（`opencode-detect.ts:59-71`）：PATH → `~/.local/bin` → `~/.opencode/bin` → extraDirs →
+  `/opt/homebrew/bin`、`/usr/local/bin` → npm bin ⇒ 只要 PATH 里没有夹具 shim 的命中，固定的 homebrew 目录就会赢。
+- 本机现取两值：真配置根 `opencodePath = /opt/homebrew/bin/opencode`（`opencodeVersion = 1.19.3`，该路径是指向
+  npm 全局装的符号链接）；`[acp] agent spawn` 记的是 `executablePath: '/opt/homebrew/bin/claude'`（`headless.out.log:4015450`，
+  那条是 claude 框架的 spawn，**不是** opencode）⇒ 拿它当 opencode 的 spawn 证据是读错了框架。
+
+**结论**：写它的是应用自己的启动检测，不是夹具。一旦落盘，`resolveOpencodeRuntime` 的缓存短路让后续带夹具的
+启动再也赢不回来 —— 这正是当初那个「假阴性」的形状。**仍未取证的一格**：那一次启动应用看到的 PATH 长什么样
+（隔离根已清理）；下次复现的判据仍是那两个值（隔离根 `settings.json` 的 `opencodePath` + 该次 `[acp] agent spawn`
+的 `executablePath`，且必须确认框架是 opencode）。
+
+### 四 下一轮第一步
+
+- ① 按完整 40 位 SHA 读 `db36a4cb` 的 `Release` 44943351879 与 `Nightly` 44943352222 终态（`cancelled` 不算绿）。
+- ② 页落定后按「发布核验」数资产（四平台 + `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` /
+  `latest*.yml` / `arm64-mac.yml`+`x64-mac.yml`），并把 `sourceSha` 与 `git rev-parse 'v2.33.0^{commit}'` 逐字符比对；
+  然后 `release-notes … --apply` 重发正文并回读字节数，确认旧句 0 次。
+- ③ 下一候选（都不撞会话在制）：`references-page-selection:13` 偶发红（认证 spec，未复现、未修复、没加重试）
+  先给一条可驱动读数；或 `codex-acp` 用户自装不可用那条（先核 `codex-detect.ts` 与检测准入，再决定是否立案）。
+
 ## 一百九十六、本轮追加（执行器，2026-11-21 21:5x–）—— 导出包声明 Process Run Crate 0.5 并把它自己的 REQUIRED 检查清零
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
