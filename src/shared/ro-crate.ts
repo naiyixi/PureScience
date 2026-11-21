@@ -710,8 +710,6 @@ const RO_CRATE_REQUIREMENTS = {
     'RO-Crate 1.1 §Author: an author SHOULD be a Person or Organization described as a Contextual Entity, and a Person SHOULD name where they work through an `affiliation` that resolves to an Organization entity rather than by folding the institution into their name.',
   provenance:
     'RO-Crate 1.1 §Provenance of entities: software used to create a file SHOULD be a SoftwareApplication with a version, associated with the file through a CreateAction instrument/result, and an Action SHOULD have a name and an endTime.',
-  profile:
-    'Process Run Crate 0.5 §2.1: the Root Data Entity MUST reference a CreativeWork entity whose @id is the profile permalink, and that shape is judged on every `conformsTo` value — so a named profile the graph never describes is an unsupported claim, not a declaration.',
   exportContract:
     'PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version\u2019s recorded sha256, and names the Version it came from.'
 } as const
@@ -913,19 +911,21 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
     `conformsTo: ${JSON.stringify(descriptor?.['conformsTo'])}`
   )
 
-  // A profile permalink the root names must be described in the graph: the profile shape judges `sh:class`
-  // on every value. Only NON-base permalinks are checked — a plain RO-Crate 1.1 crate names its own spec
-  // version without describing it, and that is valid.
+  // A profile permalink the root names must be described in the graph: the profile's shape judges
+  // `sh:class` on every value. Only NON-base permalinks are checked — a plain RO-Crate 1.1 crate names its
+  // own spec version without describing it, and that is valid. Judged at the spec's own SHOULD level (the
+  // 1.1 spec says a referenced entity SHOULD be described) so the report never labels a profile rule as a
+  // base-spec MUST; the export gate refuses on any failed assertion either way.
   const namedProfileLinks = (root ? referencesOf(root['conformsTo']) : []).filter(
     (id) => !RO_CRATE_PROFILE_PATTERN.test(id)
   )
   assert(
     'root-named-profiles-described',
-    'spec-must',
-    RO_CRATE_REQUIREMENTS.profile,
+    'spec-should',
+    RO_CRATE_REQUIREMENTS.contextual,
     namedProfileLinks.every((id) => byId.has(id)),
     namedProfileLinks.length > 0
-      ? `conformsTo: ${JSON.stringify(root?.['conformsTo'])}`
+      ? `conformsTo names a profile with no entity behind it: ${JSON.stringify(root?.['conformsTo'])}`
       : 'no profile beyond the base spec is named'
   )
 
