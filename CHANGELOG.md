@@ -1,5 +1,32 @@
 # PureScience 更新日记
 
+## v2.33.1 — 2026-11-22
+
+### 这一版只修发布流程本身的两处，并把 macOS 资产补回「已公证、已 staple」
+
+**v2.33.0 的 mac 资产是签名但未公证的。** 我在 tag 上用 `workflow_dispatch` 走手动发布，而
+`notarize-mac` 的守卫只认 `push` 事件 —— 于是那一趟跳过了公证，`publish` 把**未 staple** 的
+dmg/zip 发上去了。发布记录没有说谎（`macSignature: signed`，没有任何一处声称已公证），但用户拿到的
+mac 安装包比上一版差：Gatekeeper 会警告，macOS 上的原地更新不可用。守卫改成由 **tag** 决定而不是由
+事件决定：
+
+```yaml
+if: >-
+  startsWith(github.ref, 'refs/tags/') &&
+  (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+```
+
+在分支上 dispatch 仍然跳过（那时没有 tag 可公证）。守卫测试同步断言三件事都在，v2.33.0 之前只有两条。
+
+**发布记录里 `macos-arm64` 的 `visualRegression` 是 `failed`，差异只有一处**：Settings → General 的
+导出署名块。旧基线还是「Author or institution」单字体一栏，当前代码已是 Author / Institution /
+Author type 三行 —— 也就是 v2.32.0 拆栏与 v2.33.0 类型提示的**预期变化**，不是渲染回归。基线换成
+**runner 自己在 `CI` profile 下渲染出的那一张**（同环境、同代码），没有改阈值、没有缩小比较区域。
+
+**这一版没有新功能。** v2.33.0 的内容（Windows 车道全绿、Process Run Crate 0.5、引文 locale）不变；
+新版本号存在的唯一原因是：公证守卫的修复必须处在一个 **tag 指向的提交**上，而 `workflow_dispatch`
+跑的永远是 ref 自己的 workflow —— 只有把 tag 落到带修复的提交上，那条 `push` 才会走到修好的守卫。
+
 ## v2.33.0 — 2026-11-22
 
 ### 这一版让 Windows 那条车道第一次说出真话，并把导出包的 Process Run Crate 要求清到零
