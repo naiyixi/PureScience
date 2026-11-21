@@ -6,6 +6,7 @@ import {
   RO_CRATE_CONTEXT_URL,
   RO_CRATE_METADATA_FILENAME,
   RO_CRATE_PROFILE_URL,
+  RO_CRATE_PROCESS_PROFILE_URL,
   RO_CRATE_ROOT_DATASET_ID,
   RO_CRATE_SHA256_TERM_IRI,
   allocateRoCrateContentPath,
@@ -156,12 +157,63 @@ describe('RO-Crate 1.1 metadata', () => {
     const action = entityById(document, actionId)
     expect(action?.['@type']).toBe('CreateAction')
     expect(action?.['result']).toEqual([{ '@id': 'files/assay.csv' }])
-    expect(action?.['endTime']).toBe('2026-09-05T06:31:00.000Z')
+    // `+00:00` 而不是 `Z`：profile 的 `endTime` 形状与 `datePublished` 用同一条正则，只认 `+HH:MM`。
+    expect(action?.['endTime']).toBe('2026-09-05T06:31:00.000+00:00')
+    // 没有记录配方时也要有 description，且只复述记录里已有的事实（在哪里跑、产出了什么、吃了几条输入）。
+    expect(String(action?.['description'])).toContain('Recorded run in PureScience')
+    expect(String(action?.['description'])).toContain('produced assay.csv')
     expect(action?.['identifier']).toBe('artifact-version:project-1/session-1/artifact-1/version-1')
     const instrumentIds = (action?.['instrument'] as { '@id': string }[]).map((ref) => ref['@id'])
     expect(instrumentIds).toContain('https://www.zerolink.com/purescience')
     expect(instrumentIds).toContain('#environment-python')
     expect(instrumentIds).toContain('#agent-Agent')
+  })
+
+  it('declares the Process Run Crate profile beside the base spec, and describes both permalinks', () => {
+    const root = entityById(document, RO_CRATE_ROOT_DATASET_ID)
+    expect(root?.['conformsTo']).toEqual([
+      { '@id': RO_CRATE_PROFILE_URL },
+      { '@id': RO_CRATE_PROCESS_PROFILE_URL }
+    ])
+    // 列表形的 conformsTo 要求每一个 @id 都有实体（profile 的 sh:class 逐值判）；少一条实体时官方验证器
+    // 就把 REQUIRED 2.1 留在红上（实测 root-only 与 list-one-entity 两种形状各剩 1 条）。
+    for (const permalink of [RO_CRATE_PROFILE_URL, RO_CRATE_PROCESS_PROFILE_URL]) {
+      const described = entityById(document, permalink)
+      expect(described?.['@type']).toBe('CreativeWork')
+      expect(described?.['name']).toBeTypeOf('string')
+    }
+  })
+
+  it('names its runs in mentions, not only the sessions', () => {
+    const root = entityById(document, RO_CRATE_ROOT_DATASET_ID)
+    expect(root?.['mentions']).toEqual([
+      { '@id': '#session-session-1' },
+      { '@id': '#create-assay.csv' }
+    ])
+  })
+
+  it('claims no process profile when the crate records no run', () => {
+    const empty = buildFor([])
+    const root = entityById(empty, RO_CRATE_ROOT_DATASET_ID)
+    expect(root?.['conformsTo']).toEqual({ '@id': RO_CRATE_PROFILE_URL })
+    // 会话不是 run：没有文件就没有 CreateAction，mentions 只剩会话那一条。
+    expect(root?.['mentions']).toEqual([{ '@id': '#session-session-1' }])
+    expect(entityById(empty, RO_CRATE_PROCESS_PROFILE_URL)).toBeUndefined()
+  })
+
+  it('fails its own assertions when a named profile has no entity behind it', () => {
+    const withoutEntity: RoCrateMetadataDocument = {
+      ...document,
+      '@graph': document['@graph'].filter((entry) => entry['@id'] !== RO_CRATE_PROCESS_PROFILE_URL)
+    }
+    const report = validateRoCrate({
+      document: withoutEntity,
+      payloadPaths: payloadPathsOf(withoutEntity),
+      payloadDigests: digestMap(withoutEntity)
+    })
+    expect(failedRoCrateAssertions(report).map((assertion) => assertion.id)).toContain(
+      'root-named-profiles-described'
+    )
   })
 
   it('models the producing software and the licence as described contextual entities', () => {

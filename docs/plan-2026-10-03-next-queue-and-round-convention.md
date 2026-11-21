@@ -1,5 +1,59 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十六、本轮追加（执行器，2026-11-21 21:5x–）—— 导出包声明 Process Run Crate 0.5 并把它自己的 REQUIRED 检查清零
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 047849db`（无本地领先提交）。工作树里**会话一大批在制**：`prisma/schema.prisma`、
+  `src/main/{crash-diagnostics,index,logger,logger.test}.ts`、`src/main/projects/prisma-client.ts`、
+  `src/main/references/repository.ts`、`src/shared/citation/*`（csl / csl-locale-terms / csl.test / format）、
+  `ris-import*` / `tagged-import.ts` / `zotero-import*` / `references.ts` / `ris-import-plan.ts`，
+  外加未跟踪 `src/main/diagnostics/module-load{,.test}.ts`、`references/reference-edition-storage.test.ts`
+  ⇒ 看形状是会话在把「月份/日」接进记录模型与导入链路。**一个字节没碰**。
+  本轮只碰 `src/shared/ro-crate.ts`、`src/shared/ro-crate.test.ts`、`src/main/ro-crate/ipc.test.ts`、`docs/**`。
+- 进轮车道读数（完整 40 位 SHA）：`047849db` → `Windows Full Test` **success**、`Nightly` **in_progress**；
+  `209f1a6c` 的 `Release` 是 **workflow_dispatch（升级演练）in_progress**，同笔 push 的 Nightly/Windows 已被顶掉。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔）无可取单元；§一百九十五 §四 ③ 的第一候选（`range-delimiter`/日期区间）要动
+  `src/shared/citation/csl*.ts`，而那正是会话此刻在改的文件 ⇒ 取 roadmap v3.5 里**自己写下、只差落地**的那条：
+  「`both-described` 是唯一能落地的形状」——上一轮只给了结论，产品写出器没改，真包 REQUIRED 一直红 2 条。
+
+### 一 交付（`src/shared/ro-crate.ts` 六处 + 两条断言/用例）
+
+| # | 原来的形状 | 现在的形状 |
+| --- | --- | --- |
+| 1 | 根实体 `conformsTo` 恒为单条 base permalink | **只在包记录了 `CreateAction` 时**写成列表：base + `https://w3id.org/ro/wfrun/process/0.5`；没有 run 的包仍单条（不替它宣称过程记录） |
+| 2 | 被引用的 permalink 没有实体 ⇒ `sh:class` 逐值判时留红 | 两条 permalink 各写一条 `CreativeWork`（名称 + 一句它是什么） |
+| 3 | `CreateAction.description` 只在有配方时才有 | 无配方时写「在哪个应用里跑、产出了什么、吃了几条记录输入」，只复述记录里已有的事实 |
+| 4 | `endTime` 写 `…Z`（形状不认） | 复用 `normalizeDatePublished` 写 `+00:00`，保留时刻 |
+| 5 | 根实体 `mentions` 只有会话 | 追加它自己的 `CreateAction`（包内图自证） |
+| 6 | 自有验证器 32 条断言 | 新增 `root-named-profiles-described`（base 之外的 permalink 必须有实体）⇒ 33 条 |
+
+### 二 读数（产品自己的写出器 + 官方验证器，改前/改后同一份种子与输入）
+
+| 判决 | 改前 | 改后 |
+| --- | --- | --- |
+| `process-run-crate-0.5` REQUIRED | **2**（都是 `2.1`） | **0** |
+| `process-run-crate-0.5` RECOMMENDED | 12 | **7** |
+| `ro-crate-1.1` REQUIRED / RECOMMENDED | 0 / 3 | 0 / **3（同三条）** |
+| `rocrate-validator validate` CLI | — | `[OK] RO-Crate is a valid ro-crate-1.1` |
+
+第二读者（换形状有没有把别人弄瞎）：`rocrate 0.16.0` 与 `pyld 3.3.0` 各读一遍，11 节点、两条 permalink
+都解析、`unexpanded_terms []`、`dangling_hasPart 0`、`VERDICT PASS`。
+证据档：`docs/evidence/2026-11-21-ro-crate-process-run-profile.md`（含剩余 7 条 RECOMMENDED 逐条原因）。
+
+### 三 边界
+
+- **不宣称「符合 Process Run Crate 0.5」**：RECOMMENDED 还剩 7 条，其中 4 条要真内容（内核实体的 url/version/绝对 id、
+  Action 的 `agent`），记录里没有这些事实；另 3 条是既定的不替用户声明（license 自由文本、publisher 留空）。
+- 探针文件 `src/main/ro-crate/crate-readout.local.test.ts` 跑完即删，不入库；`/tmp/ps-aff-*`、`/tmp/ps-crate-after` 为一次性产物。
+
+### 四 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本轮提交的 `Nightly` + `Windows Full Test`（推之前若 `209f1a6c` 的 Release 演练仍在跑，
+  先等它落定再推，别把它顶掉）。
+- ② 下一候选：会话在制的那批（月/日进记录模型）落定后，接 `range-delimiter` 与日期区间；或把 README/发布正文里
+  那句过期自陈的更正与下一次发版一起做。
+
 ## 一百九十五、本轮追加（执行器，2026-11-21 17:0x–）—— CSL 日期不再只剩年份：按样式自己的 locale 日期格式印出月与日
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

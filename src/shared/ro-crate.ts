@@ -32,6 +32,15 @@ export const RO_CRATE_CONTEXT_URL = 'https://w3id.org/ro/crate/1.1/context'
 /** Versioned permalink of the profile this module writes. */
 export const RO_CRATE_PROFILE_URL = 'https://w3id.org/ro/crate/1.1'
 /**
+ * Versioned permalink of the Process Run Crate profile. The Root Data Entity declares it only when the
+ * crate actually describes runs (one `CreateAction` per file): the profile says "this crate records how
+ * the files were produced", and a crate that merely lists files must not claim it. Verified against the
+ * official validator — a list `conformsTo` needs a described entity for EVERY id it names
+ * (`sh:class` is judged per value), which is why both permalinks get a `CreativeWork` below
+ * (`docs/evidence/2026-11-20-process-run-crate-2-1.md`).
+ */
+export const RO_CRATE_PROCESS_PROFILE_URL = 'https://w3id.org/ro/wfrun/process/0.5'
+/**
  * What we ACCEPT when reading. We write 1.1, but a crate another tool wrote may legitimately declare a
  * later 1.x profile — the python reference library already writes 1.3 — and reporting a foreign crate as
  * broken for using a newer 1.x would be our reader's limitation, not a defect in their crate.
@@ -471,10 +480,21 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
       '@id': actionId,
       '@type': 'CreateAction',
       name: `produce ${content.name}`,
-      ...(provenance.reproductionCode
-        ? { description: `Recorded recipe: ${provenance.reproductionCode}` }
-        : {}),
-      ...(provenance.createdAt ? { endTime: provenance.createdAt } : {}),
+      // A recorded recipe is the best description there is; without one the action still gets a
+      // description, built only from facts it already carries (where the run happened, what it made,
+      // how many inputs it consumed). No sentence here asserts anything the record does not hold.
+      description: provenance.reproductionCode
+        ? `Recorded recipe: ${provenance.reproductionCode}`
+        : `Recorded run in ${input.app.name} that produced ${content.name}${
+            (provenance.inputs ?? []).length === 1
+              ? ' from 1 recorded input'
+              : (provenance.inputs ?? []).length > 1
+                ? ` from ${(provenance.inputs ?? []).length} recorded inputs`
+                : ''
+          }.`,
+      // The profile's `endTime` shape accepts `+HH:MM` but not `Z`, the same rule `datePublished` had
+      // to follow; both are legal ISO 8601, only one passes the shape.
+      ...(provenance.createdAt ? { endTime: normalizeDatePublished(provenance.createdAt) } : {}),
       instrument: instruments,
       ...(actionObjects.length > 0 ? { object: actionObjects } : {}),
       result,
@@ -500,13 +520,21 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
     }
   })
 
+  // A crate whose files carry no producing action does not describe a process at all, and must not claim
+  // a process-run profile. Decided from the graph we just built, not from an input flag.
+  const declaresProcessRun = actionEntities.length > 0
+
   const hasPart: RoCrateJsonLdReference[] = entities.map((content) => ({
     '@id': content.cratePath
   }))
   const sessionRecords = input.sessions ?? []
-  const mentions: RoCrateJsonLdReference[] = sessionRecords.map((session) => ({
-    '@id': sessionEntityIdFor(session.id)
-  }))
+  // The root names every run it holds, not just the sessions: the Process Run Crate profile asks the
+  // Root Data Entity to mention its Actions, and "this crate mentions a run it contains" is decided by
+  // the crate's own graph, not by a claim about the outside world.
+  const mentions: RoCrateJsonLdReference[] = [
+    ...sessionRecords.map((session) => ({ '@id': sessionEntityIdFor(session.id) })),
+    ...actionEntities.map((action) => ({ '@id': String(action['@id']) }))
+  ]
 
   const licenseUri = input.license !== undefined && hasUriScheme(input.license.id)
   const licenseValue: string | { '@id': string } = input.license
@@ -521,7 +549,12 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
     name: input.name,
     description: input.description,
     datePublished: normalizeDatePublished(input.datePublished),
-    conformsTo: { '@id': RO_CRATE_PROFILE_URL },
+    // Two permalinks once the crate describes runs: the base spec it is always written against, plus the
+    // Process Run Crate profile it then also conforms to. Both are described below because the profile's
+    // shape judges `sh:class` on every value of `conformsTo`.
+    conformsTo: declaresProcessRun
+      ? [{ '@id': RO_CRATE_PROFILE_URL }, { '@id': RO_CRATE_PROCESS_PROFILE_URL }]
+      : { '@id': RO_CRATE_PROFILE_URL },
     identifier: input.projectId,
     hasPart,
     ...(mentions.length > 0 ? { mentions } : {}),
@@ -591,6 +624,27 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
     description: 'Analysis session whose recorded runs produced the files in this crate.'
   }))
 
+  // Every id the root's `conformsTo` names needs its own entity: the profile shape judges `sh:class` per
+  // value, so a permalink with no entity behind it leaves the REQUIRED check red even when the pattern
+  // matches. Measured twice (`root-only` and `list-one-entity` both stayed at 1 issue).
+  const profileEntities: RoCrateJsonLdEntity[] = declaresProcessRun
+    ? [
+        {
+          '@id': RO_CRATE_PROFILE_URL,
+          '@type': 'CreativeWork',
+          name: 'RO-Crate 1.1',
+          description: 'The RO-Crate 1.1 specification this metadata document is written against.'
+        },
+        {
+          '@id': RO_CRATE_PROCESS_PROFILE_URL,
+          '@type': 'CreativeWork',
+          name: 'Process Run Crate 0.5',
+          description:
+            'Profile for crates that record how each file was produced; every file here names the CreateAction that produced it.'
+        }
+      ]
+    : []
+
   return {
     '@context': [RO_CRATE_CONTEXT_URL, sha256TermDeclaration()],
     '@graph': [
@@ -603,6 +657,7 @@ export const buildRoCrateMetadata = (input: RoCrateBuildInput): RoCrateMetadataD
       ...creatorEntities,
       ...licenseEntity,
       ...sessionEntity,
+      ...profileEntities,
       ...contextEntities
     ]
   }
@@ -655,6 +710,8 @@ const RO_CRATE_REQUIREMENTS = {
     'RO-Crate 1.1 §Author: an author SHOULD be a Person or Organization described as a Contextual Entity, and a Person SHOULD name where they work through an `affiliation` that resolves to an Organization entity rather than by folding the institution into their name.',
   provenance:
     'RO-Crate 1.1 §Provenance of entities: software used to create a file SHOULD be a SoftwareApplication with a version, associated with the file through a CreateAction instrument/result, and an Action SHOULD have a name and an endTime.',
+  profile:
+    'Process Run Crate 0.5 §2.1: the Root Data Entity MUST reference a CreativeWork entity whose @id is the profile permalink, and that shape is judged on every `conformsTo` value — so a named profile the graph never describes is an unsupported claim, not a declaration.',
   exportContract:
     'PureScience export contract: every content file in the crate is a byte-identical copy of one stored Version, repeats that Version\u2019s recorded sha256, and names the Version it came from.'
 } as const
@@ -854,6 +911,22 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
     descriptor !== undefined &&
       referencesOf(descriptor['conformsTo']).some((id) => RO_CRATE_PROFILE_PATTERN.test(id)),
     `conformsTo: ${JSON.stringify(descriptor?.['conformsTo'])}`
+  )
+
+  // A profile permalink the root names must be described in the graph: the profile shape judges `sh:class`
+  // on every value. Only NON-base permalinks are checked — a plain RO-Crate 1.1 crate names its own spec
+  // version without describing it, and that is valid.
+  const namedProfileLinks = (root ? referencesOf(root['conformsTo']) : []).filter(
+    (id) => !RO_CRATE_PROFILE_PATTERN.test(id)
+  )
+  assert(
+    'root-named-profiles-described',
+    'spec-must',
+    RO_CRATE_REQUIREMENTS.profile,
+    namedProfileLinks.every((id) => byId.has(id)),
+    namedProfileLinks.length > 0
+      ? `conformsTo: ${JSON.stringify(root?.['conformsTo'])}`
+      : 'no profile beyond the base spec is named'
   )
 
   const licenseRefs = root ? referencesOf(root['license']) : []

@@ -68,10 +68,11 @@ describe('RO-Crate export IPC owner', () => {
     expect(result.fileCount).toBe(1)
     expect(result.totalBytes).toBe('a,b\n1,2\n'.length)
     // The payload carries counts, not the assertion list, so this number cannot be derived here. It moved
-    // from 30 → 31 (root-license-declared) → 32 (author-affiliation-resolves); each move is a rule added by
-    // the validator, and the shared suite pins what each rule means. Kept as a literal on purpose: a wrong
-    // count here means a rule silently stopped running.
-    expect(result.validation).toEqual({ passed: 32, failed: 0 })
+    // from 30 → 31 (root-license-declared) → 32 (author-affiliation-resolves) → 33
+    // (root-named-profiles-described); each move is a rule added by the validator, and the shared suite
+    // pins what each rule means. Kept as a literal on purpose: a wrong count here means a rule silently
+    // stopped running.
+    expect(result.validation).toEqual({ passed: 33, failed: 0 })
     expect(result.refusedCount).toBe(0)
     // The crate is really on disk, and the payload is the stored bytes rather than a re-encoding.
     expect(await readFile(join(outputDir, 'files/assay.csv'), 'utf8')).toBe('a,b\n1,2\n')
