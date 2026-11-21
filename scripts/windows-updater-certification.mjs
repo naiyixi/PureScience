@@ -317,15 +317,33 @@ const cacheSnapshot = async (directory, depth = 0) => {
 
 // The startup sweep is fire-and-forget, so poll: the new version purges the package it was installed
 // from on its first launch (cache-maintenance.ts), and only a real launch can prove that.
-const waitForPurgedUpdateCache = async (cacheDir) => {
-  const snapshot = await waitFor(
-    `the update cache to be emptied after the install (${cacheDir})`,
-    async () => {
-      const observed = await cacheSnapshot(cacheDir)
-      return observed.files.length === 0 ? observed : false
-    },
-    UPDATE_TIMEOUT_MS
-  )
+const waitForPurgedUpdateCache = async (cacheDir, relaunch) => {
+  // A Windows install cannot purge on the launch that races the installer: the NSIS setup still holds the
+  // package it was started from, so the first sweep is refused with
+  // `EPERM … unlink '…\\pending\\zerolink-purescience-<version>-win-x64-setup.exe'` and the app logs
+  // "purge failed; will retry on the next launch" (run 44909343155). That promise is the contract this
+  // drill is testing, so give it the next launch instead of failing the first: launch again, then re-read.
+  const attempts = relaunch ? 3 : 1
+  let snapshot = { files: [], bytes: 0 }
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    snapshot = await waitFor(
+      `the update cache to be emptied after the install (${cacheDir}, launch ${attempt})`,
+      async () => {
+        const observed = await cacheSnapshot(cacheDir)
+        return observed.files.length === 0 ? observed : false
+      },
+      UPDATE_TIMEOUT_MS / attempts
+    ).catch((error) => {
+      if (attempt === attempts) throw error
+      return undefined
+    })
+    if (snapshot) return snapshot
+    console.log(
+      `[updater] cache still holds the installer package after launch ${attempt}; ` +
+        'the app promises to retry the purge on the next launch — launching once more'
+    )
+    await relaunch()
+  }
   return snapshot
 }
 
@@ -662,7 +680,18 @@ const main = async () => {
     await profileGuard.verifyCycle('current', currentConfigRoot)
     // U3 (#17): the new version, on its first launch, must have purged the package it was installed
     // from — the ~150 MB that used to stay in the updater cache forever.
-    const cacheAfterApply = await waitForPurgedUpdateCache(updaterCache)
+    const cacheAfterApply = await waitForPurgedUpdateCache(updaterCache, async () => {
+      await runProcess(join(installDirectory, 'purescience.exe'), [], {
+        allowNonZero: true,
+        env,
+        timeoutMs: 25_000
+      })
+      await runProcess('taskkill.exe', ['/IM', 'purescience.exe', '/T', '/F'], {
+        allowNonZero: true,
+        env,
+        timeoutMs: 10_000
+      })
+    })
     observation.installerCachePurged = cacheAfterApply.files.length === 0
     observation.installerCacheBytesAfter = cacheAfterApply.bytes
     observation.installerCacheBytesBefore = cacheBeforeApply?.bytes ?? 0
