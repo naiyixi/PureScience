@@ -351,6 +351,36 @@ PDF），那条用例本身按「tool-missing」分支正常通过。
 **下一步**：这 12 个失败是真工作项，不是把闸门放松的理由 —— Windows 车道保持「读数可见、不挡发版」，
 一项一项查完再考虑把它提升成硬门。
 
+### 读数：Windows P0 从 `not-applicable` 到 `passed`（2026-11-22）
+
+| 趟次 | HEAD | Windows 车道读数 |
+| --- | --- | --- |
+| 44891067647 | `eac5e8a6` | `failed` — 12 failed / 112 passed |
+| 44902338624 | `f301b137` | `failed` — 3 failed / 1 flaky / 121 passed (42.0m) |
+| 44909343155 | `209f1a6c` | `failed` — 2 failed / 1 flaky / 121 passed |
+| 44918012666 | `7eeed30d` | `failed` — 2 failed / 1 flaky / 121 passed (45.3m) |
+| 44926387947 | `51e4e64d` | **`passed` — 124 passed / 0 failed / 0 flaky / 13 skipped (47.0m)** |
+
+**上面那张根因表有两行是错的，照原样改在这里。**
+
+- **`storage-migration-unfinished` 不是「产品没先关句柄」。** 第一趟的 `EBUSY … purescience.db` 出自
+  **夹具自己的拆卸**（Chromium 的网络服务还开着 `DIPS`／应用自重启出来的实例还开着 db），产品侧那次对
+  `removeStagedCopy` 的 EBUSY 重试是修对了另一处。真实修复是两条：拆卸前按「命令行含本次测试根」收掉
+  自重启的实例，且删除按**整棵树**给 20 秒总时限（Node 的 `rm` 是按条目重试的，给每个文件 40×250ms
+  会让一棵树吃掉 5 分钟，`Tearing down "app" exceeded the test timeout`）。
+- **`runtime-selection` 不是「8.3 短路径」。** 夹具手写 `/bin/python3` 让 Windows 去注册一个不存在的
+  文件；我改用应用的 `pythonBin()` 又错在它是 **conda 环境**的布局（解释器在 prefix 根上），
+  **venv 在 Windows 上把 `python.exe` 放在 `Scripts\` 下**，runner 直接 `spawnSync … ENOENT`。
+  现在按平台取路径，并在夹具里 `--version` 自证：`fixture interpreter: …\venv\Scripts\python.exe -> Python 3.12.10`。
+
+**另一类同样不是产品缺口的**：`env-provision-cancel` / `notebook-declined-copy` /
+`settings-download-detail` / 七个运行时 spec —— 桩 manifest 声明 `linux-64`、缺 win-64 必需的路径
+预算、按 Unix 布局播种解释器。全部改成调应用自己的 `runtimeSubdir()` / `pythonBin()`。
+
+**仍是红的**：`windows-upgrade-smoke`（升级本身已成功：注册表与安装记录都读出 2.32.0；判据一处一处
+换成应用自己写下的证词 —— `install-pending.json` 交棒、缓存清空按「下次启动重试」的承诺给三次机会）。
+**没有结论的**：`references-page-selection:13` 偶发红（复选框 20 秒未出现），未复现、未修复、没加重试。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
