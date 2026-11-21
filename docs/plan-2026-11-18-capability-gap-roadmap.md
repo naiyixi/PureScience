@@ -286,6 +286,25 @@ logger/diagnostics），而它正是机构字段要落的同一处。若继续�
 **脚本入库**：三个脚本此前只在服务器上（`/usr/local/bin`），没有任何版本控制 —— 已存进
 `scripts/server/` 并写明装回去的命令与 cron 行。
 
+### Windows 车道的 P0：从 `not-applicable` 改成真跑（2026-11-21）
+
+**原来那格在说谎边上**：认证记录对 windows-x64 一律写 `electronP0: not-applicable`，于是
+「这条路没跑」「跑了但红」两种完全不同的处境在记录里长得一样。Windows 上真出过的事
+（PDF 绝对路径、安装器、单实例锁）恰恰只能靠这条车道抓到。
+
+**改法**：P0 步骤改为 `macos-arm64` 或 `windows-x64` 都跑，并把退出码落盘；认证步骤改用用例过的
+`scripts/ci/lane-status.mjs` 读成三态 —— 与 visual 那条同因（`continue-on-error` 会把步骤 outcome
+压成 `success`，只有退出码是诚实读数）。`visual-regression-status.mjs` 改成薄壳复用同一判据，
+避免两份判据各自漂移。
+
+**闸门怎么守的**：macos-arm64 仍**必须 passed**（发布硬门，`Enforce` 步骤只对它硬卡）；
+windows-x64 允许 `passed | failed | not-applicable` —— 拒绝的是「没跑却声称 passed」，不是
+「Windows 上真的红了」。契约测试两个方向都改判：windows 写 `passed`/`failed` 现在合法；
+`visualRegression: passed` 在 windows 上仍必须被拒（那条车道在 Windows 上确实没跑）。
+
+**状态**：代码与契约测试已在 `a9c1255b`；`test:gate` 19021 passed。Windows 上 P0 到底绿不绿，
+要等 dispatch 的 Release（run 44879328011）跑出来才知道 —— 这一格现在是读数，不是宣称。
+
 ## 排期纪律
 
 - 每单元一个提交，先跑该目录用例再跑 `tsc` 双工程 + eslint；
