@@ -1,5 +1,75 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十八、本轮追加（执行器，2026-11-22 06:3x–）—— v2.33.0 的页面缺在 x64 的 Gatekeeper 冒烟上：正文取自 tag 而非 main，视觉红是本版真的改了设置页
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == dd00af60`（`docs(plan)`，02:0x），`package.json` = 2.33.0；
+  `v2.33.0^{commit}` 与远端 tag 逐字一致 = `db36a4cb`。工作树里**会话一大批在制**（`src/shared/citation/*`、
+  `ris-import*`、`zotero-import*`、`src/shared/ro-crate*`、`RoCrateExportDialog*`、九份 i18n、`settings/provider-env*`、
+  `logger*`、`crash-diagnostics`、`index.ts`、`notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、
+  `references/repository.ts`、`e2e/certification/ro-crate-export.spec.ts`）⇒ **一个字节没碰**。本轮只碰
+  `e2e/visual-regression.spec.ts`（+ 一份 ci 基准 PNG）、`README` 正文生成物（在 GitHub 页上，不入仓）、本档。
+- 进轮 Release 读数（完整 40 位 SHA `db36a4cbbda364ec47721ccf0e3d2b57a6e05a16`）：`Windows Full Test` **success**、
+  `Nightly` **success**、`Release`(44943351879) **failure** —— 失败作业是 `notarize-mac / Notarize + staple macos-x64`，
+  下游 `publish` **skipped** ⇒ **v2.33.0 当时没有 Release 页**（`gh release list` 里 Latest 还停在 v2.32.0）。
+- 同时发现一条在飞的车道：`44951327728`（`workflow_dispatch` Release，`--ref v2.33.0`，05:23 起）——
+  它的 publish 在 22:47Z **success**，页已创建（21 资产）。本轮不取消它，只在它落定后做核对与补齐。
+
+### 一 x64 那条红不是产品缺陷：同一 run 里同一份 dmg 在 build 作业上是通的
+
+| 作业 | runner | 读数 |
+| --- | --- | --- |
+| `build / Build macos-x64`（136970929796） | macos-intel | `macos-package-smoke`（**同一份 dmg/zip**，无 `--gatekeeper`）**: DMG 9381 ms、ZIP 4827 ms 宣告端点，`package_smoke=passed`** |
+| `notarize-mac / Notarize + staple macos-x64`（136987101850） | macos-15-intel | notarize **Accepted** → staple/validate 成功 → `--gatekeeper` 冒烟：**zero output 60 s（`SMOKE_STALL`）+ 再观察 30 s 仍无**，`service announcements: none`、`startup phases: none`、`(the app wrote nothing to stdout or stderr)` |
+
+同一架构、同一份二进制，前一个作业 9.4 s 起得来、后一个作业连 `electron-ready` 都没打 ⇒ 静默发生在**应用被
+Gatekeeper 评估**那一层（`--gatekeeper` 会走 `spctl --assess`），不是包或主进程启动路径的缺陷。另：`v2.32.0..v2.33.0`
+区间里 `scripts/macos-package-smoke.mjs`、`src/main/index.ts`、`build.yml`、`notarize-mac.yml` **一个字节都没改**
+（`git log --oneline v2.32.0..v2.33.0 -- 这四份` 为空），排除了「本版把它改坏了」。
+
+### 二 正文取自 tag 而不是 main ⇒ 成熟度纠偏没进页
+
+`publish` 的正文由 `scripts/release-notes.mjs` 从**被构建的那棵树**（tag = `db36a4cb`）的 README 组装，而
+「三处仍未修其实是本版修的」那次纠偏是 `770a6f11`（**tag 之后**）⇒ 页上留着旧句。用 main 的 README 重生成
+（`--print --certification` + 剔 `release-notes:` 首行）后 `gh release edit --notes-file`：
+
+| 句子 | 重发前 | 重发后 |
+| --- | --- | --- |
+| `Still named rather than fixed` | 1 次 | **0 次** |
+| `Three of those named gaps closed in this version` | 0 次 | **1 次** |
+| 正文体量 | 79,969 字节 | **82,016 字节** |
+
+`mac-signing-status.mjs disclose` 自检答「already states the macOS signing status (signed)」——记录里两档
+`macSignature=signed`，不需要追加告警行。
+
+### 三 视觉红是真改动，基准只有 ci 档陈旧
+
+`macos-arm64` 的 `visualRegression: failed`，唯一差的是 `settings-general.png`（5526 px，重试复现）。把失败件里
+`expected/actual` 两张 1280×800 逐像素比对（自写解码，阈值 >120 的像素 4,999 个，集中在 y 560–780）后确认：
+**v2.33.0 把 Export attribution 段从「Author or institution」单栏拆成 Author / Institution（+「Where the author
+works — hospital, lab or company」）/ Author type 三栏**，该段变高把下面整段推下去。本机 `--update-snapshots`
+跑一遍 **1 passed 且 `-local` 四份基准一份都没变** ⇒ 陈旧的只有 `-ci` 档。
+
+- 新 `-ci` 基准**取自本次 CI 的真实渲染**（run 44951327728 的 `settings-general-ci-actual.png`），不是在本机重拍：
+  两个档分的正是「两台 darwin-arm64 字形不同」，本机重拍等于把 ci 档换成 local 档。
+- 顺带修证据仪器：差异区定位读的是**无档名**（`settings-general-darwin.png`），盘上只有 `-ci`/`-local` 两种 ⇒
+  每次 CI 红都只写一行 `unavailable`（本次实测 ENOENT）。改成按 `baselineName()` 取，actual 同名同理。
+- 提交 `ec48a47e`；隔离工作树（`/tmp/ps-gate-vis`，commit 即 `ec48a47e`）读数：`typecheck:node` 0、`typecheck:web` 0、
+  `eslint --no-cache e2e/visual-regression.spec.ts` 0；已推 main（`db36a4cb..ec48a47e`，推前 `gh run list` 无在飞的主干车道）。
+
+### 四 仍未收口（下一轮第一步）
+
+1. **mac 的公证/装订由一次 standalone 修复跑在补**：`44958870082`（`notarize-mac.yml -f tag=v2.33.0`，22:51 起，两个 arch
+   在跑）。publish 走的 dispatch 车道里 `notarize-mac` 按设计是 **skipped**（`if: push && refs/tags/*`）⇒ 页上这两份
+   dmg/zip 现在是**已 Developer ID 签名但未公证/未 staple**。修复跑落定后要复核三件事：`SHA256SUMS.txt` 变了、
+   `latest-mac.yml` 由 stapled zip 重算、`arm64-mac.yml`/`x64-mac.yml` 两档都在。
+2. **修复跑不会刷新的两份派生件**（本轮实测出来的路径缺口，立案）：`version.json` 的 sha256 来自 `SHA256SUMS.txt`、
+   `RELEASE-CERTIFICATION.json` 的 mac 条目 digest 描述的是 staple 前字节 ⇒ 落定后需要一次 `version.json` 重生成
+   （用 GitHub 自己的 asset `digest` 字段交叉核对，那里是第三方算的），并把「standalone 修复路径应自己刷新这两份」
+   作为下一个单元（要动 workflow/脚本，先读 CI Integrity 对 workflow 的约束）。
+3. `references-page-selection` 偶发红（§一百九十七 §四 ③）的中位修法仍需一条 Windows 车道判决。
+
 ## 一百九十七、本轮追加（执行器，2026-11-22 04:2x–）—— v2.33.0 的成熟度自陈纠两处失真：三处「仍未修」其实是本版修的，头条还停在上一版
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
