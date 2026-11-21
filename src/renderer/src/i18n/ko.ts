@@ -810,7 +810,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '{pack}(tesseract {language})로 {ms}ms 만에 읽었습니다. 이 글자는 이미지에서 나온 것이며 텍스트 레이어가 아닙니다.',
   'files.ocr.empty': '이 이미지에서 글자를 찾지 못했습니다.',
   'files.ocr.toolMissing':
-    '이미지 인식에는 tesseract가 필요합니다. 설치(brew install tesseract) 후 다시 시도하세요.',
+    '이미지를 읽으려면 tesseract 프로그램이 필요합니다. 설치({command})한 뒤 다시 시도하세요.',
   'files.ocr.packMissing':
     '이 이미지에는 {pack} 언어 팩이 필요하지만 설치되어 있지 않습니다. 설치된 팩: {installed}.',
   'files.ocr.unsupported':

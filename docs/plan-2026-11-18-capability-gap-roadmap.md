@@ -302,8 +302,35 @@ windows-x64 允许 `passed | failed | not-applicable` —— 拒绝的是「没�
 「Windows 上真的红了」。契约测试两个方向都改判：windows 写 `passed`/`failed` 现在合法；
 `visualRegression: passed` 在 windows 上仍必须被拒（那条车道在 Windows 上确实没跑）。
 
-**状态**：代码与契约测试已在 `a9c1255b`；`test:gate` 19021 passed。Windows 上 P0 到底绿不绿，
-要等 dispatch 的 Release（run 44879328011）跑出来才知道 —— 这一格现在是读数，不是宣称。
+**第一次读数（run 44879328011，windows-x64，2026-11-21）**：**12 failed / 1 flaky / 13 skipped /
+111 passed，58.7 分钟**。也就是说：车道一通就照出 12 个 Windows 上此前一律被写成
+`not-applicable` 的失败。
+
+| 失败用例 | 初判 |
+| --- | --- |
+| `env-provision-cancel` | 环境托管包请求 500（`notebook-env:provision`），另一类问题 |
+| `notebook-declined-copy` | 引擎报错改述 |
+| `pdf-annotation-narrow-pane` ×2、`pdf-annotation-overlay-pane` ×2、`pdf-annotation-silent-paths` | 注释面板在窄栏下的可达性 |
+| `runtime-selection`、`settings-download-detail` | 面板/设置卡片 |
+| `storage-migration`、`storage-migration-unfinished` | 数据迁移 |
+| `support-bundle-kernel-cpu` | 支持包采集 |
+
+**同时被这趟抓出来的两个真东西**（都已修）：
+
+1. `lane-status.mjs` 的入口判定用 `file://${process.argv[1]}` —— 在 Windows 上 `argv[1]` 是
+   `D:\a\...`，与 `import.meta.url` 的 `file:///D:/...` 永不相等，脚本**静默不打印**；于是
+   `--electron-p0` 收到空串，记录步骤直接报 Usage 错。改用自己归一的 `moduleUrlFor`（盘符路径
+   自己拼 URL），并补了两条测试：盘符归一、真调用必须打印。
+2. 缺 tesseract 时那句提示在**九种语言里都写死 `brew install tesseract`** —— Windows 上等于让
+   用户去装一个不存在的东西。现在按 `window.api.platform` 给出 `winget install
+   UB-Mannheim.TesseractOCR` / `brew install tesseract` / `sudo apt install tesseract-ocr`，
+   未知平台只说程序名（编一条可能不存在的包管理器命令比不说更糟）。
+
+**不是产品问题的**：`cupsfilter ENOENT` 只出现在测试夹具里（`file-ocr.spec.ts` 用它把文字印成
+PDF），那条用例本身按「tool-missing」分支正常通过。
+
+**下一步**：这 12 个失败是真工作项，不是把闸门放松的理由 —— Windows 车道保持「读数可见、不挡发版」，
+一项一项查完再考虑把它提升成硬门。
 
 ## 排期纪律
 

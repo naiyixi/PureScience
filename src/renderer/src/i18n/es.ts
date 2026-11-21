@@ -835,7 +835,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Leído con {pack} (tesseract {language}) en {ms} ms. Este texto viene de una imagen, no de una capa de texto.',
   'files.ocr.empty': 'El motor no reconoció ningún carácter en esta imagen.',
   'files.ocr.toolMissing':
-    'Leer imágenes requiere el programa tesseract. Instálelo (brew install tesseract) e inténtelo de nuevo.',
+    'Leer imágenes requiere el programa tesseract. Instálelo ({command}) e inténtelo de nuevo.',
   'files.ocr.packMissing':
     'Esta imagen necesita el paquete de idioma {pack}, que no está instalado. Paquetes instalados: {installed}.',
   'files.ocr.unsupported':

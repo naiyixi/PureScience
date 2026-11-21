@@ -774,7 +774,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'files.ocr.provenance':
     '由 {pack}（tesseract {language}）讀取，耗時 {ms} 毫秒。這些文字來自圖片，不是文字層。',
   'files.ocr.empty': '引擎沒有在這張圖上辨識出任何字元。',
-  'files.ocr.toolMissing': '辨識圖片需要 tesseract 程式。請先安裝（brew install tesseract）再試。',
+  'files.ocr.toolMissing': '識別圖片需要 tesseract 程式。請先安裝（{command}）再試。',
   'files.ocr.packMissing': '這張圖需要 {pack} 語言包，但本機沒有安裝。已安裝的套件：{installed}。',
   'files.ocr.unsupported': '目前介面語言（{language}）沒有對應的辨識語言包；不會改用其他語言硬讀。',
   'files.ocr.unreadable': '這張圖讀不出來：{message}',

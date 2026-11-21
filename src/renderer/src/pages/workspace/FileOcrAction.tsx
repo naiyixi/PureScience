@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import type { OcrRecogniseOutcome } from '../../../../shared/ocr'
 import type { ManagedPreviewSource } from '../../../../shared/preview-resources'
+import { ocrInstallCommand } from './ocr-install-command'
 
 // Images are the one kind of file whose text the product could not read at all: a photographed gel, a scan of a
 // printed page, a screenshot of a table. The button appears only for those files, and the panel it opens either
@@ -136,7 +137,7 @@ export const FileOcrAction = ({
               </>
             ) : outcome?.status === 'tool-missing' ? (
               <p className="text-xs text-warning-900" data-testid="file-ocr-tool-missing">
-                {t('files.ocr.toolMissing')}
+                {t('files.ocr.toolMissing', { command: ocrInstallCommand(window.api.platform) })}
               </p>
             ) : outcome?.status === 'pack-missing' ? (
               <p className="text-xs text-warning-900" data-testid="file-ocr-pack-missing">

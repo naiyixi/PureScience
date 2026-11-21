@@ -147,7 +147,7 @@ export const en: Record<ZhKey, string> = {
     'Read with {pack} (tesseract {language}) in {ms} ms. This text came from an image, not from a text layer.',
   'files.ocr.empty': 'The engine recognised no characters on this image.',
   'files.ocr.toolMissing':
-    'Reading images needs the tesseract program. Install it (brew install tesseract) and try again.',
+    'Reading images needs the tesseract program. Install it ({command}) and try again.',
   'files.ocr.packMissing':
     'This image needs the {pack} language pack, which is not installed. Installed packs: {installed}.',
   'files.ocr.unsupported':

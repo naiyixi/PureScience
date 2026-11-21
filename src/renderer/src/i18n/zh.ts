@@ -140,7 +140,7 @@ export const zh = {
   'files.ocr.provenance':
     '由 {pack}（tesseract {language}）读取，耗时 {ms} 毫秒。这些文字来自图片，不是文本层。',
   'files.ocr.empty': '引擎没有在这张图上识别出任何字符。',
-  'files.ocr.toolMissing': '识别图片需要 tesseract 程序。请先安装（brew install tesseract）再试。',
+  'files.ocr.toolMissing': '识别图片需要 tesseract 程序。请先安装（{command}）再试。',
   'files.ocr.packMissing': '这张图需要 {pack} 语言包，但本机没有安装。已安装的包：{installed}。',
   'files.ocr.unsupported': '当前界面语言（{language}）没有对应的识别语言包；不会改用其他语言硬读。',
   'files.ocr.unreadable': '这张图读不出来：{message}',

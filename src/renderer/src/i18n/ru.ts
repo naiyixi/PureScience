@@ -820,7 +820,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Прочитано с {pack} (tesseract {language}) за {ms} мс. Этот текст получен из изображения, а не из текстового слоя.',
   'files.ocr.empty': 'Движок не распознал на этом изображении ни одного символа.',
   'files.ocr.toolMissing':
-    'Для чтения изображений нужен tesseract. Установите его (brew install tesseract) и повторите.',
+    'Для чтения изображений нужен tesseract. Установите его ({command}) и повторите.',
   'files.ocr.packMissing':
     'Этому изображению нужен языковой пакет {pack}, но он не установлен. Установлены: {installed}.',
   'files.ocr.unsupported':

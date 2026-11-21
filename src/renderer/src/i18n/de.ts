@@ -841,7 +841,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Gelesen mit {pack} (tesseract {language}) in {ms} ms. Dieser Text stammt aus einem Bild, nicht aus einer Textebene.',
   'files.ocr.empty': 'Die Engine hat auf diesem Bild keine Zeichen erkannt.',
   'files.ocr.toolMissing':
-    'Zum Lesen von Bildern wird tesseract benötigt. Installieren (brew install tesseract) und erneut versuchen.',
+    'Zum Lesen von Bildern wird tesseract benötigt. Installieren ({command}) und erneut versuchen.',
   'files.ocr.packMissing':
     'Dieses Bild braucht das Sprachpaket {pack}, das nicht installiert ist. Installiert: {installed}.',
   'files.ocr.unsupported':

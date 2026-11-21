@@ -818,7 +818,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{pack}（tesseract {language}）で {ms} ミリ秒で読み取りました。この文字は画像から得たもので、テキストレイヤーではありません。',
   'files.ocr.empty': 'この画像からは文字が検出されませんでした。',
   'files.ocr.toolMissing':
-    '画像の読み取りには tesseract が必要です。インストール（brew install tesseract）してから再試行してください。',
+    '画像の読み取りには tesseract が必要です。インストール（{command}）してから再試行してください。',
   'files.ocr.packMissing':
     'この画像には {pack} 言語パックが必要ですが、インストールされていません。インストール済み: {installed}。',
   'files.ocr.unsupported':

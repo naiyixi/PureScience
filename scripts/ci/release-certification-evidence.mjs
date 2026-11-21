@@ -14,7 +14,6 @@ import {
 
 const PLATFORMS = ['linux-x64', 'macos-arm64', 'macos-x64', 'windows-x64']
 const DISTRIBUTABLE = /\.(?:AppImage|deb|dmg|exe|zip)$/
-const CHECK_STATES = ['passed', 'not-applicable']
 // Visual regression is the one check that can be honestly observed as failing without blocking a release:
 // it compares pixels against baselines captured on a different machine, and the workflow keeps its step
 // soft (`continue-on-error`) so a rendering-variance red does not sink an otherwise good build. 'failed'
