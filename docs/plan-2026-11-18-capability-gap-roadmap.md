@@ -89,6 +89,13 @@
   这一种写法能让 REQUIRED 归零（实测 0 条，base 判决逐条不变）。**仍不宣称**：RECOMMENDED 还差 10 条
   （7 条 profile 自己的 + 3 条 base 的），其中 `agent`/`description`/`mentions` 三条要真内容 ——
   领域档里那句「补了仍红、未定因」已被这次读数取代。
+- **Process Run Crate 0.5：REQUIRED 归零（执行器 2026-11-21，`6f29b9f8`）**。`both-described` 形状已落进产品写出器：
+  根实体 `conformsTo` 在包记录了 `CreateAction` 时写成 base + `wfrun/process/0.5` 两条，两条 permalink 各写一条
+  `CreativeWork`；顺带 `CreateAction` 无配方时也有 `description`（只复述记录事实）、`endTime` 的 `Z` 换成 `+00:00`、
+  根实体 `mentions` 收进它自己的 Action。**真包读数**：`process-run-crate-0.5` REQUIRED **2 → 0**、
+  RECOMMENDED 12 → 7；`ro-crate-1.1` 仍是 0 / 3；`rocrate 0.16.0` 与 `pyld 3.3.0` 两个第二读者全过。
+  **仍不宣称「符合」**：剩 7 条 RECOMMENDED，其中 4 条要记录里没有的事实（内核实体的 url/version/绝对 id、
+  Action 的 `agent`）。证据 `docs/evidence/2026-11-21-ro-crate-process-run-profile.md`。
 - **`publisher` 按决定保留为空**：发布者是一项署名主张，不替用户声明；要支持时做成用户自填字段。
 - **notebook 整段会话在 CI 重跑：已落地（`e2e/certification/notebook-python-provisioned-runtime.spec.ts`）**。
   底细：`test:e2e:p0` 跑整个 `e2e/certification`，但 `kernel-controls` / `notebook-runtime-binding` 两条
