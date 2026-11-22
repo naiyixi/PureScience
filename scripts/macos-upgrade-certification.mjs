@@ -54,7 +54,10 @@ const runProcess = (executable, args, { timeoutMs = 120_000 } = {}) =>
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs)
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (code === 0) resolvePromise(stdout.trim())
+      // `spctl` writes its verdict to stderr even when it accepts, so a caller that only reads stdout gets an
+      // empty string and cannot tell "accepted" from "no output at all" (seen on run 44982094867).
+      const combined = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n')
+      if (code === 0) resolvePromise(combined)
       else rejectPromise(new Error(`${executable} exited ${code}: ${(stderr || stdout).trim()}`))
     })
   })
@@ -331,6 +334,18 @@ const main = async () => {
     `[mac-upgrade] on disk now: ${installed} (was ${fromVersion}, check saw ${checkedAt})`
   )
 
+  // Squirrel relaunches the app itself after the swap (`autoRunAppAfterInstall`), so by the time we get
+  // here a copy from the same bundle is usually already running — and a second copy hands over and exits 0,
+  // which Playwright reports as "Target page … has been closed". Clear it before measuring the relaunch.
+  const relaunchProcesses = await otherInstance(bundle)
+  if (relaunchProcesses) {
+    console.log(
+      `[mac-upgrade] Squirrel already relaunched the app (${relaunchProcesses.length} process(es)); ` +
+        'reaping it so the relaunch below is measured on a fresh start'
+    )
+    await reap(bundle)
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 3_000))
+  }
   // Relaunch the same path: the drill is about the bundle a user double-clicks tomorrow, not a copy.
   const relaunch = await launchAndRead(executable, env).catch((error) => ({
     info: { error: String(error) }
@@ -342,7 +357,10 @@ const main = async () => {
   console.log(`[mac-upgrade] Gatekeeper: ${gate.verdict}`)
   console.log(`[mac-upgrade] ${gate.verify}`)
 
-  const ok = String(installed) === String(nextVersion) && gate.verdict.includes('accepted')
+  const ok =
+    String(installed) === String(nextVersion) &&
+    String(relaunchedVersion) === String(nextVersion) &&
+    gate.verdict.includes('accepted')
   console.log(
     `macOS upgrade reading: ${ok ? 'passed' : 'failed'} ` +
       `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)}`
