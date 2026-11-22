@@ -1,5 +1,90 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇一、本轮追加（执行器，2026-11-22 14:4x–）—— 单独补做公证后，两份「描述字节」的元数据不再停在 staple 前的字节
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 04cb1b88`（`fix(ci): 打磨冒烟的静音窗口`），`package.json` = 2.33.2，
+  `git tag v2.33.2^{commit}` 也指向 04cb1b88（上一轮删 tag 重建后的位点）；`gh release list` 的 Latest 仍是
+  v2.33.1，v2.33.2 的 Release（run 44991864607）**in_progress**（`Verify` success、macos-x64/linux success、
+  windows-x64 与 macos-arm64 在跑）。
+- 工作树里仍是会话那一大批在制（`src/shared/citation/*`、`ris-import*`、`zotero-import*`、`ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`diagnostics/module-load*`、
+  `prisma/schema.prisma`、`references/*` 等 38 个文件 + 4 个未跟踪）⇒ **一个字节没碰**。本轮只碰
+  `scripts/refresh-release-asset-metadata.{mjs,test.ts}` 与 `.github/workflows/notarize-mac.yml`（与会话路径不相交）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可取单元 ⇒ 取上一轮 §二百 §三 ② 自己写下的候选：
+  standalone 公证修复路径不刷新 `version.json` 与认证记录。
+
+### 一 缺陷（上一轮已立案，本轮定因到行）
+
+`notarize-mac.yml` 的 standalone 路径（`workflow_dispatch` 带 tag、`from_run` 假）把 staple 后的 dmg/zip 用
+`--clobber` 换到已发布页上，却只重算 `SHA256SUMS.txt` 与 `latest-mac.yml`：
+
+- `version.json`（应用更新流真正轮询的那份）保留 staple 前的 `sha256`/`size` ⇒ 客户端按清单校验 staple 后的
+  dmg 必然对不上；
+- `RELEASE-CERTIFICATION.json` 的 mac artifact 摘要同样停在 staple 前，与刚重算的 `SHA256SUMS.txt` 自相矛盾 ——
+  正是 `scripts/verify-release.mjs` 的 `sha256sums-match-record` 拒绝认证的那种状态。
+
+### 二 交付
+
+| 落点 | 内容 |
+| --- | --- |
+| `scripts/refresh-release-asset-metadata.mjs`（新） | 只重写**描述字节**的字段：`version.json` 的 `sha256`/`size`、认证记录里 mac artifact 的 `sha256`；`notes` / `releaseDate` / 签名状态 / 检查结果一律照原样带过（它们是当时量到的读数，重算等于造证据）。安装器名单取自 `generate-version-manifest.mjs` 的 `INSTALLERS`（单一来源），不在这里再拼一遍文件名。 |
+| 同上，三条具名拒绝 | ① 清单点名的安装器目录里没有 ⇒ 列出全部 `<key>:<file>`；② 目录里有安装器但 `SHA256SUMS.txt` 没有它的摘要；③ 认证记录点名的文件不在目录里。**没有一条是「保留旧摘要」**——那正是本缺陷本身。 |
+| `notarize-mac.yml` 的 `refresh-checksums` | 下载时一并取 `version.json` 与 `RELEASE-CERTIFICATION.json`，跑脚本，再把三份一起 `--clobber` 上传。`from_run` 路径（release.yml 的正式发版）一个字节没动。 |
+
+### 三 读数
+
+| 环 | 读数 |
+| --- | --- |
+| `scripts/refresh-release-asset-metadata.test.ts` | **11 passed**（改摘要 / 新增 / 三条拒绝 / 记录字节不变 / CLI 两形） |
+| 隔离工作树 `/tmp/psr-meta-gate`（只含 f67efd77）`tsc --noEmit -p tsconfig.node.json --composite false` | **EXIT=0** |
+| 同工作树 `vitest`（本单元 + `merge-mac-feed` + `windows-release-workflows`） | **3 files / 45 passed** |
+| `eslint --no-cache` 两份新文件 | 0 problems |
+| `bash scripts/pre-push-checks.sh` | 全绿（2 个新文件 lint 0 problems、敏感词零命中） |
+| **真数据**（v2.33.1 已发布页三份元数据） | `SHA256SUMS.txt` 8 条**逐条**等于 GitHub 自己算的 asset `digest`；`version.json` 5 条下载全对；认证记录 8 个 artifact 全对（`sourceSha` e322acf3） |
+| 真数据上的失败态 | 只给元数据、不给安装包跑本脚本 ⇒ **EXIT=1**，一行点出 5 个安装器名；没有任何「保留旧摘要」的结果被写盘 |
+| `gh release download` 多 pattern 行为 | 实测「一个命中 + 一个不命中」⇒ EXIT=0，只取命中的那份（故缺 `version.json` 的老页不会因为多给了一个 pattern 就整步失败） |
+
+### 四 边界（没有验到的）
+
+- **workflow 那半截没有实跑**：standalone 路径要真的提交 Apple 公证并 clobber 已发布资产，本轮不做（会改
+  v2.33.x 的线上字节）。下一次真需要 standalone 补做时，验收判据是：该 run 结束后
+  `node scripts/verify-release.mjs <tag>` 的 `sha256sums-match-record` 与 asset 摘要全部一致，且日志里出现本脚本
+  `==> version.json …` 的摘要行。
+- 主树 `typecheck:node` 本轮是 **EXIT=2**，两条 `TS6133` 落在 `src/main/settings/provider-env.test.ts`
+  （会话在制文件，本轮一个字没碰）⇒ 读数只取隔离工作树那一份。
+- 认证记录里除摘要外的字段（P0 / 冒烟 / 签名状态）**不在本脚本职责内**：staple 不改签名身份，也不重跑检查，
+  照原样保留是唯一诚实的写法；要重立这些读数只能重新跑那条车道。
+
+### 五 v2.33.2 发布核验（同轮取到，全部读数都是现取的）
+
+| 判据 | 读数 |
+| --- | --- |
+| Release 车道 | run 44991864607 **completed / success**（四平台 build + 两个 notarize + publish + windows-upgrade-smoke 全 success；`refresh-checksums` **skipped** 是 `from_run` 路径应有） |
+| 页状态 | `gh release list` 显示 **Latest**；`draft=false`、`isPrerelease=false`、17 个资产 |
+| 与提交绑死 | `RELEASE-CERTIFICATION.json` 的 `sourceSha` = `04cb1b884a11b2fe13f86a9418895964479b299a`，与 `git rev-parse 'v2.33.2^{commit}'` 逐字相同 |
+| 三方一致（真数据） | `SHA256SUMS.txt` 8 条**逐条**等于 GitHub 自己算的 asset `digest`；`version.json` 5 条下载全对；认证记录 8 个 artifact 全对 |
+| 公证 | 两个架构的作业日志都读到 `status=Accepted` → `The staple and validate action worked!` → `The validate action worked!`（arm64 job 137131238252 / x64 137131238277） |
+| `verify-release.mjs v2.33.2 --require-signed` | **accepted（0 failure / 0 warning）**，`mac-signing-observed`：两架构均 `signed`（`credentialsPresent=true`） |
+
+**Windows P0 的第二趟读数**（§一百九十九 §三 ① 的判据）：本次 `build / Build windows-x64`（job 137117693448）
+**13 skipped / 124 passed (48.4m)**，整份日志里 `retry #` 计数 **0**（上一轮那次唯一 flaky 就是本族）。
+
+- `pdf-figure-extraction`：`[79/137]` 06:52:07Z 起 → 06:52:31Z 完，日志逐字
+  `[cert] artifact region-evidence.pdf reached the session document after 4 ms`；
+- `pdf-table-extraction`：`[83/137]` 06:53:31Z 起 → 06:53:54Z 完，`[cert] artifact table-evidence.pdf reached
+  the session document after 6 ms`。
+- ⇒ 两趟连续通过（第一趟在 §一百九十九 §三 ①，19.0 s），且新助手真的在跑（那两行 `[cert] … reached` 只有
+  改后的代码会打）⇒ 判据达成，本族不再是 flake 候选。
+
+### 六 下一轮第一步
+
+① 本笔 f67efd77 的 Nightly / macOS Upgrade Smoke 判决（Windows Full Test 已 **success**）。② standalone 公证
+修复路径的实跑验收要等下一次真需要补做公证的窗口（判据见上一节 §四 第一条）。③ 其余候选仍在 §二百 §三 的清单里
+（`pdf-figure` 尾巴已在本轮结清）。
+
+
 ## 二百、本轮追加（执行器，2026-11-22 12:2x–）—— v2.33.2 的 Windows 片红在一个 macOS 专用单测上：起不来的二进制不会去等超时
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
