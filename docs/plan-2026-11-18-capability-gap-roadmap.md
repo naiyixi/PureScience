@@ -439,8 +439,21 @@ run 的 summary 与 artifact，便于不打开 job 日志也能看。
 - **门控用 step outputs，不用 `$GITHUB_ENV` + `env.X`**：`if:` 里的 `env` 上下文不含 `$GITHUB_ENV` 写入的变量，
   照那样写会带着空 tag 一路跑下去 —— 静默地测了错的东西。
 
-**还没有非手动触发的样本**：这条 tag 通道要等下一次发布才会第一次真跑。晋升硬门（B）的判据不变：连续 3 条 tag
-通道绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
+**tag 通道已经整条跑通过（但那是演习，不是样本）**：`simulate_tag` 输入让 dispatch 走 tag 通道自己的路径。
+`45014518879`（`simulate_tag=v2.33.2`）双架构同时绿：`passed from=2.33.1 to=2.33.2 relaunched="2.33.2"`，
+`Gatekeeper: accepted`，两个 artifact（`macos-upgrade-reading-arm64` 2883 B / `-x64` 2811 B）都在，artifact 里
+那一行就是 summary 用的同一行 grep。
+
+这条路上被抓到并修掉的两个坑，都是**只有真跑才会现形**的：
+
+- **tag 与 version 混用**：为比较剥掉了 `v`，却把剥掉的结果交给 `gh release download`，于是 `release not found`
+  （`45014080347`）。现在按 version 比较、输出原始 tag，下载前 `gh release view` 确认。
+- **模拟了一个不存在的版本**（`simulate_tag=v2.33.3`）：feed 只能回 `up-to-date`，演练具名拒绝 ——
+  `The feed already says we are current (2.33.2); the drill needs an older app than 2.33.3`。这条正好反证
+  「已是最新版」不会被读成升级成功。
+
+**非手动样本仍是 0/3**：tag 通道要等真打发布 tag 时才算第一次。晋升硬门（B）的判据不变：连续 3 条 tag 通道
+绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
 `macOS upgrade == passed` 的 `needs`。
 
 细节与一路上被改掉的六处读数谎话见 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`。
