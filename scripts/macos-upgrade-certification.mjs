@@ -12,14 +12,14 @@
 // carry the next version — not "the process exited" and not "the log said so".
 
 import { spawn } from 'node:child_process'
-import { mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { _electron as electron } from 'playwright'
 
-const CHECK_TIMEOUT_MS = 240_000
+const CHECK_TIMEOUT_MS = 120_000
 const DOWNLOAD_TIMEOUT_MS = 900_000
 const APPLY_TIMEOUT_MS = 240_000
 const HANDOVER_TIMEOUT_MS = 240_000
@@ -202,6 +202,7 @@ const gatekeeper = async (bundle) => {
 }
 
 let drilledBundle
+let drillHome
 
 const main = async () => {
   const args = process.argv.slice(2)
@@ -241,6 +242,7 @@ const main = async () => {
   // its updater cache under `~/Library/Application Support`, and a drill that shares them with whatever the
   // machine is already running can either be refused the lock or purge somebody else's cache.
   const home = join(workRoot, 'home')
+  drillHome = home
   await mkdir(home, { recursive: true })
   const env = {
     ...process.env,
@@ -284,6 +286,27 @@ const main = async () => {
   await reap(bundle)
 }
 
+// The app writes one JSON line per event, including a diagnostic operation per update command with the
+// phase it reached (`query-provider`, `query-provider-github`). When a check hangs, that file is the only
+// thing that says WHERE — the drill's own timeout can only say "nothing came back in N ms".
+const appLogTail = async (home, lines = 12) => {
+  const logFile = join(home, 'Library', 'Logs', 'PureScience', 'main.log')
+  const text = await readFile(logFile, 'utf8').catch(() => undefined)
+  if (!text) return undefined
+  const tail = text.trim().split('\n').slice(-lines)
+  return { logFile, tail }
+}
+
+const printAppLog = async (home) => {
+  const reading = await appLogTail(home)
+  if (!reading) {
+    console.log('[mac-upgrade] the app wrote no log under the drill HOME')
+    return
+  }
+  console.log(`[mac-upgrade] app log tail (${reading.logFile}):`)
+  for (const line of reading.tail) console.log(`  ${line.slice(0, 400)}`)
+}
+
 // A launched app inherits stdout; if one is still alive when this process returns, whatever is reading the
 // pipe (`tee` in the workflow) never sees EOF and the step hangs long after the drill has decided. Measured:
 // the macOS smoke step sat 'in_progress' for an hour with every internal wait bounded below half an hour.
@@ -304,6 +327,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(async (error) => {
     console.error(`[mac-upgrade] ${error?.stack ?? error}`)
     process.exitCode = 1
+    if (drillHome) await printAppLog(drillHome)
     if (drilledBundle) await reap(drilledBundle)
   })
 }
