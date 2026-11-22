@@ -129,7 +129,9 @@ export const startDiagnosticOperation = (
       .map((entry, index) => {
         const next = phases[index + 1]
         const amount =
-          value === 'offset' ? entry.atMs : Math.max(0, (next === undefined ? endMs : next.atMs) - entry.atMs)
+          value === 'offset'
+            ? entry.atMs
+            : Math.max(0, (next === undefined ? endMs : next.atMs) - entry.atMs)
         return `${entry.name}=${amount}ms`
       })
       .join(' ')
