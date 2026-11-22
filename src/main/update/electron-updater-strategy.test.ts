@@ -214,6 +214,223 @@ describe('ElectronUpdaterStrategy', () => {
     expect(JSON.stringify(records)).not.toContain('private updater diagnostic detail')
   })
 
+  it('stops a transfer that stops receiving bytes and names how far it got', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      let token: FakeToken | undefined
+      let rejectDownload: ((error: Error) => void) | undefined
+      // A transfer that reports one progress event and then goes silent — the shape the field log shows:
+      // 2,283 s with no byte and no sentence about progress.
+      updater.runDownload = async (given) => {
+        token = given
+        updater.emit('download-progress', {
+          percent: 41,
+          transferred: 122_000_000,
+          total: 296_000_000,
+          bytesPerSecond: 51_200
+        })
+        await new Promise<void>((_resolve, reject) => {
+          rejectDownload = reject
+        })
+      }
+      const log = createLogSpy()
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast: vi.fn(),
+        fetchImpl: offlineFetch(),
+        log,
+        downloadStallMs: 60_000,
+        createCancellationToken: () => {
+          const created: FakeToken = {
+            cancelled: false,
+            cancel(): void {
+              created.cancelled = true
+              // electron-updater rejects the pending download when its token is cancelled.
+              rejectDownload?.(new Error('cancelled by token'))
+            }
+          }
+          token = created
+          return created
+        }
+      })
+      await strategy.check()
+      for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+        vi.mocked(log[level]).mockClear()
+      }
+
+      const downloading = strategy.download()
+      // Let download() reach the transfer and receive that first progress event.
+      await vi.advanceTimersByTimeAsync(0)
+      expect(token?.cancelled).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      const status = await downloading
+
+      expect(status.state).toBe('error')
+      expect(status.error).toContain('received no data for 60 s')
+      expect(status.error).toContain('(41%)')
+      expect(status.error).toContain('of 282.3 MB')
+      expect(status.error).toContain('Nothing was installed')
+      expect(token?.cancelled).toBe(true)
+      const records = diagnosticRecords(log)
+      expect(records).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            operation: 'update-download',
+            outcome: 'failed',
+            reason: 'stalled',
+            stalledMs: 60_000,
+            downloadedBytes: 122_000_000,
+            totalBytes: 296_000_000,
+            errorCategory: 'timeout'
+          })
+        ])
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a slow transfer alive: any new byte restarts the stall window', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      let token: FakeToken | undefined
+      let release: (() => void) | undefined
+      updater.runDownload = async (given) => {
+        token = given
+        updater.emit('download-progress', {
+          percent: 10,
+          transferred: 10_000,
+          total: 100_000,
+          bytesPerSecond: 1_000
+        })
+        await new Promise<void>((resolve) => (release = resolve))
+      }
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast: vi.fn(),
+        fetchImpl: offlineFetch(),
+        log: createLogSpy(),
+        downloadStallMs: 60_000
+      })
+      await strategy.check()
+
+      const downloading = strategy.download()
+      await vi.advanceTimersByTimeAsync(0)
+
+      // 59 s of silence, then a byte: the window starts over instead of firing at the total elapsed 60 s.
+      await vi.advanceTimersByTimeAsync(59_000)
+      updater.emit('download-progress', {
+        percent: 11,
+        transferred: 11_000,
+        total: 100_000,
+        bytesPerSecond: 1_000
+      })
+      await vi.advanceTimersByTimeAsync(59_000)
+      expect(token?.cancelled).toBe(false)
+      expect(strategy.getStatus().state).toBe('downloading')
+
+      // A full window of silence after that byte is a stall.
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(strategy.getStatus().state).toBe('error')
+      release?.()
+      await downloading
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not report a user cancel as a transfer stall', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      const log = createLogSpy()
+      let rejectDownload: ((error: Error) => void) | undefined
+      const token: FakeToken = {
+        cancelled: false,
+        cancel(): void {
+          token.cancelled = true
+          rejectDownload?.(new Error('cancelled by token'))
+        }
+      }
+      updater.runDownload = async () => {
+        await new Promise<void>((_resolve, reject) => (rejectDownload = reject))
+      }
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast: vi.fn(),
+        fetchImpl: offlineFetch(),
+        log,
+        downloadStallMs: 60_000,
+        createCancellationToken: () => token
+      })
+      await strategy.check()
+      for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+        vi.mocked(log[level]).mockClear()
+      }
+
+      const downloading = strategy.download()
+      await vi.advanceTimersByTimeAsync(0)
+      const cancelled = await strategy.cancel()
+      expect(cancelled.state).toBe('available')
+      const final = await downloading
+      expect(final.state).toBe('available')
+      expect(final.error).toBeUndefined()
+      // The armed watchdog must be disarmed too: a cancel is not a stall, and a late firing would show an
+      // error over a download the user already stopped.
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(strategy.getStatus().state).toBe('available')
+      expect(JSON.stringify(diagnosticRecords(log))).not.toContain('"reason":"stalled"')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('carries how far the transfer got when it fails for another reason', async () => {
+    const updater = new FakeUpdater()
+    updater.runDownload = async () => {
+      updater.emit('download-progress', {
+        percent: 42,
+        transferred: 4200,
+        total: 10000,
+        bytesPerSecond: 900
+      })
+      throw new Error('read ECONNRESET')
+    }
+    const log = createLogSpy()
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch(),
+      log
+    })
+    await strategy.check()
+    for (const level of ['debug', 'info', 'warn', 'error'] as const) {
+      vi.mocked(log[level]).mockClear()
+    }
+
+    const status = await strategy.download()
+
+    expect(status.state).toBe('error')
+    expect(status.error).toBe('read ECONNRESET (stopped at 4.1 KB of 9.8 KB)')
+    expect(diagnosticRecords(log)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'update-download',
+          outcome: 'failed',
+          downloadedBytes: 4200,
+          totalBytes: 10000
+        })
+      ])
+    )
+  })
+
   it('cancel aborts an in-flight download and resets the status to available', async () => {
     const updater = new FakeUpdater()
     let release: (() => void) | undefined

@@ -40,7 +40,11 @@ export type ResilientDownloadOpts = {
 }
 
 const DEFAULT_MAX_RETRIES = 5
-const DEFAULT_STALL_MS = 60_000
+// The one number that defines "the stream stopped": no new byte for this long. Exported because the
+// in-place updater path (electron-updater, which owns its own HTTP download and has no stall budget)
+// applies the same policy through ../update/electron-updater-strategy — a second literal there would let
+// the two download paths disagree on what a stall is.
+export const DEFAULT_DOWNLOAD_STALL_MS = 60_000
 const BASE_BACKOFF_MS = 1_000
 const MAX_BACKOFF_MS = 30_000
 
@@ -74,7 +78,7 @@ export const resilientDownload = async (
   const sleep = d.sleep ?? ((ms) => new Promise<void>((r) => setTimeout(r, ms)))
   const now = d.now ?? (() => Date.now())
   const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES
-  const stallMs = opts.stallTimeoutMs ?? DEFAULT_STALL_MS
+  const stallMs = opts.stallTimeoutMs ?? DEFAULT_DOWNLOAD_STALL_MS
   const partPath = `${destPath}.part`
 
   const partSize = async (): Promise<number> => {
