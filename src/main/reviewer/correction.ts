@@ -112,6 +112,19 @@ const MAX_DEFERRAL_HOPS = 3
 // alternative (threading a registry through every caller) makes the guard skippable.
 const inFlightCorrections = new Map<string, InFlightCorrection>()
 
+// How many caller lanes are contending for one main session's correction slot right now, including
+// the one this map is being read from. A lone lane may resend after a `session-busy` refusal; a lane
+// with company must not, because the other lane is waiting on THIS promise to decide whether it takes
+// the slot over (the takeover case above is exactly that). Module-level for the same reason as the
+// single-flight map: the slot is per main session, not per call chain.
+const correctionLanes = new Map<string, number>()
+
+// How many times a lone lane resends after the ACP runtime answered `already running for this
+// session`. Bounded and short: the window this covers is the turn's own stop handler still settling,
+// measured in milliseconds — 20 × 200 ms is already far past it, and a longer wait would delay the
+// honest failure the user has to see. Not a back-off queue: it never runs while another lane waits.
+const MAX_BUSY_RESEND_ATTEMPTS = 20
+
 // Injects the [Auditor] message into the main session and waits for the correction turn to complete.
 // At most ONE correction turn runs per main session: a call that arrives while another one is on the
 // wire waits for it and reports `{ kind: 'deferred' }` instead of colliding with it.
@@ -168,69 +181,132 @@ export const injectAuditorMessage = async (options: {
 
   // Single-flight, resolved SYNCHRONOUSLY (a lookup followed by a registration with no await in
   // between), so two lanes arriving in the same turn cannot both pass the check.
-  let waitedOnFailure = false
-  for (let attempt = 0; attempt <= MAX_DEFERRAL_HOPS; attempt += 1) {
-    const inFlight = inFlightCorrections.get(mainSessionId)
-    if (!inFlight) break
-    if (attempt === MAX_DEFERRAL_HOPS) {
-      return { kind: 'deferred', waitedOn: waitedOnFailure ? 'failed' : 'still-in-flight' }
-    }
-    log.info(
-      '[Auditor] correction deferred: another correction turn is already in flight for this session',
-      { sessionId, mainSessionId, findingCount: warnFailChecks.length }
-    )
-    onCorrectionDeferred?.()
-    const outcome = await inFlight
-    if (outcome === 'completed') {
-      // The other lane's turn is the correction this session got. Its own re-review is what judges
-      // that text; this lane re-reviews the same correction turn instead of stacking a second one.
-      return { kind: 'deferred', waitedOn: 'completed' }
-    }
-    // The other lane's send failed, so the session still needs a correction: take the slot. The
-    // owning call's own `finally` may not have run yet, so release the settled-and-failed entry
-    // here — waiting on a dead flight would just burn the retry budget.
-    waitedOnFailure = true
-    if (inFlightCorrections.get(mainSessionId) === inFlight) {
-      inFlightCorrections.delete(mainSessionId)
-    }
-  }
-
-  // Notify test hooks (if any).
-  onCorrectionPrompt?.(message)
-
-  const turn: InFlightCorrection = (async () => {
-    try {
-      // Checked synchronously: when nothing is on the wire the send must go out in the same tick, or a caller
-      // that registers its slot and looks at the wire next statement would see an empty one.
-      if (mainSessionIsOnTheWire(acpRuntime, mainSessionId)) {
-        await waitForMainSessionIdle(acpRuntime, mainSessionId, options.waitForIdle)
-      }
-      // Inject through the main-session sendPrompt path (design.md cross-cutting requirement).
-      // This is a normal prompt turn that the user sees in the conversation.
-      await acpRuntime.sendPrompt({ sessionId: mainSessionId, text: message, provenanceContext })
-      log.info('[Auditor] correction turn complete', { mainSessionId })
-      return 'completed' as const
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error)
-      const reason = classifyCorrectionFailure(errorMsg)
-      log.error('[Auditor] correction sendPrompt failed', {
-        mainSessionId,
-        reason,
-        error: errorMsg
-      })
-      // Error handling: a failed correction does NOT spin into a re-review loop.
-      // The correction turn never produced a stop, so undo the pre-emptive auto-review suppression.
-      onCorrectionFailed?.(reason)
-      return 'failed' as const
-    }
-  })()
-  inFlightCorrections.set(mainSessionId, turn)
+  //
+  // The lane count is what answers "may this call resend after a `session-busy` refusal", and it is
+  // registered before the handshake so a lane that is only waiting is still counted.
+  correctionLanes.set(mainSessionId, (correctionLanes.get(mainSessionId) ?? 0) + 1)
   try {
-    await turn
-  } finally {
-    if (inFlightCorrections.get(mainSessionId) === turn) {
-      inFlightCorrections.delete(mainSessionId)
+    let waitedOnFailure = false
+    for (let attempt = 0; attempt <= MAX_DEFERRAL_HOPS; attempt += 1) {
+      const inFlight = inFlightCorrections.get(mainSessionId)
+      if (!inFlight) break
+      if (attempt === MAX_DEFERRAL_HOPS) {
+        return { kind: 'deferred', waitedOn: waitedOnFailure ? 'failed' : 'still-in-flight' }
+      }
+      log.info(
+        '[Auditor] correction deferred: another correction turn is already in flight for this session',
+        { sessionId, mainSessionId, findingCount: warnFailChecks.length }
+      )
+      onCorrectionDeferred?.()
+      const outcome = await inFlight
+      if (outcome === 'completed') {
+        // The other lane's turn is the correction this session got. Its own re-review is what judges
+        // that text; this lane re-reviews the same correction turn instead of stacking a second one.
+        return { kind: 'deferred', waitedOn: 'completed' }
+      }
+      // The other lane's send failed, so the session still needs a correction: take the slot. The
+      // owning call's own `finally` may not have run yet, so release the settled-and-failed entry
+      // here — waiting on a dead flight would just burn the retry budget.
+      waitedOnFailure = true
+      if (inFlightCorrections.get(mainSessionId) === inFlight) {
+        inFlightCorrections.delete(mainSessionId)
+      }
     }
+
+    // Notify test hooks (if any).
+    onCorrectionPrompt?.(message)
+
+    const pause =
+      options.waitForIdle ??
+      (() => new Promise<void>((resolve) => setTimeout(resolve, CORRECTION_IDLE_POLL_MS)))
+
+    // The pre-send wait below reads the runtime's own in-flight list, and on the installed build that
+    // list can be empty while the ACP session still refuses a prompt. Measured from the packaged logs
+    // (three rotations, 2026-11-05 → 2026-11-22): 70 injections, 21 refusals, and the pre-send wait
+    // logged its line ZERO times — so whatever it reads, it never sees the state that refuses the
+    // send. The refusal itself is therefore the signal: resend, bounded, and only while this lane is
+    // alone (with a second lane waiting, handing the slot over is the designed behaviour).
+    //
+    // What a resend cannot fix is named below where the failure is logged: on 2026-11-22T16:01:53Z the
+    // refusal was a turn that ran another 32 s, i.e. the user had already sent the next message. That
+    // case stays a named failure rather than an injection into a live turn.
+    let busyResends = 0
+    const sendCorrection = async (): Promise<void> => {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          // Inject through the main-session sendPrompt path (design.md cross-cutting requirement).
+          // This is a normal prompt turn that the user sees in the conversation.
+          await acpRuntime.sendPrompt({
+            sessionId: mainSessionId,
+            text: message,
+            provenanceContext
+          })
+          return
+        } catch (error) {
+          const refusedMessage = error instanceof Error ? error.message : String(error)
+          const alone = (correctionLanes.get(mainSessionId) ?? 1) <= 1
+          if (
+            classifyCorrectionFailure(refusedMessage) !== 'session-busy' ||
+            !alone ||
+            attempt >= MAX_BUSY_RESEND_ATTEMPTS
+          ) {
+            throw error
+          }
+          busyResends += 1
+          log.info(
+            '[Auditor] correction refused while the turn in front was still on the wire; resending',
+            {
+              mainSessionId,
+              attempt: attempt + 1,
+              maxAttempts: MAX_BUSY_RESEND_ATTEMPTS,
+              error: refusedMessage
+            }
+          )
+          await pause()
+        }
+      }
+    }
+
+    const turn: InFlightCorrection = (async () => {
+      try {
+        // Checked synchronously: when nothing is on the wire the send must go out in the same tick, or a caller
+        // that registers its slot and looks at the wire next statement would see an empty one.
+        if (mainSessionIsOnTheWire(acpRuntime, mainSessionId)) {
+          await waitForMainSessionIdle(acpRuntime, mainSessionId, options.waitForIdle)
+        }
+        await sendCorrection()
+        log.info('[Auditor] correction turn complete', { mainSessionId })
+        return 'completed' as const
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        const reason = classifyCorrectionFailure(errorMsg)
+        log.error('[Auditor] correction sendPrompt failed', {
+          mainSessionId,
+          reason,
+          // How many resends the refusal survived. Printed so the next real-machine failure says which
+          // shape it was: `0` = never retried (another lane owned the slot), `>0` = the turn in front
+          // outlived the budget.
+          busyResends,
+          error: errorMsg
+        })
+        // Error handling: a failed correction does NOT spin into a re-review loop.
+        // The correction turn never produced a stop, so undo the pre-emptive auto-review suppression.
+        onCorrectionFailed?.(reason)
+        return 'failed' as const
+      }
+    })()
+    inFlightCorrections.set(mainSessionId, turn)
+    try {
+      await turn
+    } finally {
+      if (inFlightCorrections.get(mainSessionId) === turn) {
+        inFlightCorrections.delete(mainSessionId)
+      }
+    }
+    return { kind: 'injected' }
+  } finally {
+    const remaining = (correctionLanes.get(mainSessionId) ?? 1) - 1
+    if (remaining > 0) correctionLanes.set(mainSessionId, remaining)
+    else correctionLanes.delete(mainSessionId)
   }
-  return { kind: 'injected' }
 }

@@ -979,6 +979,9 @@ describe('correction failure attribution', () => {
         }
       } as unknown as import('./acp-runtime').ReviewerAcpRuntime,
       provenanceContext: {} as never,
+      // The resend path pauses between attempts; these cases are about the FINAL classification, so
+      // the pause is a no-op here instead of 20 × 200 ms of real timers.
+      waitForIdle: async () => {},
       onCorrectionFailed: (reason) => reasons.push(reason)
     })
     return reasons
@@ -1184,5 +1187,73 @@ describe('one correction turn per main session', () => {
     ).resolves.toEqual({ kind: 'injected' })
 
     expect(order).toEqual(['sent'])
+  })
+
+  // Measured on the installed build (2.33.2, 2026-11-22): 20 injections into the main session, the
+  // pre-send wait ran 0 times, and 3 corrections were dropped with `already running for this session`
+  // 2 ms after the injection line. The runtime's in-flight list was already empty while the ACP
+  // session still refused the prompt — the review starts from the turn's own stop handler, and the
+  // interaction it is settling is released after that handler returns. So the refusal itself has to be
+  // retried, not predicted.
+  it('resends when a lone lane is refused by the turn it just reviewed', async () => {
+    let refusals = 0
+    const sent: string[] = []
+    const pauses: number[] = []
+    const failures: unknown[] = []
+    const acpRuntime = runtimeWith(async (request) => {
+      if (refusals < 2) {
+        refusals += 1
+        throw new Error('An ACP prompt is already running for this session')
+      }
+      sent.push(request.text)
+    })
+
+    await expect(
+      injectAuditorMessage({
+        sessionId: 'session-busy-lone',
+        mainSessionId: 'main-busy-lone',
+        findings: [warnFinding('The refused claim')],
+        acpRuntime,
+        provenanceContext: {} as never,
+        waitForIdle: async () => {
+          pauses.push(pauses.length + 1)
+        },
+        onCorrectionFailed: (reason) => failures.push(reason)
+      })
+    ).resolves.toEqual({ kind: 'injected' })
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain('The refused claim')
+    expect(pauses).toHaveLength(2)
+    expect(failures).toEqual([])
+  })
+
+  it('gives up after the resend budget and names the collision', async () => {
+    let attempts = 0
+    const pauses: number[] = []
+    const failures: unknown[] = []
+    const acpRuntime = runtimeWith(async () => {
+      attempts += 1
+      throw new Error('An ACP prompt is already running for this session')
+    })
+
+    await expect(
+      injectAuditorMessage({
+        sessionId: 'session-busy-exhausted',
+        mainSessionId: 'main-busy-exhausted',
+        findings: [warnFinding('The exhausted claim')],
+        acpRuntime,
+        provenanceContext: {} as never,
+        waitForIdle: async () => {
+          pauses.push(attempts)
+        },
+        onCorrectionFailed: (reason) => failures.push(reason)
+      })
+    ).resolves.toEqual({ kind: 'injected' })
+
+    // Bounded: one send per attempt, and the test returning at all proves it stops.
+    expect(attempts).toBe(pauses.length + 1)
+    expect(pauses.length).toBeGreaterThan(0)
+    expect(failures).toEqual(['session-busy'])
   })
 })

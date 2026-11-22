@@ -1,5 +1,55 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇五、本轮追加（执行器，2026-11-23 00:50–01:2x）—— `[Auditor]` 纠正被撞掉：等不到的预判改成「被拒就重发」，且只在独苗时
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 714aaab3`（23:34 的 `pathToFileURL`），`package.json` = 2.33.3，Latest 页 = **v2.33.3**（17 个资产，见下）。
+- 工作树 38 个改动 + 4 个未跟踪**仍是会话在制**（`shared/citation/*`、`ris-import*`、`zotero-import*`、`ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、`notebook/mcp-server.ts`、
+  `diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`）⇒ **一个字节没碰**。
+- 会话在轮内仍在推进（23:25–01:00 连续落了 `dd441021` 发版、`23105db0`、`cff2b0cc`、`714aaab3`、`ba1970c6`、`e0306f44`），
+  焦点是 Windows 硬门/演练 ⇒ 本单元取**会话没在碰的路径**（`src/main/reviewer/**`）。
+- 在飞车道（进轮）：`714aaab3` 的 `Nightly` 45039056153 in_progress、`Windows Full Test` success；
+  `v2.33.3` 的 `Release` 45037339781：四个平台 build + 双架构公证 + `publish` **success**，只剩 `windows-upgrade-smoke` 在跑。
+
+### 一 发版核验（v2.33.3，现取）
+
+| 项 | 读数 |
+| --- | --- |
+| `gh release list` | `PureScience v2.33.3` = **Latest**（非 draft、非 pre-release） |
+| 资产 | **17 个**，与 v2.33.2 逐名一致（四平台 + `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / 三个 feed YAML / 两个 `*-mac.yml`） |
+| `RELEASE-CERTIFICATION.json` 的 `sourceSha` | `dd441021d40429c55148be33fb8c8959ee444a14` = `git rev-parse 'v2.33.3^{commit}'`（tag 对象 → commit） |
+| Release 作业 | `Release preflight` / `Verify` / 四个 `Build` / `Notarize + staple`（arm64+x64）/ `publish` 全 **success** |
+
+### 二 本单元：纠正被撞掉（真机日志里 21/70 的那一类）
+
+**读数**（三份轮转日志全量）：注入 70 / 成功 49 / 失败 **21** / 注入前等待日志行 **0**。
+`26fbc316`（11-18）加的正是那条等待，而 2.33.2 里它一次都没打印 —— 预判从未命中。
+
+**唯一一条修复后的失败**（`main.log`，会话 `80bc9e17`）：`16:01:53.378` 注入 → `.380` 失败
+`session-busy`（2 ms）→ `.381` 标记 unaddressed；同一会话 `16:02:25.981` 才 `prompt stopped`
+⇒ 撞上的是一次**还在跑的轮次**（用户已发下一条，又跑 32.6 秒）。对照组 16:29 空闲时：注入 → 58 秒纠正轮完成
+→ 定点重审 → `finding resolved`。
+
+**交付**（`src/main/reviewer/correction.ts`）：① 以**拒绝**为信号重发（20 × 200 ms），不再依赖预判；
+② 只在**独苗**时重发（新增 `correctionLanes` 计数，握手前登记、`finally` 退出），两 lane 接管行为不变；
+③ 失败行加 `busyResends`（`0` = 没重发过 / `>0` = 前一轮活过预算），让下一次真机失败自证形状。
+
+**读数**：`vitest src/main/reviewer` **27 files / 325 passed**；`eslint --no-cache` 改动两文件 0/0；
+变异①（预算置 0）两条新用例红、变异②（去掉独苗闸）接管用例红，各自还原后全绿。
+
+**边界（具名）**：① 没有修复后的真机读数（要含本修复的构建 + 一次真碰撞），下一次判据写在证据档；
+② 11-22 那次失败 4 秒预算救不回来，「要不要等用户下一条跑完再补注」是产品取舍，本轮没决定；
+③ 预判那条缝仍未定因（本单元只保证「预判错了也不丢」）。
+
+### 三 下一轮第一步
+
+- ① 读 `714aaab3` 的 `Nightly`（45039056153）落定后的 `electron P0 reading`，续 Windows 硬门计数；
+  ② 等 `v2.33.3` 的 `windows-upgrade-smoke` 落定（`publish` 已 success，页与资产不受它影响）；
+- ③ 候选：`session save was slow` 的真机分布已取（346 次/65 分钟，p50 72 ms、p90 183 ms、max 2.17 s，
+  `cpuShare` p50 0.95）—— 是否另立 perf 单元待判；`update-download` 停滞后的续传仍具名未做。
+
 ## 二百〇四、本轮追加（执行器，2026-11-22 22:0x–）—— 反向对照只删一个标记：两个标记各读各的；顺带把「没有覆盖用户数据」那条过期结论改回事实
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
