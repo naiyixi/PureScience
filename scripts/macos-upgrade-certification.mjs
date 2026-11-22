@@ -52,6 +52,14 @@ const runProcess = (executable, args, { timeoutMs = 120_000 } = {}) =>
     child.stdout.on('data', (chunk) => (stdout += chunk))
     child.stderr.on('data', (chunk) => (stderr += chunk))
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs)
+    // A binary this machine does not have never reaches 'close': `spawn` reports ENOENT as an 'error' event,
+    // and with no listener the promise below would wait out its whole budget instead of naming what is
+    // missing. Measured on the Windows lane (run 44984143602, job 137090909581): four unit tests that call
+    // `plutil` each burned the full 120 s before the shard gave up.
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      rejectPromise(new Error(`${executable} could not be started: ${error.message}`))
+    })
     child.on('close', (code) => {
       clearTimeout(timer)
       // `spctl` writes its verdict to stderr even when it accepts, so a caller that only reads stdout gets an
@@ -431,4 +439,4 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   })
 }
 
-export { bundleVersion, findBundle, gatekeeper, waitForVersionOnDisk }
+export { bundleVersion, findBundle, gatekeeper, runProcess, waitForVersionOnDisk }
