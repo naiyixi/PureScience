@@ -121,13 +121,16 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" = "push" ]; then
             NEXT_VERSION="${REF_NAME#v}"
+            # The TAG is what `gh release download` takes, the VERSION is what the updater reports — they
+            # differ by the leading `v`, and stripping it for comparison while handing the stripped string
+            # to `gh` is exactly how the first rehearsal failed with "release not found" for `2.33.1`.
             PREVIOUS_TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 100 \
               --json tagName --jq '.[].tagName' \
-              | sed -E 's/^v//' \
-              | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+              | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
               | sort -V \
               | awk -v cur="$NEXT_VERSION" '
-                  $0 == cur { print prev; found = 1; exit }
+                  { version = $0; sub(/^v/, "", version) }
+                  version == cur { print prev; found = 1; exit }
                   { prev = $0 }
                   END { if (!found) print prev }
                 ')
@@ -140,8 +143,19 @@ jobs:
 
           # Outputs, not $GITHUB_ENV: the `env` context in a step's `if:` does not carry variables written
           # to $GITHUB_ENV, so gating on env.PREVIOUS_TAG would silently run the drill with an empty tag.
-          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$NEXT_VERSION" ]; then
-            echo "::notice::Nothing to drill: no published release older than $NEXT_TAG"
+          # The resolver falls back to the newest published release when the version being tagged is not in
+          # the list yet (the usual case at push time). That fallback is only valid while the tag being pushed
+          # is NEWER than everything: backfilling an old patch would otherwise drill "2.33.2 -> 1.0.0", which
+          # is not an upgrade anybody performs. Compare, and skip by name when the order is the other way.
+          PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+          NEWEST_ORDER=""
+          if [ -n "$PREVIOUS_VERSION" ]; then
+            NEWEST_ORDER=$(printf '%s\n%s\n' "$PREVIOUS_VERSION" "$NEXT_VERSION" | sort -V | tail -1)
+          fi
+
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$NEXT_VERSION" ] || \
+             [ "$NEWEST_ORDER" = "$PREVIOUS_VERSION" ]; then
+            echo "::notice::Nothing to drill: $PREVIOUS_TAG is not older than $NEXT_TAG"
             echo "previous_tag=" >> "$GITHUB_OUTPUT"
           else
             echo "Drilling $PREVIOUS_TAG -> $NEXT_VERSION"
@@ -157,6 +171,8 @@ jobs:
           PREVIOUS_TAG: ${{ steps.resolve.outputs.previous_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/previous"
+          gh release view "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' \
+            || { echo "::error::The resolved previous tag $PREVIOUS_TAG is not a release"; exit 1; }
           gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
             -p "*mac-${{ matrix.arch }}.zip" -D "$RUNNER_TEMP/previous"
           ls -l "$RUNNER_TEMP/previous"
