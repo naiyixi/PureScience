@@ -90,11 +90,61 @@ macOS upgrade reading: passed from=2.33.1 to=2.33.2 relaunched="2.33.2"
 Intel 用户经历的升级（Squirrel 的搬包与重启在转译下走的是另一条路）。脚本用 `lipo -archs` 读包、`uname -m`
 读宿主，不一致具名拒绝；正常路径把这一对读数打出来，让「在哪台机器上证明的」留在证据里。
 
+## 第 5、6 趟：把「用户数据还在」变成判据，以及一条判据如何在 CI 上假装通过
+
+换包换对了、应用起来了，用户的数据可能已经不在了 —— 而此前六条判据没有一条会看这件事。
+
+**第 5 趟（`45029022118`）第一次加数据标记，读数就暴露了这条判据是废的**：
+
+```
+macOS upgrade reading: passed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=skipped (real HOME)
+```
+
+`--keep-home` 让 `userData` 指向真实用户的 `~/Library/Application Support`，我为不写用户目录就跳过了 ——
+一条**永远读 `skipped`** 的判据，旁边还挂着 `passed`，比没有更坏。
+
+改法是两个标记、两个问题：
+
+| 标记 | 落在哪 | 什么时候种 |
+| --- | --- | --- |
+| storage root | drill 自己的目录（`$RUNNER_TEMP/upgrade/storage`） | **无条件**。它代表每次启动都要打开的那个库 |
+| userData | 打包应用自己的状态目录 | 要 `--seed-user-data` 显式要：runner 上那是可丢弃的 `/Users/runner`，工作站上那是人的目录 |
+
+**第 5 趟的第二遍（`45029743779`）**仍是 `userData:skipped` —— 原因不是逻辑而是死代码：
+
+```yaml
+extra_args:
+  default: '--keep-home'                                          # input 自己声明了 default
+EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home --seed-user-data' }}   # 这半边永不执行
+```
+
+声明了 `default` 的 input **永远不是空**，`||` 回落是死代码（`ffe23a6d` 把默认值挪到 input 上）。这和先前
+踩过的「`if:` 里看不到 `$GITHUB_ENV`」是同一类：**看着有兜底，实际兜底不执行**。
+
+**第 6 趟（`45030290794`）** 正向读数：
+
+```
+[mac-upgrade] user-data marker: seeded at …/upgrade/home/Library/Application Support/PureScience/drill-marker.json
+[mac-upgrade] storage-root marker: seeded at …/upgrade/storage/drill-marker.json
+[mac-upgrade] user data after the swap: userData:kept storage:kept
+```
+
+**然后是反向对照（`45031036722`，`sabotage=both`）—— 这一趟必须红**：
+
+```
+[mac-upgrade] sabotage (both): removed userData (…/drill-marker.json)
+[mac-upgrade] user data after the swap: userData:lost storage:lost
+macOS upgrade reading: failed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=userData:lost storage:lost
+```
+
+它是红的，而且红在数据那一栏而不是版本那一栏 —— 所以 `kept` 现在是一个**能分辨 `lost`** 的读数，不是一个
+恰好总为真的字符串。
+
 ## 这条判据**没有**证明的事
 
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。
 - **只有 dispatch 触发**，没有接进 `release.yml`。一条绿过一次的演练要不要成为发版硬门，是单独拍板的事；现在它只出证据。
-- **没有覆盖「用户自己的数据」**：演练用的是临时目录里的干净副本，不涉及真实会话、真实文献库、真实配置在换包之后是否完好。
+- ~~没有覆盖「用户自己的数据」~~ → **已覆盖一半**：标记能证明「换包没有抹掉 userData 与 storage root」，但它是标记不是内容 —— 真会话、真文献库（SQLite 里的行、附件）在换包后是否仍可读、是否被新版本正确迁移，仍未验证。
 - **没有覆盖更新源故障**：feed 与包都来自 GitHub Releases，演练没有验证镜像/官网链路。
 - **「一次绿」不等于「不再偶发红」**。这个判断只有时间能给（同 `references-page-selection` 那条）。
 
@@ -105,4 +155,12 @@ gh workflow run macos-upgrade-smoke.yml --ref main \
   -f previous_tag=v2.33.0 -f next_version=2.33.1
 ```
 
-判据行只有两种：`macOS upgrade reading: passed …` 或 `failed …`。失败时同时打印应用自己日志的尾巴与 ShipIt 的系统日志行；两者都没有时会明说「macOS 一行没写」，不留下无解释的空行。
+反向对照（预期红）：
+
+```
+gh workflow run macos-upgrade-smoke.yml --ref main \
+  -f previous_tag=v2.33.1 -f next_version=2.33.2 -f sabotage=both
+```
+
+判据行只有两种：`macOS upgrade reading: passed … data=userData:kept storage:kept` 或 `failed …`；
+`skipped` 出现在任一标记上都算没测到，不当成通过。失败时同时打印应用自己日志的尾巴与 ShipIt 的系统日志行；两者都没有时会明说「macOS 一行没写」，不留下无解释的空行。
