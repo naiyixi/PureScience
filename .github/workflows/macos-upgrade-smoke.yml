@@ -7,9 +7,19 @@ name: macOS Upgrade Smoke
 # directory, lets it update itself from the live GitHub feed to the version you name, and then reads the
 # bundle on disk: `plutil` for the version Finder shows, `spctl` for Gatekeeper's own verdict.
 #
-# Dispatch-only and not yet a step in release.yml on purpose: a drill that has never run green must not be
-# the thing that blocks a release. Once it has a real reading, wiring it into release.yml is a separate
-# decision, made the same way the Windows lane's promotion criteria were written down.
+# Two ways to run it, and the difference between them is the whole point of the current phase:
+#
+#   * push a `v*` tag  -> it runs by itself against the release just tagged, on BOTH architectures.
+#   * workflow_dispatch -> run it by hand with any pair, one architecture.
+#
+# The tag lane is OBSERVATION, not a gate. It is a separate workflow, so nothing it says can hold back
+# `publish` in release.yml; a red run here shows up in the Actions list, leaves its log, and blocks nothing.
+# That is deliberate: this drill failed seven times in a row before its first green (every one of them a
+# defect in the drill, all recorded in docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md), and a lane
+# with that history should collect non-manual samples for a while before anyone lets it stop a release.
+# Promotion to a hard gate is a separate decision with its criteria written down in the roadmap:
+# 3 consecutive greens with no assertion loosened and no retry added, a failure recorded as `failed` rather
+# than skipped, and only then one more `needs:` in release.yml.
 
 on:
   workflow_dispatch:
@@ -17,11 +27,11 @@ on:
       previous_tag:
         description: Release tag whose macOS build is the starting point (must be older than next_version)
         required: true
-        default: v2.33.0
+        default: v2.33.1
       next_version:
         description: Version the drill expects the updater to install (leading v is accepted and stripped)
         required: true
-        default: 2.33.1
+        default: 2.33.2
       arch:
         # Both halves are real: a user on Intel installs the x64 zip and updates through the same feed, and a
         # drill that only ever ran arm64 says nothing about that. `macos-15-intel` is GitHub's last x64 macOS
@@ -42,14 +52,17 @@ on:
         description: Extra arguments for the drill (--keep-home is what CI needs)
         required: false
         default: '--keep-home'
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
 
 jobs:
   drill:
-    name: Upgrade macOS app in place
-    # The image follows the input, because the app that swaps itself must be the app for this host: an
+    name: Upgrade macOS app in place (${{ matrix.arch }})
+    # The image follows the architecture, because the app that swaps itself must be the app for this host: an
     # x86_64 bundle will start on an arm64 runner through Rosetta, but the drill refuses that pair by name
     # rather than reporting a translation as the upgrade that architecture performs.
     #
@@ -57,8 +70,17 @@ jobs:
     # queue and time out — it is cancelled within a second with zero steps, and the only place that says
     # why is an annotation the run API keeps: "The configuration 'macos-14-arm64-us-default' is not
     # supported". Two dispatches were read as "something is cancelling my runs" before that was checked.
-    runs-on: ${{ inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+    #
+    # `macos-15-intel` is the x64 image (available since 2025-09, through ~2027). Its existence is why the
+    # x64 half of this drill is possible at all — for a while the roadmap recorded x64 as "no runner
+    # available", which was wrong.
+    runs-on: ${{ matrix.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # A tag push drills both halves; a manual dispatch drills the one you asked for.
+        arch: ${{ fromJSON(github.event_name == 'push' && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -69,43 +91,102 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      # Which pair is under test. On a tag push the answer has to come from the repository, not from a
+      # human: `next_version` is the tag being published, and `previous_tag` is the newest published release
+      # older than it. The search is by version order, not by date, and a tag that is not a plain x.y.z is
+      # ignored rather than guessed at.
+      #
+      # Two things make this honest when it finds nothing: the release for the tag being pushed usually does
+      # not exist yet, so a missing entry is expected (the newest published release is then the previous
+      # one), and a repository with no older release at all sets PREVIOUS_TAG empty, which skips the drill
+      # with a notice instead of failing a release for a run that had nothing to measure.
+      - name: Resolve the pair under test
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          INPUT_NEXT_VERSION: ${{ inputs.next_version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
+            NEXT_VERSION="${REF_NAME#v}"
+            PREVIOUS_TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 100 \
+              --json tagName --jq '.[].tagName' \
+              | sed -E 's/^v//' \
+              | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+              | sort -V \
+              | awk -v cur="$NEXT_VERSION" '
+                  $0 == cur { print prev; found = 1; exit }
+                  { prev = $0 }
+                  END { if (!found) print prev }
+                ')
+            NEXT_TAG="v${NEXT_VERSION}"
+          else
+            PREVIOUS_TAG="$INPUT_PREVIOUS_TAG"
+            NEXT_VERSION="$INPUT_NEXT_VERSION"
+            NEXT_TAG="$INPUT_NEXT_VERSION"
+          fi
+
+          # Outputs, not $GITHUB_ENV: the `env` context in a step's `if:` does not carry variables written
+          # to $GITHUB_ENV, so gating on env.PREVIOUS_TAG would silently run the drill with an empty tag.
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$NEXT_VERSION" ]; then
+            echo "::notice::Nothing to drill: no published release older than $NEXT_TAG"
+            echo "previous_tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Drilling $PREVIOUS_TAG -> $NEXT_VERSION"
+            echo "previous_tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          fi
+          echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
       # The previous release's own zip — the same bytes a user downloaded, not a build of this tree.
       - name: Fetch the previous release
+        if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          PREVIOUS_TAG: ${{ steps.resolve.outputs.previous_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/previous"
           gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
-            -p "*mac-${{ inputs.arch }}.zip" -D "$RUNNER_TEMP/previous"
+            -p "*mac-${{ matrix.arch }}.zip" -D "$RUNNER_TEMP/previous"
           ls -l "$RUNNER_TEMP/previous"
+
+      - name: Install dependencies
+        if: ${{ steps.resolve.outputs.previous_tag != '' }}
+        run: npm ci
 
       # Redirect, do not pipe. `| tee` keeps the step alive for as long as ANY process still holds the other
       # end of the pipe — a launched app inherits stdout, so the step can sit "in_progress" an hour after the
       # drill has already decided (measured on this workflow's first run). The log is printed afterwards.
       - name: Drive the upgrade
+        if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
-          NEXT_VERSION: ${{ inputs.next_version }}
+          NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
+          EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home' }}
         run: |
           set +e
           node scripts/macos-upgrade-certification.mjs \
-            --previous-zip "$RUNNER_TEMP/previous/"*mac-${{ inputs.arch }}.zip \
+            --previous-zip "$RUNNER_TEMP/previous/"*mac-${{ matrix.arch }}.zip \
             --next-version "$NEXT_VERSION" \
-            --work-dir "$RUNNER_TEMP/upgrade" ${{ inputs.extra_args }} \
+            --work-dir "$RUNNER_TEMP/upgrade" $EXTRA_ARGS \
             > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/mac-upgrade.log"
+          # The one line a reader needs, on the run's own summary — so a tag lane can be checked without
+          # opening a job log per architecture.
+          {
+            echo "### macOS in-place upgrade — ${{ matrix.arch }}"
+            grep -E '^macOS upgrade reading:' "$RUNNER_TEMP/mac-upgrade.log" || echo 'no reading line'
+          } >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
       # The reading outlives the run even when the drill fails: the log is what says whether the feed was
       # wrong, the download was refused, or the hand-over left the old bundle in place.
       - name: Upload reading
-        if: ${{ always() }}
+        if: ${{ always() && steps.resolve.outputs.previous_tag != '' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: macos-upgrade-reading
+          name: macos-upgrade-reading-${{ matrix.arch }}
           path: ${{ runner.temp }}/mac-upgrade.log
           if-no-files-found: warn

@@ -425,9 +425,23 @@ GitHub Releases，没验镜像链路；3 绿 / 4 趟不等于不再偶发红，�
 **62.4 秒**的合法静音 —— 旧窗口 60 s 只有 0.96 倍余量。现在窗口 90 s、预算 240 s，两条不变式用例
 （窗口 > 62.4 s、预算 > 102.8 s）钉住，谁往小改就会红。
 
-**为什么不直接接进 `release.yml`**：与 Windows 硬门同一个理由 —— 一条从没稳定过的演练不该成为卡发版的东西，
-接不接是拍板项。若将来要接，判据先写死：连续 3 趟 dispatch 绿且期间没有放宽断言/加 retry、失败时记成
-`failed` 而非跳过、接上之后 `publish` 只多一条 `macOS upgrade == passed` 的 `needs`。
+**现在的落法（2026-11-22 拍板 C：先观测，不拦发版）**：`macos-upgrade-smoke.yml` 增加了 `push: tags: v*`
+触发 —— 打出发布 tag 时它**自己跑**，且**两个架构各跑一个 job**（`arm64` 在 `macos-15`、`x64` 在
+`macos-15-intel`）。它是**独立的 workflow**，所以它的红**不可能**拦住 `release.yml` 的 `publish`；结论同时写进
+run 的 summary 与 artifact，便于不打开 job 日志也能看。
+
+两处必须记下来的实现细节：
+
+- **被测的那一对版本由仓库自己算**：`next_version` = 正在推送的 tag，`previous_tag` = 按版本序（不是发布日期）
+  取比它小的最新一个已发布版本。tag 对应的 release 这时通常还没建出来，所以「列表里找不到当前版本」是**预期
+  的**，回落取最新已发布版本；仓库还没有更早的 release 时置空并 `::notice::` 跳过，而不是让一个没东西可测的
+  运行把发版弄红。三条回落都用真实 release 列表跑过（`2.33.2→2.33.1`、`2.33.3→2.33.2`、`2.33.0→2.32.0`）。
+- **门控用 step outputs，不用 `$GITHUB_ENV` + `env.X`**：`if:` 里的 `env` 上下文不含 `$GITHUB_ENV` 写入的变量，
+  照那样写会带着空 tag 一路跑下去 —— 静默地测了错的东西。
+
+**还没有非手动触发的样本**：这条 tag 通道要等下一次发布才会第一次真跑。晋升硬门（B）的判据不变：连续 3 条 tag
+通道绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
+`macOS upgrade == passed` 的 `needs`。
 
 细节与一路上被改掉的六处读数谎话见 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`。
 
