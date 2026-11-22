@@ -53,6 +53,17 @@ on:
         description: 'Testing only: pretending this tag was just pushed (drills both architectures)'
         required: false
         default: ''
+      expect_feed_url:
+        # The feed the *installed* build should be polling. Read out of the bundle after the swap, then asked
+        # what it offers — "the build we just shipped will poll the mirror" is not something the repository
+        # can assert, only the bundle can.
+        #
+        # Defaulted rather than opt-in: a check nobody passes is decoration. A drill of a tag older than
+        # v2.33.3 will fail here with `installed build points at github:…` — that is the true answer for
+        # those builds, not a false alarm.
+        description: Expected update feed (blank to skip the feed assertion)
+        required: false
+        default: 'https://purescience.work/download/feed/'
       sabotage:
         # The reverse control, and the reason the data reading is worth reading: a marker that is always
         # found proves nothing, so this deletes one on purpose. A run with `user-data` or `storage` here is
@@ -213,12 +224,16 @@ jobs:
           NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
           EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home --seed-user-data' }}
           PURESCIENCE_DRILL_SABOTAGE: ${{ inputs.sabotage || 'none' }}
+          # `||` fires on the `push: tags` lane, where `inputs` is empty — that lane must assert the
+          # mirror too, otherwise the only lane that runs without a human would skip the feed check.
+          EXPECT_FEED_URL: ${{ inputs.expect_feed_url || 'https://purescience.work/download/feed/' }}
         run: |
           set +e
           node scripts/macos-upgrade-certification.mjs \
             --previous-zip "$RUNNER_TEMP/previous/"*mac-${{ matrix.arch }}.zip \
             --next-version "$NEXT_VERSION" \
             --work-dir "$RUNNER_TEMP/upgrade" $EXTRA_ARGS \
+            ${EXPECT_FEED_URL:+--expect-feed-url "$EXPECT_FEED_URL"} \
             > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/mac-upgrade.log"

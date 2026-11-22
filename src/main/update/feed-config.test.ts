@@ -33,15 +33,19 @@ describe('update feeds', () => {
     })
   }
 
-  it('the development feed uses the same GitHub source as the packaged one', () => {
+  // The packaged feed is the self-hosted mirror and the development feed is GitHub, on purpose: a user's
+  // install must not depend on GitHub's throughput (measured ~1.4 MB/min domestically), while a dev build is
+  // the one place where the GitHub fallback is exercised without a mirror outage. What must not drift is the
+  // *pair* — a packaged build pointing at GitHub means auto-update is effectively absent where it matters.
+  it('the packaged feed is the mirror, and the development feed is the GitHub fallback', () => {
     const dev = liveConfigLines(read('dev-app-update.yml')).join('\n')
     expect(dev).toContain('provider: github')
     expect(dev).toContain(`owner: ${APP.githubOwner}`)
     expect(dev).toContain(`repo: ${APP.githubRepo}`)
 
     const packaged = liveConfigLines(read('electron-builder.yml')).join('\n')
-    expect(packaged).toContain('provider: github')
-    expect(packaged).toContain(`owner: ${APP.githubOwner}`)
-    expect(packaged).toContain(`repo: ${APP.githubRepo}`)
+    expect(packaged).toContain('provider: generic')
+    expect(packaged).toContain('url: https://purescience.work/download/feed/')
+    expect(packaged).not.toContain('provider: github')
   })
 })

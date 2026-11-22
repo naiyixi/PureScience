@@ -171,13 +171,17 @@ npmRebuild: false
 # electron-builder runs with --publish never, so this block only shapes app-update.yml + the feed
 # files, it does not upload anything.
 publish:
-  # GitHub Releases is the only feed that exists today: the mirror host this block used to name
-  # (`statics.zerolink.com`) never resolved, so every packaged build's first update check failed and
-  # users only learned about a release through the GitHub fallback anyway. electron-updater reads this
-  # through the generated app-update.yml; a public repository needs no token for reads.
-  provider: github
-  owner: naiyixi
-  repo: PureScience
+  # The self-hosted mirror, not GitHub Releases. Every install polls this through the generated
+  # app-update.yml, and the difference is not cosmetic: GitHub direct download measures ~1.4 MB/min on
+  # a domestic connection, so a 295 MB package took over three hours and auto-update was effectively
+  # absent for the users this product is for. The mirror is fed by `purescience-feed.sh`, which parks
+  # the newest complete release's `latest*.yml` and the artifacts they name at a stable path
+  # (`/download/feed/`), atomically and only after checking each declared size against the file.
+  #
+  # GitHub stays the fallback in code, not in configuration: a failed query against this feed retries
+  # once against Releases (`retryOnGithubFeed`), so a mirror outage costs a prompt, not the update.
+  provider: generic
+  url: https://purescience.work/download/feed/
   channel: latest
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

@@ -337,6 +337,41 @@ const applyDataSabotage = async ({ userData, storage }, mode) => {
   return removed
 }
 
+// `app-update.yml` is what the *shipped* build will poll — not what the repository says it will. Reading it
+// out of the bundle after the swap is the only way to know the install that just got upgraded is pointed at
+// the feed we meant, rather than at whatever the previous build had. Kept to the flat `key: value` shape
+// electron-builder writes; a nested value here would mean the file changed shape and the assertion should
+// fail loudly rather than guess.
+const parseUpdateConfig = (yaml) => {
+  const read = (key) => {
+    const match = new RegExp(`^${key}:\\s*(.+)$`, 'm').exec(yaml)
+    return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : undefined
+  }
+  return { provider: read('provider'), url: read('url'), channel: read('channel') }
+}
+
+const readUpdateConfig = async (bundle) => {
+  const path = join(bundle, 'Contents', 'Resources', 'app-update.yml')
+  const yaml = await readFile(path, 'utf8').catch(() => undefined)
+  return yaml === undefined ? undefined : { path, ...parseUpdateConfig(yaml) }
+}
+
+// The feed the installed build is pointed at, fetched the way electron-updater fetches it: `${url}` plus the
+// platform's file name. Only the version is taken from the body, on purpose — the assets are the release's
+// own bytes checked elsewhere, and re-downloading 300 MB per drill is not what this line is for.
+const feedOffers = async (url, fetchImpl) => {
+  const name = process.platform === 'darwin' ? 'latest-mac.yml' : 'latest.yml'
+  const target = `${url.replace(/\/$/, '')}/${name}`
+  const response = await fetchImpl(target, { signal: AbortSignal.timeout(30_000) })
+  const body = await response.text()
+  if (!response.ok)
+    throw new Error(`The feed answered ${response.status} at ${target}: ${body.slice(0, 200)}`)
+  const version = /^version:\s*(.+)$/m.exec(body)?.[1]?.trim()
+  if (!version)
+    throw new Error(`The feed at ${target} carries no version line: ${body.slice(0, 200)}`)
+  return { target, version, bytes: body.length }
+}
+
 const gatekeeper = async (bundle) => {
   const verdict = await runProcess('spctl', ['-a', '-vv', '--type', 'exec', bundle]).catch(
     (error) => `refused: ${error.message}`
@@ -368,6 +403,9 @@ const main = async () => {
   // said "The feed did not offer v2.33.2" while the payload beside it said `latest: 2.33.2`. Normalise the
   // argument instead of asking people to remember which side takes the `v`.
   const nextVersion = normaliseVersionInput(option('next-version'))
+  // Optional: the feed this build is supposed to poll. When given, the drill reads it out of the *installed*
+  // bundle (not the repository) and asks the mirror what it offers — the two halves of "自更新走的是镜像".
+  const expectFeedUrl = option('expect-feed-url')
   if (!previousZip || !nextVersion) {
     console.error(
       'Usage: node scripts/macos-upgrade-certification.mjs --previous-zip <zip> --next-version <x.y.z>'
@@ -507,6 +545,34 @@ const main = async () => {
   const storageReading = await describeMarker(storageMarkerPath)
   const dataReading = `userData:${userDataReading} storage:${storageReading}`
   console.log(`[mac-upgrade] user data after the swap: ${dataReading}`)
+
+  // The feed half. Skipped unless asked for: a drill that only proves the swap must not fail on a network
+  // nobody made a claim about.
+  let feedReading = 'skipped'
+  let feedOk = true
+  if (expectFeedUrl) {
+    const config = await readUpdateConfig(bundle)
+    const wanted = expectFeedUrl.replace(/\/$/, '')
+    if (!config?.url) {
+      feedReading = 'no app-update.yml in the installed bundle'
+      feedOk = false
+    } else if (config.provider !== 'generic' || config.url.replace(/\/$/, '') !== wanted) {
+      feedReading = `installed build points at ${config.provider ?? '?'}:${config.url}`
+      feedOk = false
+    } else {
+      try {
+        const feed = await feedOffers(config.url, fetch)
+        feedOk = feed.version === String(nextVersion)
+        feedReading = feedOk
+          ? `offers ${feed.version}`
+          : `offers ${feed.version} (expected ${nextVersion})`
+      } catch (error) {
+        feedReading = `unreachable: ${error instanceof Error ? error.message : String(error)}`
+        feedOk = false
+      }
+    }
+    console.log(`[mac-upgrade] update feed: ${feedReading}`)
+  }
   const ok =
     String(installed) === String(nextVersion) &&
     String(relaunchedVersion) === String(nextVersion) &&
@@ -515,11 +581,13 @@ const main = async () => {
     // the data the old build left behind, it is a new file that happens to sit at the same path.
     userDataReading !== 'lost' &&
     userDataReading !== 'rewritten' &&
-    storageReading === 'kept'
+    storageReading === 'kept' &&
+    feedOk
   console.log(
     `macOS upgrade reading: ${ok ? 'passed' : 'failed'} ` +
       `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)} ` +
-      `data=${dataReading}`
+      `data=${dataReading}` +
+      (expectFeedUrl ? ` feed=${feedReading.replace(/\s+/g, ' ')}` : '')
   )
   if (!ok) process.exitCode = 1
   await reap(bundle)
@@ -583,6 +651,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 
 export {
   applyDataSabotage,
+  feedOffers,
+  parseUpdateConfig,
   readUserDataMarker,
   seedUserDataMarker,
   userDataDir,

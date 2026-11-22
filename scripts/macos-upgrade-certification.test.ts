@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyDataSabotage,
+  feedOffers,
+  parseUpdateConfig,
   archMismatch,
   bundleVersion,
   findBundle,
@@ -249,5 +251,53 @@ describe('the reverse control for the data markers', () => {
       expect(removed).toHaveLength(1)
       expect(removed[0]).toContain('storage')
     })
+  })
+})
+
+// The feed half of the reading. Both assertions have to be able to fail: a build pointed at the wrong feed
+// is a build that will never update, and a feed that answers with a different version is a mirror that was
+// not re-pointed. `feedOffers` is given a fake `fetch` so the test does not need the network.
+describe('the feed the shipped build polls', () => {
+  it('reads provider and url out of a flat app-update.yml', () => {
+    const yaml = [
+      'provider: generic',
+      'url: https://purescience.work/download/feed/',
+      'channel: latest'
+    ].join('\n')
+    expect(parseUpdateConfig(yaml)).toEqual({
+      provider: 'generic',
+      url: 'https://purescience.work/download/feed/',
+      channel: 'latest'
+    })
+  })
+
+  it('comes back undefined for keys that are not there, so a wrong shape cannot pass as right', () => {
+    expect(parseUpdateConfig('provider: github\nowner: naiyixi').url).toBeUndefined()
+  })
+
+  it('asks the feed for this platform file and reports the version it carries', async () => {
+    const calls: string[] = []
+    const fetchImpl = async (target: string): Promise<Response> => {
+      calls.push(target)
+      return new Response('version: 2.33.3\nfiles:\n  - url: a.zip\n', { status: 200 })
+    }
+    const feed = await feedOffers('https://purescience.work/download/feed/', fetchImpl as never)
+    expect(calls[0]).toBe(
+      `https://purescience.work/download/feed/${process.platform === 'darwin' ? 'latest-mac.yml' : 'latest.yml'}`
+    )
+    expect(feed.version).toBe('2.33.3')
+  })
+
+  it('throws by name when the mirror answers with an error or with something that is not a feed', async () => {
+    const notFound = async (): Promise<Response> =>
+      new Response('<html>404</html>', { status: 404 })
+    await expect(feedOffers('https://x/download/feed', notFound as never)).rejects.toThrow(
+      /answered 404/
+    )
+
+    const html = async (): Promise<Response> => new Response('<!doctype html>', { status: 200 })
+    await expect(feedOffers('https://x/download/feed', html as never)).rejects.toThrow(
+      /no version line/
+    )
   })
 })
