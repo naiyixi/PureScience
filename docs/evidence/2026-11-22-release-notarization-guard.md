@@ -43,6 +43,18 @@ origin=Developer ID Application: kai wang (UGQZPJ74DF)
 `versions.json`：`latest = v2.33.1`；`SHA256SUMS.txt` 八条逐一在磁盘上、尺寸与 GitHub 声明**逐条相同**、
 无 `*.part`（17 个文件里 8 个是产品包，其余是 yml/json/txt）。
 
+## 更新源的读数也对得上（同一版）
+
+`latest-mac.yml` 里两个架构的 `sha512` 必须是被 staple 过的那两个 zip 的哈希，否则 macOS 原地更新会
+下载到一个校验不过的包。在服务器上直接对磁盘字节取哈希（不搬家、不比对下载副本）：
+
+| 文件 | 磁盘 sha512（base64） | feed 里的值 |
+| --- | --- | --- |
+| `…-mac-arm64.zip` | `/j1qwq3SiSHlx…IeMcyA==` | 同 |
+| `…-mac-x64.zip` | `4fjxi4BcRRky…5XOAJQ==` | 同 |
+
+`latest.yml`（Windows）与 `latest-linux.yml` 同为 2.33.1，三份 feed 没有一处还停在 2.33.0。
+
 ## 教训（写在这里而不是只写在提交里）
 
 1. **「跳过的步骤」不会让 job 变红，而 `publish` 只看产物齐不齐** —— 所以判据必须问「这一版该做的事做了没有」，
