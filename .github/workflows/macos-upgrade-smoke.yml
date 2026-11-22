@@ -26,10 +26,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: macos-upgrade-smoke-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   drill:
     name: Upgrade macOS app in place
