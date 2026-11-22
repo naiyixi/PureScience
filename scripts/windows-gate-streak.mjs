@@ -18,6 +18,7 @@
 // `windows-upgrade-smoke` **不能**放进 `publish.needs` —— 它 depends on publish（要读已发布的资产），
 // 那是一个依赖环。所以闸门读的是 Nightly 的证据，不是发版时那一趟。
 import { argv, env, exit } from 'node:process'
+import { pathToFileURL } from 'node:url'
 
 const option = (name, fallback) => {
   const index = argv.indexOf(`--${name}`)
@@ -124,7 +125,10 @@ const main = async () => {
   exit(result.satisfied ? 0 : 1)
 }
 
-if (import.meta.url === `file://${argv[1]}`) {
+// `argv[1]` is a path, `import.meta.url` is a URL — comparing them as strings works only while the
+// path happens to be absolute. In CI it is, but the equality is what decides whether the gate runs at all,
+// so it is compared properly and the failure mode is a thrown test, not a silent exit 0.
+if (argv[1] && pathToFileURL(argv[1]).href === import.meta.url) {
   main().catch((error) => {
     console.error(`windows gate streak: ${error instanceof Error ? error.message : String(error)}`)
     exit(2)
