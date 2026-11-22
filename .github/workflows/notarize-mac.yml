@@ -440,20 +440,21 @@ jobs:
           gh release upload "${{ inputs.tag }}" mac/*-mac-*.dmg mac/*-mac-*.zip mac/*-mac.yml \
             --repo "$GITHUB_REPOSITORY" --clobber
 
-  # Standalone path only: after both archs are stapled + clobbered, rebuild SHA256SUMS.txt so it
-  # matches the re-stapled bytes, and merge the per-arch mac feeds into latest-mac.yml (the two
-  # notarize jobs clobbered arm64/x64-mac.yml independently; the combined feed the app polls has to be
-  # rebuilt where both are visible). (In the release.yml path, the publish job does both over the
+  # Standalone path only: after both archs are stapled + clobbered, rebuild the files that describe
+  # the installer BYTES — SHA256SUMS.txt, version.json (the manifest the in-app update flow polls) and
+  # RELEASE-CERTIFICATION.json — and merge the per-arch mac feeds into latest-mac.yml (the two notarize
+  # jobs clobbered arm64/x64-mac.yml independently; the combined feed the app polls has to be rebuilt
+  # where both are visible). (In the release.yml path, the publish job does all of it over the
   # already-stapled artifacts, so no refresh is needed there.)
   refresh-checksums:
     if: ${{ !inputs.from_run }}
     needs: notarize
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (for the mac-feed merge script)
+      - name: Checkout (for the release-metadata and mac-feed scripts)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Recompute + upload SHA256SUMS.txt
+      - name: Recompute + upload SHA256SUMS.txt, version.json and the certification record
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -461,7 +462,8 @@ jobs:
           dir=$(mktemp -d)
           gh release download "${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" --dir "$dir" \
             --pattern '*.dmg' --pattern '*.zip' --pattern '*.exe' \
-            --pattern '*.AppImage' --pattern '*.deb'
+            --pattern '*.AppImage' --pattern '*.deb' \
+            --pattern 'version.json' --pattern 'RELEASE-CERTIFICATION.json'
           (
             cd "$dir"
             shopt -s nullglob
@@ -469,7 +471,15 @@ jobs:
             [ ${#files[@]} -gt 0 ] && sha256sum "${files[@]}" > SHA256SUMS.txt
             cat SHA256SUMS.txt
           )
-          gh release upload "${{ inputs.tag }}" "$dir/SHA256SUMS.txt" \
+          # Stapling replaced the mac bytes. The manifest and the certification record still describe
+          # the pre-staple bytes unless they are refreshed with them: a manifest client would reject
+          # the stapled dmg on its sha256, and the record's own digests would stop matching
+          # SHA256SUMS.txt — the disagreement scripts/verify-release.mjs refuses to certify. The
+          # script fails by name (never keeps a stale digest) when an installer it must describe is
+          # missing from this directory or from the checksum list.
+          node scripts/refresh-release-asset-metadata.mjs "$dir" "${{ inputs.tag }}"
+          gh release upload "${{ inputs.tag }}" "$dir/SHA256SUMS.txt" "$dir/version.json" \
+            "$dir/RELEASE-CERTIFICATION.json" \
             --repo "$GITHUB_REPOSITORY" --clobber
 
       # Rebuild the combined latest-mac.yml from the re-stapled per-arch feeds and clobber it onto the
