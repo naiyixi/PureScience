@@ -22,6 +22,10 @@ on:
         description: Version the drill expects the updater to install (no leading v)
         required: true
         default: 2.33.1
+      extra_args:
+        description: Extra arguments for the drill (e.g. --keep-home)
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -73,7 +77,8 @@ jobs:
           node scripts/macos-upgrade-certification.mjs \
             --previous-zip "$RUNNER_TEMP/previous/"*mac-arm64.zip \
             --next-version "$NEXT_VERSION" \
-            --work-dir "$RUNNER_TEMP/upgrade" > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
+            --work-dir "$RUNNER_TEMP/upgrade" ${{ inputs.extra_args }} \
+            > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/mac-upgrade.log"
           exit $status

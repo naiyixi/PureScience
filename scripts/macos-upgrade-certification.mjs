@@ -269,12 +269,18 @@ const main = async () => {
   const home = join(workRoot, 'home')
   drillHome = home
   await mkdir(home, { recursive: true })
+  // `--keep-home` exists for one question: a private HOME is what lets this run beside an installed copy,
+  // but it also hands the app an environment no ordinary launch has. When a check hangs, the way to tell
+  // "the drill's environment broke the network stack" from "the check itself hangs" is to run it the way a
+  // user's copy runs — with the real HOME — and see whether the answer changes.
+  const keepHome = args.includes('--keep-home')
   const env = {
     ...process.env,
-    HOME: home,
+    ...(keepHome ? {} : { HOME: home }),
     PURESCIENCE_STORAGE_ROOT: storageRoot,
     PURESCIENCE_E2E_STORAGE_ROOT: storageRoot
   }
+  console.log(`[mac-upgrade] HOME isolation: ${keepHome ? 'off (real HOME)' : 'on'}`)
   const running = await otherInstance(bundle)
   if (running) {
     console.log(
