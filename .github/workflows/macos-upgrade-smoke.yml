@@ -31,7 +31,12 @@ jobs:
     name: Upgrade macOS app in place
     # arm64 because the release's mac-arm64 zip carries the notarized bundle on this architecture; the
     # x64 zip is the same flow and can be added when a runner for it matters.
-    runs-on: macos-14
+    #
+    # `macos-15`, not `macos-14`: the 14 image was retired 2026-11-02, and a dispatch against it does not
+    # queue and time out — it is cancelled within a second with zero steps, and the only place that says
+    # why is an annotation the run API keeps: "The configuration 'macos-14-arm64-us-default' is not
+    # supported". Two dispatches were read as "something is cancelling my runs" before that was checked.
+    runs-on: macos-15
     timeout-minutes: 90
     steps:
       - name: Checkout
