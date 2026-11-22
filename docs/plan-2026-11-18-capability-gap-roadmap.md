@@ -208,6 +208,34 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 只比了体积没比摘要 —— 在这台机器上拉 300 MB 的代价太大，摘要是由发布链自己算的；要独立复核得在海外机器上
 做，记在这里不装作验过。
 
+### 更新源：镜像能下包，但还不能当 feed（2026-11-22 实测，待拍板）
+
+`publish.provider = github` —— 也就是说**所有用户的自更新都走 GitHub Releases**。在本机网络上量到 GitHub 直连
+约 **1.4 MB/min**，295 MB 的包要三个多小时；国内用户基本等于没有自更新。
+
+镜像这边实测（`curl` + 服务端目录）：
+
+| URL | 结果 |
+| --- | --- |
+| `/download/v2.33.2/latest-mac.yml` | **200，550 B，真是 YAML**（`version: 2.33.2`） |
+| `/download/latest-mac.yml`（稳定指针） | **404** |
+| `/download/v2.33.2/nope.zip` | 404（真实 404，符合预期） |
+| `/downloads/…`（复数） | **200 + 92 KB 首页 HTML** —— 落进 SPA 回落，路径写错也像下载成功 |
+
+**所以缺的只有一件**：一个稳定指针。`generic` provider 取的是 `${url}/latest-<platform>.yml`，镜像现在只有
+按版本分目录的副本，没有那个稳定路径。
+
+要接的话是三块：
+
+1. **服务端**：`purescience-sync.sh` 维护 `/var/www/purescience/downloads/feed/`，把最新一版的三个平台 YAML 与它们
+   **引用的资产**（相对路径，相对 feed 目录解析）放进去，原子切换（先写 `feed.new/` 再 `mv`）。
+2. **应用**：`publish: { provider: generic, url: https://purescience.work/download/feed/ }`；GitHub 那条重试路径
+   已经在（`electron-updater-strategy.ts` 的 provider 失败重试），要验它是真能兜住，不是只在注释里。
+3. **演练**：用「feed 指向镜像」的一版跑一次原地升级，证明镜像链路能换包 —— 现在这条演练**只走 GitHub**。
+
+**风险**：已装出去的版本仍指 GitHub，换源只对新版本生效；镜像 404 时如果 GitHub 重试没真兜住，就等于把更新
+路径弄断。所以第 3 块（演练）不是可选项，是前置条件。
+
 ### 成熟度自称的两处过期（2026-11-20 抽查，用户可见面）
 
 README 的成熟度段（发布页正文直接由它生成）里有两句话与事实不符，都是**往低了说**，但错的就得改：
