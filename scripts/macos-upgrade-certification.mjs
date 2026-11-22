@@ -175,8 +175,10 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
   }
   if (checked.state !== 'available' || String(checked.latest) !== String(nextVersion)) {
     throw new Error(
-      `The feed did not offer ${nextVersion}: ${JSON.stringify(checked)} — a drill that cannot see the ` +
-        'next version proves nothing about upgrading to it'
+      `The feed did not offer ${JSON.stringify(nextVersion)} as next_version, it answered ` +
+        `${JSON.stringify(checked.state)} with latest ${JSON.stringify(checked.latest)} — ` +
+        'those two are the argument and the feed, and a drill that cannot see the next version proves ' +
+        'nothing about upgrading to it'
     )
   }
 
@@ -274,6 +276,11 @@ const gatekeeper = async (bundle) => {
 let drilledBundle
 let drillHome
 
+// `previous_tag` carries a leading `v`; `next_version` is the bare version the feed answers with. A caller
+// who passes `--next-version v2.33.2` used to get "The feed did not offer v2.33.2" while the payload on the
+// same line said `latest: 2.33.2` — a message that sends the reader after the feed instead of the argument.
+const normaliseVersionInput = (raw) => (raw ? String(raw).trim().replace(/^v/i, '') : raw)
+
 const main = async () => {
   const args = process.argv.slice(2)
   const option = (name, fallback) => {
@@ -281,7 +288,11 @@ const main = async () => {
     return index >= 0 && args[index + 1] ? args[index + 1] : fallback
   }
   const previousZip = option('previous-zip')
-  const nextVersion = option('next-version')
+  // `previous_tag` carries a leading `v` and `next_version` is the bare version, so a caller who passes
+  // `--next-version v2.33.2` is one keystroke from an assertion that reads like a broken feed: the message
+  // said "The feed did not offer v2.33.2" while the payload beside it said `latest: 2.33.2`. Normalise the
+  // argument instead of asking people to remember which side takes the `v`.
+  const nextVersion = normaliseVersionInput(option('next-version'))
   if (!previousZip || !nextVersion) {
     console.error(
       'Usage: node scripts/macos-upgrade-certification.mjs --previous-zip <zip> --next-version <x.y.z>'
@@ -439,4 +450,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   })
 }
 
-export { bundleVersion, findBundle, gatekeeper, runProcess, waitForVersionOnDisk }
+export {
+  bundleVersion,
+  findBundle,
+  gatekeeper,
+  normaliseVersionInput,
+  runProcess,
+  waitForVersionOnDisk
+}

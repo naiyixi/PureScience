@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bundleVersion,
   findBundle,
+  normaliseVersionInput,
   runProcess,
   waitForVersionOnDisk
 } from './macos-upgrade-certification.mjs'
@@ -105,5 +106,21 @@ describe('macOS upgrade drill', () => {
     await expect(runProcess('ps-no-such-binary-2f4d', [], { timeoutMs: 30_000 })).rejects.toThrow(
       /^ps-no-such-binary-2f4d could not be started: /
     )
+  })
+})
+
+describe('the next_version argument is read the way people actually type it', () => {
+  // Run 45001026264 failed with "The feed did not offer v2.33.2" while the payload beside it said
+  // `latest: 2.33.2`: the argument carried a `v`, the feed does not. The failure named the feed, so the
+  // next hour would have gone into the feed instead of the argument.
+  it('accepts a leading v and surrounding whitespace', () => {
+    expect(normaliseVersionInput('v2.33.2')).toBe('2.33.2')
+    expect(normaliseVersionInput('  2.33.2 ')).toBe('2.33.2')
+    expect(normaliseVersionInput('V2.33.2')).toBe('2.33.2')
+  })
+
+  it('leaves a bare version and a missing value alone', () => {
+    expect(normaliseVersionInput('2.33.2')).toBe('2.33.2')
+    expect(normaliseVersionInput(undefined)).toBeUndefined()
   })
 })
