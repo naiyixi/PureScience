@@ -13,7 +13,7 @@
 
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -127,10 +127,35 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
   const { application, page, info } = await launchAndRead(executable, env)
   console.log(`[mac-upgrade] previous app reports ${JSON.stringify(info)}`)
 
+  // `check()` has no timeout of its own inside the app, so a provider request that never settles keeps the
+  // promise pending with no status change to show for it. Polling the status the app itself publishes is
+  // what turns "nothing came back" into "it was still in <state> when the drill gave up".
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      console.log(`[mac-upgrade] console.error: ${message.text().slice(0, 300)}`)
+  })
+  page.on('pageerror', (error) =>
+    console.log(`[mac-upgrade] pageerror: ${String(error).slice(0, 300)}`)
+  )
+  const before = await page.evaluate(() => globalThis.window.api.update.getStatus())
+  console.log(`[mac-upgrade] status before check: ${JSON.stringify(before)}`)
+  let lastState = JSON.stringify(before)
+  const poller = setInterval(() => {
+    page
+      .evaluate(() => globalThis.window.api.update.getStatus())
+      .then((status) => {
+        const next = JSON.stringify(status)
+        if (next !== lastState) {
+          lastState = next
+          console.log(`[mac-upgrade] status during check: ${next.slice(0, 400)}`)
+        }
+      })
+      .catch(() => undefined)
+  }, 5_000)
   const checked = await withTimeout(
     page.evaluate(() => globalThis.window.api.update.check()),
     'update.check'
-  )
+  ).finally(() => clearInterval(poller))
   console.log(`[mac-upgrade] check() -> ${JSON.stringify(checked)}`)
   if (checked.state === 'up-to-date') {
     throw new Error(
@@ -290,11 +315,17 @@ const main = async () => {
 // phase it reached (`query-provider`, `query-provider-github`). When a check hangs, that file is the only
 // thing that says WHERE — the drill's own timeout can only say "nothing came back in N ms".
 const appLogTail = async (home, lines = 12) => {
-  const logFile = join(home, 'Library', 'Logs', 'PureScience', 'main.log')
-  const text = await readFile(logFile, 'utf8').catch(() => undefined)
-  if (!text) return undefined
-  const tail = text.trim().split('\n').slice(-lines)
-  return { logFile, tail }
+  // Two roots, because the app derives one of them from NSHomeDirectory rather than from the env var the
+  // drill sets: a run that wrote nothing under the drill HOME may still have logged under the real one.
+  const candidates = [
+    join(home, 'Library', 'Logs', 'PureScience', 'main.log'),
+    join(homedir(), 'Library', 'Logs', 'PureScience', 'main.log')
+  ]
+  for (const logFile of candidates) {
+    const text = await readFile(logFile, 'utf8').catch(() => undefined)
+    if (text) return { logFile, tail: text.trim().split('\n').slice(-lines) }
+  }
+  return undefined
 }
 
 const printAppLog = async (home) => {
