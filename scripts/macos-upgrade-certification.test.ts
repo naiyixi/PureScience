@@ -10,7 +10,10 @@ import {
   findBundle,
   normaliseArch,
   normaliseVersionInput,
+  readUserDataMarker,
   runProcess,
+  seedUserDataMarker,
+  userDataDir,
   waitForVersionOnDisk
 } from './macos-upgrade-certification.mjs'
 
@@ -149,5 +152,49 @@ describe('an architecture mismatch is refused instead of reported as an upgrade'
   it('normalises the names the two tools use', () => {
     expect(normaliseArch('x86_64')).toBe('x64')
     expect(normaliseArch('aarch64')).toBe('arm64')
+  })
+})
+
+// The user-data half of the drill: a swap that puts the right version on disk but hands the new build an
+// empty store has destroyed the thing the user actually cares about. What makes that assertion meaningful
+// is that it can fail — a missing file, a re-created file, and a file with rewritten contents all have to
+// read differently, otherwise the whole check is a string that is always there.
+describe('the user-data marker the drill leaves behind', () => {
+  const withHome = async (body: (home: string) => Promise<void>): Promise<void> => {
+    const home = await mkdtemp(join(tmpdir(), 'drill-home-'))
+    try {
+      await body(home)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  }
+
+  it('lands in the directory the packaged app calls its own', async () => {
+    await withHome(async (home) => {
+      expect(userDataDir(home)).toBe(join(home, 'Library', 'Application Support', 'PureScience'))
+      const path = await seedUserDataMarker(home, 'token-1')
+      expect(path).toBe(join(userDataDir(home), 'drill-marker.json'))
+    })
+  })
+
+  it('reads back the token it wrote, and reports a missing file as missing', async () => {
+    await withHome(async (home) => {
+      const path = await seedUserDataMarker(home, 'token-1')
+      expect(await readUserDataMarker(path)).toBe('token-1')
+      await rm(path)
+      expect(await readUserDataMarker(path)).toBeUndefined()
+    })
+  })
+
+  it('does not read a rewritten file as the original token', async () => {
+    await withHome(async (home) => {
+      const path = await seedUserDataMarker(home, 'token-1')
+      await writeFile(path, JSON.stringify({ token: 'token-2' }), 'utf8')
+      expect(await readUserDataMarker(path)).toBe('token-2')
+      // Not JSON at all still has to come back as *something that is not the token*, or a corrupted file
+      // would compare equal by both sides being undefined.
+      await writeFile(path, 'garbage', 'utf8')
+      expect(await readUserDataMarker(path)).toBe('garbage')
+    })
   })
 })

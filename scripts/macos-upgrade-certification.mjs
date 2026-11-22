@@ -12,7 +12,7 @@
 // carry the next version — not "the process exited" and not "the log said so".
 
 import { spawn } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -292,6 +292,30 @@ const waitForVersionOnDisk = async (bundle, nextVersion, budgetMs = HANDOVER_TIM
 
 // Gatekeeper's own answer, not ours: a stapled, signed bundle is accepted for execution, and the drill
 // prints the authority it accepted so a signature that changed hands cannot pass quietly.
+// What a user loses if an updater gets this wrong is not the version on disk but the work behind it. The
+// marker is deliberately written where the packaged app keeps its own state (`app.getPath('userData')` is
+// `~/Library/Application Support/<productName>`), and it is written *before* the old build runs, so the
+// assertion after the relaunch covers both halves: the swap must not wipe it, and the new build must not
+// re-create its store from scratch on top of it.
+const userDataDir = (homeDir) => join(homeDir, 'Library', 'Application Support', 'PureScience')
+
+const seedUserDataMarker = async (homeDir, token) => {
+  const path = join(userDataDir(homeDir), 'drill-marker.json')
+  await mkdir(userDataDir(homeDir), { recursive: true })
+  await writeFile(path, JSON.stringify({ token, writtenAt: new Date().toISOString() }), 'utf8')
+  return path
+}
+
+const readUserDataMarker = async (path) => {
+  const raw = await readFile(path, 'utf8').catch(() => undefined)
+  if (raw === undefined) return undefined
+  try {
+    return JSON.parse(raw).token
+  } catch {
+    return raw
+  }
+}
+
 const gatekeeper = async (bundle) => {
   const verdict = await runProcess('spctl', ['-a', '-vv', '--type', 'exec', bundle]).catch(
     (error) => `refused: ${error.message}`
@@ -376,6 +400,13 @@ const main = async () => {
     PURESCIENCE_E2E_STORAGE_ROOT: storageRoot
   }
   console.log(`[mac-upgrade] HOME isolation: ${keepHome ? 'off (real HOME)' : 'on'}`)
+  // A marker in the app's own user-data directory. Skipped under `--keep-home`, because that path is the
+  // real user's — a drill may read a real HOME to answer a question, it may not write into one.
+  const markerToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  const markerPath = keepHome ? undefined : await seedUserDataMarker(home, markerToken)
+  console.log(
+    `[mac-upgrade] user-data marker: ${markerPath ? `seeded at ${markerPath}` : 'skipped (real HOME)'}`
+  )
   const running = await otherInstance(bundle)
   if (running) {
     console.log(
@@ -421,13 +452,28 @@ const main = async () => {
   console.log(`[mac-upgrade] Gatekeeper: ${gate.verdict}`)
   console.log(`[mac-upgrade] ${gate.verify}`)
 
+  // The relaunch happens before this reads the marker on purpose: the interesting case is that the new
+  // build started, opened its store, and still found the old data rather than replacing it.
+  const markerAfter = markerPath ? await readUserDataMarker(markerPath) : undefined
+  const dataReading = markerPath
+    ? markerAfter === markerToken
+      ? 'kept'
+      : markerAfter === undefined
+        ? 'lost (marker gone)'
+        : 'kept (token changed)'
+    : 'skipped (real HOME)'
+  console.log(`[mac-upgrade] user data after the swap: ${dataReading}`)
   const ok =
     String(installed) === String(nextVersion) &&
     String(relaunchedVersion) === String(nextVersion) &&
-    gate.verdict.includes('accepted')
+    gate.verdict.includes('accepted') &&
+    // `kept (token changed)` still fails: a file that came back with different contents is not the data the
+    // old build left behind, it is a new file that happens to sit at the same path.
+    (markerPath === undefined || markerAfter === markerToken)
   console.log(
     `macOS upgrade reading: ${ok ? 'passed' : 'failed'} ` +
-      `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)}`
+      `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)} ` +
+      `data=${dataReading}`
   )
   if (!ok) process.exitCode = 1
   await reap(bundle)
@@ -490,6 +536,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 }
 
 export {
+  readUserDataMarker,
+  seedUserDataMarker,
+  userDataDir,
   archMismatch,
   bundleVersion,
   findBundle,
