@@ -1,5 +1,33 @@
 # PureScience 更新日记
 
+## v2.33.2 — 2026-11-22
+
+### 检查更新不再「永远在检查」，macOS 原地升级第一次被真的跑过
+
+**一个不回答的更新源会把应用钉在 `checking`。** 这不是推测：在 macOS runner 上跑一次真实的
+2.33.0 → 2.33.1 升级时，应用自己的检查更新停在 `phase=query-provider`、`elapsedMs=0`，两分钟一行日志
+没有，窗口一直显示「检查中」。`electron-updater` 本身没有超时，所以这一步可以**永远**挂着 —— 网络被
+黑洞化的用户既看不到失败，也没有重试入口。现在 provider 查询与 20 秒预算赛跑，超时即落成
+`status=error` 并写明 `The update check did not answer within 20000 ms`；超时**不**走 GitHub 兜底
+（同一个不回答的请求只会再花一个预算）。
+
+**macOS 补上了 Windows 早就有的那件东西：一次真实的原地升级演练。**
+`scripts/macos-upgrade-certification.mjs` 把上一版的应用放进临时目录，按应用自己的
+`check() / download() / apply()` 走到交棒，然后用 `plutil` 读**同一路径**的 bundle 版本、清掉 Squirrel
+自己拉起的副本再测一次全新启动，最后让 Gatekeeper 说话（`spctl -a -vv --type exec` 必须 `accepted`）。
+run `44983043496` 的读数是 `passed from=2.33.0 to=2.33.1 relaunched="2.33.1"`。
+
+这条判据一路上改掉了六处**我自己的**读数谎话，全部记在
+`docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`：`macos-14` 镜像早已退役（dispatch 一秒
+`cancelled`、零步骤，原因只在 run 的 annotation 里）、`| tee` 让 step 悬了一小时（代价是行内时间戳不再
+可信）、私有 `HOME` 让 Electron 网络栈不回答、`apply()` 之后立刻 `close()` 会把 Squirrel 的退出步骤抢掉、
+`spctl` 把裁定写在 stderr 所以「空字符串」分不清 accepted 与没输出、以及 Squirrel 换完包会自己把应用拉
+起来（我再去启动就成了第二实例交棒退出）。
+
+**这一版没有让演练成为发版闸门。** 它只由 `workflow_dispatch` 触发，且只跑过 arm64；临时目录里的干净
+副本也不代表真实会话与文献库在换包之后完好。要接进 `release.yml` 之前，判据先写死：连续 3 趟 dispatch
+绿、期间没有放宽断言或加 retry、失败要记成 `failed` 而不是跳过。
+
 ## v2.33.1 — 2026-11-22
 
 ### 这一版只修发布流程本身的两处，并把 macOS 资产补回「已公证、已 staple」
