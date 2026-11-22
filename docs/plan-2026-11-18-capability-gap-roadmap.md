@@ -208,7 +208,18 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 只比了体积没比摘要 —— 在这台机器上拉 300 MB 的代价太大，摘要是由发布链自己算的；要独立复核得在海外机器上
 做，记在这里不装作验过。
 
-### 更新源：镜像能下包，但还不能当 feed（2026-11-22 实测，待拍板）
+### 更新源：已改走镜像（v2.33.3 起），逐项读数在下面
+
+**2026-11-22 拍板做，v2.33.3 首发。** 服务端 `purescience-feed.sh` 已接进 sync cron，应用的
+`publish.provider` 已从 `github` 改成 `generic` 指向 `https://purescience.work/download/feed/`。实测（服务端
+与 curl 真跑，不是看脚本推断）：三份 feed 全部 `200` 且 `version: 2.33.2`，五个资产的 `Content-Length` 与
+YAML 声明**逐一相等**；`/download/feed/` 是 `/download/` 别名下的真实路径，缺文件返回**真 404**。
+
+仍待证明的两格（写在下面，不当成已完成）：① `v2.33.3` 镜像同步完成后，feed 真的供 2.33.3
+（`require_feed_version=true` 的那次 dispatch）；② 一次**从镜像 feed 完成换包**的原地升级（要 v2.33.3 → 下一版
+才有意义）。
+
+以下是拍板前的原始实测，留作依据。
 
 `publish.provider = github` —— 也就是说**所有用户的自更新都走 GitHub Releases**。在本机网络上量到 GitHub 直连
 约 **1.4 MB/min**，295 MB 的包要三个多小时；国内用户基本等于没有自更新。
