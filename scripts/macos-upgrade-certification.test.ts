@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyDataSabotage,
+  compareVersions,
+  feedWaitDecision,
   feedOffers,
   parseUpdateConfig,
   archMismatch,
@@ -299,5 +301,27 @@ describe('the feed the shipped build polls', () => {
     await expect(feedOffers('https://x/download/feed', html as never)).rejects.toThrow(
       /no version line/
     )
+  })
+})
+
+// The wait that keeps a tag-push drill alive until the release has published. Getting its direction right is
+// the whole point: `wait` on a feed that is behind, `ahead` on a feed that already offers something newer (a
+// re-drill of an old tag), and `proceed` as soon as the feed offers anything else at all.
+describe('waiting for the release to publish', () => {
+  it('reads versions numerically, not as strings', () => {
+    expect(compareVersions('2.33.10', '2.33.9')).toBe(1)
+    expect(compareVersions('v2.33.2', '2.33.10')).toBe(-1)
+    expect(compareVersions('2.34.0', '2.33.99')).toBe(1)
+    expect(compareVersions('2.33.2', '2.33.2')).toBe(0)
+  })
+
+  it('waits when the feed is behind the target, and refuses when it is already ahead', () => {
+    expect(feedWaitDecision({ state: 'up-to-date', latest: '2.33.2' }, '2.33.3')).toBe('wait')
+    expect(feedWaitDecision({ state: 'up-to-date', latest: '2.34.0' }, '2.33.3')).toBe('ahead')
+  })
+
+  it('proceeds on anything that is not "up-to-date" — including a named error', () => {
+    expect(feedWaitDecision({ state: 'available', latest: '2.33.3' }, '2.33.3')).toBe('proceed')
+    expect(feedWaitDecision({ state: 'error', error: 'timeout' }, '2.33.3')).toBe('proceed')
   })
 })

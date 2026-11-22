@@ -164,6 +164,34 @@ const launchAndRead = async (executable, env) => {
 
 // The hand-over: `apply()` either resolves with a status or the app closes under the driver. Neither
 // outcome is the judgement — the judgement is the bundle on disk afterwards.
+// A tag push starts the drill and the release at the same moment, so the feed answering "you are current"
+// is expected for the first while. What separates a wait from a mistake is direction, not patience: the feed
+// being *behind* the target resolves itself once the release publishes, the feed already offering something
+// *newer* than the target never will (a re-drill of an old tag) and must fail at once instead of burning the
+// budget. Version compare is numeric per segment; anything non-numeric sorts as 0 so a `v` prefix or a
+// pre-release suffix cannot make the answer accidental.
+const versionSegments = (version) =>
+  String(version ?? '')
+    .replace(/^v/i, '')
+    .split('.')
+    .map((part) => Number.parseInt(part, 10) || 0)
+
+const compareVersions = (a, b) => {
+  const left = versionSegments(a)
+  const right = versionSegments(b)
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0)
+    if (diff !== 0) return diff < 0 ? -1 : 1
+  }
+  return 0
+}
+
+const feedWaitDecision = (status, nextVersion) => {
+  if (!status || status.state !== 'up-to-date') return 'proceed'
+  const order = compareVersions(status.latest, nextVersion)
+  return order < 0 ? 'wait' : 'ahead'
+}
+
 const driveUpdate = async ({ executable, env, nextVersion }) => {
   const { application, page, info } = await launchAndRead(executable, env)
   console.log(`[mac-upgrade] previous app reports ${JSON.stringify(info)}`)
@@ -193,14 +221,47 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
       })
       .catch(() => undefined)
   }, 5_000)
-  const checked = await withTimeout(
+  // A tag push starts this drill at the same moment it starts the release, so the feed legitimately still
+  // offers the *previous* version when the drill asks (measured on run 45037339833: `Drilling v2.33.2 ->
+  // 2.33.3`, then `The feed already says we are current (2.33.2)`). Waiting for the release to publish is
+  // the drill's job, not an error: it re-asks with a budget, and says so on every poll so a stuck wait reads
+  // as a stuck wait rather than a silent minute.
+  let checked = await withTimeout(
     page.evaluate(() => globalThis.window.api.update.check()),
     'update.check'
-  ).finally(() => clearInterval(poller))
-  console.log(`[mac-upgrade] check() -> ${JSON.stringify(checked)}`)
-  if (checked.state === 'up-to-date') {
+  )
+  const waitBudgetMs = Number(process.env.PURESCIENCE_DRILL_FEED_WAIT_MS ?? 45 * 60_000)
+  const waitStarted = Date.now()
+  let polls = 0
+  const decision = feedWaitDecision(checked, nextVersion)
+  if (decision === 'ahead') {
     throw new Error(
-      `The feed already says we are current (${checked.current}); the drill needs an older app than ${nextVersion}`
+      `The feed already offers ${checked.latest}, which is newer than the target ${nextVersion} — ` +
+        'waiting cannot change that, and an "upgrade" to an older version is not what this drill proves'
+    )
+  }
+  while (decision === 'wait' && Date.now() - waitStarted < waitBudgetMs) {
+    polls += 1
+    const waited = Math.round((Date.now() - waitStarted) / 1000)
+    console.log(
+      `[mac-upgrade] the feed still says ${checked.latest} (waiting for ${nextVersion}, ${waited}s of ` +
+        `${Math.round(waitBudgetMs / 1000)}s)`
+    )
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 60_000))
+    checked = await withTimeout(
+      page.evaluate(() => globalThis.window.api.update.check()),
+      'update.check'
+    )
+  }
+  clearInterval(poller)
+  console.log(
+    `[mac-upgrade] check() -> ${JSON.stringify(checked)}${polls ? ` (after ${polls} wait(s))` : ''}`
+  )
+  if (checked.state === 'up-to-date' && feedWaitDecision(checked, nextVersion) === 'wait') {
+    throw new Error(
+      `The feed still says we are current (${checked.current}) after waiting ${Math.round(
+        (Date.now() - waitStarted) / 1000
+      )}s for ${nextVersion}; the drill needs an older app than the version the feed offers`
     )
   }
   if (checked.state !== 'available' || String(checked.latest) !== String(nextVersion)) {
@@ -550,6 +611,10 @@ const main = async () => {
   // nobody made a claim about.
   let feedReading = 'skipped'
   let feedOk = true
+  // Two different questions, and only one is answerable at tag-push time: the mirror is fed by a cron, so
+  // right after a release it still serves the previous version. "Points at the mirror" is asserted always;
+  // "the mirror already serves this version" is asserted when asked for, by the post-sync verification run.
+  const requireFeedVersion = args.includes('--require-feed-version')
   if (expectFeedUrl) {
     const config = await readUpdateConfig(bundle)
     const wanted = expectFeedUrl.replace(/\/$/, '')
@@ -562,10 +627,11 @@ const main = async () => {
     } else {
       try {
         const feed = await feedOffers(config.url, fetch)
-        feedOk = feed.version === String(nextVersion)
-        feedReading = feedOk
+        const versionMatches = feed.version === String(nextVersion)
+        feedReading = versionMatches
           ? `offers ${feed.version}`
-          : `offers ${feed.version} (expected ${nextVersion})`
+          : `offers ${feed.version}, released ${nextVersion} (mirror syncs on a cron)`
+        feedOk = versionMatches || !requireFeedVersion
       } catch (error) {
         feedReading = `unreachable: ${error instanceof Error ? error.message : String(error)}`
         feedOk = false
@@ -651,6 +717,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 
 export {
   applyDataSabotage,
+  compareVersions,
+  feedWaitDecision,
   feedOffers,
   parseUpdateConfig,
   readUserDataMarker,

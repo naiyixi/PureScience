@@ -34,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Reading the Nightly runs (and their job logs) is how the Windows lane is gated below.
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -52,6 +54,20 @@ jobs:
       - name: Verify release commit is on main
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      # The Windows lane, promoted from evidence to a gate on 2026-11-22. It cannot be a `needs:` on
+      # `windows-upgrade-smoke` — that job depends on `publish` (it upgrades to this release), so a
+      # `needs` edge would be a cycle. What is gated instead is the evidence itself: the last three Nightly
+      # runs whose windows job actually printed a reading must all say `passed`.
+      #
+      # The unit is that reading, not the run's conclusion, for two measured reasons: a run can go red for a
+      # platform that has nothing to do with Windows, and a run cancelled by the next push is neither a pass
+      # nor a failure — it simply did not measure. Counting either of those as a break would gate Windows on
+      # somebody else's flakiness or on our own push cadence.
+      - name: Windows lane must have three readings in a row
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/windows-gate-streak.mjs --need 3 --repo "${{ github.repository }}"
 
   # Build the platform matrix (macOS arm64/x64 + Linux + Windows x64) via the reusable workflow.
   # secrets: inherit forwards the optional signing/notarization secrets. macOS is signed but NOT

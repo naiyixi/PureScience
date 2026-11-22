@@ -501,6 +501,16 @@ run 的 summary 与 artifact，便于不打开 job 日志也能看。
   `The feed already says we are current (2.33.2); the drill needs an older app than 2.33.3`。这条正好反证
   「已是最新版」不会被读成升级成功。
 
+**tag 通道第一次自己跑（`45037339833`）红在时序，不是红在换包**：`Drilling v2.33.2 -> 2.33.3` 之后应用回
+`The feed already says we are current (2.33.2)` —— 因为打 tag 的那一刻 Release 还没发布完，GitHub feed 的最新
+版本仍是 2.33.2。修法是把「等 release 发布」变成演练的职责：`up-to-date` 且 feed 版本**落后**于目标时按
+60 秒重试、预算 45 分钟（`PURESCIENCE_DRILL_FEED_WAIT_MS` 可调）；feed 版本比目标**更新**（重跑旧 tag）立刻
+失败，因为等待改不了方向。方向判断抽成 `feedWaitDecision` 并有 6 条用例。
+
+同理，feed 断言拆成两半：**「这个包装出来的 build 会不会去问镜像」在 tag 时判**（读已安装 bundle 的
+`app-update.yml`），**「镜像已经供这一版」由同步后的单独一次 `require_feed_version=true` 判**。合在一起判，
+就得到一个和 build 无关的红。
+
 **非手动样本仍是 0/3**：tag 通道要等真打发布 tag 时才算第一次。晋升硬门（B）的判据不变：连续 3 条 tag 通道
 绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
 `macOS upgrade == passed` 的 `needs`。
@@ -556,7 +566,22 @@ windows job 每天都在跑同一条车道**，不必等到发版才发现回归
 | windows job 的 `electron P0 reading: passed` 连续 3 次 | **已满足（5 次）** | 读数是 job 级的证据，run 级取消发生在读数之后 |
 | 期间没有 `failure` | **满足**（0 次 failure） | —— |
 
-**我不擅自翻闸门**：这三行给的是三个不同答案，选哪一行属于发版口径的决定。
+**2026-11-22 拍板：按「windows job 读数连续 3 次」这条数法接成闸门。** 理由写在 `windows-gate-streak.mjs`
+的头注释里，三条：
+
+- **被测对象对得上**：门要防的是「Windows 装不上/起不来」，证据就是那个 job 的 `electron P0 reading`；
+  一趟 run 可能因为**别的平台**偶发红，用它计数等于让 macOS 的抖动去重置 Windows 的计数。
+- **取消不是证据**：被新推送顶掉的 run 既不算绿也不算红，它只是**没测**；而「推送顶掉在跑的那趟」是本仓库
+  最常见的形态，用它打断连续数就是把运气当判据。
+- **「0 次 failure」最弱**：只说明没观察到失败，而且一个从不跑的车道也能满足它。
+
+落地方式是**读 Nightly 的证据**，不是给 `publish` 加 `needs` —— `windows-upgrade-smoke` 的 `needs` 里有
+`publish`（它要升级到本版），再加一条 `needs` 就是依赖环。所以闸门落在 `release-preflight`：
+`node scripts/windows-gate-streak.mjs --need 3`，读最近几趟 Nightly 的 windows job，只认打出读数的那些，
+遇到 `failed` 归零，攒不到 3 条就让 preflight 红。
+
+**代价要写明**：Nightly 连续三天红的话，连安全修复都发不出去。这不是疏忽 —— 没有旁路开关，紧急情况只能改
+workflow（diff 可见），而不是悄悄加个 flag。
 
 **由此得到一条操作上的事实，比判据本身更该记住**：`nightly.yml` 触发在 **push main** 上，所以**我每推一次
 代码就等于把正在跑的那趟 Nightly 掐掉**，计数永远攒不满。要凑齐「连续 3 趟」，只能**停止推代码**让它跑完；

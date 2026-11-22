@@ -64,6 +64,15 @@ on:
         description: Expected update feed (blank to skip the feed assertion)
         required: false
         default: 'https://purescience.work/download/feed/'
+      require_feed_version:
+        # The post-sync verification: assert that the mirror *already serves* this version, not merely that the
+        # installed build polls the mirror. Kept separate because at tag-push time the mirror is fed by a cron
+        # and legitimately still serves the previous release — asserting both halves at once produced a red run
+        # that said nothing about the build (45037339833).
+        description: 'Require the mirror feed to already offer next_version (post-sync check)'
+        type: boolean
+        default: false
+        required: false
       sabotage:
         # The reverse control, and the reason the data reading is worth reading: a marker that is always
         # found proves nothing, so this deletes one on purpose. A run with `user-data` or `storage` here is
@@ -234,6 +243,7 @@ jobs:
             --next-version "$NEXT_VERSION" \
             --work-dir "$RUNNER_TEMP/upgrade" $EXTRA_ARGS \
             ${EXPECT_FEED_URL:+--expect-feed-url "$EXPECT_FEED_URL"} \
+            ${{ inputs.require_feed_version && '--require-feed-version' || '' }} \
             > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/mac-upgrade.log"
