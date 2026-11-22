@@ -8,9 +8,10 @@ export type DiagnosticFields = Record<string, DiagnosticValue>
 export type DiagnosticOperation = {
   phase: (name: string, fields?: DiagnosticFields) => void
   /**
-   * `name=12ms name2=340ms …` — lets a caller that never completes (app startup) still report where time
-   * went. Optional so a test double that only stubs phase/terminal does not have to grow a method it
-   * never calls; every real operation provides it.
+   * `name=12ms name2=340ms …` — each *phase's own duration* (the last one counted up to this moment), so a
+   * caller that never completes (app startup) still reports where time went, in the same units a completed
+   * operation reports. Optional so a test double that only stubs phase/terminal does not have to grow a
+   * method it never calls; every real operation provides it.
    */
   snapshotPhases?: () => string
   complete: (fields?: DiagnosticFields) => void
@@ -113,7 +114,25 @@ export const startDiagnosticOperation = (
   let terminal = false
   // Phases carry no timestamps of their own, so a slow startup could say *what* it did but never *where*
   // the seconds went. Recorded relative to the operation start and reported as one line on completion.
+  //
+  // The recorded number is a *start offset*, and it used to be reported under the bare name `phases`
+  // (`transfer=1ms`). Read next to `durationMs`, that line said a 38-minute download had spent 1 ms in
+  // `transfer` — it had spent 38 minutes there, and had merely *entered* the phase one millisecond in
+  // (real record: durationMs 2,283,340 with `phases: "transfer=1ms"`). So each phase is now reported
+  // twice, with names that cannot be mistaken for each other: `phaseDurations` (how long that phase ran,
+  // ending where the next one began or where the operation ended) and `phaseStartedAtMs` (the offset).
+  // `totalPhaseMs` is the sum of the durations — the span the named phases cover, which excludes any
+  // time before the first phase.
   const phases: { name: string; atMs: number }[] = []
+  const formatPhases = (endMs: number, value: 'duration' | 'offset'): string =>
+    phases
+      .map((entry, index) => {
+        const next = phases[index + 1]
+        const amount =
+          value === 'offset' ? entry.atMs : Math.max(0, (next === undefined ? endMs : next.atMs) - entry.atMs)
+        return `${entry.name}=${amount}ms`
+      })
+      .join(' ')
 
   const eventFields = (fields?: DiagnosticFields): Record<string, unknown> => ({
     ...baseFields,
@@ -130,17 +149,23 @@ export const startDiagnosticOperation = (
   ): void => {
     if (terminal) return
     terminal = true
+    const durationMs = Math.max(0, readNow() - startedAt)
+    const phaseDurations = phases.length === 0 ? undefined : formatPhases(durationMs, 'duration')
     emitSafely(logger, level, message, {
       ...eventFields(fields),
       ...(latestPhase === undefined ? {} : { phase: latestPhase }),
-      ...(phases.length === 0
+      ...(phaseDurations === undefined
         ? {}
         : {
-            phases: phases.map((entry) => `${entry.name}=${entry.atMs}ms`).join(' '),
-            totalPhaseMs: phases.length === 0 ? 0 : phases[phases.length - 1]!.atMs
+            phaseDurations,
+            phaseStartedAtMs: formatPhases(durationMs, 'offset'),
+            totalPhaseMs: phases.reduce((sum, entry, index) => {
+              const next = phases[index + 1]
+              return sum + Math.max(0, (next === undefined ? durationMs : next.atMs) - entry.atMs)
+            }, 0)
           }),
       outcome,
-      durationMs: Math.max(0, readNow() - startedAt),
+      durationMs,
       ...extraFields
     })
   }
@@ -165,7 +190,7 @@ export const startDiagnosticOperation = (
         elapsedMs: atMs
       })
     },
-    snapshotPhases: () => phases.map((entry) => `${entry.name}=${entry.atMs}ms`).join(' '),
+    snapshotPhases: () => formatPhases(Math.max(0, readNow() - startedAt), 'duration'),
     complete: (fields) => finish('info', 'operation completed', 'completed', fields),
     cancel: (fields) => finish('warn', 'operation cancelled', 'cancelled', fields),
     fail: (error, fields) =>

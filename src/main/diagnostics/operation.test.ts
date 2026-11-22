@@ -107,12 +107,104 @@ describe('diagnostic operation', () => {
         operation: 'data-root-migration',
         operationId: 'migration-1',
         phase: 'verify-target',
-        phases: 'verify-target=0ms',
-        totalPhaseMs: 0,
+        phaseDurations: 'verify-target=45ms',
+        phaseStartedAtMs: 'verify-target=0ms',
+        totalPhaseMs: 45,
         outcome: 'completed',
         durationMs: 45
       }
     })
+  })
+
+  // The real record this guards: `update-download` finished after 2,283,340 ms and logged
+  // `phases: "transfer=1ms"` — the phase had *started* 1 ms in and lasted the whole 38 minutes. A reader
+  // (and this repository's own defect triage) took that as "transfer took 1 ms".
+  it('reports how long each phase ran, not the offset where it began', () => {
+    const { logger, records } = createRecordingLogger()
+    let timestamp = 1_000
+    const operation = startDiagnosticOperation(logger, {
+      operation: 'update-download',
+      operationId: 'update-2',
+      now: () => timestamp
+    })
+
+    timestamp = 1_001
+    operation.phase('transfer')
+
+    timestamp = 2_284_340
+    operation.fail(new Error('socket closed'))
+
+    expect(records[2].data).toMatchObject({
+      phase: 'transfer',
+      phaseDurations: 'transfer=2283339ms',
+      phaseStartedAtMs: 'transfer=1ms',
+      totalPhaseMs: 2_283_339,
+      durationMs: 2_283_340
+    })
+  })
+
+  it('ends each phase where the next one begins and sums the durations', () => {
+    const { logger, records } = createRecordingLogger()
+    let timestamp = 0
+    const operation = startDiagnosticOperation(logger, {
+      operation: 'update-download',
+      operationId: 'update-3',
+      now: () => timestamp
+    })
+
+    operation.phase('transfer')
+    timestamp = 500
+    operation.phase('verify')
+    timestamp = 600
+    operation.complete()
+
+    const data = records[records.length - 1]!.data as Record<string, unknown>
+    expect(data.phaseDurations).toBe('transfer=500ms verify=100ms')
+    expect(data.phaseStartedAtMs).toBe('transfer=0ms verify=500ms')
+    // The sum is the span the named phases cover, and equals the operation duration when the first phase
+    // starts at zero — never "where the last phase started".
+    expect(data.totalPhaseMs).toBe(600)
+    expect(data.totalPhaseMs).toBe(data.durationMs)
+  })
+
+  it('does not count the time before the first phase as phase time', () => {
+    const { logger, records } = createRecordingLogger()
+    let timestamp = 0
+    const operation = startDiagnosticOperation(logger, {
+      operation: 'data-root-migration',
+      operationId: 'migration-2',
+      now: () => timestamp
+    })
+
+    timestamp = 200
+    operation.phase('copy')
+    timestamp = 300
+    operation.complete()
+
+    const data = records[records.length - 1]!.data as Record<string, unknown>
+    expect(data.phaseDurations).toBe('copy=100ms')
+    expect(data.phaseStartedAtMs).toBe('copy=200ms')
+    expect(data.totalPhaseMs).toBe(100)
+    expect(data.durationMs).toBe(300)
+  })
+
+  it('snapshots each phase duration up to this moment for an operation that never completes', () => {
+    const { logger } = createRecordingLogger()
+    let timestamp = 0
+    const operation = startDiagnosticOperation(logger, {
+      operation: 'startup',
+      operationId: 'startup-2',
+      now: () => timestamp
+    })
+
+    operation.phase('load-bootstrap-modules')
+    timestamp = 811
+    operation.phase('external-mcp-started')
+    timestamp = 900
+
+    expect(operation.snapshotPhases?.()).toBe(
+      'load-bootstrap-modules=811ms external-mcp-started=89ms'
+    )
   })
 
   it('fails with a coarse error category and no raw error payload', () => {
@@ -142,8 +234,9 @@ describe('diagnostic operation', () => {
         operation: 'data-root-migration',
         operationId: 'migration-1',
         phase: 'copy',
-        phases: 'copy=0ms',
-        totalPhaseMs: 0,
+        phaseDurations: 'copy=24ms',
+        phaseStartedAtMs: 'copy=0ms',
+        totalPhaseMs: 24,
         outcome: 'failed',
         durationMs: 24,
         errorCategory: 'permission'
@@ -194,8 +287,9 @@ describe('diagnostic operation', () => {
         operation: 'update-download',
         operationId: 'update-1',
         phase: 'download',
-        phases: 'download=0ms',
-        totalPhaseMs: 0,
+        phaseDurations: 'download=12ms',
+        phaseStartedAtMs: 'download=0ms',
+        totalPhaseMs: 12,
         outcome: 'cancelled',
         durationMs: 12
       }
@@ -255,7 +349,8 @@ describe('diagnostic operation', () => {
       operation: 'update-check',
       operationId: 'update-1',
       phase: 'checking',
-      phases: 'checking=0ms',
+      phaseDurations: 'checking=0ms',
+      phaseStartedAtMs: 'checking=0ms',
       totalPhaseMs: 0,
       outcome: 'completed',
       durationMs: 0

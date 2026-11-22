@@ -701,7 +701,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       // actionable but "db 280 ms, skill catalog 811 ms, rest in the run up to Electron ready" is.
       startupDiagnostics?.phase('web-service-started')
       createLogger('startup').info('startup timeline', {
-        phases: startupDiagnostics?.snapshotPhases?.() ?? ''
+        phaseDurations: startupDiagnostics?.snapshotPhases?.() ?? ''
       })
       // Restore a persisted remote-access preference only after the normal IPC/web surfaces exist.
       // A missing or signed-out third-party remote-access installation must never delay the desktop window.
