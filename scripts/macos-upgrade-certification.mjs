@@ -299,9 +299,9 @@ const waitForVersionOnDisk = async (bundle, nextVersion, budgetMs = HANDOVER_TIM
 // re-create its store from scratch on top of it.
 const userDataDir = (homeDir) => join(homeDir, 'Library', 'Application Support', 'PureScience')
 
-const seedUserDataMarker = async (homeDir, token) => {
-  const path = join(userDataDir(homeDir), 'drill-marker.json')
-  await mkdir(userDataDir(homeDir), { recursive: true })
+const seedUserDataMarker = async (dir, token) => {
+  const path = join(dir, 'drill-marker.json')
+  await mkdir(dir, { recursive: true })
   await writeFile(path, JSON.stringify({ token, writtenAt: new Date().toISOString() }), 'utf8')
   return path
 }
@@ -402,11 +402,23 @@ const main = async () => {
   console.log(`[mac-upgrade] HOME isolation: ${keepHome ? 'off (real HOME)' : 'on'}`)
   // A marker in the app's own user-data directory. Skipped under `--keep-home`, because that path is the
   // real user's — a drill may read a real HOME to answer a question, it may not write into one.
+  // Two markers, because they answer two different questions and only one of them is free:
+  //
+  //  * the storage root is the drill's own directory, so it can always be seeded — it stands for the library
+  //    (the SQLite the app opens on every launch), and "the swap kept it" has to be true unconditionally;
+  //  * the app's own `userData` is the *real* `~/Library/Application Support` under `--keep-home`. Writing
+  //    there is a deliberate act, so it needs `--seed-user-data`: on an ephemeral CI runner that path is
+  //    throwaway, on a workstation it is the person's. A drill that skips it says so in the reading rather
+  //    than reporting a pass it did not earn.
   const markerToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-  const markerPath = keepHome ? undefined : await seedUserDataMarker(home, markerToken)
+  const seedUserData = args.includes('--seed-user-data')
+  const markerPath =
+    keepHome && !seedUserData ? undefined : await seedUserDataMarker(userDataDir(home), markerToken)
+  const storageMarkerPath = await seedUserDataMarker(storageRoot, markerToken)
   console.log(
-    `[mac-upgrade] user-data marker: ${markerPath ? `seeded at ${markerPath}` : 'skipped (real HOME)'}`
+    `[mac-upgrade] user-data marker: ${markerPath ? `seeded at ${markerPath}` : 'skipped (real HOME, pass --seed-user-data)'}`
   )
+  console.log(`[mac-upgrade] storage-root marker: seeded at ${storageMarkerPath}`)
   const running = await otherInstance(bundle)
   if (running) {
     console.log(
@@ -454,22 +466,25 @@ const main = async () => {
 
   // The relaunch happens before this reads the marker on purpose: the interesting case is that the new
   // build started, opened its store, and still found the old data rather than replacing it.
-  const markerAfter = markerPath ? await readUserDataMarker(markerPath) : undefined
-  const dataReading = markerPath
-    ? markerAfter === markerToken
-      ? 'kept'
-      : markerAfter === undefined
-        ? 'lost (marker gone)'
-        : 'kept (token changed)'
-    : 'skipped (real HOME)'
+  const describeMarker = async (path) => {
+    if (!path) return 'skipped'
+    const after = await readUserDataMarker(path)
+    if (after === markerToken) return 'kept'
+    return after === undefined ? 'lost' : 'rewritten'
+  }
+  const userDataReading = await describeMarker(markerPath)
+  const storageReading = await describeMarker(storageMarkerPath)
+  const dataReading = `userData:${userDataReading} storage:${storageReading}`
   console.log(`[mac-upgrade] user data after the swap: ${dataReading}`)
   const ok =
     String(installed) === String(nextVersion) &&
     String(relaunchedVersion) === String(nextVersion) &&
     gate.verdict.includes('accepted') &&
-    // `kept (token changed)` still fails: a file that came back with different contents is not the data the
-    // old build left behind, it is a new file that happens to sit at the same path.
-    (markerPath === undefined || markerAfter === markerToken)
+    // `rewritten` fails for the same reason `lost` does: a file that came back with different contents is not
+    // the data the old build left behind, it is a new file that happens to sit at the same path.
+    userDataReading !== 'lost' &&
+    userDataReading !== 'rewritten' &&
+    storageReading === 'kept'
   console.log(
     `macOS upgrade reading: ${ok ? 'passed' : 'failed'} ` +
       `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)} ` +

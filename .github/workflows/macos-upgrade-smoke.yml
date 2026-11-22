@@ -58,7 +58,12 @@ on:
         # stack never answered — its own startup check sat at phase `query-provider` for two minutes (run
         # 44981052834) — while the same drill against the real HOME reached `available` in seconds
         # (run 44981503900). A CI runner has no other instance to collide with, so nothing is gained by it.
-        description: Extra arguments for the drill (--keep-home is what CI needs)
+        # `--seed-user-data` rides along because the user-data half of the reading is otherwise always
+        # "skipped": under `--keep-home` the marker would go into a real user's `~/Library/Application
+        # Support`, which a drill may read but not write. On a runner that HOME is a throwaway
+        # `/Users/runner`, so the marker is seeded there and the reading says `userData:kept` instead of
+        # reporting a pass it did not earn. On a workstation the flag has to be asked for explicitly.
+        description: Extra arguments for the drill (--keep-home --seed-user-data is what CI needs)
         required: false
         default: '--keep-home'
   push:
@@ -188,7 +193,7 @@ jobs:
         if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
           NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
-          EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home' }}
+          EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home --seed-user-data' }}
         run: |
           set +e
           node scripts/macos-upgrade-certification.mjs \

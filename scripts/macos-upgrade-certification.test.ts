@@ -172,14 +172,17 @@ describe('the user-data marker the drill leaves behind', () => {
   it('lands in the directory the packaged app calls its own', async () => {
     await withHome(async (home) => {
       expect(userDataDir(home)).toBe(join(home, 'Library', 'Application Support', 'PureScience'))
-      const path = await seedUserDataMarker(home, 'token-1')
+      const path = await seedUserDataMarker(userDataDir(home), 'token-1')
       expect(path).toBe(join(userDataDir(home), 'drill-marker.json'))
+      // Called with the storage root it puts the marker at the root of that directory instead — the drill
+      // seeds both, and neither may land outside the directory it was given.
+      expect(await seedUserDataMarker(home, 'token-2')).toBe(join(home, 'drill-marker.json'))
     })
   })
 
   it('reads back the token it wrote, and reports a missing file as missing', async () => {
     await withHome(async (home) => {
-      const path = await seedUserDataMarker(home, 'token-1')
+      const path = await seedUserDataMarker(userDataDir(home), 'token-1')
       expect(await readUserDataMarker(path)).toBe('token-1')
       await rm(path)
       expect(await readUserDataMarker(path)).toBeUndefined()
@@ -188,7 +191,7 @@ describe('the user-data marker the drill leaves behind', () => {
 
   it('does not read a rewritten file as the original token', async () => {
     await withHome(async (home) => {
-      const path = await seedUserDataMarker(home, 'token-1')
+      const path = await seedUserDataMarker(userDataDir(home), 'token-1')
       await writeFile(path, JSON.stringify({ token: 'token-2' }), 'utf8')
       expect(await readUserDataMarker(path)).toBe('token-2')
       // Not JSON at all still has to come back as *something that is not the token*, or a corrupted file
