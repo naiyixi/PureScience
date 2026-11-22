@@ -66,6 +66,24 @@ describe('the windows lane streak', () => {
     expect(result.skipped[0]).toEqual({ runId: 2, reason: 'reading=failed' })
   })
 
+  // `not-applicable` is not a cancellation: it is a named state produced by lane-status.mjs when P0 did not
+  // certify that lane. Failing closed on it is the difference between "we could not measure" (skip) and "the
+  // lane did not certify" (break) — a lane stuck at not-applicable must not be able to live off old greens.
+  it('fails closed on a not-applicable reading, unlike a cancellation', () => {
+    const result = computeWindowsStreak(
+      [
+        { runId: 1, reading: 'passed' },
+        { runId: 2, reading: 'not-applicable' },
+        { runId: 3, reading: 'passed' },
+        { runId: 4, reading: 'passed' }
+      ],
+      3
+    )
+    expect(result.streak).toBe(1)
+    expect(result.satisfied).toBe(false)
+    expect(result.skipped[0]).toEqual({ runId: 2, reason: 'reading=not-applicable' })
+  })
+
   it('does not reach through a failure to collect older green runs', () => {
     const result = computeWindowsStreak(
       [

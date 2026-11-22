@@ -7,7 +7,10 @@
 //     那不是 Windows 的证据；
 //   * 被取消、或根本没跑到 windows job 的 run **不算**（既不算绿也不算红，跳过），因为「推送顶掉了
 //     在跑的那趟」是本仓库最常见的形态，用它打断连续数是把运气当判据；
-//   * 读到一次 `electron P0 reading: failed` 或 job 失败，连续计数归零 —— 一条链只从最新往回数。
+//   * 读到一次 `electron P0 reading: failed` 或 job 失败，连续计数归零 —— 一条链只从最新往回数；
+//   * `not-applicable` 也归零（fails closed）：它由 lane-status.mjs 在 P0 没有为该车道出具认证时给出，
+//     是一个**具名状态**而不是「没测到」。卡在 not-applicable 的车道不能靠更早的绿活着 ——
+//     那正是「0 次 failure」这条最弱判据的漏洞。
 //
 // 用法：
 //   node scripts/windows-gate-streak.mjs                 # 打印连续数，够 3 则退出码 0
