@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { createServer, type Server } from 'node:http'
 
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Logger } from '../logger'
 import { ElectronUpdaterStrategy, type MinimalCancellationToken } from './electron-updater-strategy'
@@ -26,6 +26,10 @@ const STALL_BUDGET_MS = 2_000
 
 let server: Server
 let port = 0
+// How `/app.zip` behaves. The stall test needs a socket that never speaks again; the retry test needs one
+// that dies on the first attempt and works on the second, so the restart is measured against real bytes.
+let artifactMode: 'stall-forever' | 'stall-first' = 'stall-forever'
+let artifactRequests = 0
 
 beforeAll(async () => {
   server = createServer((req, res) => {
@@ -34,12 +38,16 @@ beforeAll(async () => {
       res.end('version: 0.3.0\n')
       return
     }
-    // 1 MB of a 5 MB body, then silence: never end(), never write again.
+    artifactRequests += 1
+    const body =
+      artifactMode === 'stall-first' && artifactRequests > 1
+        ? Buffer.alloc(ARTIFACT_BYTES, 7) // a fully served body on the retried attempt
+        : Buffer.alloc(SENT_BEFORE_STALL, 7) // 1 MB, then silence: never end(), never write again
     res.writeHead(200, {
       'content-length': String(ARTIFACT_BYTES),
       'content-type': 'application/octet-stream'
     })
-    res.write(Buffer.alloc(SENT_BEFORE_STALL, 7))
+    res.write(body)
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
   const address = server.address()
@@ -81,7 +89,11 @@ class SocketUpdater extends EventEmitter {
     let transferred = 0
     for (;;) {
       const { done, value } = await reader.read()
-      if (done) return
+      if (done) {
+        // electron-updater emits `update-downloaded` from taskOptions.done() once the body is complete.
+        this.emit('update-downloaded', { version: '0.3.0' })
+        return
+      }
       transferred += value.byteLength
       this.emit('download-progress', {
         percent: (transferred / ARTIFACT_BYTES) * 100,
@@ -97,6 +109,11 @@ class SocketUpdater extends EventEmitter {
 const quietLog = (): Logger => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 
 describe('ElectronUpdaterStrategy over a real stalled socket', () => {
+  beforeEach(() => {
+    artifactMode = 'stall-forever'
+    artifactRequests = 0
+  })
+
   it('names the stall from bytes that really arrived, then aborts the socket', async () => {
     const updater = new SocketUpdater()
     const log = quietLog()
@@ -132,4 +149,41 @@ describe('ElectronUpdaterStrategy over a real stalled socket', () => {
     expect(elapsed).toBeGreaterThanOrEqual(STALL_BUDGET_MS - 100)
     expect(updater.controller?.signal.aborted).toBe(true)
   }, 20_000)
+
+  // What the retry is for: the first attempt's socket dies mid-body, the app restarts the transfer on its
+  // own, and the second attempt completes — real bytes, real timers, and the dialog told the truth about
+  // starting over instead of borrowing the installer path's "resuming".
+  it('restarts from zero after a real stall and completes the second attempt', async () => {
+    artifactMode = 'stall-first'
+    const updater = new SocketUpdater()
+    const broadcast = vi.fn()
+    const strategy = new ElectronUpdaterStrategy({
+      updater: updater as never,
+      currentVersion: '0.2.0',
+      broadcast,
+      fetchImpl: (async () => {
+        throw new Error('offline')
+      }) as unknown as typeof fetch,
+      log: quietLog(),
+      downloadStallMs: STALL_BUDGET_MS
+    })
+
+    await strategy.check()
+    const started = Date.now()
+    const status = await strategy.download()
+    const elapsed = Date.now() - started
+
+    // Two real HTTP requests: the stalled one and the restart.
+    expect(artifactRequests).toBe(2)
+    expect(status.state).toBe('ready')
+    const progress = broadcast.mock.calls
+      .filter(([channel]) => channel === 'update:progress')
+      .map(([, payload]) => payload as Record<string, unknown>)
+    expect(progress.find((entry) => entry.phase === 'restarting')).toMatchObject({
+      phase: 'restarting',
+      transferred: 0,
+      attempt: 1
+    })
+    expect(elapsed).toBeGreaterThanOrEqual(STALL_BUDGET_MS - 100)
+  }, 30_000)
 })

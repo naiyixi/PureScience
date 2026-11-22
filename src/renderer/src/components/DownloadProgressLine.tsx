@@ -8,7 +8,7 @@ export const DownloadProgressLine = ({
 }: {
   progress: DownloadProgress
 }): React.JSX.Element => {
-  const reconnecting = progress.phase === 'reconnecting'
+  const reconnecting = progress.phase === 'reconnecting' || progress.phase === 'restarting'
   const known = progress.total != null && progress.percent != null
   return (
     <div className="mt-2">

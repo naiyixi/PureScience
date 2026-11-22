@@ -50,4 +50,19 @@ describe('download-progress formatters', () => {
     })
     expect(line).toBe('Connection lost, resuming… (attempt 2)')
   })
+
+  // A restart really starts over (electron-updater discards its temp file), so it must not borrow the
+  // installer path's "resuming" — that sentence would promise bytes the app is re-fetching from zero.
+  it('never claims a restart is resuming', () => {
+    const line = formatProgressLine({
+      phase: 'restarting',
+      transferred: 0,
+      total: 335_500_000,
+      percent: 0,
+      bytesPerSecond: 0,
+      attempt: 1
+    })
+    expect(line).toBe('Connection lost, restarting from the beginning… (attempt 1)')
+    expect(line).not.toContain('resuming')
+  })
 })

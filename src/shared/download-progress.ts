@@ -2,7 +2,10 @@
 // import it. formatBytes is reused from update.ts to keep one byte-unit convention app-wide.
 import { formatBytes } from './update'
 
-export type DownloadPhase = 'downloading' | 'reconnecting'
+// `reconnecting` = the transfer continues where it stopped (the installer path really resumes with a
+// Range request). `restarting` = the transfer starts over from zero (electron-updater discards its temp
+// file on any failure), so the line must not claim it is resuming when it is not.
+export type DownloadPhase = 'downloading' | 'reconnecting' | 'restarting'
 
 export type DownloadProgress = {
   phase: DownloadPhase
@@ -29,6 +32,9 @@ export const formatEta = (seconds?: number): string | undefined => {
 // reads as "resuming" rather than a frozen speed of 0.
 export const formatProgressLine = (p: DownloadProgress): string => {
   if (p.phase === 'reconnecting') return `Connection lost, resuming… (attempt ${p.attempt})`
+  if (p.phase === 'restarting') {
+    return `Connection lost, restarting from the beginning… (attempt ${p.attempt})`
+  }
   const speed = formatSpeed(p.bytesPerSecond)
   if (p.total != null && p.percent != null) {
     const eta = formatEta(p.etaSeconds)

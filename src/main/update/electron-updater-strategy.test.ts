@@ -242,6 +242,7 @@ describe('ElectronUpdaterStrategy', () => {
         fetchImpl: offlineFetch(),
         log,
         downloadStallMs: 60_000,
+        downloadAttempts: 1,
         createCancellationToken: () => {
           const created: FakeToken = {
             cancelled: false,
@@ -315,7 +316,8 @@ describe('ElectronUpdaterStrategy', () => {
         broadcast: vi.fn(),
         fetchImpl: offlineFetch(),
         log: createLogSpy(),
-        downloadStallMs: 60_000
+        downloadStallMs: 60_000,
+        downloadAttempts: 1
       })
       await strategy.check()
 
@@ -339,6 +341,232 @@ describe('ElectronUpdaterStrategy', () => {
       expect(strategy.getStatus().state).toBe('error')
       release?.()
       await downloading
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // The attempt budget exists so a stalled transfer is restarted by the app instead of handed to the user
+  // as an error they have to notice and act on.
+  it('restarts a stalled transfer once instead of handing the stall to the user', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      const log = createLogSpy()
+      const broadcast = vi.fn()
+      let starts = 0
+      let rejectCurrent: ((error: Error) => void) | undefined
+      const tokens: FakeToken[] = []
+      updater.runDownload = async () => {
+        starts += 1
+        updater.emit('download-progress', {
+          percent: starts === 1 ? 41 : 3,
+          transferred: starts === 1 ? 122_000_000 : 9_000_000,
+          total: 296_000_000,
+          bytesPerSecond: 51_200
+        })
+        if (starts === 1) {
+          await new Promise<void>((_resolve, reject) => (rejectCurrent = reject))
+          return
+        }
+        updater.emit('update-downloaded', { version: '0.3.0' })
+      }
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast,
+        fetchImpl: offlineFetch(),
+        log,
+        downloadStallMs: 60_000,
+        createCancellationToken: () => {
+          const created: FakeToken = {
+            cancelled: false,
+            cancel(): void {
+              created.cancelled = true
+              rejectCurrent?.(new Error('cancelled by token'))
+            }
+          }
+          tokens.push(created)
+          return created
+        }
+      })
+      await strategy.check()
+
+      const downloading = strategy.download()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(starts).toBe(1)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      const status = await downloading
+
+      expect(starts).toBe(2)
+      expect(tokens[0]?.cancelled).toBe(true)
+      expect(status.state).toBe('ready')
+      // The dialog is told the transfer starts over — not that it resumes, which the installer path does
+      // and this one cannot (electron-updater deletes its temp file on failure).
+      const progress = broadcast.mock.calls
+        .filter(([channel]) => channel === 'update:progress')
+        .map(([, payload]) => payload as Record<string, unknown>)
+      expect(progress.find((entry) => entry.phase === 'restarting')).toMatchObject({
+        phase: 'restarting',
+        transferred: 0,
+        attempt: 1
+      })
+      const records = diagnosticRecords(log)
+      // The retry leaves its own record of what it abandoned — the next real-machine reading has to be
+      // able to show that a stall happened and was restarted, not just that a download eventually worked.
+      expect(records).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            attempt: 1,
+            attempts: 2,
+            stalledMs: 60_000,
+            downloadedBytes: 122_000_000,
+            totalBytes: 296_000_000
+          })
+        ])
+      )
+      // A stall that was recovered is not this download's outcome: no failed line was ever written.
+      expect(records.some((record) => record.outcome === 'failed')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('gives up after the attempt budget and says how many attempts were spent', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      const log = createLogSpy()
+      let starts = 0
+      let rejectCurrent: ((error: Error) => void) | undefined
+      updater.runDownload = async () => {
+        starts += 1
+        updater.emit('download-progress', {
+          percent: 10,
+          transferred: 10_000,
+          total: 100_000,
+          bytesPerSecond: 1_000
+        })
+        await new Promise<void>((_resolve, reject) => (rejectCurrent = reject))
+      }
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast: vi.fn(),
+        fetchImpl: offlineFetch(),
+        log,
+        downloadStallMs: 60_000,
+        createCancellationToken: () => {
+          const created: FakeToken = {
+            cancelled: false,
+            cancel(): void {
+              created.cancelled = true
+              rejectCurrent?.(new Error('cancelled by token'))
+            }
+          }
+          return created
+        }
+      })
+      await strategy.check()
+      const downloading = strategy.download()
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+      const status = await downloading
+
+      expect(starts).toBe(2)
+      expect(status.state).toBe('error')
+      expect(status.error).toContain('received no data for 60 s')
+      const failed = diagnosticRecords(log).find((record) => record.outcome === 'failed')
+      expect(failed).toMatchObject({ reason: 'stalled', attempts: 2, attemptsUsed: 2 })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not restart a transfer that failed for a reason other than a stall', async () => {
+    const updater = new FakeUpdater()
+    const broadcast = vi.fn()
+    updater.runDownload = async () => {
+      updater.emit('download-progress', {
+        percent: 8,
+        transferred: 8_000,
+        total: 100_000,
+        bytesPerSecond: 500
+      })
+      throw new Error('read ECONNRESET')
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast,
+      fetchImpl: offlineFetch(),
+      log: createLogSpy(),
+      downloadStallMs: 60_000
+    })
+    await strategy.check()
+    const status = await strategy.download()
+
+    expect(status.state).toBe('error')
+    expect(status.error).toContain('ECONNRESET')
+    expect(updater.downloadUpdate).toHaveBeenCalledTimes(1)
+    const phases = broadcast.mock.calls
+      .filter(([channel]) => channel === 'update:progress')
+      .map(([, payload]) => (payload as { phase: string }).phase)
+    expect(phases).not.toContain('restarting')
+  })
+
+  it('lets the user cancel the restarted attempt instead of finishing it for them', async () => {
+    vi.useFakeTimers()
+    try {
+      const updater = new FakeUpdater()
+      const broadcast = vi.fn()
+      let starts = 0
+      let rejectCurrent: ((error: Error) => void) | undefined
+      const tokens: FakeToken[] = []
+      updater.runDownload = async () => {
+        starts += 1
+        updater.emit('download-progress', {
+          percent: 5,
+          transferred: 5_000,
+          total: 100_000,
+          bytesPerSecond: 500
+        })
+        await new Promise<void>((_resolve, reject) => (rejectCurrent = reject))
+      }
+      const strategy = new ElectronUpdaterStrategy({
+        updater,
+        currentVersion: '0.2.0',
+        broadcast,
+        fetchImpl: offlineFetch(),
+        log: createLogSpy(),
+        downloadStallMs: 60_000,
+        createCancellationToken: () => {
+          const created: FakeToken = {
+            cancelled: false,
+            cancel(): void {
+              created.cancelled = true
+              rejectCurrent?.(new Error('cancelled by token'))
+            }
+          }
+          tokens.push(created)
+          return created
+        }
+      })
+      await strategy.check()
+      const downloading = strategy.download()
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(starts).toBe(2)
+
+      const cancelled = await strategy.cancel()
+      const final = await downloading
+
+      expect(cancelled.state).toBe('available')
+      expect(final.state).toBe('available')
+      expect(final.error).toBeUndefined()
+      expect(tokens[1]?.cancelled).toBe(true)
     } finally {
       vi.useRealTimers()
     }

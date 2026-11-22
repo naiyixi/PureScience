@@ -83,6 +83,10 @@ export type ElectronUpdaterDeps = {
   // How long the transfer may go without a new byte before it is stopped and named a stall. Defaults to
   // the installer download path's number so the two paths cannot disagree; injectable for tests.
   downloadStallMs?: number
+  // How many transfer attempts one download() may spend. Two by default: a stalled transfer costs the
+  // user nothing but the stalled window when the app restarts it for them, while more attempts would
+  // hide a network that is genuinely down behind a dialog that keeps promising progress.
+  downloadAttempts?: number
   // True when an x64 process is running under Rosetta 2 on Apple Silicon; false when definitively not;
   // undefined when the probe could not determine it. Electron-updater detects this via
   // sysctl.proc_translated and selects the arm64 artifact, so we must match that to show the correct
@@ -190,6 +194,11 @@ const extractArtifactSize = (
 // electron-updater has no timeout of its own, so the budget lives here.
 const DEFAULT_CHECK_BUDGET_MS = 20_000
 
+// One transfer, plus one restart after a stall. Bounded on purpose: the second attempt gives a flaky
+// link the chance the 38-minute silent stream never had, and stopping at two keeps a network that is
+// really down from turning the dialog into a progress bar that never finishes.
+const DEFAULT_DOWNLOAD_ATTEMPTS = 2
+
 class UpdateCheckTimeout extends Error {
   constructor(budgetMs: number) {
     super(`The update check did not answer within ${budgetMs} ms`)
@@ -265,6 +274,11 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   // stall sentence with the abort's own message.
   private downloadStallFailure?: Error
   private readonly downloadStallMs: number
+  // What the attempt currently in flight wants a stall to mean (retry vs name the failure). Kept here so a
+  // progress event can re-arm the watchdog without knowing which attempt armed it.
+  private downloadStallHandler?: () => void
+  // Transfer attempts one download() may spend (see DEFAULT_DOWNLOAD_ATTEMPTS).
+  private readonly downloadAttempts: number
   private status: UpdateStatus
   private applying = false
   private installerStarted = false
@@ -312,6 +326,10 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.fetchImpl = deps.fetchImpl
     this.checkBudgetMs = deps.checkBudgetMs ?? DEFAULT_CHECK_BUDGET_MS
     this.downloadStallMs = deps.downloadStallMs ?? DEFAULT_DOWNLOAD_STALL_MS
+    this.downloadAttempts = Math.max(
+      1,
+      Math.floor(deps.downloadAttempts ?? DEFAULT_DOWNLOAD_ATTEMPTS)
+    )
     this.manifestUrl = deps.manifestUrl ?? APP.update.manifestUrl
     this.log = deps.log ?? NOOP_LOGGER
     this.createCancellationToken = deps.createCancellationToken ?? (() => new CancellationToken())
@@ -371,8 +389,9 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       // Preserve the known artifact size when the event lacks a usable total, so a progress
       // event omitting it can't clobber the size extracted at check time with 0.
       const total = info.total || this.status.totalBytes || 0
-      // electron-updater handles its own retries internally, so downloads only ever surface as the
-      // 'downloading' phase with attempt 0; its native bytesPerSecond feeds the shared speed display.
+      // electron-updater's own progress events only ever describe the attempt in flight, so they are all
+      // attempt 0; a restart this strategy performs is announced separately as `restarting` (see
+      // download()) and this phase then carries the new attempt's bytes.
       this.broadcast('update:progress', {
         phase: 'downloading',
         percent,
@@ -391,7 +410,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       // A byte arrived: the gap the watchdog measures starts over. Only while a download this strategy
       // owns is in flight — a late event from an abandoned transfer must not resurrect the timer.
       this.downloadSample = { bytes: transferred, total, at: Date.now() }
-      if (this.downloadToken) this.armDownloadStall(this.downloadToken)
+      this.rearmDownloadStall()
     })
     this.updater.on('update-downloaded', () => {
       this.setStatus({ ...this.status, state: 'ready', progress: 100 })
@@ -534,8 +553,13 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   // Called when the transfer starts and again on every progress event, so the budget always measures the
   // gap since the newest byte rather than total elapsed time (a slow-but-moving 296 MB download must not
   // be killed; a dead socket must not wait forever).
-  private armDownloadStall(token: MinimalCancellationToken): void {
+  //
+  // The timer only decides that the transfer stopped; what that means is the caller's `onExpire`: the
+  // last attempt names the failure on the status and the diagnostic line, while an attempt that still has
+  // a retry left must not flash an error the app clears by itself a moment later.
+  private armDownloadStall(token: MinimalCancellationToken, onExpire: () => void): void {
     this.disarmDownloadStall()
+    this.downloadStallHandler = onExpire
     this.downloadStallTimer = setTimeout(() => {
       this.downloadStallTimer = undefined
       if (token.cancelled) return
@@ -554,18 +578,21 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       this.downloadStallFailure = error
       // Report first, then abort. The status broadcast is what the dialog renders, and the operation line
       // carries the byte counts; a stream that ignores the token must not also swallow the reason.
-      this.setStatus({ ...this.status, state: 'error', error: error.message })
-      this.downloadOperation?.fail(error, {
-        result: 'error',
-        reason: 'stalled',
-        stalledMs: this.downloadStallMs,
-        downloadedBytes: sample?.bytes ?? 0,
-        totalBytes: sample?.total ?? 0
-      })
+      onExpire()
       token.cancel()
     }, this.downloadStallMs)
     // A pending transfer must not keep the process alive after the window closes.
     this.downloadStallTimer.unref?.()
+  }
+
+  // Re-arms with the newest byte's timestamp, keeping whatever the current attempt decided a stall means.
+  // Only while a download this strategy owns is in flight — a late event from an abandoned transfer must
+  // not resurrect the timer.
+  private rearmDownloadStall(): void {
+    const token = this.downloadToken
+    const handler = this.downloadStallHandler
+    if (!token || !handler) return
+    this.armDownloadStall(token, handler)
   }
 
   private disarmDownloadStall(): void {
@@ -604,6 +631,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.setStatus({ ...this.status, state: 'downloading', progress: 0, downloadedBytes: 0 })
 
     const lifecycle = (async () => {
+      let activeToken = token
       try {
         // Let the prior cancelled download's promise clear (and its cleanup finish) before starting.
         // Swallow its outcome — it is owned by its own lifecycle.
@@ -612,23 +640,111 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
           await previous.catch(() => {})
         }
         // A cancel() during the drain means never start this download.
-        if (token.cancelled) return
-        operation.phase('transfer')
-        this.armDownloadStall(token)
-        await this.updater.downloadUpdate(token)
-        if (this.status.state === 'error') {
-          operation.fail(new Error('Updater download failed'), { result: 'error' })
-        } else {
-          operation.complete({ result: this.status.state })
+        if (activeToken.cancelled) return
+        const attempts = this.downloadAttempts
+        for (let attempt = 1; ; attempt++) {
+          if (activeToken.cancelled) return
+          this.downloadStallFailure = undefined
+          // The stall window measures the gap since the newest byte of THIS attempt: a restart starts with
+          // none, so taking the previous attempt's count would arm the watchdog on a stale timestamp.
+          this.downloadSample = {
+            bytes: attempt === 1 ? (this.status.downloadedBytes ?? 0) : 0,
+            total: this.status.totalBytes ?? 0,
+            at: Date.now()
+          }
+          operation.phase(attempt === 1 ? 'transfer' : 'transfer-restart')
+          if (attempt > 1) {
+            // electron-updater deletes its temp file on any failure (AppUpdater.executeDownload calls
+            // removeFileIfAny), so this attempt starts from zero. Say that, rather than reusing the
+            // installer path's "resuming", which really does continue with a Range request.
+            this.broadcast('update:progress', {
+              phase: 'restarting',
+              transferred: 0,
+              total: this.status.totalBytes,
+              percent: 0,
+              bytesPerSecond: 0,
+              // Same meaning as the installer path's: how many retries have already been spent.
+              attempt: attempt - 1
+            })
+            this.setStatus({
+              ...this.status,
+              state: 'downloading',
+              progress: 0,
+              downloadedBytes: 0,
+              error: undefined
+            })
+          }
+          this.armDownloadStall(activeToken, () => {
+            const sample = this.downloadSample
+            if (attempt < attempts) {
+              // Retryable: name it in the log (the next real-machine reading has to show the retries
+              // happened) and let the loop restart the transfer. No status error — the dialog keeps
+              // showing the restarting line instead of an error the app is about to clear.
+              this.log.warn('update download stalled; restarting the transfer', {
+                attempt,
+                attempts,
+                stalledMs: this.downloadStallMs,
+                downloadedBytes: sample?.bytes ?? 0,
+                totalBytes: sample?.total ?? 0
+              })
+              return
+            }
+            const stall = this.downloadStallFailure ?? new Error('The update download stalled')
+            this.setStatus({ ...this.status, state: 'error', error: stall.message })
+            this.downloadOperation?.fail(stall, {
+              result: 'error',
+              reason: 'stalled',
+              stalledMs: this.downloadStallMs,
+              downloadedBytes: sample?.bytes ?? 0,
+              totalBytes: sample?.total ?? 0,
+              ...(attempts > 1 ? { attempts, attemptsUsed: attempt } : {})
+            })
+          })
+          try {
+            await this.updater.downloadUpdate(activeToken)
+            if (this.status.state === 'error') {
+              operation.fail(new Error('Updater download failed'), { result: 'error' })
+            } else {
+              operation.complete({ result: this.status.state })
+            }
+            return
+          } catch (error) {
+            const stall = this.downloadStallFailure
+            this.disarmDownloadStall()
+            if (stall && attempt < attempts) {
+              // Fresh token so cancel() can stop the attempt that is about to start. electron-updater has
+              // already rejected (and dropped its promise and temp file) by the time we get here.
+              activeToken = this.createCancellationToken()
+              this.downloadToken = activeToken
+              continue
+            }
+            if (stall) return
+            // A user cancel rejects downloadUpdate too; cancel() has already reset the status to
+            // 'available', so leave it untouched here.
+            if (activeToken.cancelled) return
+            const sample = this.downloadSample
+            const message = error instanceof Error ? error.message : 'Download failed'
+            this.setStatus({
+              state: 'error',
+              error: withDownloadProgress(message, {
+                bytes: sample?.bytes ?? 0,
+                total: sample?.total ?? 0,
+                stalledMs: sample ? Date.now() - sample.at : 0
+              })
+            })
+            operation.fail(error, {
+              result: 'error',
+              downloadedBytes: sample?.bytes ?? 0,
+              totalBytes: sample?.total ?? 0,
+              lastProgressAgoMs: sample ? Date.now() - sample.at : 0
+            })
+            return
+          }
         }
       } catch (error) {
-        // A user cancel rejects downloadUpdate too; don't surface it as an error. cancel() has already
-        // reset the status to 'available', so leave it untouched here. Caught so the lifecycle never
-        // rejects and can't poison the next download()'s drain.
-        if (this.downloadStallFailure) {
-          // The watchdog already named this transfer and reported the bytes it reached; the abort's own
-          // rejection carries none of that and would replace the sentence with a bare cancellation.
-        } else if (!token.cancelled) {
+        // Anything thrown outside the per-attempt handling (draining the previous lifecycle, a reporter):
+        // surface it once and never let the lifecycle reject, which would poison the next download()'s drain.
+        if (!activeToken.cancelled) {
           const sample = this.downloadSample
           const message = error instanceof Error ? error.message : 'Download failed'
           this.setStatus({
@@ -639,17 +755,13 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
               stalledMs: sample ? Date.now() - sample.at : 0
             })
           })
-          operation.fail(error, {
-            result: 'error',
-            downloadedBytes: sample?.bytes ?? 0,
-            totalBytes: sample?.total ?? 0,
-            lastProgressAgoMs: sample ? Date.now() - sample.at : 0
-          })
+          operation.fail(error, { result: 'error' })
         }
       } finally {
         this.disarmDownloadStall()
         this.downloadStallFailure = undefined
-        if (this.downloadToken === token) this.downloadToken = undefined
+        this.downloadStallHandler = undefined
+        if (this.downloadToken === activeToken) this.downloadToken = undefined
         if (this.downloadOperation === operation) this.downloadOperation = undefined
       }
     })()

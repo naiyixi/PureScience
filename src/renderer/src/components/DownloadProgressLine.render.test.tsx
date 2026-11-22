@@ -67,4 +67,16 @@ describe('DownloadProgressLine', () => {
     )
     expect(container.textContent).toContain('resuming… (attempt 2)')
   })
+
+  it('says a restart starts over, and keeps the bar pulsing instead of frozen', () => {
+    act(() =>
+      root.render(
+        <DownloadProgressLine
+          progress={{ phase: 'restarting', transferred: 0, bytesPerSecond: 0, attempt: 1 }}
+        />
+      )
+    )
+    expect(container.textContent).toContain('restarting from the beginning… (attempt 1)')
+    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+  })
 })
