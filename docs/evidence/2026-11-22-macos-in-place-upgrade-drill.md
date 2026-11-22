@@ -158,6 +158,28 @@ macOS upgrade reading: failed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=use
 **这条判据仍然只是代理指标**：它证明目录与文件内容在换包之后还在，不证明那个 SQLite 库能打开、能读、
 schema 与旧版本兼容 —— 后半句见下面「没有证明的事」第三条。
 
+## 第 7 趟：tag 通道第一次自己跑，红在时序而不是换包
+
+`45037339833`（推 `v2.33.3` 带起来的，双架构、无人工参数）在 `Drilling v2.33.2 -> 2.33.3` 之后立刻红：
+
+```
+[mac-upgrade] Error: The feed already says we are current (2.33.2); the drill needs an older app than 2.33.3
+```
+
+归因：**打 tag 的同一秒 Release 才开始构建**，GitHub feed 的最新版本仍然是 2.33.2。演练去问「有没有
+2.33.3」，答案当然是「你已经是最新的」—— 这条报文本身是对的，错的是我让演练在 release 还没发布完时提问。
+
+修法（把等待变成演练的职责，而不是让人记住先等发布）：
+
+- `up-to-date` 且 feed 版本**落后**目标 → 每 60 秒重问一次，预算 45 分钟（`PURESCIENCE_DRILL_FEED_WAIT_MS`），
+  每次轮询都打一行「镜像还说 X，在等 Y，已等 N 秒」—— 卡住要读起来像卡住；
+- feed 版本比目标**更新**（重跑旧 tag）→ **立刻**失败，因为等待改不了方向；
+- 方向判断抽成 `feedWaitDecision`，6 条用例钉住 `wait` / `ahead` / `proceed` 三种答案。
+
+同一趟还暴露了第二个问题：feed 断言原来把两件事合成一件判 ——「这个 build 会去问镜像」和「镜像已经供这一版」。
+tag 时前者成立、后者必然不成立（镜像靠 cron 同步）。现在拆开：前者在 tag 时判，后者由同步之后单独一次
+`-f require_feed_version=true` 判。
+
 ## 这条判据**没有**证明的事
 
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。
