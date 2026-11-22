@@ -3,6 +3,13 @@
 - 日期：2026-11-22
 - 结论（第 1 趟）：`macOS upgrade reading: passed from=2.33.0 to=2.33.1 relaunched="2.33.1"`（run `44983043496`）
 - 结论（第 2 趟，另一对版本、一次通过）：`passed from=2.33.1 to=2.33.2 relaunched="2.33.2"`（run `44998687478`）
+- 结论（第 3 趟，重复同一对）：`passed from=2.33.1 to=2.33.2 relaunched="2.33.2"`（run `45001891993`）
+- **中间有一次红（`45001026264`），红的不是演练路径，是我的参数**：我把 `--next-version` 传成了 `v2.33.2`，
+  而 feed 答的是 `2.33.2`（不带 v），于是断言说 `The feed did not offer v2.33.2` —— 同一行的 payload 里
+  明明写着 `latest: 2.33.2`。修：参数归一化（去首尾空白与 v），不一致时把「参数」与「feed 答了什么」
+  两侧原文同时打出来，并抽成纯函数 + 两条用例。第 3 趟**故意还传 `v2.33.2`**，一次通过 —— 归一化是在
+  CI 上被证明的，不只是在单测里。
+- 诚实计数：**4 次 dispatch，3 次绿**；那 1 次红是操作失误而非路径不稳，但它确实不是「连续 3 趟」。
 - 演练脚本：`scripts/macos-upgrade-certification.mjs`（5 条单测在 `scripts/macos-upgrade-certification.test.ts`）
 - 工作流：`.github/workflows/macos-upgrade-smoke.yml`（**dispatch only，未接进 `release.yml`**）
 
