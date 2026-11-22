@@ -1,5 +1,61 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇六、本轮追加（执行器，2026-11-23 03:0x–）—— 停滞的下载由应用自己重下一次，且不把「重下」说成「续传」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == f3875d03`（第 8 趟 docs），`package.json` = 2.33.3，Latest 页 = **v2.33.3**。
+- 工作树 35 个改动 + 4 个未跟踪**仍是会话在制**（`shared/citation/*`、`ris-import*`、`zotero-import*`、`ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、`notebook/mcp-server.ts`、
+  `diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`）⇒ **一个字节没碰**；本单元只动
+  `src/main/update/**`、`src/shared/download-progress*`、`DownloadProgressLine*`，与会话路径不相交。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽、C 段外部阻塞 ⇒ 取 §二百〇五 §三 ③ 自己具名未做的那一条
+  （`update-download` 停滞后的续传/重试）。
+- 在飞车道（进轮）：`f3875d03` 的 `Nightly` 45049971074 `in_progress`（`Verify` success，windows-x64 与 macos-arm64 在 build，
+  已过 1 小时）；`Windows Full Test` 45049971095 `success`。**本轮推送会按同 ref 并发把它取消** —— 判决归属逐笔点名，不写成「它绿了」。
+
+### 一 先读代码再定做法（两个结论决定了形状）
+
+- `electron-updater` 6.8.9 的 `AppUpdater.executeDownload` 在失败分支 `removeFileIfAny()` 删掉 temp 文件 ⇒ **续传在这条路上做不到**，
+  能做的只有「有界重下」；接管它自己的 HTTP 传输才能保留半成品，那是另一个量级，本轮不做。
+- 共享词汇里的 `reconnecting` 属于**真的** Range 续传（`src/main/net/resilient-download.ts` 的装机包下载）。in-place 路径
+  若复用它，界面会说「resuming」而实际从 0 开始 ⇒ 新增 `restarting` 相位，文案写明从头开始。
+
+### 二 交付（`6e72311a`）
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/main/update/electron-updater-strategy.ts` | `downloadAttempts`（默认 2，可注入）+ 名额循环；停滞且还有名额 ⇒ 换新 token 重下、只打一行 warn（`attempt`/`attempts`/`stalledMs`/已下字节/总字节）；最后一次才写 error 状态与诊断 `failed`（带 `attempts`/`attemptsUsed`）；相位 `transfer` / `transfer-restart`；非停滞错误不重试；取消语义不变 |
+| `src/shared/download-progress.ts` | `DownloadPhase` 增加 `restarting` + `Connection lost, restarting from the beginning… (attempt N)` |
+| `src/renderer/src/components/DownloadProgressLine.tsx` | `restarting` 与 `reconnecting` 同样保持脉动（不把进度条冻在旧位置） |
+| 两个测试文件 | 新增 4 例（重下成功 / 名额用完 / 非停滞不重试 / 重下期间取消）；既有两条停滞用例改 `downloadAttempts: 1`，断言本意（最后一次尝试的文案与字节数）不变 |
+
+### 三 读数（本轮现取）
+
+| 项 | 读数 |
+| --- | --- |
+| 单测 | 新增 4 例全绿；`download-progress` 与渲染两条各补一条（重下文案不得出现 resuming / 脉动仍在） |
+| 真 socket（真计时器 + 真 HTTP） | 「永久静默」= 两次判停后 `error`、`downloadedBytes = 1048576`、`errorCategory: timeout`；「首试静默、次试给全量」= **两次真实请求**、广播 `restarting (attempt 1)`、状态 `ready`、耗时 ≥ 一个停滞窗口 |
+| 变异 | `DEFAULT_DOWNLOAD_ATTEMPTS` 改 1 ⇒ **4 例红**；重下相位改回 `reconnecting` ⇒ **2 例红** |
+| 门禁（隔离工作树 `/tmp/psr-retry` @ `6e72311a`） | eslint 全仓 **0 error / 101 warning**；双 typecheck **0 error**；定向 **24 files / 302 passed**；全量 **1516/1550 files、19,086/19,323 例**，8 例红全在 `src/main/references/**` 与 `projects/prisma-client.test.ts`（`Reference.edition`：共享 Prisma client 按会话在制 schema 生成），**基础提交 `f3875d03` 上同样 8 例红** ⇒ 基线红，不是本提交引入 |
+
+### 四 边界（具名）
+
+- **没有打包版读数**：这条路径只有装机版走，本机造不出一次真实的镜像停滞。真机判据：装机版日志里出现
+  `update download stalled; restarting the transfer` 且随后同一次下载 `outcome: 'completed'`，或一次 `failed` 带
+  `attempts`/`attemptsUsed`。
+- 重下是**从 0 开始**（见 §一），界面写的就是这句实话；没有 Range 续传。
+- `ECONNRESET` 不自动重试（只对停滞重下）；要不要也重下是取舍项，未定、未测。
+- Windows 无对等读数（逻辑与平台无关，读数只在 macOS 取到）。
+
+### 五 下一轮第一步
+
+① 读本轮推送那笔的 `Nightly` 与 `Windows Full Test` 判决（完整 40 位 SHA），并逐笔点名 `f3875d03` 的 Nightly
+「被本轮推送取消」——「取消 ≠ 绿」；
+② 候选：①`ECONNRESET` 是否也重下（取舍：同样从 0 开始，先量它在真机日志里的占比再定）；②装机版下一次更新失败/重下的
+真机读数（判据已写进 `docs/evidence/2026-11-23-update-download-restart.md` §四）；③mac 演练第 3 趟（连续 3 绿之后仍是
+拍板项，不自行接线）。
+
 ## 二百〇五、本轮追加（执行器，2026-11-23 00:50–01:2x）—— `[Auditor]` 纠正被撞掉：等不到的预判改成「被拒就重发」，且只在独苗时
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
