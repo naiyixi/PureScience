@@ -398,11 +398,21 @@ removedBytes=489774958`）、重开应用时它不自己退出不再被当成失
 `matrix.name == 'macos-arm64' || 'windows-x64'` 且 `skip_verify` 为 false 时就跑，因此 **Nightly 的
 windows job 每天都在跑同一条车道**，不必等到发版才发现回归。
 
+**计数现状**（2026-11-22 02:19Z，Nightly `44969868722` 的 windows job `137051757747`）：
+
+| 读数 | 值 |
+| --- | --- |
+| `electron P0 reading` | **`passed`** |
+| 同趟 job 的步骤状态 | `Run P0 Electron certification: in_progress → success`；`Upload P0 failure context: pending`（没失败才 pending） |
+
+这是 3 趟里的**第 1 趟 Nightly 绿**（另有两次发版 dispatch 绿：`44926387947`、`44934613520`，作为旁证、
+不计入本条判据）。按判据要等第 3 趟 Nightly 才有资格谈翻转，最早 2026-11-24。
+
 **晋升判据（拍板项，数据齐了就翻）**：
 
 | 条件 | 读数从哪来 |
 | --- | --- |
-| 连续 3 趟 Nightly 的 windows job 里 `electron P0 reading: passed` | 每趟 job 日志的最后一段 |
+| 连续 3 趟 Nightly 的 windows job 里 `electron P0 reading: passed` | 每趟 job 日志的最后一段（当前 1/3，见上表） |
 | 期间没有为了变绿而放宽任何断言 / 加 retry | 提交史 |
 | 有一次失败被如实记录为 `failed` 而不是 `not-applicable` | 认证记录 |
 | 翻转后 `publish` 的 `needs` 只多一条 `windows P0 == passed`，不留 `continue-on-error` 例外 | `.github/workflows/release.yml` |
