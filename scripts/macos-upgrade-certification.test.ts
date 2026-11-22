@@ -5,8 +5,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  archMismatch,
   bundleVersion,
   findBundle,
+  normaliseArch,
   normaliseVersionInput,
   runProcess,
   waitForVersionOnDisk
@@ -122,5 +124,30 @@ describe('the next_version argument is read the way people actually type it', ()
   it('leaves a bare version and a missing value alone', () => {
     expect(normaliseVersionInput('2.33.2')).toBe('2.33.2')
     expect(normaliseVersionInput(undefined)).toBeUndefined()
+  })
+})
+
+describe('an architecture mismatch is refused instead of reported as an upgrade', () => {
+  // Rosetta lets an x86_64 bundle start on an arm64 runner, so "it launched and updated" would be true and
+  // still not be the thing a user on that architecture does. `macos-15-intel` exists for the other half.
+  it('accepts the pair each runner actually provides', () => {
+    expect(archMismatch('arm64', 'arm64')).toBeNull()
+    expect(archMismatch('x86_64', 'x86_64')).toBeNull()
+    expect(archMismatch('x86_64 arm64', 'arm64')).toBeNull()
+  })
+
+  it('names both sides when they disagree', () => {
+    const said = archMismatch('x86_64', 'arm64')
+    expect(said).toContain('x64')
+    expect(said).toContain('this host is arm64')
+  })
+
+  it('does not read an unreadable answer as agreement', () => {
+    expect(archMismatch('', 'arm64')).toContain('no architecture')
+  })
+
+  it('normalises the names the two tools use', () => {
+    expect(normaliseArch('x86_64')).toBe('x64')
+    expect(normaliseArch('aarch64')).toBe('arm64')
   })
 })

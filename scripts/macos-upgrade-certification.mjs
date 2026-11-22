@@ -90,6 +90,36 @@ const bundleVersion = async (bundle) => {
   return short.trim()
 }
 
+// An x86_64 app can start on an arm64 runner through Rosetta, so "it launched" does not mean the drill ran
+// the path a user with that architecture runs: Squirrel's swap and the relaunch read differently under
+// translation. `macos-15-intel` is the last x64 image GitHub offers (until ~2027), so both host kinds exist —
+// this refuses a mismatched pair by name instead of reporting an upgrade that a different machine performed.
+const ARCH_ALIASES = { x86_64: 'x64', amd64: 'x64', arm64: 'arm64', aarch64: 'arm64' }
+const normaliseArch = (raw) => {
+  const key = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  return ARCH_ALIASES[key] ?? key
+}
+const archMismatch = (bundleArches, hostArch) => {
+  const wanted = new Set(
+    String(bundleArches ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(normaliseArch)
+  )
+  const host = normaliseArch(hostArch)
+  if (wanted.size === 0)
+    return `the bundle reports no architecture at all (lipo said ${JSON.stringify(bundleArches)})`
+  if (!wanted.has(host)) {
+    return (
+      `the bundle is ${[...wanted].join('/')} and this host is ${host} — one of them is wrong, and an ` +
+      'upgrade performed under translation is not the upgrade that architecture performs'
+    )
+  }
+  return null
+}
+
 const bundleExecutable = async (bundle) => {
   const plist = join(bundle, 'Contents', 'Info.plist')
   const name = await runProcess('plutil', ['-extract', 'CFBundleExecutable', 'raw', plist])
@@ -313,6 +343,15 @@ const main = async () => {
   const executable = await bundleExecutable(bundle)
   const fromVersion = await bundleVersion(bundle)
   console.log(`[mac-upgrade] previous bundle ${bundle} (${fromVersion})`)
+  const bundleArches = await runProcess('lipo', ['-archs', executable]).catch((error) => {
+    throw new Error(`lipo could not read ${executable}: ${error.message}`)
+  })
+  const hostArch = await runProcess('uname', ['-m'])
+  const mismatched = archMismatch(bundleArches, hostArch)
+  if (mismatched) throw new Error(`Host and bundle disagree about architecture: ${mismatched}`)
+  console.log(
+    `[mac-upgrade] architecture: bundle ${bundleArches.trim()} on host ${hostArch.trim()}`
+  )
   if (fromVersion === nextVersion) {
     throw new Error(
       `The "previous" bundle is already ${nextVersion}; the drill would prove nothing`
@@ -451,9 +490,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 }
 
 export {
+  archMismatch,
   bundleVersion,
   findBundle,
   gatekeeper,
+  normaliseArch,
   normaliseVersionInput,
   runProcess,
   waitForVersionOnDisk

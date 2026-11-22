@@ -19,9 +19,21 @@ on:
         required: true
         default: v2.33.0
       next_version:
-        description: Version the drill expects the updater to install (no leading v)
+        description: Version the drill expects the updater to install (leading v is accepted and stripped)
         required: true
         default: 2.33.1
+      arch:
+        # Both halves are real: a user on Intel installs the x64 zip and updates through the same feed, and a
+        # drill that only ever ran arm64 says nothing about that. `macos-15-intel` is GitHub's last x64 macOS
+        # image (through ~2027); the drill itself refuses a host/bundle mismatch, so this input cannot quietly
+        # report an arm64 result as an x64 one.
+        description: Which build to drill (arm64 -> macos-15, x64 -> macos-15-intel)
+        required: true
+        default: arm64
+        type: choice
+        options:
+          - arm64
+          - x64
       extra_args:
         # `--keep-home` by default, and it is not cosmetic: with a private HOME the app's Electron network
         # stack never answered — its own startup check sat at phase `query-provider` for two minutes (run
@@ -37,14 +49,15 @@ permissions:
 jobs:
   drill:
     name: Upgrade macOS app in place
-    # arm64 because the release's mac-arm64 zip carries the notarized bundle on this architecture; the
-    # x64 zip is the same flow and can be added when a runner for it matters.
+    # The image follows the input, because the app that swaps itself must be the app for this host: an
+    # x86_64 bundle will start on an arm64 runner through Rosetta, but the drill refuses that pair by name
+    # rather than reporting a translation as the upgrade that architecture performs.
     #
     # `macos-15`, not `macos-14`: the 14 image was retired 2026-11-02, and a dispatch against it does not
     # queue and time out — it is cancelled within a second with zero steps, and the only place that says
     # why is an annotation the run API keeps: "The configuration 'macos-14-arm64-us-default' is not
     # supported". Two dispatches were read as "something is cancelling my runs" before that was checked.
-    runs-on: macos-15
+    runs-on: ${{ inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -67,7 +80,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/previous"
           gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
-            -p '*mac-arm64.zip' -D "$RUNNER_TEMP/previous"
+            -p "*mac-${{ inputs.arch }}.zip" -D "$RUNNER_TEMP/previous"
           ls -l "$RUNNER_TEMP/previous"
 
       # Redirect, do not pipe. `| tee` keeps the step alive for as long as ANY process still holds the other
@@ -79,7 +92,7 @@ jobs:
         run: |
           set +e
           node scripts/macos-upgrade-certification.mjs \
-            --previous-zip "$RUNNER_TEMP/previous/"*mac-arm64.zip \
+            --previous-zip "$RUNNER_TEMP/previous/"*mac-${{ inputs.arch }}.zip \
             --next-version "$NEXT_VERSION" \
             --work-dir "$RUNNER_TEMP/upgrade" ${{ inputs.extra_args }} \
             > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
