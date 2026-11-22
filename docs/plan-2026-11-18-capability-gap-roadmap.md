@@ -457,8 +457,11 @@ relaunched -> {"version":"2.33.1"}
 Gatekeeper -> accepted      codesign --verify --deep --strict: ok
 ```
 
-**它没有证明的事**：只 dispatch（不影响发版）；临时目录里的干净副本，不碰真实会话/文献库；feed 只走
-GitHub Releases，没验镜像链路；3 绿 / 4 趟不等于不再偶发红，也还没有非手动触发的样本。
+**它没有证明的事**：只 dispatch（不影响发版）；~~临时目录里的干净副本，不碰真实会话/文献库~~ → **已加数据判据**
+（2026-11-22：两个标记 kept/lost/rewritten + 反向对照，逐字读数见
+`docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`「第 5、6 趟」与「反向对照的隔离实验」；标记仍是代理指标，
+**不证明那个 SQLite 库读得出来**）；
+feed 只走 GitHub Releases，没验镜像链路；3 绿 / 4 趟不等于不再偶发红，也还没有非手动触发的样本。
 
 **x64 那一半也补上了**（`45002891087`，`macos-15-intel`，`architecture: bundle x86_64 on host x86_64` →
 `passed from=2.33.1 to=2.33.2`）。此前这里写着「x64 没有 runner 可用」——**那条是错的**：`macos-13` 于

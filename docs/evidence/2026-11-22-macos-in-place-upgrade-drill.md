@@ -140,6 +140,24 @@ macOS upgrade reading: failed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=use
 它是红的，而且红在数据那一栏而不是版本那一栏 —— 所以 `kept` 现在是一个**能分辨 `lost`** 的读数，不是一个
 恰好总为真的字符串。
 
+## 反向对照的隔离实验：只删一个标记，读数只红在那个标记上
+
+`45031036722` 一次删了两个标记（`sabotage=both`），它证明「会红」，但**证明不了两个标记各自都在被读** ——
+万一只删 userData 时读数仍然是绿的，那就说明 `storage:lost` 在替 userData 那一格代言。补一趟隔离实验：
+
+```
+[mac-upgrade] sabotage (user-data): removed userData (…/drill-marker.json)
+[mac-upgrade] user data after the swap: userData:lost storage:kept
+macOS upgrade reading: failed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=userData:lost storage:kept
+```
+
+（`45031488471`，`-f sabotage=user-data`，arm64。）只删 userData ⇒ `userData:lost` 而 storage 仍是 `kept`；
+同一趟里 `on disk now: 2.33.2`、`relaunched 2.33.2`、`Gatekeeper: accepted` 全部照旧通过 ⇒ 红只可能来自
+数据那一格。三条合起来（正常 `45030290794` / 双删 `45031036722` / 单删 `45031488471`）才说明两个标记各读各的。
+
+**这条判据仍然只是代理指标**：它证明目录与文件内容在换包之后还在，不证明那个 SQLite 库能打开、能读、
+schema 与旧版本兼容 —— 后半句见下面「没有证明的事」第三条。
+
 ## 这条判据**没有**证明的事
 
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。

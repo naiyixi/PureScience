@@ -1,5 +1,61 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇四、本轮追加（执行器，2026-11-22 22:0x–）—— 反向对照只删一个标记：两个标记各读各的；顺带把「没有覆盖用户数据」那条过期结论改回事实
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 80363121`（22:06 落的数据判据反向对照），`package.json` = 2.33.2，Latest 页 = v2.33.2。
+- 工作树 38 个改动 + 4 个未跟踪**仍是会话在制**（`src/shared/citation/*`、`ris-import*`、`zotero-import*`、
+  `ro-crate*`、`RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、
+  `notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`）⇒ **一个字节没碰**。
+  本轮只碰两份 docs（`docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`、
+  `docs/plan-2026-11-18-capability-gap-roadmap.md`）。
+- 会话在轮内仍在提交：`7260a8c8`（第 5/6 趟落账）与 `1cce80b6`（更新源镜像待拍板）先后落在 80363121 之上并已推上
+  main；两笔都是 docs ⇒ 不新建 Nightly/Windows run，`80363121` 那三条车道的判决仍是当前唯一有效读数。
+- 在飞车道：`80363121` 的 `Nightly` 45031035383 in_progress（Verify 仍在跑）、`Windows Full Test` 45031035423
+  **success**、`macOS Upgrade Smoke` 两条（一条 sabotage=both、一条我派的 sabotage=user-data）已按预期红。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽、C 段外部阻塞 ⇒ 本轮取「把上一轮的判据补成可分辨的形状」，
+  因为会话正占着工作树，代码侧不碰。
+
+### 一 交付（两处 docs，均在我方路径上，与会话不相交）
+
+1. **`45031036722` 只证明了「会红」，证明不了两个标记各自都在被读。** 一次删两个标记（`sabotage=both`）时，
+   若只删 userData 那一趟仍然是绿的，就说明 `storage:lost` 在替 userData 代言。补一趟隔离实验
+   （`-f sabotage=user-data`，arm64）：`45031488471` ⇒ `failed … data=userData:lost storage:kept`，
+   同一趟里 `on disk now: 2.33.2` / `relaunched 2.33.2` / `Gatekeeper: accepted` 全部照旧通过 ⇒
+   红只可能来自数据那一格。三条合起来（正常 `45030290794` / 双删 `45031036722` / 单删 `45031488471`）
+   才说明两个标记各读各的。落点：证据档新增「反向对照的隔离实验」一节。
+2. **路线图里一条已经过期的自陈**：「临时目录里的干净副本，不碰真实会话/文献库」——第 5/6 趟已经加了数据判据，
+   这句留着就是把已交付的写成未做。改成「已加数据判据（两个标记 + 反向对照，链接到证据档），但标记仍是代理指标，
+   **不证明那个 SQLite 库读得出来**」——反向的失真（把只做一半的写成做完）同样不写。
+
+### 二 读数（本轮现取）
+
+| 项 | 读数 |
+| --- | --- |
+| 隔离实验 | `45031488471`：`macOS upgrade reading: failed from=2.33.1 to=2.33.2 relaunched="2.33.2" data=userData:lost storage:kept`（预期红） |
+| 双删对照 | `45031036722`：`failed … data=userData:lost storage:lost`（预期红） |
+| 正向 | `45030290794`：`passed … data=userData:kept storage:kept` |
+| 演练脚本 + 工作流契约单测 | `npx vitest run scripts/macos-upgrade-certification.test.ts scripts/ci/update-drill-workflow.test.ts` ⇒ **2 files / 25 passed** |
+| `Windows Full Test` @ `80363121` | **success**（run 45031035423） |
+| `Nightly` @ `80363121` | `Verify`（lint + typecheck + **test with coverage** + package）**success**（job 137234558303，14:07→14:28Z）；四个平台构建在跑，`Build windows-x64` 的 `Run P0 Electron certification` 自 14:35Z 起 in_progress ⇒ **本轮不声称**它的判决（这条步骤既有读数就要 ~110 min），下一轮按完整 40 位 SHA 读它日志里的 `electron P0 reading` |
+
+### 三 边界（具名）
+
+1. **数据判据仍是代理指标**：标记证明目录与文件内容在换包之后还在，不证明那个 SQLite 库能打开、能读、schema 与
+   旧版本兼容。要证明后者得让应用换包后自己开一次库并报行数 —— 本轮没做，已写进证据档与路线图。
+2. **反向对照不会自动跑**：`sabotage` 是 dispatch 输入，CI 里没有「每次都跑一遍反向对照」的作业（那样每次演练
+   要下两份 300 MB 包）。它的存在是给读者的复核手段，不是每次的自动门。
+3. **`Nightly` 的 Windows 硬门计数本轮不加**：判据要的是 job 级 `electron P0 reading: passed` 的**连续**读数，
+   而本轮这条 run 还没落定；拿 in_progress 当通过是假读数。**`Verify` 绿也不是同一件事** —— 它证明的是测试与
+   打包这一环，不是真机 P0。
+
+### 四 下一轮第一步
+
+- ① 读 `45031035383`（`80363121`）的 windows 作业 `electron P0 reading`，按 run 逐趟续上路线图的计数表。
+- ② 候选（连锁最小）：①「换包后应用自己开库并报行数」那条读数（把代理指标补成真指标）；②`update-download`
+  停滞后的续传/重试（§二百〇二 具名未做）；③mac 演练第 3 趟（连续 3 绿之后仍是拍板项，不自行接线）。
+
 ## 二百〇三、本轮追加（执行器，2026-11-22 19:5x–20:1x）—— 相位的「开始偏移」不再被读成「时长」；顺带修掉主干上只提交了半边的两处红
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
