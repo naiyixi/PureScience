@@ -85,6 +85,20 @@ const outputTail = (output, limit = DEFAULT_OUTPUT_TAIL_CHARS) => {
   return redactServiceTokens(tail)
 }
 
+// "still running (pid 8730)" is true of a wedged app and of a machine that simply never scheduled it — the
+// same sentence covered both on run 44943351879, where the x64 child printed nothing at all for 90 s while
+// arm64 announced in 11.9 s. This line adds what the pid alone cannot say: its scheduler state, how long it
+// had existed, its CPU share, how many children it had managed to fork, and the last words macOS itself
+// wrote about it. Pure rendering so the shape is pinned by tests; the sampling lives in the launcher.
+const describeProcessDetail = (detail) => {
+  if (!detail) return undefined
+  const parts = []
+  if (detail.ps) parts.push(`ps: ${detail.ps}`)
+  if (detail.children !== undefined) parts.push(`children: ${detail.children}`)
+  if (detail.log) parts.push(`unified log (last 2m): ${detail.log}`)
+  return parts.length === 0 ? undefined : `- extra process evidence: ${parts.join(' | ')}`
+}
+
 const describeProcessState = (processState) =>
   processState.status === 'running'
     ? `still running (pid ${processState.pid}) when the limit expired`
@@ -158,7 +172,8 @@ export const describeStartupTimeout = ({
   processState,
   output,
   outputActivity,
-  postTripObservation
+  postTripObservation,
+  processDetail
 }) => {
   const headline =
     criterion === 'stall'
@@ -176,9 +191,46 @@ export const describeStartupTimeout = ({
     `- startup phases: ${describeStartupPhases(output)}`,
     `- output activity: ${describeOutputActivity(outputActivity)}`,
     `- after the wait tripped: ${describePostTripObservation(postTripObservation, elapsedMs, criterion)}`,
+    ...(describeProcessDetail(processDetail) ? [describeProcessDetail(processDetail)] : []),
     `- last output (${DEFAULT_OUTPUT_TAIL_CHARS} chars max, tokens redacted):`,
     outputTail(output)
   ].join('\n')
+}
+
+// Bounded, never throwing: a diagnostic that fails must not turn one red into another. `ps` and the unified
+// log answer different questions — the first says whether the process was ever scheduled, the second whether
+// macOS itself killed or blocked it (Gatekeeper, code-signing, launchd) without the app writing a byte.
+const captureProcessDetail = async (pid) => {
+  const run = async (executable, args, timeoutMs = 6_000) => {
+    const child = spawn(executable, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    let out = ''
+    child.stdout?.setEncoding('utf8')
+    child.stdout?.on('data', (chunk) => (out += chunk))
+    const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs)
+    const code = await new Promise((resolveChild) => child.on('close', resolveChild))
+    clearTimeout(timer)
+    return code === 0 ? out.trim() : ''
+  }
+  const detail = {}
+  // stat/etime/%cpu in one line; `=` suffixes drop the headers so the value reads like a reading.
+  detail.ps = await run('ps', ['-o', 'stat=,etime=,%cpu=', '-p', String(pid)]).catch(() => '')
+  detail.children = await run('pgrep', ['-P', String(pid)]).then(
+    (out) => out.split('\n').filter(Boolean).length,
+    () => undefined
+  )
+  detail.log = await run(
+    'log',
+    ['show', '--last', '2m', '--style', 'compact', '--predicate', 'process == "PureScience"'],
+    8_000
+  )
+    .then((out) => {
+      const lines = out.split('\n').filter((line) => line.trim() !== '')
+      if (lines.length === 0) return 'nothing — macOS wrote no line about this process'
+      const tailLines = lines.slice(-3).map((line) => redactServiceTokens(line.slice(0, 200)))
+      return `${lines.length} line(s), last: ${tailLines.join(' // ')}`
+    })
+    .catch(() => '')
+  return Object.keys(detail).some((key) => detail[key]) ? detail : undefined
 }
 
 export const waitFor = async (description, check, timeoutMs = STARTUP_BUDGET_MS) => {
@@ -373,6 +425,7 @@ export const launchAndProbe = async ({
       error instanceof Error && (error.code === 'SMOKE_TIMEOUT' || error.code === 'SMOKE_STALL')
     let postTripObservation
     let outputActivity
+    let processDetail
     let tripElapsedMs
     if (tripped) {
       // Sample the last arrival and the silence at the SAME instant — the trip. Read at kill time
@@ -396,6 +449,8 @@ export const launchAndProbe = async ({
         }
       )
       postTripObservation = { found: reached, waitedMs: Date.now() - observationStartedAt }
+      // Sampled while the child is still alive, before the post-trip observation is torn down.
+      processDetail = await captureProcessDetail(child.pid).catch(() => undefined)
     }
     child.kill('SIGKILL')
     const criterion = error instanceof Error && error.code === 'SMOKE_STALL' ? 'stall' : 'budget'
@@ -414,7 +469,8 @@ export const launchAndProbe = async ({
       processState,
       output,
       outputActivity,
-      postTripObservation
+      postTripObservation,
+      processDetail
     })
   }
 }

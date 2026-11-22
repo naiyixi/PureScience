@@ -284,6 +284,25 @@ describe('macOS package smoke', () => {
     const unrecorded = describeStartupTimeout(base)
     expect(unrecorded).toContain('- output activity: not recorded')
     expect(unrecorded).toContain('- after the wait tripped: not observed')
+
+    // `still running (pid …)` covered both "the app wedged" and "the runner never scheduled it" on run
+    // 44943351879 (x64 silent for 90 s, arm64 announced in 11.9 s). The extra evidence names the scheduler
+    // state, the age, the CPU share, the children, and what macOS itself wrote — so the next occurrence
+    // says which of the two it was. A run that captured nothing keeps the line absent rather than empty.
+    const withDetail = describeStartupTimeout({
+      ...base,
+      processDetail: {
+        ps: 'Ss 00:42 0.0',
+        children: 0,
+        log: '2 line(s), last: PureScience[8730]: activated // kernel: CODE SIGNING VIOLATION'
+      }
+    })
+    expect(withDetail).toContain(
+      '- extra process evidence: ps: Ss 00:42 0.0 | children: 0 | unified log (last 2m): 2 line(s), last: PureScience[8730]: activated'
+    )
+    expect(describeStartupTimeout(base)).not.toContain('- extra process evidence')
+    const partial = describeStartupTimeout({ ...base, processDetail: { children: 0 } })
+    expect(partial).toContain('- extra process evidence: children: 0')
   })
 
   // The gate used to have one 60 s ceiling, which reported a loaded intel runner as a stuck app (two
