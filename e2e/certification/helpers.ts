@@ -68,4 +68,62 @@ const openRecentSession = async (page: Page, prompt: string): Promise<void> => {
 const receiptText = async (locator: Locator): Promise<string> =>
   ((await locator.textContent()) ?? '').replace(/\s+/g, ' ').trim()
 
-export { createProject, openRecentSession, receiptText, sendPrompt }
+// (flake, v2.33.2) The receipt line is the fixture agent's reply; the artifact row that carries the file's
+// path is a separate write into the session document, so a read taken the moment the reply appears can come
+// back without it. Measured on the Windows runner (release run 44969881391, job 137051828764):
+// `pdf-figure-extraction`'s first attempt threw "the PDF artifact has no path in the session document"
+// after 19 s, and retry #1 passed 21 s later on the same tree. Polling the document does not lower what
+// these specs assert — the command still has to run on the artifact the app itself recorded — it only
+// takes the sampling instant out of the instrument, and it names the two failures apart: a row that never
+// appears (the write did not happen) versus a row with an empty path (document and `PersistedArtifact.path`
+// disagree, where the type says a path is always present).
+const readSessionArtifact = async (
+  page: Page,
+  request: { projectId: string; sessionId: string; name: string }
+): Promise<{ path?: string; names: string[]; pathless: boolean }> =>
+  page.evaluate(async ({ projectId, sessionId, name }) => {
+    const bridge = globalThis as unknown as {
+      api: {
+        sessions: {
+          readDocument: (input: {
+            projectId: string
+            sessionId: string
+          }) => Promise<{ artifacts?: Array<{ name?: string; path?: string }> } | undefined>
+        }
+      }
+    }
+    const document = await bridge.api.sessions.readDocument({ projectId, sessionId })
+    const artifacts = document?.artifacts ?? []
+    const artifact = artifacts.find((entry) => entry.name === name)
+    return {
+      path: artifact?.path ? artifact.path : undefined,
+      names: artifacts.map((entry) => entry.name ?? '(unnamed)'),
+      pathless: Boolean(artifact) && !artifact?.path
+    }
+  }, request)
+
+const sessionArtifactPath = async (
+  page: Page,
+  request: { projectId: string; sessionId: string; name: string },
+  timeoutMs = 90_000
+): Promise<string> => {
+  const startedAt = Date.now()
+  let reading = await readSessionArtifact(page, request)
+  while (!reading.path && Date.now() - startedAt < timeoutMs) {
+    await page.waitForTimeout(250)
+    reading = await readSessionArtifact(page, request)
+  }
+  if (!reading.path) {
+    throw new Error(
+      reading.pathless
+        ? `${request.name} is in the session document without a path after ${timeoutMs} ms`
+        : `the session document never listed ${request.name} in ${timeoutMs} ms; it lists [${reading.names.join(', ')}]`
+    )
+  }
+  console.log(
+    `[cert] artifact ${request.name} reached the session document after ${Date.now() - startedAt} ms`
+  )
+  return reading.path
+}
+
+export { createProject, openRecentSession, receiptText, sendPrompt, sessionArtifactPath }

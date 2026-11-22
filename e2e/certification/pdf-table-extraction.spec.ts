@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, receiptText, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt, sessionArtifactPath } from './helpers'
 
 // Acceptance for the PDF table panel on a real window: the page the fixture agent writes carries a four
 // column table placed by the text matrix, and both sides of the app have to agree about it — the command
@@ -33,22 +33,22 @@ test('reads a real table through the command the agent is given, and shows the s
   if (!identity) throw new Error(`Invalid PDF artifact receipt: ${receipt}`)
   const [, sessionId] = identity
 
-  // What the agent is told: the same command the panel calls, on the same file.
+  // What the agent is told: the same command the panel calls, on the same file. The artifact row is a
+  // separate write from the reply above, so wait for it rather than sampling the document once.
+  const path = await sessionArtifactPath(page, {
+    projectId,
+    sessionId,
+    name: 'table-evidence.pdf'
+  })
+
   const result = await page.evaluate(
-    async ({ projectId, sessionId }) => {
+    async ({ projectId, path }) => {
       const bridge = globalThis as unknown as {
         api: {
-          sessions: {
-            readDocument: (request: {
-              projectId: string
-              sessionId: string
-            }) => Promise<{ artifacts?: Array<{ name?: string; path?: string }> } | undefined>
-          }
           pdf: {
-            open: (request: {
-              projectId: string
-              path: string
-            }) => Promise<{ doc: { docId: string } }>
+            open: (request: { projectId: string; path: string }) => Promise<{
+              doc: { docId: string }
+            }>
             tables: (request: { projectId: string; docId: string; page?: number }) => Promise<{
               scannedPages: number
               candidates: Array<{
@@ -65,16 +65,10 @@ test('reads a real table through the command the agent is given, and shows the s
           }
         }
       }
-      const document = await bridge.api.sessions.readDocument({ projectId, sessionId })
-      const artifact = (document?.artifacts ?? []).find(
-        (entry) => entry.name === 'table-evidence.pdf'
-      )
-      if (!artifact?.path)
-        throw new Error('the table PDF artifact has no path in the session document')
-      const opened = await bridge.api.pdf.open({ projectId, path: artifact.path })
+      const opened = await bridge.api.pdf.open({ projectId, path })
       return bridge.api.pdf.tables({ projectId, docId: opened.doc.docId })
     },
-    { projectId, sessionId }
+    { projectId, path }
   )
 
   expect(result.scannedPages).toBeGreaterThan(0)

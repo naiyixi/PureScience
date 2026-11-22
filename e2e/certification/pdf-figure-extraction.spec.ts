@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, receiptText, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt, sessionArtifactPath } from './helpers'
 
 // Acceptance for figure extraction on a real window: the page the fixture agent writes carries a picture
 // and a caption under it, and the app's own pdf:figures command must find them — through the same public
@@ -26,22 +26,23 @@ test('extracts the figure and its caption from a real PDF through the app comman
   const [, sessionId] = identity
 
   // The file on disk is the one the session document records for that artifact: the command reads a path,
-  // so the path has to come from the app rather than from a guess about the storage layout.
+  // so the path has to come from the app rather than from a guess about the storage layout. The row is a
+  // separate write from the reply above, so wait for it — and if it never comes, the helper says which of
+  // the two ways it did not come.
+  const path = await sessionArtifactPath(page, {
+    projectId,
+    sessionId,
+    name: 'region-evidence.pdf'
+  })
+
   const result = await page.evaluate(
-    async ({ projectId, sessionId }) => {
+    async ({ projectId, path }) => {
       const bridge = globalThis as unknown as {
         api: {
-          sessions: {
-            readDocument: (request: {
-              projectId: string
-              sessionId: string
-            }) => Promise<{ artifacts?: Array<{ name?: string; path?: string }> } | undefined>
-          }
           pdf: {
-            open: (request: {
-              projectId: string
-              path: string
-            }) => Promise<{ doc: { docId: string } }>
+            open: (request: { projectId: string; path: string }) => Promise<{
+              doc: { docId: string }
+            }>
             figures: (request: { projectId: string; docId: string; page?: number }) => Promise<{
               figures: Array<{
                 page: number
@@ -57,15 +58,10 @@ test('extracts the figure and its caption from a real PDF through the app comman
           }
         }
       }
-      const document = await bridge.api.sessions.readDocument({ projectId, sessionId })
-      const artifact = (document?.artifacts ?? []).find(
-        (entry) => entry.name === 'region-evidence.pdf'
-      )
-      if (!artifact?.path) throw new Error('the PDF artifact has no path in the session document')
-      const opened = await bridge.api.pdf.open({ projectId, path: artifact.path })
+      const opened = await bridge.api.pdf.open({ projectId, path })
       return bridge.api.pdf.figures({ projectId, docId: opened.doc.docId })
     },
-    { projectId, sessionId }
+    { projectId, path }
   )
 
   // The picture the fixture painted: 200x150 points at (100, 500) in the page's own space.
