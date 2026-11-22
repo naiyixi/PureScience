@@ -1,5 +1,69 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百、本轮追加（执行器，2026-11-22 12:2x–）—— v2.33.2 的 Windows 片红在一个 macOS 专用单测上：起不来的二进制不会去等超时
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == ab3268c8`（`chore(release): v2.33.2`，**12:13**，比我这一轮早 6 分钟），
+  `git tag v2.33.2^{commit}` 逐字相同；`gh release list` 的 Latest 还停在 v2.33.1（tag 已推、页未落）。
+- 工作树里**会话一大批在制**（`src/shared/citation/*`、`ris-import*`、`zotero-import*`、`src/shared/ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`settings/provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、
+  `notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、`references/repository.ts`、
+  `e2e/certification/ro-crate-export.spec.ts`）⇒ **一个字节没碰**。本轮只碰
+  `e2e/certification/{helpers,pdf-figure-extraction.spec,pdf-table-extraction.spec}.ts`、
+  `scripts/macos-upgrade-certification{.mjs,.test.ts}` 与本档。
+- 进轮车道（`ab3268c8…6cad`）：`Windows Full Test`(44984143602) **failure**、`Nightly`(44984143625)
+  `Verify` **success** 而四个打包作业 `queued`、`Release`(44984159098) **in_progress**（tag 事件）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可取单元 ⇒ 取 §一百九十九 §三 ① 的读数尾巴 + 本轮新红的归因。
+
+### 一 单元甲：图形/表格抽取不再单次读会话文档（上一轮 `pdf-figure-extraction` 的 flake 尾巴）
+
+Windows P0（run 44969881391，job 137051828764）里它**首跑红 19 s、退避重试就过**，失败行是
+`the PDF artifact has no path in the session document`。根因是采样时点而不是产品：回执那行是 fixture
+agent 的答复，带文件路径的 artifact 行是对会话文档的**另一次写入**。
+
+- `helpers.ts` 新增 `sessionArtifactPath`（单一来源）：有界轮询 `sessions.readDocument`（90 s / 250 ms），
+  两种结局**分开命名** —— 行一直没出现（`the session document never listed <name> in 90000 ms; it lists [...]`）
+  与行在但 path 为空（`PersistedArtifact.path` 按类型必有值 ⇒ 出现这一态说明文档与类型不一致）。
+- 两个 spec 改用该助手（`pdf-table-extraction` 同一形状、只是还没红过）；**断言一条没放松**：命令仍然跑在
+  应用自己记录的那个 artifact 上。
+
+读数（隔离工作树 `/tmp/ps-fig-flake`，只含这一笔）：`tsc node` EXIT=0；eslint 三文件 0 error / 0 warning；
+`build:e2e` ✓；两个 spec 真窗口 **2 passed (24.4 s)**，日志 `[cert] artifact … reached the session document
+after 3 ms`。变异自证：查找名改成 `absent-fixture.pdf` ⇒ **1 failed**，失败行逐字是
+`the session document never listed absent-fixture.pdf in 90000 ms; it lists [region-evidence.pdf]`。
+
+### 二 单元乙：v2.33.2 的 Windows 片红 = 一条只在 macOS 成立的单测，且它的失败不会落定
+
+`Windows Full Test` 的 shard 8/8（job 137090909581）红在一个文件上：
+`scripts/macos-upgrade-certification.test.ts` **4 failed | 2007 passed | 29 skipped (2040)**，四条各跑到
+`Test timed out in 120000ms`（该文件累计 480 s）。同一次 `Nightly` 的 `Verify` 是 **success** —— 它在 macOS 上跑，
+`plutil` 在，四条自然过。
+
+根因两条（同一处）：
+
+| # | 机制 | 修法 |
+| --- | --- | --- |
+| 1 | 钻取脚本的 `runProcess` 只监听 `close`；`spawn` 找不到二进制发的是 `error`，而失败的 spawn 永不发 `close` ⇒ promise 永不落定，只能等满预算 | 在 `error` 上具名拒绝（`<程序> could not be started: <原因>`），`close` 里照旧清定时器 |
+| 2 | 那四条钉的正是 `plutil` 的答复（「用户在 Get Info 里看到的版本」，不是我们自己写回去的字段） | 四条改 `it.skipIf(process.platform !== 'darwin')`；`findBundle` 是纯文件系统活，留在所有平台跑 |
+
+读数：本机 **6 passed / 360 ms**（原 5 条 + 新增 1 条钉「起不来要立刻具名」）；把 `plutil` 弄成不可解析
+（`env -i PATH=/nonexistent …`，正是 Windows 上的条件）⇒ 同一条用例 **11 ms** 就以
+`plutil could not be started: spawn plutil ENOENT` 失败，不再烧满 120 s ⇒ 修法在两边都取到了行为。
+`tsc node` EXIT=0、eslint 0 error / 0 warning。
+
+### 三 推送与仍未收口
+
+- 已推 `ab3268c8..1f848b6c`（两笔都是执行器：`f7f18f74` 单元甲、`1f848b6c` 单元乙）；推前
+  `bash scripts/pre-push-checks.sh` 全绿（5 个新增/改动文件 lint 0 problems、敏感词零命中）。
+- 推时在飞的是 `Release`(44984159098，**tag ref `v2.33.2`**，并发组不含 main ⇒ 本次推送不影响它) 与
+  `Nightly`(44984143625) —— 后者**没有被取消**（它的并发组按事件而不按 ref），新 SHA 的 `Nightly` 排在它后面
+  `pending`；被这次推送顶掉的只有该 SHA 尚在跑的 `Windows Full Test`（它已经落定为 failure）。
+- **v2.33.2 发布页尚未核验**：`Release` 仍在 `in_progress`（本轮结束时未落定）⇒ 页/资产/校验和/公证四件读数
+  留给下一轮，判据照 §一百九十九 §一 那张表。
+- 下一条候选：`pdf-figure-extraction` 修法的**第二趟** Windows P0 读数（随下一个 tag 车道自然取得，不在本轮伪造）；
+  以及 §一百九十九 §三 ② 的 standalone 公证修复路径（要动 workflow + 脚本，属大件）。
+
 ## 一百九十九、本轮追加（执行器，2026-11-22 09:0x–）—— v2.33.1 发布核验一次全对上；`references-page-selection` 的偶发红改在「等投影」而不是「等更久」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
