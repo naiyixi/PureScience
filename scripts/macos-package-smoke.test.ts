@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { evaluateMacSignatureGate, readingIsObserved } from './ci/mac-signing-status.mjs'
 import {
+  STARTUP_BUDGET_MS,
+  STARTUP_STALL_MS,
   artifactVersion,
   assertPackagedResources,
   describeSmokeFailure,
@@ -323,7 +325,7 @@ describe('macOS package smoke', () => {
       outputActivity: { lastChunkAtMs: 38_900, silenceMs: 60_240 }
     })
     expect(stalled).toContain('Stalled waiting for the packaged macOS web service')
-    expect(stalled).toContain('no output for 60240 ms (stall window 60000 ms)')
+    expect(stalled).toContain(`no output for 60240 ms (stall window ${STARTUP_STALL_MS} ms)`)
     expect(stalled).toContain('the 180000 ms budget was not what tripped')
 
     const budget = describeStartupTimeout({
@@ -556,5 +558,20 @@ describe('macOS package smoke', () => {
     expect(
       await readFile(join(root, 'reading.json'), 'utf8').catch(() => undefined)
     ).toBeUndefined()
+  })
+})
+
+describe('the startup windows stay wider than the runs we have actually seen', () => {
+  // Measured on the 2.33.2 macos-x64 release build (run 44984159098): `load-application-modules=2112ms`
+  // then `electron-ready=64553ms` — a 62.4 s gap in which the app was working, not wedged (`ps` showed it
+  // running at 37.8% CPU with two children) — and the web service still started at ~102.8 s. A 60 s window
+  // reported that run as a stall. These two numbers are the whole defence against repeating it.
+  it('keeps the stall window above the worst legitimate silence', () => {
+    expect(STARTUP_STALL_MS).toBeGreaterThan(62_400)
+  })
+
+  it('keeps the budget above the slowest legitimate start and below no ceiling at all', () => {
+    expect(STARTUP_BUDGET_MS).toBeGreaterThan(102_800)
+    expect(STARTUP_BUDGET_MS).toBeGreaterThan(STARTUP_STALL_MS)
   })
 })

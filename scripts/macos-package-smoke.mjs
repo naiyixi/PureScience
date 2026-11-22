@@ -10,13 +10,16 @@ import { readMacBundleSignature } from './ci/mac-signing-status.mjs'
 
 const ARTIFACT_PATTERN = /^zerolink-purescience-(.+)-mac-(?:arm64|x64)\.(dmg|zip)$/
 const SMOKE_ROOT_PREFIX = 'purescience-macos-package-smoke-'
-const STARTUP_BUDGET_MS = 180_000
-// Silence, not elapsed time, is the criterion that means "wedged": a loaded intel runner sat 21.7 s
-// between `electron-ready` and the next line and still finished (we cut it at 60 s before it could
-// announce), so a mere 60 s ceiling reported a slow machine as a stuck app. The budget is therefore
-// wider than any run we have seen, and the stall window — ~3× the worst legitimate gap measured — is
-// what keeps that from hiding a real hang. Both are named in the failure; neither is a pass.
-const STARTUP_STALL_MS = 60_000
+const STARTUP_BUDGET_MS = 240_000
+// Silence, not elapsed time, is the criterion that means "wedged" — but the window has to be wider than
+// the worst *legitimate* gap, and on 2026-11-22 a loaded intel runner produced a 62.4 s one: the startup
+// timeline went `load-application-modules=2112ms` → `electron-ready=64553ms`, with `compose-runtime=72215ms`
+// and `ipc-handlers-registered=101735ms` after it, and the web service did start (port 49284) at ~102.8 s.
+// The 60 s window that used to sit here cut that run at 60.032 s of silence, before the app could speak,
+// and reported a working app as stalled — while `ps` showed it running at 37.8% CPU with two children.
+// So: window 90 s (1.4× that measured gap), budget 240 s (2.3× the slowest legitimate start seen). Both
+// are named in the failure; neither is a pass.
+const STARTUP_STALL_MS = 90_000
 // Not a gate budget: once a criterion has tripped the run has already failed. This window only
 // separates "the app was still working and this runner is slow" from "the app went silent and never
 // got there" — two states that used to end in the identical sentence.
@@ -687,6 +690,8 @@ if (invokedAsScript) {
 }
 
 export {
+  STARTUP_BUDGET_MS,
+  STARTUP_STALL_MS,
   artifactVersion,
   assertPackagedResources,
   describeSmokeFailure,
