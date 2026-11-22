@@ -215,9 +215,10 @@ regression` **success**、`Upload visual regression failure` **skipped**（没�
 与 curl 真跑，不是看脚本推断）：三份 feed 全部 `200` 且 `version: 2.33.2`，五个资产的 `Content-Length` 与
 YAML 声明**逐一相等**；`/download/feed/` 是 `/download/` 别名下的真实路径，缺文件返回**真 404**。
 
-仍待证明的两格（写在下面，不当成已完成）：① `v2.33.3` 镜像同步完成后，feed 真的供 2.33.3
-（`require_feed_version=true` 的那次 dispatch）；② 一次**从镜像 feed 完成换包**的原地升级（要 v2.33.3 → 下一版
-才有意义）。
+- ① **已证**：`45049362271` 读数 `feed=offers 2.33.3` —— 换包后从**已安装的 bundle** 读 `app-update.yml`
+  拿到 `generic` + 镜像地址，再去镜像问版本；五个资产 `Content-Length` 与 feed 声明的 `size` 逐一相等。
+- ② **未证**：一次**从镜像完成下载与安装**的原地升级。要被升级的 `v2.33.2` 那个包还指着 GitHub（改源之前
+  造的），所以 `45049362271` 那次换包的下载仍走 GitHub。第一次真正的镜像换包是 `v2.33.3 → v2.33.4`。
 
 以下是拍板前的原始实测，留作依据。
 
@@ -522,7 +523,9 @@ run 的 summary 与 artifact，便于不打开 job 日志也能看。
 `app-update.yml`），**「镜像已经供这一版」由同步后的单独一次 `require_feed_version=true` 判**。合在一起判，
 就得到一个和 build 无关的红。
 
-**非手动样本仍是 0/3**：tag 通道要等真打发布 tag 时才算第一次。晋升硬门（B）的判据不变：连续 3 条 tag 通道
+**非手动样本：1/3，而且是红的。** `45037339833`（推 `v2.33.3` 带起来的第一趟 tag 通道）红在
+`The feed already says we are current (2.33.2)` —— 时序问题，已修（见上）。修好之后的绿都是 dispatch
+（`45049362271`），**不算 tag 样本**。：tag 通道要等真打发布 tag 时才算第一次。晋升硬门（B）的判据不变：连续 3 条 tag 通道
 绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
 `macOS upgrade == passed` 的 `needs`。
 

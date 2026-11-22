@@ -180,6 +180,40 @@ schema 与旧版本兼容 —— 后半句见下面「没有证明的事」第�
 tag 时前者成立、后者必然不成立（镜像靠 cron 同步）。现在拆开：前者在 tag 时判，后者由同步之后单独一次
 `-f require_feed_version=true` 判。
 
+## 第 8 趟：镜像 feed 真的供了这一版（`45049362271`）
+
+`v2.33.3` 发布完、镜像 `v2.33.3/` 落下 `.complete` 之后跑的一次，带 `require_feed_version=true`：
+
+```
+[mac-upgrade] Drilling v2.33.2 -> 2.33.3
+[mac-upgrade] check() -> {"state":"available","latest":"2.33.3", ...}
+[mac-upgrade] on disk now: 2.33.3 (was 2.33.2, check saw 2.33.2)
+[mac-upgrade] Gatekeeper: .../previous/PureScience.app: accepted
+[mac-upgrade] user data after the swap: userData:kept storage:kept
+[mac-upgrade] update feed: offers 2.33.3
+macOS upgrade reading: passed from=2.33.2 to=2.33.3 relaunched="2.33.3"   data=userData:kept storage:kept feed=offers 2.33.3
+```
+
+`feed=offers 2.33.3` 是这一格的关键读数：它在换包之后，从**已安装的 bundle** 里读 `app-update.yml`，
+拿到 `provider: generic` 与 `https://purescience.work/download/feed/`，再去镜像问它供哪一版。也就是说
+「这个包会不会去问镜像」和「镜像供的是不是这一版」两件事同时为真 —— 前者由仓库的 `electron-builder.yml`
+决定，后者由服务器的 cron 决定，**两者都能单独坏掉**，所以分开读、分开判。
+
+顺带核过 feed 的五个资产：大小**以 feed 文件自己声明的 `size` 为准**（我第一次比对了记忆里的数字，报了一次
+假 MISMATCH —— 判据要从源文件读）：
+
+| 资产 | 声明 | HTTP `Content-Length` |
+| --- | --- | --- |
+| mac-arm64.zip | 295882103 | 295882103 |
+| mac-x64.zip | 312383616 | 312383616 |
+| win-x64-setup.exe | 244845588 | 244845588 |
+| AppImage | 318374697 | 318374697 |
+| deb | 242418184 | 242418184 |
+
+**这一趟没有证明的事**：这次换包的**下载**仍走 GitHub —— 被升级的 2.33.2 那个包的 `app-update.yml` 还指着
+GitHub（它是改源之前造的）。「从镜像完成一次换包」要等 `v2.33.3 → v2.33.4`，那是第一次有安装包指着镜像去
+下载并安装。
+
 ## 这条判据**没有**证明的事
 
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。
