@@ -58,10 +58,19 @@
 
 ### 三 仍未收口（下一轮第一步）
 
-1. **本单元的 Windows 判决**：这条 spec 只在 `build.yml` 的 `Run P0 Electron certification` 里跑，而该作业
-   由 `release.yml` 调用（`Nightly` / `Windows Full Test` 都不跑认证 spec）⇒ 本笔推送后**立即**按需派发
-   `gh workflow run release.yml --ref main`（`release_tag` 留空 = 只出产物、不碰已发布资产），run id 补在本节。
-   判决按 §6 判据读：Windows 车道该 spec **首跑通过**才算修好；`retry` 才过 = 未修好。
+1. **本单元的 Windows 判决已取到（首跑通过）**：这条 spec 只在 `build.yml` 的
+   `Run P0 Electron certification` 里执行，`Nightly` / `Windows Full Test` 都不跑认证 spec ⇒ 本笔推送后按需派发
+   `release.yml`（run **44969881391**，`workflow_dispatch --ref main`，`release_tag` 留空 = 只出产物、不碰已发布资产，
+   跑在 `9eea7b64` 上）。读数（作业 `build / Build windows-x64` = 137051828764）：
+
+   | 判据 | 读数 |
+   | --- | --- |
+   | 该 spec 在 Windows 上是第几趟过 | **首跑过**：`[96/137]` 02:02:39Z 起 → 02:02:58Z 完（**19.0 s**）；全轮唯一一处 `(retry #1)` 属于 `pdf-figure-extraction`，不是它 |
+   | 全作业汇总 | `123 passed / 1 flaky / 13 skipped (41.6m)`，flaky 名单里没有它 |
+   | 作业结论 | **success** |
+
+   ⇒ 修法 ① 的**第一趟**判据达成（判据要求连续两趟；第二趟随下一次 `Release` 的 tag 车道取得，不在本轮伪造）。
+   顺带一条新读数：`pdf-figure-extraction` 这一轮 flake 过一次（`retry #1` 才过）——下一轮候选，与本单元无关。
 2. §一百九十八 §四 ② 的派生件缺口仍在（standalone 修复路径不刷新 `version.json` 的 mac sha256 与
    `RELEASE-CERTIFICATION.json` 的 mac digest）：本笔 v2.33.1 走的是 tag 全链路，`publish` 在 staple 之后
    才聚合 ⇒ 本次读数不受影响，但「只用 `notarize-mac.yml` standalone 补一次」时那两份仍会停在 staple 前字节。

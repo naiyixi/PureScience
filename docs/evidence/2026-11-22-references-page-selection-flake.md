@@ -96,7 +96,10 @@ Error: element(s) not found
 主树跑 `npm run typecheck:node` 时 EXIT=2，两条 `TS6133` 落在 `src/main/settings/provider-env.test.ts`
 （会话在制、`M` 状态）⇒ 与本批无关；隔离工作树同命令 EXIT=0 即归属证据。
 
-**仍未取证的一格**：Windows 车道的判决（判据见 §6）。这条 spec 只在 `build.yml` 的
-`Run P0 Electron certification` 里执行，`Nightly` / `Windows Full Test` 都不跑认证 spec ⇒ 只能靠一次
-按需派发的 `Release`（`release_tag` 留空，只出产物）拿读数；本轮推送后立即派发，读数补在
-`docs/plan-2026-10-03-next-queue-and-round-convention.md` §一百九十九 §三。
+**Windows 车道的判决（判据见 §6，第一趟已达成）**：这条 spec 只在 `build.yml` 的
+`Run P0 Electron certification` 里执行，`Nightly` / `Windows Full Test` 都不跑认证 spec ⇒ 用一次按需派发的
+`Release` 取读数（run **44969881391**，`release_tag` 留空，跑在 `9eea7b64` 上；作业
+`build / Build windows-x64` = 137051828764）：该 spec `[96/137]` 02:02:39Z 起 → 02:02:58Z 过（**19.0 s**，
+**首跑**；全轮唯一的 `(retry #1)` 属于 `pdf-figure-extraction`），作业汇总
+`123 passed / 1 flaky / 13 skipped (41.6m)`、flaky 名单里没有它。判据要求连续两趟，第二趟随下一次 `Release`
+的 tag 车道取得——**本轮不把那第二趟写成已达成**。
