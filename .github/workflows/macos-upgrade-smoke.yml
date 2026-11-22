@@ -53,6 +53,20 @@ on:
         description: 'Testing only: pretending this tag was just pushed (drills both architectures)'
         required: false
         default: ''
+      sabotage:
+        # The reverse control, and the reason the data reading is worth reading: a marker that is always
+        # found proves nothing, so this deletes one on purpose. A run with `user-data` or `storage` here is
+        # expected to go red with `data=userData:lost` (or `storage:lost`); a run that stays green while
+        # asked to destroy the marker means the reading is not measuring anything.
+        description: 'Reverse control: delete a data marker before it is checked (expected to fail)'
+        type: choice
+        options:
+          - none
+          - user-data
+          - storage
+          - both
+        default: none
+        required: false
       extra_args:
         # `--keep-home` by default, and it is not cosmetic: with a private HOME the app's Electron network
         # stack never answered — its own startup check sat at phase `query-provider` for two minutes (run
@@ -198,6 +212,7 @@ jobs:
         env:
           NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
           EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home --seed-user-data' }}
+          PURESCIENCE_DRILL_SABOTAGE: ${{ inputs.sabotage || 'none' }}
         run: |
           set +e
           node scripts/macos-upgrade-certification.mjs \

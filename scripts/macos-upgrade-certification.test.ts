@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  applyDataSabotage,
   archMismatch,
   bundleVersion,
   findBundle,
@@ -198,6 +199,55 @@ describe('the user-data marker the drill leaves behind', () => {
       // would compare equal by both sides being undefined.
       await writeFile(path, 'garbage', 'utf8')
       expect(await readUserDataMarker(path)).toBe('garbage')
+    })
+  })
+})
+
+// The reverse control. Without it the data reading could be "kept" because nothing was ever written where
+// it looks, or because `readUserDataMarker` cannot see a deletion — both would still print `kept`.
+describe('the reverse control for the data markers', () => {
+  const withMarkers = async (
+    body: (paths: { userData: string; storage: string }) => Promise<void>
+  ): Promise<void> => {
+    const home = await mkdtemp(join(tmpdir(), 'drill-sabotage-'))
+    try {
+      const paths = {
+        userData: await seedUserDataMarker(join(home, 'user-data'), 'token-1'),
+        storage: await seedUserDataMarker(join(home, 'storage'), 'token-1')
+      }
+      await body(paths)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  }
+
+  it('removes only the marker it was asked for, and says which', async () => {
+    await withMarkers(async (paths) => {
+      const removed = await applyDataSabotage(paths, 'storage')
+      expect(removed).toHaveLength(1)
+      expect(removed[0]).toContain('storage')
+      expect(await readUserDataMarker(paths.storage)).toBeUndefined()
+      expect(await readUserDataMarker(paths.userData)).toBe('token-1')
+    })
+  })
+
+  it('does nothing for `none` or an unknown mode', async () => {
+    await withMarkers(async (paths) => {
+      expect(await applyDataSabotage(paths, 'none')).toEqual([])
+      expect(await applyDataSabotage(paths, '')).toEqual([])
+      expect(await readUserDataMarker(paths.userData)).toBe('token-1')
+      expect(await readUserDataMarker(paths.storage)).toBe('token-1')
+    })
+  })
+
+  it('skips a marker that was never seeded instead of throwing', async () => {
+    await withMarkers(async (paths) => {
+      const removed = await applyDataSabotage(
+        { userData: undefined, storage: paths.storage },
+        'both'
+      )
+      expect(removed).toHaveLength(1)
+      expect(removed[0]).toContain('storage')
     })
   })
 })

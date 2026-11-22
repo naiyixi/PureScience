@@ -316,6 +316,27 @@ const readUserDataMarker = async (path) => {
   }
 }
 
+// The reverse control for the data reading. A marker that is always found proves nothing: the only way to
+// know `kept` means something is to delete it on purpose and watch the drill refuse to pass. `mode` names
+// which marker to remove — `user-data`, `storage`, `both`, or anything else for none.
+const applyDataSabotage = async ({ userData, storage }, mode) => {
+  const wanted =
+    {
+      'user-data': ['userData'],
+      storage: ['storage'],
+      both: ['userData', 'storage']
+    }[mode] ?? []
+  const paths = { userData, storage }
+  const removed = []
+  for (const name of wanted) {
+    const path = paths[name]
+    if (!path) continue
+    await rm(path, { force: true })
+    removed.push(`${name} (${path})`)
+  }
+  return removed
+}
+
 const gatekeeper = async (bundle) => {
   const verdict = await runProcess('spctl', ['-a', '-vv', '--type', 'exec', bundle]).catch(
     (error) => `refused: ${error.message}`
@@ -466,6 +487,16 @@ const main = async () => {
 
   // The relaunch happens before this reads the marker on purpose: the interesting case is that the new
   // build started, opened its store, and still found the old data rather than replacing it.
+  // Sabotage runs before the read and after the relaunch, so it models the failure a user would actually
+  // hit: the swap went through, the app starts, and the data that was there is gone.
+  const sabotage = process.env.PURESCIENCE_DRILL_SABOTAGE ?? ''
+  const sabotaged = await applyDataSabotage(
+    { userData: markerPath, storage: storageMarkerPath },
+    sabotage
+  )
+  if (sabotaged.length > 0) {
+    console.log(`[mac-upgrade] sabotage (${sabotage}): removed ${sabotaged.join(', ')}`)
+  }
   const describeMarker = async (path) => {
     if (!path) return 'skipped'
     const after = await readUserDataMarker(path)
@@ -551,6 +582,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 }
 
 export {
+  applyDataSabotage,
   readUserDataMarker,
   seedUserDataMarker,
   userDataDir,
