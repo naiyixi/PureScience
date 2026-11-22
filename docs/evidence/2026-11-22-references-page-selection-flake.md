@@ -72,3 +72,31 @@ Error: element(s) not found
 - 修法 ① 的判据：同一提交在 **Windows 车道**上跑该 spec，连续两趟都不出现 flaky（首跑即通过或
   「首跑失败原因是投影未收进」且 retry 通过都算**未修好**）；本机 macOS 同 spec 仍需通过。
 - 本轮未做任何修改：spec 与产品代码保持 `7eeed30d` 时的样子。
+
+## 7 修法 ① 已落地（2026-11-22 09:1x，执行器）—— 读数与变异自证
+
+改的是**等待的对象**，不是等待的长度：打开 picker 之前先用应用自己的桥轮询投影，直到那件 PDF 在
+`collection:{kind:'all'}` 的列表里出现（同一个 collection、同一条 `.pdf` 过滤、同样 100/页的翻页上限，
+与 `ReferencesLibraryDialog.tsx:770-792` 的加载函数逐条对齐）。失败信息自己具名：
+`the project-file index never took the fixture PDF, so the picker had nothing to list`。
+
+隔离工作树 `/tmp/ps-gate-rps`（`HEAD` = `e322acf3` + 这一处改动，node_modules 软链到主仓）：
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（`NODE_OPTIONS=--max-old-space-size=8192`） | **EXIT=0**（`e2e/**/*` 在该 project 的 include 里） |
+| `eslint --no-cache e2e/certification/references-page-selection.spec.ts` | **0 error / 0 warning** |
+| `npm run build:e2e` | `✓ built in`，三份产物（main/preload/renderer） |
+| 该 spec（macOS 真窗口，`npx playwright test <该文件>`） | **1 passed（20.7 s）** |
+
+**变异自证（这道守卫不是空转）**：把轮询谓词改成永假（只认 `absent-fixture.pdf`），同一命令得到
+**1 failed**，失败行逐字是上面那句具名信息 —— 也就是说「投影没收进」这一半真的会被读到，
+而不是被 20 秒的断言预算盖住。
+
+主树跑 `npm run typecheck:node` 时 EXIT=2，两条 `TS6133` 落在 `src/main/settings/provider-env.test.ts`
+（会话在制、`M` 状态）⇒ 与本批无关；隔离工作树同命令 EXIT=0 即归属证据。
+
+**仍未取证的一格**：Windows 车道的判决（判据见 §6）。这条 spec 只在 `build.yml` 的
+`Run P0 Electron certification` 里执行，`Nightly` / `Windows Full Test` 都不跑认证 spec ⇒ 只能靠一次
+按需派发的 `Release`（`release_tag` 留空，只出产物）拿读数；本轮推送后立即派发，读数补在
+`docs/plan-2026-10-03-next-queue-and-round-convention.md` §一百九十九 §三。

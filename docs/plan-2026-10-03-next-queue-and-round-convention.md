@@ -1,5 +1,72 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 一百九十九、本轮追加（执行器，2026-11-22 09:0x–）—— v2.33.1 发布核验一次全对上；`references-page-selection` 的偶发红改在「等投影」而不是「等更久」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == e322acf3`（`chore(release): v2.33.1`，06:55），`package.json` = 2.33.1，
+  `v2.33.1^{commit}` 与远端 tag 逐字一致；Release 页已是 **Latest**（`gh release list`）。
+- 工作树里**会话一大批在制**（`src/shared/citation/*`、`ris-import*`、`zotero-import*`、`src/shared/ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`settings/provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、
+  `notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、`references/repository.ts`、
+  `e2e/certification/ro-crate-export.spec.ts`）⇒ **一个字节没碰**。本轮只碰
+  `e2e/certification/references-page-selection.spec.ts` 与本档、`docs/evidence/2026-11-22-references-page-selection-flake.md`。
+- 进轮车道（完整 40 位 SHA `e322acf398f3b7f57086031feec61f93eee6409a`）：`Release`(44959252253) **success**、
+  `Nightly` **success**、`Windows Full Test` **success**（三车道都在这一笔上落定）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可取单元；取 §一百九十八 §四 ③ 自己写下的第一条候选。
+
+### 一 v2.33.1 发布核验（读数全对上，含第三方算的校验和）
+
+| 判据 | 读数 |
+| --- | --- |
+| 页状态 | `draft=false`、`isPrerelease=false`、`name=PureScience v2.33.1`、`gh release list` 显示 **Latest** |
+| 资产 | **17 件**：四平台安装包 + `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / `latest*.yml` / `arm64-mac.yml` + `x64-mac.yml` / win `setup.exe.blockmap` |
+| 与提交绑死 | `RELEASE-CERTIFICATION.json` 的 `sourceSha` = `e322acf3…409a`，与 `git rev-parse 'v2.33.1^{commit}'` 逐字符相同 |
+| 校验和 | `SHA256SUMS.txt` 的 8 条**逐条**等于 GitHub 自己算的 asset `digest`（0 处不一致、0 个名字对不上） |
+| 下载页数据 | `version.json` 五条下载的 `sha256` 与 `size` 逐条等于 asset `digest`/`size` |
+| mac 更新流 | `latest-mac.yml` 两档 zip 都在、`size` 与资产一致；**无 `blockMapSize`**（见下） |
+| 公证是否真的做了 | 两个架构的作业日志逐行读到 `status=Accepted` → `The staple and validate action worked!` → `The validate action worked!`（arm64 137033614074 / x64 137033614071），x64 的 `--gatekeeper` 冒烟也跑过并通过 |
+
+**17 件不是缺资产**：`scripts/verify-release.mjs:44-45` 头注写明「四个 mac blockmap 是有意不入列的 ——
+`notarize-mac.yml` 重发 stapled dmg/zip 时会丢掉 staple 前的 blockmap，因为对已变字节算的差量没有意义」
+（即 v2.33.0 那 21 件是**未公证**路径的读数，v2.33.1 走的是公证路径）。v2.33.0 的 x64 Gatekeeper 冒烟红
+在本笔上**没有复现**（同一脚本同一参数，pass），与 §一百九十八 §一 的「环境层静默」结论一致。
+
+### 二 交付：`references-page-selection` 的偶发红改「等投影」而不是「等更久」
+
+改动只有一处（`e2e/certification/references-page-selection.spec.ts`）：在打开 picker **之前**，用应用
+**自己的桥**（`window.api.projectFiles.listFiles`，与 picker 同一个 `collection:{kind:'all'}`、同一条 `.pdf`
+过滤规则、同样 100/页的翻页上限）有界轮询，直到 `table-evidence.pdf` 真的在投影里；失败信息自己具名
+（`the project-file index never took the fixture PDF, …`）。因此红灯的含义从「20 秒内没出现」变成
+「投影没收进这件 PDF」——后者是产品/夹具的事，前者只是断言预算。
+
+为什么不是改超时：`docs/evidence/2026-11-22-references-page-selection-flake.md` §2 的失败快照里，对话框
+已经**答完空态**（`No PDF files in this project.`）——一个已渲染空态的列表不会因为再等 10 秒长出那一行。
+
+读数（隔离工作树 `/tmp/ps-gate-rps`，只含 `HEAD` + 这一处改动）：
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（`NODE_OPTIONS` 8192） | EXIT=0（`e2e/**/*` 在 include 里，这一处真被检查过） |
+| `eslint --no-cache` 该文件 | 0 error / 0 warning |
+| `npm run build:e2e` | ✅（`✓ built in`，三份产物） |
+| 该 spec（macOS，真窗口） | **1 passed（20.7s）** |
+| 变异自证 | 把轮询谓词改成永假（只认 `absent-fixture.pdf`）⇒ **1 failed**，失败行逐字是我写的那句 `the project-file index never took the fixture PDF…` ⇒ 这道守卫不是空转 |
+
+主树那次 `typecheck:node` 是 **EXIT=2**，两条 `TS6133` 落在 `src/main/settings/provider-env.test.ts`
+（会话在制文件，`M` 状态）⇒ 不是本批；隔离工作树同命令 EXIT=0 即其归属。
+
+### 三 仍未收口（下一轮第一步）
+
+1. **本单元的 Windows 判决**：这条 spec 只在 `build.yml` 的 `Run P0 Electron certification` 里跑，而该作业
+   由 `release.yml` 调用（`Nightly` / `Windows Full Test` 都不跑认证 spec）⇒ 本笔推送后**立即**按需派发
+   `gh workflow run release.yml --ref main`（`release_tag` 留空 = 只出产物、不碰已发布资产），run id 补在本节。
+   判决按 §6 判据读：Windows 车道该 spec **首跑通过**才算修好；`retry` 才过 = 未修好。
+2. §一百九十八 §四 ② 的派生件缺口仍在（standalone 修复路径不刷新 `version.json` 的 mac sha256 与
+   `RELEASE-CERTIFICATION.json` 的 mac digest）：本笔 v2.33.1 走的是 tag 全链路，`publish` 在 staple 之后
+   才聚合 ⇒ 本次读数不受影响，但「只用 `notarize-mac.yml` standalone 补一次」时那两份仍会停在 staple 前字节。
+3. `codex-acp` 用户自装不可用那条仍是**产品决定**（谁的版本优先），不是缺陷，不动。
+
 ## 一百九十八、本轮追加（执行器，2026-11-22 06:3x–）—— v2.33.0 的页面缺在 x64 的 Gatekeeper 冒烟上：正文取自 tag 而非 main，视觉红是本版真的改了设置页
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
