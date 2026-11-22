@@ -485,7 +485,7 @@ describe('ElectronUpdaterStrategy', () => {
     }
   })
 
-  it('does not restart a transfer that failed for a reason other than a stall', async () => {
+  it('does not restart a transfer whose failure a second attempt cannot fix', async () => {
     const updater = new FakeUpdater()
     const broadcast = vi.fn()
     updater.runDownload = async () => {
@@ -495,7 +495,8 @@ describe('ElectronUpdaterStrategy', () => {
         total: 100_000,
         bytesPerSecond: 500
       })
-      throw new Error('read ECONNRESET')
+      // A byte-level failure: the retry would download the same broken file again.
+      throw new Error('sha512 checksum mismatch, expected a different digest')
     }
     const strategy = new ElectronUpdaterStrategy({
       updater,
@@ -509,12 +510,105 @@ describe('ElectronUpdaterStrategy', () => {
     const status = await strategy.download()
 
     expect(status.state).toBe('error')
-    expect(status.error).toContain('ECONNRESET')
+    expect(status.error).toContain('sha512 checksum mismatch')
     expect(updater.downloadUpdate).toHaveBeenCalledTimes(1)
     const phases = broadcast.mock.calls
       .filter(([channel]) => channel === 'update:progress')
       .map(([, payload]) => (payload as { phase: string }).phase)
     expect(phases).not.toContain('restarting')
+  })
+
+  // Field reading that set this: one of three failed `update-download` operations in 2.32.0 was
+  // `connection-reset` after 53 minutes — a live socket dying mid-stream, which a fresh connection can
+  // survive. The stall watchdog cannot see it (the failure arrives as an error, not as silence).
+  it('restarts a transfer whose connection was reset, and logs which class it restarted', async () => {
+    const updater = new FakeUpdater()
+    const log = createLogSpy()
+    const broadcast = vi.fn()
+    let starts = 0
+    updater.runDownload = async () => {
+      starts += 1
+      updater.emit('download-progress', {
+        percent: starts === 1 ? 60 : 5,
+        transferred: starts === 1 ? 60_000 : 5_000,
+        total: 100_000,
+        bytesPerSecond: 2_000
+      })
+      if (starts === 1) throw new Error('net::ERR_CONNECTION_RESET')
+      updater.emit('update-downloaded', { version: '0.3.0' })
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast,
+      fetchImpl: offlineFetch(),
+      log,
+      downloadStallMs: 60_000
+    })
+    await strategy.check()
+    const status = await strategy.download()
+
+    expect(starts).toBe(2)
+    expect(status.state).toBe('ready')
+    const progress = broadcast.mock.calls
+      .filter(([channel]) => channel === 'update:progress')
+      .map(([, payload]) => payload as Record<string, unknown>)
+    // From zero, not "resuming": electron-updater deletes its temp file on any failure.
+    expect(progress.find((entry) => entry.phase === 'restarting')).toMatchObject({
+      phase: 'restarting',
+      transferred: 0,
+      attempt: 1
+    })
+    const records = diagnosticRecords(log)
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          attempt: 1,
+          attempts: 2,
+          errorCategory: 'connection-reset',
+          downloadedBytes: 60_000,
+          totalBytes: 100_000
+        })
+      ])
+    )
+    // A reset that was recovered is not this download's outcome.
+    expect(records.some((record) => record.outcome === 'failed')).toBe(false)
+  })
+
+  it('spends the same attempt budget on a reset connection and names how many were used', async () => {
+    const updater = new FakeUpdater()
+    const log = createLogSpy()
+    let starts = 0
+    updater.runDownload = async () => {
+      starts += 1
+      updater.emit('download-progress', {
+        percent: 10,
+        transferred: 10_000,
+        total: 100_000,
+        bytesPerSecond: 1_000
+      })
+      throw new Error('net::ERR_CONNECTION_RESET')
+    }
+    const strategy = new ElectronUpdaterStrategy({
+      updater,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      fetchImpl: offlineFetch(),
+      log,
+      downloadStallMs: 60_000
+    })
+    await strategy.check()
+    const status = await strategy.download()
+
+    expect(starts).toBe(2)
+    expect(status.state).toBe('error')
+    expect(status.error).toContain('ERR_CONNECTION_RESET')
+    const failed = diagnosticRecords(log).find((record) => record.outcome === 'failed')
+    expect(failed).toMatchObject({
+      errorCategory: 'connection-reset',
+      attempts: 2,
+      attemptsUsed: 2
+    })
   })
 
   it('lets the user cancel the restarted attempt instead of finishing it for them', async () => {

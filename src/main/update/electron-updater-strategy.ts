@@ -5,7 +5,7 @@ import { autoUpdater, CancellationToken } from 'electron-updater'
 import { APP } from '../../shared/app-config'
 import { formatBytes, type UpdateStatus } from '../../shared/update'
 import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
-import type { Logger } from '../logger'
+import { diagnosticErrorFields, type Logger } from '../logger'
 import { DEFAULT_DOWNLOAD_STALL_MS } from '../net/resilient-download'
 import { createUpdateCacheMaintenance, type InstallMarkerWriter } from './cache-maintenance'
 import { fetchManifest } from './manifest'
@@ -198,6 +198,23 @@ const DEFAULT_CHECK_BUDGET_MS = 20_000
 // link the chance the 38-minute silent stream never had, and stopping at two keeps a network that is
 // really down from turning the dialog into a progress bar that never finishes.
 const DEFAULT_DOWNLOAD_ATTEMPTS = 2
+
+// A transfer that died mid-stream can be restarted by the same budget above: the socket was reset, the
+// network changed under it, or the socket timed out — none of those says anything about the bytes, so a
+// second attempt on a fresh connection is a real second chance. Field reading that set this list (2.32.0,
+// three failed `update-download` operations in the app's own log): one was `connection-reset` after 53
+// minutes, and the other two were stalls, which the stall watchdog now stops at 60 s. Two categories are
+// deliberately absent — `dns`/`connection-refused`, where a restart in 0 ms cannot fix an unreachable
+// feed, and the catch-all `network`, which the classifier also hands to ECONNREFUSED and ENETUNREACH, so
+// retrying it would retry a configuration failure as if it were a socket death.
+export const RETRYABLE_TRANSFER_FAILURES: readonly string[] = [
+  'connection-reset',
+  'network-changed',
+  'network-timeout'
+]
+
+export const isRetryableTransferFailure = (category: string): boolean =>
+  RETRYABLE_TRANSFER_FAILURES.includes(category)
 
 class UpdateCheckTimeout extends Error {
   constructor(budgetMs: number) {
@@ -722,6 +739,26 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
             // A user cancel rejects downloadUpdate too; cancel() has already reset the status to
             // 'available', so leave it untouched here.
             if (activeToken.cancelled) return
+            // Same budget as a stall, for the failures a fresh socket can actually fix (see
+            // RETRYABLE_TRANSFER_FAILURES). Named in the log so the next real-machine reading can show the
+            // restart happened instead of inferring it from a shorter failure.
+            if (attempt < attempts) {
+              const failureCategory = diagnosticErrorFields(error).errorCategory
+              if (isRetryableTransferFailure(failureCategory)) {
+                const failedSample = this.downloadSample
+                this.log.warn('update download failed mid-transfer; restarting the transfer', {
+                  attempt,
+                  attempts,
+                  errorCategory: failureCategory,
+                  downloadedBytes: failedSample?.bytes ?? 0,
+                  totalBytes: failedSample?.total ?? 0,
+                  lastProgressAgoMs: failedSample ? Date.now() - failedSample.at : 0
+                })
+                activeToken = this.createCancellationToken()
+                this.downloadToken = activeToken
+                continue
+              }
+            }
             const sample = this.downloadSample
             const message = error instanceof Error ? error.message : 'Download failed'
             this.setStatus({
@@ -736,7 +773,10 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
               result: 'error',
               downloadedBytes: sample?.bytes ?? 0,
               totalBytes: sample?.total ?? 0,
-              lastProgressAgoMs: sample ? Date.now() - sample.at : 0
+              lastProgressAgoMs: sample ? Date.now() - sample.at : 0,
+              // Only meaningful once a restart was spent: without it a failed line after a restart reads
+              // exactly like a first-attempt failure.
+              ...(attempts > 1 && attempt > 1 ? { attempts, attemptsUsed: attempt } : {})
             })
             return
           }

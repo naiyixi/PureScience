@@ -1,5 +1,63 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇七、本轮追加（执行器，2026-11-23 05:4x–）—— 连接被重置也重下一次：判据复用日志行那个分类器，不另造一份
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == c0789ec6`，**本地领先 origin/main 两笔**（`6e72311a` 重下 + `c0789ec6` 它的证据档）——上一轮的交付
+  停在提交、**没有推送**。本轮回第一步就是把它送出去：`bash scripts/pre-push-checks.sh` EXIT=0（7 个文件，1 warning），
+  `f3875d03..c0789ec6` 已推。推前 `gh run list` 现查**无在飞车道**（`f3875d03` 的 Nightly / Windows 双双 success 且已落定）
+  ⇒ 本次推送没有取消任何人的判决。
+- 工作树 36 个改动 + 4 个未跟踪**仍是会话在制**（`shared/citation/*`、`ris-import*`、`zotero-import*`、`ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、`notebook/mcp-server.ts`、
+  `diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`，外加新的 `src/shared/agent-tool-budget.ts`）
+  ⇒ **一个字节没碰**；本单元只动 `src/main/update/**` 与 `docs/**`。
+- 装机版现取 = **2.33.2**（`defaults read /Applications/PureScience.app …`），Latest 页 = v2.33.3；两者差一个版本，
+  说明本单元与上一单元都还没到用户手里（边界见 §四）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽、C 段外部阻塞 ⇒ 取 §二百〇六 §五 ② 的第一条（`ECONNRESET` 是否也重下，
+  前提是「先量它在真机日志里的占比」）。
+
+### 一 先量后定（读数决定做不做，不是拍脑袋）
+
+三份轮转日志逐行解析 `update-download` 记录（现取）：**started 10 / completed 5 / failed 3 / cancelled 2**。
+三次失败 `network` 2 条（38 分、10 分，均无字节记录 ⇒ 停滞，已被上一单元的 60 s 看门狗覆盖）、
+**`connection-reset` 1 条（53 分钟）** ⇒ 占失败 **1/3**，且是看门狗看不见的那一类（错误到达，不是静默）⇒ 做。
+
+### 二 交付
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/main/update/electron-updater-strategy.ts` | 导出 `RETRYABLE_TRANSFER_FAILURES`（`connection-reset` / `network-changed` / `network-timeout`）+ `isRetryableTransferFailure`；catch 分支在「非停滞、还有名额、分类可重试」时打一行 warn（`attempt`/`attempts`/`errorCategory`/两个字节数/`lastProgressAgoMs`）后换新 token 重下；收尾 `operation.fail` 在名额被花过时补 `attempts`/`attemptsUsed` |
+| `src/main/update/electron-updater-strategy.test.ts` | 新增 2 例（重置后重下成功并记分类 / 两次重置用尽名额并记 attempts）；改写 1 例——它原来的错误串是假的重置（`new Error('read ECONNRESET')`，无 `net::`、无 `code`，分类器给 `error`），改成真字节级失败并改名 |
+| `docs/evidence/2026-11-23-update-download-retry-on-reset.md` | 上面那份真机分布、改法、读数、四条具名边界 |
+
+**判据复用**：分类取 `diagnosticErrorFields()` —— 就是日志行写 `errorCategory` 的那个函数，所以「日志说 connection-reset」
+与「代码因此重下」不可能各说各话（不新造第二个「什么算瞬时」的意见）。
+
+### 三 读数（本机实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 定向 | `vitest src/main/update src/main/net` **20 files / 264 passed**（该文件 54 例） |
+| 变异 ①（可重试集合置空） | **2 例红**，还原后全绿 |
+| 变异 ②（去掉收尾的 attempts 字段） | **1 例红**，还原后全绿 |
+| `eslint --no-cache` 两文件 | 0 error（1 warning 是 1698 行 HEAD 上既有的 prettier 折行，本轮未碰） |
+
+### 四 边界（具名）
+
+- **没有打包版读数**：真机判据是日志出现 `update download failed mid-transfer; restarting the transfer` 且带
+  `errorCategory: "connection-reset"`、随后同一次下载 `outcome: 'completed'`；或失败行带 `attempts: 2`/`attemptsUsed: 2`。
+- 重下仍**从 0 开始**（electron-updater 失败即删 temp）；界面写的就是这句实话。
+- Node 原生 `ECONNRESET`（无 `net::`、code 走 `network` 兜底类）**不重试**：它与 `ECONNREFUSED`/`ENETUNREACH` 同类，
+  要重试得先把分类器拆开——那是共享层的改动，本轮不做。
+- 装机版是 2.33.2，本单元与上一单元都要等下一次发版才到用户手里 ⇒ 用户侧的「更新不再停 38 分钟」仍未被真机证实。
+
+### 五 下一轮第一步
+
+① 读 `c0789ec6` 与本轮那笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA）；
+② 候选：①`mac` 演练第 3 趟（仍是拍板项，不自行接线）；②发版（2.33.3 之后已积累两笔更新链路修复，版本号该抬到
+2.33.4，需要一次发版窗口：冻结并发 + 四件套 + 隔离门禁）；③`session save` 的 p50 72 ms（346 次/65 分钟）是否立 perf 单元。
+
 ## 二百〇六、本轮追加（执行器，2026-11-23 03:0x–）—— 停滞的下载由应用自己重下一次，且不把「重下」说成「续传」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
