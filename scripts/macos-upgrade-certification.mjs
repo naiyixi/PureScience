@@ -12,7 +12,7 @@
 // carry the next version — not "the process exited" and not "the log said so".
 
 import { spawn } from 'node:child_process'
-import { mkdtemp, readdir, rm, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -218,8 +218,14 @@ const main = async () => {
     )
   }
 
+  // A private HOME as well as a private storage root: the packaged app keeps its single-instance lock and
+  // its updater cache under `~/Library/Application Support`, and a drill that shares them with whatever the
+  // machine is already running can either be refused the lock or purge somebody else's cache.
+  const home = join(workRoot, 'home')
+  await mkdir(home, { recursive: true })
   const env = {
     ...process.env,
+    HOME: home,
     PURESCIENCE_STORAGE_ROOT: storageRoot,
     PURESCIENCE_E2E_STORAGE_ROOT: storageRoot
   }
