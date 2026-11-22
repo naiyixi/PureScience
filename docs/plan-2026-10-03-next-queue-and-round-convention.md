@@ -1,5 +1,70 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇二、本轮追加（执行器，2026-11-22 17:3x–）—— 更新「下不动」不再等 38 分钟：60 秒判停，失败行自带「下了多少」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 8a7e4682`（16:35 的 x64 演练落账），`package.json` = 2.33.2，Latest 页 = v2.33.2。
+- 工作树里**仍是会话那 38 个在制 + 4 个未跟踪**（`src/shared/citation/*`、`ris-import*`、`zotero-import*`、
+  `ro-crate*`、`RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、
+  `notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`）⇒ **一个字节没碰**；
+  本轮只碰 `src/main/update/**` 与 `src/main/net/resilient-download.ts`（与会话路径不相交）。
+- 在飞车道：`f42a0997` 的 `Nightly`（run 45002890238）仍在跑、只剩 `Build windows-x64` 一个作业；
+  它的 `Windows Full Test` 与 `macOS Upgrade Smoke` 都已 success。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽；C 段外部阻塞；路线图两个「接不接成硬门」是拍板项且读数未齐
+  （Windows 硬门要连续 3 趟 Nightly，mac 演练最近连续 2 趟绿）⇒ 本轮取**真机日志里排第一的产品缺陷**（见下）。
+
+### 一 上一轮（未落账的那一笔，补记）
+
+`f42a0997` + `09bc3364` + `04eec917` + `8a7e4682`（16:14–16:35）是 **macOS 原地升级演练的 x64 那一半**：
+`macos-15-intel` 第一次真的有人跑（run **45002891087**，`passed from=2.33.1 to=2.33.2`），并**撤回**了我先前
+「x64 没有 runner」那条错结论；期间那 1 次红（`v` 前缀被读成「feed 没提供这一版」）是参数失误，已归一化并加用例。
+读数与「它没有证明的五件事」在 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`。
+**现状计数（现取）**：`macOS Upgrade Smoke` 最近两趟 dispatch（`04eec917`、`f42a0997`）连续 success ⇒
+按「连续 3 趟」的字面判据仍是 **2/3**，未达；接进 `release.yml` 属拍板项，本轮不动。
+
+### 二 本单元：更新下载停滞（真机日志里排第一的缺陷）
+
+**读数**（装机版 2.32.0，`~/Library/Logs/PureScience/main.log`，2026-11-21）三次 `update-download` 失败：
+
+| 时刻 UTC | durationMs | phases | errorCategory | 字节数 |
+| --- | --- | --- | --- | --- |
+| 09:00:51 | 2,283,340（38 分） | `transfer=1ms` | `network` | 无 |
+| 10:02:52 | 3,185,058（53 分） | `transfer=2ms` | `connection-reset` | 无 |
+| 10:18:33 | 634,509（10 分） | `transfer=1ms` | `network` | 无 |
+
+⇒ ①`phases` 的数字是**相位开始偏移**不是时长（`operation.ts:160`），与 `durationMs` 并排放会被读成
+「传输几乎没花时间」；②整行没有字节数，死连接与慢下载同形；③electron-updater 自己的 HTTP 下载**没有停滞预算**
+（只有查询那一段在 `a0bfa30a` 加了 20 s），所以一条被掐断的流让对话框停在 `downloading` 直到 TCP 超时。
+对照：安装包那条路（`resilient-download.ts`）早就有 60 s 判停滞 + 续传 + 重试，而装了 2.32.0 的用户走的原地更新恰好没有。
+
+**交付** `8fd96b46`：`DEFAULT_DOWNLOAD_STALL_MS` 从 `resilient-download.ts` 导出（一处字面量，两条路共用）；
+原地更新起看门狗，**每个进度事件重置窗口**（量「距上一个字节」，慢但在动的不误杀），连续 60 s 无字节 ⇒
+先写状态与诊断行、再中止连接；诊断行带 `reason:stalled` + `stalledMs` + 两个字节数 + `errorCategory:timeout`；
+其它失败也补进度后缀；用户取消先解除看门狗。
+
+**读数**：真 socket 用例（本机服务发 1 MB 后永久静音、真计时器 2 s 预算）**2037 ms 判停**，状态句
+`… received no data for 2 s — it had reached 1.0 MB of 5.0 MB (20%). Nothing was installed; retry …`，
+诊断行 `downloadedBytes:1048576 / totalBytes:5242880 / reason:stalled / errorCategory:timeout`，socket 被中止。
+单测 4 例 + 三处变异各自转红（看门狗不响 ⇒ 2 例红；进度不重置窗口 ⇒ 1 例红；进度后缀不写 ⇒ 1 例红）。
+隔离工作树 `/tmp/psr-stall`（只含 `8fd96b46`）双 typecheck **0/0**、`vitest src/main/update src/main/net`
+**20 files / 257 passed**、lint 4 文件 0 error、pre-push 全绿。逐字读数见
+`docs/evidence/2026-11-22-update-download-stall.md`。
+
+**边界（具名）**：①**没有在打包版上复现那 38 分钟**（那条路只有装机版走，本机没有能把 GitHub 掐住 38 分钟的手段）
+⇒ 下一次真机判据是装机版日志出现 `"reason":"stalled"` 且带字节数；②**没有加续传/自动重试**，停滞后的下一次点击
+是否从零开始本轮**没测量**；③**没有改 `operation.ts` 的相位语义**（全仓共用仪器，改动面远超本单元）⇒
+「`phases` 是偏移、`totalPhaseMs` 是最后一个偏移」这件事另立，未开工。
+
+### 三 下一轮第一步
+
+① 等 `f42a0997` 的 `Nightly`（45002890238）落定，读它 `Build windows-x64` 里的
+`electron P0 reading` —— 那是 Windows 硬门「连续 3 趟」的**第 2 趟**候选，也是本笔推送会顶掉的那一条
+（推送前先看 `gh run list`，顶掉了要在汇报里点名）。
+② 读 `8fd96b46` 自己的双车道判决（完整 40 位 SHA）。
+③ 下一个候选：①装机版下一次更新失败的真机读数（判据见上）；②`operation.ts` 相位语义另立；
+③mac 演练第 3 趟 dispatch（凑够连续 3 绿后仍是拍板项，不自行接线）。
+
 ## 二百〇一、本轮追加（执行器，2026-11-22 14:4x–）—— 单独补做公证后，两份「描述字节」的元数据不再停在 staple 前的字节
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
