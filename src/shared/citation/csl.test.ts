@@ -567,7 +567,6 @@ describe('author name forms', () => {
     if (outcome.status !== 'imported') throw new Error('import expected')
     const style = citationStyleFromImport(outcome.style)
     const item = citationItemFromReference({
-      id: 'ref-1',
       title: 'A title',
       authors: authors.map((name) => ({ name })),
       year: 2024
