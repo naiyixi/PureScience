@@ -127,6 +127,16 @@ const EN_TERMS: CslTermTable = {
   in: { long: both('in') },
   'et-al': { long: both('et al.') },
   accessed: { long: both('accessed') },
+  // Ordinal suffixes for `<number form="ordinal"/>` ("2nd ed."). en-US spells a suffix; the locale's
+  // own `ordinal` is the fallback and 11–13 keep the plain one. zh-CN leaves `ordinal` empty, so a
+  // Chinese edition prints the bare number and its label (2 版) — see ZH_TERMS.
+  ordinal: { long: both('th') },
+  'ordinal-01': { long: both('st') },
+  'ordinal-02': { long: both('nd') },
+  'ordinal-03': { long: both('rd') },
+  'ordinal-11': { long: both('th') },
+  'ordinal-12': { long: both('th') },
+  'ordinal-13': { long: both('th') },
   // APA prints this one directly (`<text prefix="1" term="page-range-delimiter"/>`) rather than as a
   // label, so it lives here as well as in the locale file.
   'page-range-delimiter': { long: both('–') },
@@ -145,6 +155,8 @@ const ZH_TERMS: CslTermTable = {
   in: { long: both('收入') },
   'et-al': { long: both('等') },
   accessed: { long: both('见于') },
+  // zh-CN locale spells `<term name="ordinal"/>` as an empty value: Chinese ordinals take no suffix.
+  ordinal: { long: both('') },
   'page-range-delimiter': { long: both('～') },
   ...monthTerms(ZH_MONTHS_LONG, ZH_MONTHS_SHORT)
 }
