@@ -44,6 +44,15 @@ on:
         options:
           - arm64
           - x64
+      simulate_tag:
+        # Testing hook, and it says so in the name: `simulate_tag=v2.33.2` makes a DISPATCH follow the tag
+        # lane's own path — resolve the previous release from the repository, drill both architectures — so
+        # the branch that will run at the next `v*` push can be exercised without cutting a release. A run
+        # started this way is a dispatch, not a non-manual sample: it does not count toward promoting the
+        # drill to a gate.
+        description: 'Testing only: pretending this tag was just pushed (drills both architectures)'
+        required: false
+        default: ''
       extra_args:
         # `--keep-home` by default, and it is not cosmetic: with a private HOME the app's Electron network
         # stack never answered — its own startup check sat at phase `query-provider` for two minutes (run
@@ -80,7 +89,7 @@ jobs:
       fail-fast: false
       matrix:
         # A tag push drills both halves; a manual dispatch drills the one you asked for.
-        arch: ${{ fromJSON(github.event_name == 'push' && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
+        arch: ${{ fromJSON((github.event_name == 'push' || inputs.simulate_tag != '') && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -104,8 +113,8 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ inputs.simulate_tag != '' && 'push' || github.event_name }}
+          REF_NAME: ${{ inputs.simulate_tag != '' && inputs.simulate_tag || github.ref_name }}
           INPUT_PREVIOUS_TAG: ${{ inputs.previous_tag }}
           INPUT_NEXT_VERSION: ${{ inputs.next_version }}
         run: |
