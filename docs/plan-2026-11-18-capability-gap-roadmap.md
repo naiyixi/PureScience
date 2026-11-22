@@ -388,6 +388,36 @@ removedBytes=489774958`）、重开应用时它不自己退出不再被当成失
 `9eea7b64` 改成先等投影收进再开选择器，红的那一条自带原因。本机连跑 5 次未复现，与它是 Windows
 负载下的时序问题一致。）
 
+### macOS 原地升级：演练有了，绿了一次，但还不是闸门
+
+`windows-upgrade-smoke` 一直有，macOS 一直**没有等价物** —— v2.33.1 的发布正文里因此写着「原地更新不可用 →
+用 v2.33.1 只有包级证据」。2026-11-22 补上：`scripts/macos-upgrade-certification.mjs` +
+`.github/workflows/macos-upgrade-smoke.yml`（**dispatch only**）。
+
+**唯一的绿灯**（run `44983043496`，`previous_tag=v2.33.0` / `next_version=2.33.1`）：
+
+```
+check()    -> available, latest 2.33.1
+download() -> ready, 295821573 bytes
+apply()    -> applying, 应用自己退出
+on disk    -> 2.33.1 (was 2.33.0)
+relaunched -> {"version":"2.33.1"}
+Gatekeeper -> accepted      codesign --verify --deep --strict: ok
+```
+
+**它没有证明的事**：只 arm64；只 dispatch（不影响发版）；临时目录里的干净副本，不碰真实会话/文献库；
+feed 只走 GitHub Releases，没验镜像链路；一次绿不等于不再偶发红。
+
+**为什么不直接接进 `release.yml`**：与 Windows 硬门同一个理由 —— 一条从没稳定过的演练不该成为卡发版的东西，
+接不接是拍板项。若将来要接，判据先写死：连续 3 趟 dispatch 绿且期间没有放宽断言/加 retry、失败时记成
+`failed` 而非跳过、接上之后 `publish` 只多一条 `macOS upgrade == passed` 的 `needs`。
+
+细节与一路上被改掉的六处读数谎话见 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`。
+
+**顺带修掉的产品缺陷**：`electron-updater` 自己没有超时，provider 不回答会让 `check()` 永远 pending、
+窗口永远 `checking`。现在 provider 查询有 20 秒预算，超时即 `status=error` 并写明
+`The update check did not answer within 20000 ms`（`src/main/update/electron-updater-strategy.ts`）。
+
 ### Windows 车道要不要成为硬门：先把判据写死，别用「感觉红了两次」
 
 现状是**按设计**的：`build.yml` 里 macos-arm64 gate 发版，windows-x64 只出证据（那条注释写于
