@@ -337,14 +337,20 @@ const main = async () => {
   // Squirrel relaunches the app itself after the swap (`autoRunAppAfterInstall`), so by the time we get
   // here a copy from the same bundle is usually already running — and a second copy hands over and exits 0,
   // which Playwright reports as "Target page … has been closed". Clear it before measuring the relaunch.
-  const relaunchProcesses = await otherInstance(bundle)
-  if (relaunchProcesses) {
+  // Not `otherInstance()`: that filters the drill's own bundle out on purpose (its caller wants foreign
+  // copies). Here the copy that matters is exactly the one from this bundle — Squirrel relaunches it — so
+  // it is cleared by path and then waited out, otherwise the "fresh start" below is another hand-over.
+  const survivors = await processesFor(bundle)
+  if (survivors.length > 0) {
     console.log(
-      `[mac-upgrade] Squirrel already relaunched the app (${relaunchProcesses.length} process(es)); ` +
-        'reaping it so the relaunch below is measured on a fresh start'
+      `[mac-upgrade] clearing ${survivors.length} process(es) Squirrel relaunched from this bundle before ` +
+        'measuring a fresh start'
     )
     await reap(bundle)
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 3_000))
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if ((await processesFor(bundle)).length === 0) break
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 500))
+    }
   }
   // Relaunch the same path: the drill is about the bundle a user double-clicks tomorrow, not a copy.
   const relaunch = await launchAndRead(executable, env).catch((error) => ({
@@ -399,13 +405,17 @@ const printAppLog = async (home) => {
 // A launched app inherits stdout; if one is still alive when this process returns, whatever is reading the
 // pipe (`tee` in the workflow) never sees EOF and the step hangs long after the drill has decided. Measured:
 // the macOS smoke step sat 'in_progress' for an hour with every internal wait bounded below half an hour.
-const reap = async (bundle) => {
+const processesFor = async (bundle) => {
   const listing = await runProcess('pgrep', ['-fl', bundle]).catch(() => '')
-  const pids = listing
+  return listing
     .split('\n')
     .filter(Boolean)
     .map((line) => Number(line.split(' ')[0]))
     .filter((pid) => Number.isFinite(pid))
+}
+
+const reap = async (bundle) => {
+  const pids = await processesFor(bundle)
   if (pids.length > 0) {
     await runProcess('kill', ['-9', ...pids.map(String)]).catch(() => '')
     console.log(`[mac-upgrade] reaped ${pids.length} leftover process(es) from the drill`)
