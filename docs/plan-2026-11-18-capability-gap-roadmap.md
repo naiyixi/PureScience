@@ -479,14 +479,29 @@ windows job 每天都在跑同一条车道**，不必等到发版才发现回归
 | `electron P0 reading` | **`passed`** |
 | 同趟 job 的步骤状态 | `Run P0 Electron certification: in_progress → success`；`Upload P0 failure context: pending`（没失败才 pending） |
 
-这是 3 趟里的**第 1 趟 Nightly 绿**（另有两次发版 dispatch 绿：`44926387947`、`44934613520`，作为旁证、
-不计入本条判据）。按判据要等第 3 趟 Nightly 才有资格谈翻转，最早 2026-11-24。
+**2026-11-22 更新（按 run 逐趟核过，不按「感觉绿了两次」）**：
+
+| Nightly run | head | windows job | `electron P0 reading` |
+| --- | --- | --- | --- |
+| `44969868722` | — | success | `passed`（第 1 趟读数） |
+| `44991809020` | `04cb1b88` | — | **cancelled**（被随后的推送顶掉，没有读数） |
+| `44995738160` | `f67efd77` | success | `passed` |
+| `45002890238` | `f42a0997` | success | `passed` |
+| `45014018480` / `45014079504` | `a95673a7` / `8bc8ab50` | — | **cancelled**（同一原因） |
+| `45009541008` | `d3db7246` | 进行中 | — |
+
+**所以准确的读数是「3 次读数通过，但之间夹着 4 次被取消」，不是「连续 3 趟」。** 两次取消都不是产品失败，
+也不是我为了变绿动了什么 —— 是 `concurrency` 的 `cancel-in-progress`（新推送顶掉在跑的那趟）。
+
+**由此得到一条操作上的事实，比判据本身更该记住**：`nightly.yml` 触发在 **push main** 上，所以**我每推一次
+代码就等于把正在跑的那趟 Nightly 掐掉**，计数永远攒不满。要凑齐「连续 3 趟」，只能**停止推代码**让它跑完；
+`docs/**` 与 `**/*.md` 在 `paths-ignore` 里，所以纯文档提交不会掐它 —— 这也是我这一段只改文档的原因。
 
 **晋升判据（拍板项，数据齐了就翻）**：
 
 | 条件 | 读数从哪来 |
 | --- | --- |
-| 连续 3 趟 Nightly 的 windows job 里 `electron P0 reading: passed` | 每趟 job 日志的最后一段（当前 1/3，见上表） |
+| 连续 3 趟 Nightly 的 windows job 里 `electron P0 reading: passed` | 每趟 job 日志的最后一段（**当前 3 次读数通过 / 4 次被取消**，见上表；要「连续」必须停止推代码） |
 | 期间没有为了变绿而放宽任何断言 / 加 retry | 提交史 |
 | 有一次失败被如实记录为 `failed` 而不是 `not-applicable` | 认证记录 |
 | 翻转后 `publish` 的 `needs` 只多一条 `windows P0 == passed`，不留 `continue-on-error` 例外 | `.github/workflows/release.yml` |
