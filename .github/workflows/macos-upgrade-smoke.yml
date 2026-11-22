@@ -65,7 +65,11 @@ on:
         # reporting a pass it did not earn. On a workstation the flag has to be asked for explicitly.
         description: Extra arguments for the drill (--keep-home --seed-user-data is what CI needs)
         required: false
-        default: '--keep-home'
+        # The default has to live here, not in the `||` fallback further down: an input that declares a
+        # default is never empty, so `${{ inputs.extra_args || '…' }}` resolves to the declared default and
+        # the fallback is dead code. Measured on run 45029743779 — the reading still said
+        # `userData:skipped (real HOME, pass --seed-user-data)` with the new fallback in place.
+        default: '--keep-home --seed-user-data'
   push:
     tags:
       - 'v*'
