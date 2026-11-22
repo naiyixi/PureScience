@@ -1132,4 +1132,35 @@ describe('ElectronUpdaterStrategy', () => {
     expect(status.state).toBe('error')
     expect(status.error).toContain('not packed')
   })
+
+  // Measured on a macOS runner: the app's own startup check reached phase `query-provider` and had still
+  // not answered two minutes later, so the window said "checking" forever and nothing could say why.
+  // electron-updater has no timeout of its own, so a budget here is the difference between "still checking"
+  // and "the feed did not answer in 20 s".
+  it('reports a named failure instead of staying in checking when the provider never answers', async () => {
+    const updater = new FakeUpdater()
+    updater.checkForUpdates = vi.fn(() => new Promise<never>(() => undefined))
+    const strategy = new ElectronUpdaterStrategy({ updater, broadcast: vi.fn(), checkBudgetMs: 20 })
+
+    const status = await strategy.check()
+
+    expect(status.state).toBe('error')
+    expect(status.error).toContain('did not answer within 20 ms')
+    // No GitHub retry: a request that never settles would only spend a second budget on the same silence.
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cut off a provider that answers inside its budget', async () => {
+    const updater = new FakeUpdater()
+    updater.checkForUpdates = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      updater.emit('update-available', { version: '2.33.1', files: [] })
+    })
+    const strategy = new ElectronUpdaterStrategy({ updater, broadcast: vi.fn(), checkBudgetMs: 5_000 })
+
+    const status = await strategy.check()
+
+    expect(status.state).toBe('available')
+    expect(status.latest).toBe('2.33.1')
+  })
 })

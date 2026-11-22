@@ -73,6 +73,9 @@ export type ElectronUpdaterDeps = {
   // 3.3：装之前先把退路备好（备份安装目录 + 标记 + 独立监管进程）。返回 false = 备份没做成，
   // 这次更新**不进行** —— 装一个坏了没退路的版本，比不更新更糟。
   prepareRollback?: (fromVersion: string, toVersion: string) => boolean
+  // How long the provider query may stay unanswered before the check reports a named failure instead of
+  // keeping the UI in `checking` forever (electron-updater has no timeout of its own). Injectable for tests.
+  checkBudgetMs?: number
   // Applies the GitHub Releases feed to the updater, used as a one-shot retry when the configured feed
   // cannot be reached. Injectable so tests can drive the retry without electron-updater.
   applyGithubFeed?: () => void | Promise<void>
@@ -177,6 +180,19 @@ const extractArtifactSize = (
 
 // electron-updater refuses to check when the app is unpackaged and has no dev update config. That is a
 // build-configuration state, not an unreachable feed, so it must not trigger the GitHub retry.
+// A provider request that never settles leaves the whole check pending: measured on a macOS runner, the
+// app's own startup check sat at phase `query-provider` with elapsedMs=0 and had still not answered two
+// minutes later, so the window kept saying "checking" and the drill could only report "nothing came back".
+// electron-updater has no timeout of its own, so the budget lives here.
+const DEFAULT_CHECK_BUDGET_MS = 20_000
+
+class UpdateCheckTimeout extends Error {
+  constructor(budgetMs: number) {
+    super(`The update check did not answer within ${budgetMs} ms`)
+    this.name = 'UpdateCheckTimeout'
+  }
+}
+
 const NO_FEED_CONFIGURED = /not packed|dev update config|dev-app-update/i
 
 // In-place auto-update strategy: wraps electron-updater for true download + restart on win/linux and
@@ -191,6 +207,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
   private readonly broadcast: UpdateBroadcast
   private readonly fetchImpl?: typeof fetch
   private readonly manifestUrl: string
+  private readonly checkBudgetMs: number
   private readonly log: Logger
   private readonly createCancellationToken: () => MinimalCancellationToken
   // The token for the current download, held so cancel() can abort it. Cleared once download() settles.
@@ -248,6 +265,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     this.arch = arch
     this.broadcast = deps.broadcast ?? defaultBroadcast
     this.fetchImpl = deps.fetchImpl
+    this.checkBudgetMs = deps.checkBudgetMs ?? DEFAULT_CHECK_BUDGET_MS
     this.manifestUrl = deps.manifestUrl ?? APP.update.manifestUrl
     this.log = deps.log ?? NOOP_LOGGER
     this.createCancellationToken = deps.createCancellationToken ?? (() => new CancellationToken())
@@ -389,8 +407,16 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
     })
     operation.phase('query-provider')
     try {
-      await this.updater.checkForUpdates()
+      await this.queryProvider()
     } catch (error) {
+      if (error instanceof UpdateCheckTimeout) {
+        // A timeout is not "the feed was unreachable", so the GitHub retry would only spend a second
+        // budget on the same silence. Name what happened and let the user retry by hand.
+        this.setStatus({ state: 'error', error: error.message })
+        operation.fail(error, { result: 'timeout' })
+        await this.notesHydration
+        return this.status
+      }
       // The configured feed comes from app-update.yml and points at the CDN mirror, whose publish job is
       // a manual dispatch. A missing mirror must not cost the installed base its update prompt: the same
       // artifacts are published to GitHub Releases, so retry there once before reporting a failure.
@@ -411,6 +437,24 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       operation.complete({ result: this.status.state })
     }
     return this.status
+  }
+
+  // The provider query with a budget. `checkForUpdates()` is raced rather than wrapped: electron-updater
+  // cannot be cancelled, so the promise it returns keeps running after we stop waiting for it — the caller
+  // gets a named failure instead of an indefinitely pending check.
+  private async queryProvider(): Promise<void> {
+    let timer: NodeJS.Timeout | undefined
+    const budget = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new UpdateCheckTimeout(this.checkBudgetMs)),
+        this.checkBudgetMs
+      )
+    })
+    try {
+      await Promise.race([this.updater.checkForUpdates(), budget])
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
   }
 
   // Retries the check once against the GitHub Releases feed, returning true when that produced a status
