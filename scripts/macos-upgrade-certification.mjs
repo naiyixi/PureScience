@@ -92,6 +92,22 @@ const unzip = async (zip, destination) => {
 
 // What the app says about itself once it is running: `getAppInfo()` is the same reading the About panel
 // shows, so it is the app's own claim rather than a string scraped from a file.
+// A second copy of the app hands over to the first and exits with 0 — on a machine where the release is
+// installed and open, that looks exactly like a crash at launch (measured locally: `pid=12116 … <process
+// did exit: exitCode=0>` and an empty HOME under the drill's work dir). The drill cannot tell those apart
+// after the fact, so it says which one it is before launching.
+const otherInstance = async (bundle) => {
+  const listing = await runProcess('pgrep', [
+    '-fl',
+    'PureScience.app/Contents/MacOS/PureScience'
+  ]).catch(() => '')
+  const others = listing
+    .split('\n')
+    .filter(Boolean)
+    .filter((line) => !line.includes(bundle))
+  return others.length > 0 ? others : undefined
+}
+
 const launchAndRead = async (executable, env) => {
   const application = await electron.launch({ executablePath: executable, env, timeout: 120_000 })
   const page = await application.firstWindow({ timeout: 120_000 })
@@ -185,6 +201,8 @@ const gatekeeper = async (bundle) => {
   return { verdict: verdict.trim(), verify }
 }
 
+let drilledBundle
+
 const main = async () => {
   const args = process.argv.slice(2)
   const option = (name, fallback) => {
@@ -209,6 +227,7 @@ const main = async () => {
   await unzip(previousZip, previousDir)
   const bundle = await findBundle(previousDir)
   if (!bundle) throw new Error(`No .app inside ${previousZip}`)
+  drilledBundle = bundle
   const executable = await bundleExecutable(bundle)
   const fromVersion = await bundleVersion(bundle)
   console.log(`[mac-upgrade] previous bundle ${bundle} (${fromVersion})`)
@@ -228,6 +247,16 @@ const main = async () => {
     HOME: home,
     PURESCIENCE_STORAGE_ROOT: storageRoot,
     PURESCIENCE_E2E_STORAGE_ROOT: storageRoot
+  }
+  const running = await otherInstance(bundle)
+  if (running) {
+    console.log(
+      `[mac-upgrade] another PureScience instance is running (${running.length} process(es)); a second ` +
+        'copy would hand over and exit 0 instead of running this drill. Quit it first — on CI there is none'
+    )
+    throw new Error(
+      'refusing to drill while another PureScience instance is running on this machine'
+    )
   }
   const { checkedAt } = await driveUpdate({ executable, env, nextVersion })
   const installed = await waitForVersionOnDisk(bundle, nextVersion)
@@ -252,12 +281,30 @@ const main = async () => {
       `from=${fromVersion} to=${installed} relaunched=${JSON.stringify(relaunchedVersion)}`
   )
   if (!ok) process.exitCode = 1
+  await reap(bundle)
+}
+
+// A launched app inherits stdout; if one is still alive when this process returns, whatever is reading the
+// pipe (`tee` in the workflow) never sees EOF and the step hangs long after the drill has decided. Measured:
+// the macOS smoke step sat 'in_progress' for an hour with every internal wait bounded below half an hour.
+const reap = async (bundle) => {
+  const listing = await runProcess('pgrep', ['-fl', bundle]).catch(() => '')
+  const pids = listing
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => Number(line.split(' ')[0]))
+    .filter((pid) => Number.isFinite(pid))
+  if (pids.length > 0) {
+    await runProcess('kill', ['-9', ...pids.map(String)]).catch(() => '')
+    console.log(`[mac-upgrade] reaped ${pids.length} leftover process(es) from the drill`)
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error) => {
+  main().catch(async (error) => {
     console.error(`[mac-upgrade] ${error?.stack ?? error}`)
     process.exitCode = 1
+    if (drilledBundle) await reap(drilledBundle)
   })
 }
 

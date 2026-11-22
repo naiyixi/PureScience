@@ -62,15 +62,21 @@ jobs:
             -p '*mac-arm64.zip' -D "$RUNNER_TEMP/previous"
           ls -l "$RUNNER_TEMP/previous"
 
+      # Redirect, do not pipe. `| tee` keeps the step alive for as long as ANY process still holds the other
+      # end of the pipe — a launched app inherits stdout, so the step can sit "in_progress" an hour after the
+      # drill has already decided (measured on this workflow's first run). The log is printed afterwards.
       - name: Drive the upgrade
         env:
           NEXT_VERSION: ${{ inputs.next_version }}
         run: |
-          set -o pipefail
+          set +e
           node scripts/macos-upgrade-certification.mjs \
             --previous-zip "$RUNNER_TEMP/previous/"*mac-arm64.zip \
             --next-version "$NEXT_VERSION" \
-            --work-dir "$RUNNER_TEMP/upgrade" 2>&1 | tee "$RUNNER_TEMP/mac-upgrade.log"
+            --work-dir "$RUNNER_TEMP/upgrade" > "$RUNNER_TEMP/mac-upgrade.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/mac-upgrade.log"
+          exit $status
 
       # The reading outlives the run even when the drill fails: the log is what says whether the feed was
       # wrong, the download was refused, or the hand-over left the old bundle in place.
