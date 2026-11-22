@@ -1,5 +1,30 @@
 # PureScience 更新日记
 
+## v2.33.3 — 2026-11-22
+
+### 自更新改走自建镜像：国内用户终于有自更新了
+
+**此前的更新源是 GitHub Releases。** 在这台机器上量到 GitHub 直连约 **1.4 MB/min** —— 295 MB 的安装包要
+**三个多小时**。对国内用户来说，这不叫「自更新慢」，叫**没有自更新**：绝大多数人不会等三个小时。
+
+现在打包后的 `app-update.yml` 指向自建镜像的稳定路径 `https://purescience.work/download/feed/`，由
+`purescience-feed.sh` 维护：只认 `.complete` 的版本、把这一版的 `latest*.yml` 与它们点名的资产硬链接过去、
+逐个核对 YAML 声明的大小与实际文件、最后原子换目录。实测三份 feed 都是 `200` 且 `version: 2.33.2`，
+五个资产（mac arm64/x64、win setup、linux AppImage/deb）的 `Content-Length` 与 YAML 声明**逐一相等**。
+
+GitHub 没有删掉，它退到**代码里的兜底**：镜像查询失败时 `retryOnGithubFeed` 再试一次 Releases，一次镜像
+故障的代价是晚一点收到提示，不是丢失更新。
+
+**演练多了一格：这个包到底会去问谁。** `--expect-feed-url` 在换包之后从**已安装的 bundle** 里读
+`app-update.yml`（不是从仓库读，仓库说什么是仓库的事），再去问镜像它提供哪一版，读数末尾加
+`feed=offers 2.33.3`。两条通道都默认断言 —— 只有 dispatch 才带断言、tag 通道跳过的检查等于装饰。
+
+**升级不再只看版本，还看数据。** 换包换对了、应用也能起来，用户的库却可能已经不在了，而此前六条判据
+没有一条会看这件事。现在在旧版本启动**之前**往 userData 与 storage root 各写一个带 token 的标记，重启后
+读回来：`lost`（标记没了）与 `rewritten`（同路径换了内容）都判失败。为了让这条判据**能红**，workflow 加了
+`sabotage`（一次性删掉指定标记）：`45031036722` 的读数正是 `failed … data=userData:lost storage:lost`，
+红在数据那一栏而不是版本那一栏 —— 一个永远找得到的标记证明不了任何事。
+
 ## v2.33.2 — 2026-11-22
 
 ### 检查更新不再「永远在检查」，macOS 原地升级第一次被真的跑过
