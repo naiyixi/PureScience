@@ -383,6 +383,32 @@ Windows P0 也是 `passed`（124 passed / 44.1m）。升级判据三处换的都
 「下次启动重试」的承诺给三次启动机会（`purged after a completed install, removedFiles=3,
 removedBytes=489774958`）、重开应用时它不自己退出不再被当成失败。
 **没有结论的**：`references-page-selection:13` 偶发红（复选框 20 秒未出现），未复现、未修复、没加重试。
+（2026-11-22 更新：执行器从 job 136893439936 的失败上下文读出「No PDF files in this project.」，
+根因是**投影晚于完成语**——`ManagedFile` 行由字节落地后的扫描写入，而选择器只在打开时读一次投影；
+`9eea7b64` 改成先等投影收进再开选择器，红的那一条自带原因。本机连跑 5 次未复现，与它是 Windows
+负载下的时序问题一致。）
+
+### Windows 车道要不要成为硬门：先把判据写死，别用「感觉红了两次」
+
+现状是**按设计**的：`build.yml` 里 macos-arm64 gate 发版，windows-x64 只出证据（那条注释写于
+12 个失败还没查清之前）。今天这条车道的读数是绿的，但「绿了两次」不足以支撑「以后红了就卡发版」——
+一次 hosted runner 的偶发就能把发版卡住，而这是本仓最贵的一条时钟。
+
+**已经有的覆盖**（所以我担心的「绿了又悄悄退回去」并不成立）：P0 这一步在
+`matrix.name == 'macos-arm64' || 'windows-x64'` 且 `skip_verify` 为 false 时就跑，因此 **Nightly 的
+windows job 每天都在跑同一条车道**，不必等到发版才发现回归。
+
+**晋升判据（拍板项，数据齐了就翻）**：
+
+| 条件 | 读数从哪来 |
+| --- | --- |
+| 连续 3 趟 Nightly 的 windows job 里 `electron P0 reading: passed` | 每趟 job 日志的最后一段 |
+| 期间没有为了变绿而放宽任何断言 / 加 retry | 提交史 |
+| 有一次失败被如实记录为 `failed` 而不是 `not-applicable` | 认证记录 |
+| 翻转后 `publish` 的 `needs` 只多一条 `windows P0 == passed`，不留 `continue-on-error` 例外 | `.github/workflows/release.yml` |
+
+**反向判据**：若翻转后 30 天内出现 ≥2 次因 Windows 偶发而卡住发版，就退回「证据 + 记录」并在文档里写明
+为什么——降级要留理由，不能只是悄悄改回去。
 
 ## 排期纪律
 
