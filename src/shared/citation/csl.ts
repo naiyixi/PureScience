@@ -127,6 +127,8 @@ export type CslNameOptions = CslFormatting & {
   // first that produces output is used instead of the names element.
   substitute?: CslNode[]
   initializeWith?: string
+  // `initialize="false"` keeps the given name whole even when the style names an `initialize-with` suffix.
+  initialize?: boolean
   nameAsSortOrder?: 'all' | 'first' | boolean
   and?: 'text' | 'symbol'
   etAlMin?: number
@@ -183,7 +185,7 @@ export type CslNode =
       // `year-month` and `year-month-day`.
       dateParts?: string
     } & CslFormatting)
-  | ({ kind: 'number'; variable: string } & CslFormatting)
+  | ({ kind: 'number'; variable: string; form?: string } & CslFormatting)
   | ({ kind: 'label'; variable: string; form?: string; plural?: string } & CslFormatting)
 
 export type CslProgram = {
@@ -607,6 +609,7 @@ const compileNode = (
           kind: 'names',
           variable: element.attributes.variable ?? 'author',
           initializeWith: nameElement?.attributes['initialize-with'],
+          initialize: nameElement?.attributes.initialize === 'false' ? false : undefined,
           nameAsSortOrder:
             nameAsSortOrder === 'all' || nameAsSortOrder === 'first'
               ? nameAsSortOrder
@@ -697,7 +700,12 @@ const compileNode = (
     }
     case 'number':
       return [
-        { kind: 'number', variable: element.attributes.variable ?? '', ...formattingOf(element) }
+        {
+          kind: 'number',
+          variable: element.attributes.variable ?? '',
+          ...(element.attributes.form === undefined ? {} : { form: element.attributes.form }),
+          ...formattingOf(element)
+        }
       ]
     case 'label':
       return [
@@ -828,21 +836,38 @@ const applyFormatting = (value: string, formatting: CslFormatting): string => {
   return `${formatting.prefix ?? ''}${text}${suffix}`
 }
 
+// CSL's `initialize-with` is a suffix per initial, not a separator: ". " gives `A. K.`, "." gives `A.K.`,
+// and no `initialize-with` at all means the given name is printed in full — inventing `. ` there turned a
+// style that wants "Abel Kai Wang" into "A. K. Wang". `initialize="false"` explicitly asks for the full name.
+const givenNameForStyle = (given: string, options: CslNameOptions): string => {
+  const initializeWith = options.initializeWith
+  if (initializeWith === undefined || options.initialize === false) return given
+  const suffix = initializeWith.trimEnd()
+  const joiner = initializeWith.endsWith(' ') ? ' ' : ''
+  const initials = given
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word[0]?.toUpperCase() ?? ''}${suffix}`)
+  return initials.join(joiner).trimEnd()
+}
+
 const renderName = (
   name: ReturnType<typeof parseAuthorName>,
   options: CslNameOptions,
   position: number
 ): string => {
-  if (name.familyFirst || !name.given) return name.family
-  const initializeWith = options.initializeWith ?? '. '
-  const initials = name.given
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => `${word[0]?.toUpperCase() ?? ''}${initializeWith.trim()}`)
-    .join(initializeWith.startsWith(' ') ? ' ' : ' ')
+  // A name with no given part (a CJK name, a single word, an organisation) is printed exactly as recorded.
+  if (!name.given) return name.family
+  const given = givenNameForStyle(name.given, options)
+  // `family-first` in the source ("Wang, Abel Kai") and a style's `name-as-sort-order` ask for the same
+  // order; neither asks for the given name to be dropped, which is what the previous early return did —
+  // every reference stored in "Family, Given" form lost its initials.
   const sortOrder =
-    options.nameAsSortOrder === 'all' || (options.nameAsSortOrder === 'first' && position === 0)
-  return sortOrder ? `${name.family}, ${initials}` : `${initials} ${name.family}`.trim()
+    options.nameAsSortOrder === 'all' ||
+    ((options.nameAsSortOrder === 'first' || options.nameAsSortOrder === true) && position === 0)
+  return name.familyFirst || sortOrder
+    ? `${name.family}, ${given}`
+    : `${given} ${name.family}`.trim()
 }
 
 const renderNames = (node: CslNameOptions, state: RenderState): string => {
@@ -876,12 +901,15 @@ const renderOwnNames = (node: CslNameOptions, state: RenderState): string => {
   )
   const etAlText = truncated ? `${delimiter}${node.etAlTerm ?? 'et al.'}` : ''
   const joined = rendered.join(delimiter)
+  // CSL puts the element's own delimiter before the conjunction too — "Wang, A., & Smith, B.", not
+  // "Wang, A. & Smith, B." The previous shape glued `&` to the previous name.
+  const conjunction = node.and === 'text' ? 'and' : node.and === 'symbol' ? '&' : undefined
   const withAnd =
-    !truncated && node.and === 'text' && rendered.length > 1
-      ? `${rendered.slice(0, -1).join(delimiter)} and ${rendered[rendered.length - 1]}`
-      : !truncated && node.and === 'symbol' && rendered.length > 1
-        ? `${rendered.slice(0, -1).join(delimiter)} & ${rendered[rendered.length - 1]}`
-        : joined
+    !truncated && conjunction !== undefined && rendered.length > 1
+      ? [...rendered.slice(0, -1), `${conjunction} ${rendered[rendered.length - 1]}`].join(
+          delimiter
+        )
+      : joined
   return applyFormatting(`${withAnd}${etAlText}`, node)
 }
 
@@ -984,6 +1012,26 @@ const joinWithDelimiter = (parts: string[], delimiter: string): string => {
 // comma/ampersand list is plural too; "e145" is a single page.
 const valueLooksPlural = (value: string): boolean => /[-–—,;&]/.test(value)
 
+// `<number form="ordinal">` asks for the number with the locale's ordinal suffix ("2nd"); the locale's
+// `ordinal` term is the fallback, and 11–13 take it rather than the last digit's. A value that is not a
+// plain integer ("2nd", "修订版") is printed as written: an importer already decided its wording and
+// appending a suffix to it would invent one.
+const renderOrdinalNumber = (value: string, terms: CslTermTable): string => {
+  const trimmed = value.trim()
+  if (!/^\d+$/u.test(trimmed)) return value
+  const number = Number(trimmed)
+  const lastTwo = number % 100
+  const suffixTerm =
+    lastTwo >= 11 && lastTwo <= 13
+      ? `ordinal-${String(lastTwo)}`
+      : `ordinal-0${String(number % 10)}`
+  const suffix =
+    resolveCslTerm(terms, suffixTerm, undefined, false) ??
+    resolveCslTerm(terms, 'ordinal', undefined, false) ??
+    ''
+  return `${trimmed}${suffix}`
+}
+
 const renderNode = (node: CslNode, state: RenderState): string => {
   switch (node.kind) {
     case 'text': {
@@ -1041,8 +1089,16 @@ const renderNode = (node: CslNode, state: RenderState): string => {
       return renderNames(node, state)
     case 'date':
       return renderDate(node, state)
-    case 'number':
-      return applyFormatting(state.variables[node.variable] ?? '', node)
+    case 'number': {
+      const raw = state.variables[node.variable] ?? ''
+      // `<number form="ordinal">` is how a real style asks for "2nd" (AMA's edition) — without it the
+      // record's edition printed as a bare number, which is not what the style says. Any other form
+      // (`roman`, `long-ordinal`) is not implemented here and the variable prints as written.
+      return applyFormatting(
+        node.form === 'ordinal' ? renderOrdinalNumber(raw, state.terms) : raw,
+        node
+      )
+    }
     case 'label': {
       const value = state.variables[node.variable] ?? ''
       // CSL prints a label only beside a variable that has a value ("pp." with no pages is noise),

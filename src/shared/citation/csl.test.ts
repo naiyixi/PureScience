@@ -396,7 +396,7 @@ describe('rendering an imported style', () => {
     const style = citationStyleFromImport(outcome.style)
     const formatted = formatCitation(item(), style.id, { index: 1 }, [style])
     expect(formatted.text).toBe(
-      'Zhang, W., Chen, L., Smith, J. A. and Huang, M. Deep learning for protein design. Nature Methods 21, 145-158 (2024).'
+      'Zhang, W., Chen, L., Smith, J. A., and Huang, M. Deep learning for protein design. Nature Methods 21, 145-158 (2024).'
     )
     // The flattened italic attribute travels with the render so the caller can say so in the UI.
     expect(formatted.warnings).toContain('unsupported:attribute:font-style')
@@ -458,7 +458,7 @@ describe('rendering an imported style', () => {
     // the term node prints "vol.", <label> prints the plural "pp." for a page range, and neither is
     // replaced by the value it labels (which is what printed "21 21, 21, 3 3" once).
     expect(formatted.text).toBe(
-      'Zhang, W., Chen, L., Smith, J. A. and Huang, M. Deep learning for protein design. vol. 21, pp. 145-158.'
+      'Zhang, W., Chen, L., Smith, J. A., and Huang, M. Deep learning for protein design. vol. 21, pp. 145-158.'
     )
     // Neither construct is a gap any more, so neither is named as one.
     expect(outcome.style.unsupported).not.toContain('text:term')
@@ -546,6 +546,78 @@ describe('rendering an imported style', () => {
     const style = citationStyleFromImport(outcome.style)
     const formatted = formatCitation(item(), style.id, { retrievedAt: '2026-09-20' }, [style])
     expect(formatted.text).toBe('Deep learning for protein design (2024) [accessed 2026].')
+  })
+})
+
+// Author names, read against the CSL spec rather than against this renderer's own habits. Four shapes were
+// wrong at once and all four were visible on a real record: a reference stored as "Family, Given" lost its
+// given name entirely (`familyFirst` returned early), an `initialize-with` suffix was treated as a
+// separator so `. ` could not produce `A. K.`, a style with no `initialize-with` still got initials, and
+// `and="symbol"` glued `&` to the previous name instead of putting the delimiter before it.
+describe('author name forms', () => {
+  const renderNames = (nameElement: string, authors: string[]): string => {
+    const xml = styleDocument({
+      bibliography: `<bibliography>
+    <layout>
+      <names variable="author">${nameElement}<et-al term="et al."/></names>
+    </layout>
+  </bibliography>`
+    })
+    const outcome = importCslStyle(xml, 'names.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    const item = citationItemFromReference({
+      id: 'ref-1',
+      title: 'A title',
+      authors: authors.map((name) => ({ name })),
+      year: 2024
+    })
+    return formatCitation(item, style.id, { index: 1, retrievedAt: '2019-05-04' }, [style]).text
+  }
+
+  it('keeps the initials of a name recorded family-first instead of dropping its given part', () => {
+    const text = renderNames('<name name-as-sort-order="all" initialize-with=". "/>', [
+      'Zhang, Wei',
+      'Chen, Li'
+    ])
+    expect(text).toBe('Zhang, W., Chen, L.')
+  })
+
+  it('treats initialize-with as a suffix per initial, not as a separator', () => {
+    // The space before the family name belongs to the name layout, not to `initialize-with`: the suffix
+    // decides how the initials are punctuated, and `. ` and `.` punctuate them the same way.
+    expect(renderNames('<name initialize-with=". "/>', ['Wei Zhang'])).toBe('W. Zhang')
+    expect(renderNames('<name initialize-with="."/>', ['Wei Zhang'])).toBe('W. Zhang')
+    expect(renderNames('<name initialize-with=""/>', ['Wei Zhang'])).toBe('W Zhang')
+  })
+
+  it('prints the given name in full when the style names no initialize-with, and honours initialize="false"', () => {
+    expect(renderNames('<name/>', ['Wei Zhang'])).toBe('Wei Zhang')
+    expect(renderNames('<name initialize-with=". " initialize="false"/>', ['Wei Zhang'])).toBe(
+      'Wei Zhang'
+    )
+  })
+
+  it('puts the delimiter before the conjunction the style asked for', () => {
+    expect(
+      renderNames('<name initialize-with=". " and="symbol" delimiter=", "/>', [
+        'Wei Zhang',
+        'Li Chen',
+        'Mei Huang'
+      ])
+    ).toBe('W. Zhang, L. Chen, & M. Huang')
+    expect(
+      renderNames('<name initialize-with=". " and="text" delimiter=", "/>', [
+        'Wei Zhang',
+        'Li Chen'
+      ])
+    ).toBe('W. Zhang, and L. Chen')
+  })
+
+  it('leaves a name with no given part exactly as recorded', () => {
+    expect(
+      renderNames('<name initialize-with=". " and="symbol"/>', ['Zhang Wei', '中国科学院'])
+    ).toBe('Z. Wei, & 中国科学院')
   })
 })
 
@@ -638,7 +710,9 @@ describe('group semantics in imported styles', () => {
       </group>
     </layout>
   </bibliography>`)
-    expect(text).toBe('W. Zhang, L. Chen, J. A. Smith, M. Huang')
+    // `<name/>` with no `initialize-with`: CSL prints the given names in full there. The old expectation
+    // (`W. Zhang, …`) came from this renderer inventing a `. ` suffix that the style never asked for.
+    expect(text).toBe('Wei Zhang, Li Chen, John A. Smith, Mei Huang')
   })
 
   it('does not double a period the previous child already ended with', () => {
@@ -763,5 +837,44 @@ describe('locale date formats', () => {
     expect(unsupported).toContain('date-part:day:ordinal')
     // The day still prints as a plain number rather than disappearing.
     expect(text).toContain('21')
+  })
+})
+
+describe('ordinal numbers in imported styles', () => {
+  const EDITION_NODE = `<bibliography>
+    <layout>
+      <group delimiter=" "><number form="ordinal" variable="edition"/><label form="short" variable="edition"/></group>
+    </layout>
+  </bibliography>`
+
+  const renderEdition = (locale: string | undefined, edition: string): string => {
+    const xml = styleDocument({
+      bibliography: EDITION_NODE,
+      ...(locale === undefined ? {} : { defaultLocale: locale })
+    })
+    const outcome = importCslStyle(xml, 'ordinal-edition.csl', { hash: hasher })
+    if (outcome.status !== 'imported') throw new Error('import expected')
+    const style = citationStyleFromImport(outcome.style)
+    return formatCitation({ ...item(), edition }, style.id, {}, [style]).text
+  }
+
+  it('prints the English ordinal suffix the locale spells — the shape AMA asks for', () => {
+    expect(renderEdition(undefined, '2')).toBe('2nd ed.')
+  })
+
+  it('keeps 11–13 on the plain suffix and 21 on the first-digit one', () => {
+    // The number-vs-suffix rule belongs to the locale, and the locale spells three exceptions; a plain
+    // "take the last digit" rule would print 11st.
+    expect(renderEdition(undefined, '11')).toBe('11th ed.')
+    expect(renderEdition(undefined, '21')).toBe('21st ed.')
+  })
+
+  it('prints a Chinese edition with no English suffix (2 版), as the zh locale spells it', () => {
+    expect(renderEdition('zh-CN', '2')).toBe('2 版')
+  })
+
+  it('prints an edition statement that is not a number exactly as the record wrote it', () => {
+    // An importer may already write "修订版"; appending a suffix to it would invent wording.
+    expect(renderEdition(undefined, '修订版')).toBe('修订版 ed.')
   })
 })
