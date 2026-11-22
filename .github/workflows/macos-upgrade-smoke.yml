@@ -23,9 +23,13 @@ on:
         required: true
         default: 2.33.1
       extra_args:
-        description: Extra arguments for the drill (e.g. --keep-home)
+        # `--keep-home` by default, and it is not cosmetic: with a private HOME the app's Electron network
+        # stack never answered — its own startup check sat at phase `query-provider` for two minutes (run
+        # 44981052834) — while the same drill against the real HOME reached `available` in seconds
+        # (run 44981503900). A CI runner has no other instance to collide with, so nothing is gained by it.
+        description: Extra arguments for the drill (--keep-home is what CI needs)
         required: false
-        default: ''
+        default: '--keep-home'
 
 permissions:
   contents: read

@@ -192,6 +192,40 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
   if (applied && applied.state === 'error') {
     throw new Error(`The updater refused to install: ${applied.error}`)
   }
+
+  // Squirrel.Mac does the swap in its own process (`ShipIt`) after the app quits, and it reports there —
+  // not in the app's log. Measured on run 44981503900: apply() -> applying, the app shut down cleanly with
+  // trigger=update, and the bundle on disk still read 2.33.0 four minutes later with nothing to explain it.
+  // So: wait for the app to finish quitting on its own, and take ShipIt's own words while it works.
+  const quit = await Promise.race([
+    new Promise((resolvePromise) =>
+      application.once('close', () => resolvePromise({ quit: true }))
+    ),
+    new Promise((resolvePromise) => setTimeout(() => resolvePromise({ quit: false }), 60_000))
+  ])
+  console.log(`[mac-upgrade] app quit on its own: ${quit.quit}`)
+  const shipIt = await runProcess(
+    'log',
+    [
+      'show',
+      '--last',
+      '2m',
+      '--style',
+      'compact',
+      '--predicate',
+      'process == "ShipIt" OR eventMessage CONTAINS "ShipIt" OR eventMessage CONTAINS "SQRL"'
+    ],
+    20_000
+  ).catch(() => '')
+  const shipItLines = shipIt
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .slice(-6)
+  console.log(
+    shipItLines.length > 0
+      ? `[mac-upgrade] ShipIt said:\n  ${shipItLines.join('\n  ').slice(0, 1200)}`
+      : '[mac-upgrade] ShipIt logged nothing (macOS wrote no ShipIt/SQRL line in the last 2 minutes)'
+  )
   await application.close().catch(() => undefined)
   return { applied, checkedAt: checked.current }
 }
