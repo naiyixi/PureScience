@@ -1,5 +1,62 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇三、本轮追加（执行器，2026-11-22 19:5x–20:1x）—— 相位的「开始偏移」不再被读成「时长」；顺带修掉主干上只提交了半边的两处红
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == e43bb919`，**本地领先 origin/main 两笔**（`19b1e325` fix(citations) + `e43bb919` docs）——两笔都是会话在 19:07/19:08 落的，未推送。
+- 工作树 40 个改动**全是会话在制**（`shared/citation/*`、`ris-import*`、`zotero-import*`、`ro-crate*`、
+  `RoCrateExportDialog*`、九份 i18n、`provider-env*`、`logger*`、`crash-diagnostics`、`index.ts`、
+  `notebook/mcp-server.ts`、`diagnostics/module-load*`、`prisma/schema.prisma`、`references/*`），mtime 停在
+  02:18–02:20，本轮**一个字节没碰**；唯一交集是 `src/main/index.ts` 一行，用 `git apply --cached` 只挑自己那个
+  hunk（`git diff --numstat` 显示它仍是 87/33 未暂存）。
+- 在飞车道：`5042aa39` 的 `Nightly`（10:48Z 起）在跑，同提交 `Windows Full Test` success ⇒ 本轮推送会顶掉前者，
+  汇报里点名。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽、C 段外部阻塞 ⇒ 取 §二百〇二 §三 ③ 的候选 ②（`operation.ts`
+  相位语义另立）。
+
+### 一 交付
+
+| 提交 | 内容 |
+| --- | --- |
+| `c7bc83a6` | 结束行 `phases`（偏移）拆成 `phaseDurations`（时长）+ `phaseStartedAtMs`（偏移）；`totalPhaseMs` 改为各时长之和；`snapshotPhases()` 同单位；启动时间线那一行随之改名。新增 4 例 + 两处变异各自转红。 |
+| `82c66c44` | 上面那行三元按仓内 prettier 折行（首轮 eslint 唯一一条 warning）。 |
+| `d667287d` | **主干红（非本单元引入）**：`csl.test.ts:570` 把 `id` 传进 `citationItemFromReference`，而 `CitationSourceRecord` 无此字段 ⇒ 两个 typecheck `TS2353`。该字段无人读 ⇒ 去掉，不往共享类型补。 |
+| `481df555` | **主干红（同一形状的另一半）**：那两条 ordinal 用例要的词条只存在于会话未提交的 `csl-locale-terms.ts` 里 ⇒ HEAD 上 vitest 两例红而 typecheck 全绿。把会话已写好的 12 行词条一并入库（未改写）。 |
+
+### 二 读数（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `operation.test.ts` | **14 passed**（10 旧 + 4 新） |
+| 变异 ①（时长退回偏移） | **7 failed**；恢复后 14 passed |
+| 变异 ②（`totalPhaseMs` 退回末相位偏移） | **6 failed**；恢复后 14 passed |
+| 隔离工作树 `/tmp/psr-phase`（`481df555`）双 typecheck | **0 / 0** |
+| 同工作树全量 `vitest --maxWorkers=4` | **1518 files passed / 31 skipped；19064 passed / 229 skipped；EXIT=0**（254s） |
+| `eslint --no-cache` 改动文件 | 0 error |
+| 真机读数 | 装机版 2.32.0 三行 `update-download` 失败：`durationMs` 2,283,340 / 3,185,058 / 634,509 与 `phases: "transfer=1ms"` 并排 —— 本单元修的就是这个读法。逐字与判据：`docs/evidence/2026-11-22-diagnostic-phase-durations.md` |
+
+**门禁仪器自证（踩到一次）**：隔离工作树软链的是主树的 `node_modules`，而那份 Prisma client 是按会话**在制**的
+`schema.prisma`（多一个 `edition` 列）生成的 ⇒ 在只含已提交 schema 的树上，三条 `|database|` 用例红在
+「covers every Prisma scalar field」。在同一个文件上先跑主树是 **31 passed** ⇒ 判掉「我的改动」，那是**仪器错配**；
+按工作树的 schema 重新 `prisma generate` 后同样三例 **76 passed**，只剩 csl 那两例真红。**结论：DB 类读数必须在
+与 schema 匹配的 client 上取，否则红是假的。**
+
+### 三 边界（具名）
+
+1. **没有打包版读数**：改的是诊断行本身，本机造不出一条 `update-download`（要等下一次更新到底）⇒ 真机判据写进
+   证据档：装机版日志出现 `phaseDurations: "transfer=…ms"` 且与 `durationMs` 同数量级。
+2. **`operation phase` 单行不变**（`elapsedMs` 就是「距开始多久」，名字不骗人）；只有与 `durationMs` 并排的完成行
+   会被读成时长。
+3. **`totalPhaseMs` 口径变了**（末相位偏移 → 时长之和）：首个相位不在 0 时两者不同，历史证据档里的旧值不要与新值比大小。
+4. 会话那 40 个在制文件与 `prisma/schema.prisma` 的 `edition` 列仍未入库——**不在本版范围**，归属会话。
+
+### 四 下一轮第一步
+
+① 读本轮推送那笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA；本轮推送会顶掉 `5042aa39` 的 Nightly）；
+② 候选（按连锁最小）：①装机版下一次更新失败的真机读数（判据已在证据档）；②`update-download` 停滞后的续传/重试
+（上一单元具名未做）；③mac 演练第 3 趟 dispatch（凑够连续 3 绿后仍是拍板项，不自行接线）。
+
 ## 二百〇二、本轮追加（执行器，2026-11-22 17:3x–）—— 更新「下不动」不再等 38 分钟：60 秒判停，失败行自带「下了多少」
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
@@ -54,7 +111,7 @@
 **边界（具名）**：①**没有在打包版上复现那 38 分钟**（那条路只有装机版走，本机没有能把 GitHub 掐住 38 分钟的手段）
 ⇒ 下一次真机判据是装机版日志出现 `"reason":"stalled"` 且带字节数；②**没有加续传/自动重试**，停滞后的下一次点击
 是否从零开始本轮**没测量**；③**没有改 `operation.ts` 的相位语义**（全仓共用仪器，改动面远超本单元）⇒
-「`phases` 是偏移、`totalPhaseMs` 是最后一个偏移」这件事另立，未开工。
+「`phases` 是偏移、`totalPhaseMs` 是最后一个偏移」这件事另立，未开工 —— **已由 §二百〇三 收口（`c7bc83a6`）**。
 
 ### 三 下一轮第一步
 
