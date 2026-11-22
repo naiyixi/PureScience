@@ -1,0 +1,82 @@
+name: macOS Upgrade Smoke
+
+# The drill Windows has had for releases, for macOS — where the claim actually needed it. v2.33.0 shipped
+# macOS assets that were signed but not notarized, and its release note told readers to move to v2.33.1
+# because "in-place auto-update is unavailable on macOS". Nothing had ever tested a macOS upgrade, so the
+# sentence rested on reading code. This workflow installs the PREVIOUS release's own .app into a temp
+# directory, lets it update itself from the live GitHub feed to the version you name, and then reads the
+# bundle on disk: `plutil` for the version Finder shows, `spctl` for Gatekeeper's own verdict.
+#
+# Dispatch-only and not yet a step in release.yml on purpose: a drill that has never run green must not be
+# the thing that blocks a release. Once it has a real reading, wiring it into release.yml is a separate
+# decision, made the same way the Windows lane's promotion criteria were written down.
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous_tag:
+        description: Release tag whose macOS build is the starting point (must be older than next_version)
+        required: true
+        default: v2.33.0
+      next_version:
+        description: Version the drill expects the updater to install (no leading v)
+        required: true
+        default: 2.33.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-upgrade-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drill:
+    name: Upgrade macOS app in place
+    # arm64 because the release's mac-arm64 zip carries the notarized bundle on this architecture; the
+    # x64 zip is the same flow and can be added when a runner for it matters.
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The previous release's own zip — the same bytes a user downloaded, not a build of this tree.
+      - name: Fetch the previous release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
+            -p '*mac-arm64.zip' -D "$RUNNER_TEMP/previous"
+          ls -l "$RUNNER_TEMP/previous"
+
+      - name: Drive the upgrade
+        env:
+          NEXT_VERSION: ${{ inputs.next_version }}
+        run: |
+          set -o pipefail
+          node scripts/macos-upgrade-certification.mjs \
+            --previous-zip "$RUNNER_TEMP/previous/"*mac-arm64.zip \
+            --next-version "$NEXT_VERSION" \
+            --work-dir "$RUNNER_TEMP/upgrade" 2>&1 | tee "$RUNNER_TEMP/mac-upgrade.log"
+
+      # The reading outlives the run even when the drill fails: the log is what says whether the feed was
+      # wrong, the download was refused, or the hand-over left the old bundle in place.
+      - name: Upload reading
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: macos-upgrade-reading
+          path: ${{ runner.temp }}/mac-upgrade.log
+          if-no-files-found: warn
