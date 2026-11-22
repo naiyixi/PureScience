@@ -394,7 +394,10 @@ removedBytes=489774958`）、重开应用时它不自己退出不再被当成失
 用 v2.33.1 只有包级证据」。2026-11-22 补上：`scripts/macos-upgrade-certification.mjs` +
 `.github/workflows/macos-upgrade-smoke.yml`（**dispatch only**）。
 
-**唯一的绿灯**（run `44983043496`，`previous_tag=v2.33.0` / `next_version=2.33.1`）：
+**两趟绿灯**：`44983043496`（2.33.0 → 2.33.1）、`44998687478`（2.33.1 → 2.33.2，换一对版本、脚本未再改一行
+即通过 —— 说明改的是判据而不是凑某一版的数据）。计数 2/3。
+
+第 1 趟的读数（run `44983043496`，`previous_tag=v2.33.0` / `next_version=v2.33.1`）：
 
 ```
 check()    -> available, latest 2.33.1
@@ -407,6 +410,11 @@ Gatekeeper -> accepted      codesign --verify --deep --strict: ok
 
 **它没有证明的事**：只 arm64；只 dispatch（不影响发版）；临时目录里的干净副本，不碰真实会话/文献库；
 feed 只走 GitHub Releases，没验镜像链路；一次绿不等于不再偶发红。
+
+**v2.33.2 那一趟红出来的东西**：`build / Build macos-x64` 在打磨冒烟上被判 `SMOKE_STALL`（60 s 无输出），
+而 `ps` 显示应用在跑（R 状态、37.8% CPU、2 个子进程），启动阶段 `electron-ready=64553ms` 意味着有
+**62.4 秒**的合法静音 —— 旧窗口 60 s 只有 0.96 倍余量。现在窗口 90 s、预算 240 s，两条不变式用例
+（窗口 > 62.4 s、预算 > 102.8 s）钉住，谁往小改就会红。
 
 **为什么不直接接进 `release.yml`**：与 Windows 硬门同一个理由 —— 一条从没稳定过的演练不该成为卡发版的东西，
 接不接是拍板项。若将来要接，判据先写死：连续 3 趟 dispatch 绿且期间没有放宽断言/加 retry、失败时记成

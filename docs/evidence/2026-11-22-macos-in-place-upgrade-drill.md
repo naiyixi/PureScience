@@ -1,7 +1,8 @@
 # macOS 原地升级：从「没有演练」到一条能分辨失败的判据
 
 - 日期：2026-11-22
-- 结论：`macOS upgrade reading: passed from=2.33.0 to=2.33.1 relaunched="2.33.1"`（run `44983043496`）
+- 结论（第 1 趟）：`macOS upgrade reading: passed from=2.33.0 to=2.33.1 relaunched="2.33.1"`（run `44983043496`）
+- 结论（第 2 趟，另一对版本、一次通过）：`passed from=2.33.1 to=2.33.2 relaunched="2.33.2"`（run `44998687478`）
 - 演练脚本：`scripts/macos-upgrade-certification.mjs`（5 条单测在 `scripts/macos-upgrade-certification.test.ts`）
 - 工作流：`.github/workflows/macos-upgrade-smoke.yml`（**dispatch only，未接进 `release.yml`**）
 
@@ -38,6 +39,25 @@ v2.33.1 发布说明里「原地更新不可用 → 用 v2.33.1」这句话，�
 `electron-updater` 自己没有超时。一个不回答的 provider 会让 `check()` 永远 pending，窗口永远 `checking`，用户既看不到失败也点不了重试 —— 这正是第 3 条里那种「看起来像挂起」的形态，只不过对用户是真的。
 
 `electron-updater-strategy.ts` 现在把 provider 查询与 20 秒预算赛跑，超时即 `status = error` 并写明 `The update check did not answer within 20000 ms`；超时不走 GitHub 兜底（同一个不回答的请求只会再花一个预算）。两条用例钉住：永不返回 → 预算内具名失败且只查一次；预算内慢返回 → 仍 `available`。
+
+## 第 2 趟：换一对版本，脚本没有再改一行就过了
+
+`44998687478`（`previous_tag=v2.33.1` / `next_version=2.33.2`）是发布 v2.33.2 之后立刻跑的，读数与第 1 趟同形：
+
+```
+status before check: {"state":"checking","current":"2.33.1"}
+check()    -> available, latest 2.33.2
+download() -> ready
+apply()    -> applying
+app quit on its own: true
+on disk    -> 2.33.2 (was 2.33.1, check saw 2.33.1)
+relaunched -> {"version":"2.33.2"}
+Gatekeeper -> accepted      codesign --verify --deep --strict: ok
+macOS upgrade reading: passed from=2.33.1 to=2.33.2 relaunched="2.33.2"
+```
+
+意义不在「又绿一次」，而在**一次通过**：第 1 趟花了五轮才把六处读数谎话改干净，第 2 趟换了一对版本、脚本
+一行没动就过了 —— 说明这些修正修的是**判据**，不是把某个特定版本的数据凑对。
 
 ## 这条判据**没有**证明的事
 
