@@ -66,9 +66,33 @@ macOS upgrade reading: passed from=2.33.1 to=2.33.2 relaunched="2.33.2"
 意义不在「又绿一次」，而在**一次通过**：第 1 趟花了五轮才把六处读数谎话改干净，第 2 趟换了一对版本、脚本
 一行没动就过了 —— 说明这些修正修的是**判据**，不是把某个特定版本的数据凑对。
 
+## 第 4 趟：Intel 上的一半，第一次真的有人跑
+
+`45002891087`（`arch=x64`、`previous_tag=v2.33.1` / `next_version=v2.33.2`）在 **`macos-15-intel`**（X64 主机）上：
+
+```
+architecture: bundle x86_64 on host x86_64
+check()     -> available, latest 2.33.2
+download()  -> ready
+apply()     -> applying
+app quit on its own: true
+on disk now: 2.33.2 (was 2.33.1, check saw 2.33.1)
+relaunched  -> {"version":"2.33.2"}
+Gatekeeper  -> accepted
+macOS upgrade reading: passed from=2.33.1 to=2.33.2 relaunched="2.33.2"
+```
+
+**这一趟推翻了我自己写下的一条**：我曾在路线图里把 x64 记成「没有 runner 可用」。实际上 `macos-13` 于
+2025-12-04 退役后，GitHub 从 2025-09 起提供 `macos-15-intel`（X64，可用至约 2027）—— x64 不是做不到，是
+没人做。
+
+**为什么要断言宿主与包的架构一致**：x86_64 包在 arm64 runner 上经 Rosetta 也能启动、也能换成包，但那不是
+Intel 用户经历的升级（Squirrel 的搬包与重启在转译下走的是另一条路）。脚本用 `lipo -archs` 读包、`uname -m`
+读宿主，不一致具名拒绝；正常路径把这一对读数打出来，让「在哪台机器上证明的」留在证据里。
+
 ## 这条判据**没有**证明的事
 
-- **只在 arm64 上跑过**，x64 的 zip 走同一条流程但没演练。
+- ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。
 - **只有 dispatch 触发**，没有接进 `release.yml`。一条绿过一次的演练要不要成为发版硬门，是单独拍板的事；现在它只出证据。
 - **没有覆盖「用户自己的数据」**：演练用的是临时目录里的干净副本，不涉及真实会话、真实文献库、真实配置在换包之后是否完好。
 - **没有覆盖更新源故障**：feed 与包都来自 GitHub Releases，演练没有验证镜像/官网链路。

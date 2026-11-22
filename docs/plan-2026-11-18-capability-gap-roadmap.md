@@ -411,8 +411,14 @@ relaunched -> {"version":"2.33.1"}
 Gatekeeper -> accepted      codesign --verify --deep --strict: ok
 ```
 
-**它没有证明的事**：只 arm64；只 dispatch（不影响发版）；临时目录里的干净副本，不碰真实会话/文献库；
-feed 只走 GitHub Releases，没验镜像链路；一次绿不等于不再偶发红。
+**它没有证明的事**：只 dispatch（不影响发版）；临时目录里的干净副本，不碰真实会话/文献库；feed 只走
+GitHub Releases，没验镜像链路；3 绿 / 4 趟不等于不再偶发红，也还没有非手动触发的样本。
+
+**x64 那一半也补上了**（`45002891087`，`macos-15-intel`，`architecture: bundle x86_64 on host x86_64` →
+`passed from=2.33.1 to=2.33.2`）。此前这里写着「x64 没有 runner 可用」——**那条是错的**：`macos-13` 于
+2025-12-04 退役，但 `macos-15-intel` 自 2025-09 起提供，可用至约 2027。脚本现在断言 `lipo -archs` 与
+`uname -m` 一致，不一致具名拒绝 —— 因为 x86_64 包在 arm64 上经 Rosetta 也能换包成功，而那不是该架构
+用户的升级。
 
 **v2.33.2 那一趟红出来的东西**：`build / Build macos-x64` 在打磨冒烟上被判 `SMOKE_STALL`（60 s 无输出），
 而 `ps` 显示应用在跑（R 状态、37.8% CPU、2 个子进程），启动阶段 `electron-ready=64553ms` 意味着有
