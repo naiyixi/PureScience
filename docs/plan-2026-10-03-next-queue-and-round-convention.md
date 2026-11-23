@@ -48,6 +48,7 @@
 | 变异 ×4 | 去掉 `needs` / 预算改 45 / 换成布尔假值写法 / 演练改回自己解析 —— 各**只红 1 例**，还原后 6 例全绿（还原后文件 sha 与改前一致） |
 | 闸门脚本五种 feed 形状 | 供对 ⇒ `::notice::the mirror offers 2.33.4 with both mac zips` EXIT=0；落后 ⇒ 期满具名 EXIT=1；超前 ⇒ 立刻具名 EXIT=1；缺 x64 zip ⇒ 具名列出缺哪个 EXIT=1；取不到 ⇒ 具名 `(last reading: (nothing))` EXIT=1；`WAIT_FOR_FEED=false` ⇒ notice EXIT=0 |
 | 镜像现取 | `latest-mac.yml` `version: 2.33.4`，两个 mac zip 都在（295,904,957 / 312,405,376），`releaseDate 2026-11-23T02:02:51Z` ⇒ §二百〇八 §四 ① 的「sync 后核 feed offers 2.33.4」成立 |
+| 真机升级读数（arm64，dispatch `45110776730`） | `passed from=2.33.3 to=2.33.4 relaunched="2.33.4" data=userData:kept storage:kept feed=offers 2.33.4`；`downloadedBytes` **295,904,957** 与镜像 feed 声明的 arm64 zip `size` 逐字节相同 ⇒ **第一次从镜像下载并完成换包**（第 8 趟那条「等 v2.33.3→v2.33.4」的边界就此结案） |
 | lint | `eslint --no-cache` 新测试文件 **0 error 0 warning**（prettier 两条 warning 已就地修掉） |
 | typecheck | `typecheck:node` 在共享树上是 **EXIT=2**，两条 `TS6133` 都在会话在制的 `src/main/settings/provider-env.test.ts` ⇒ 读数取隔离工作树那份（见下） |
 
@@ -55,8 +56,8 @@
 
 - **`readiness` 闸门没有被一次真 tag 推起来过**：首次真样本是下一次发版。本机五种 feed 形状只证明脚本分支，
   不证明 GitHub 上 `needs` / outputs / `if:` 的接线（接线错的表现是 drill 直接 skipped，那要真跑才看得见）。
-- **本轮那次真机升级读数只跑了 arm64**（dispatch `45110776730`，`v2.33.3 → 2.33.4`，`require_feed_version=true`）；
-  x64 仍是上一次 `45002891087` 的 v2.33.1→2.33.2 读数。
+- **本轮那次真机升级读数只跑了 arm64**（dispatch `45110776730`，`v2.33.3 → 2.33.4`，`require_feed_version=true`，
+  结论 `passed`）；x64 仍是上一次 `45002891087` 的 v2.33.1→2.33.2 读数，**镜像下载那半没有 x64 读数**。
 - 装机版仍是 **2.33.2** ⇒ 用户侧「更新不再停在 38 分钟」仍未被真机证实（判据在 `docs/evidence/2026-11-23-update-download-retry-on-reset.md` §四）。
 - 本版**不含**会话那 39 个在制路径；本轮三笔只动工作流、一支新测试与 `docs/**`。
 

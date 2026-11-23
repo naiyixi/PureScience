@@ -290,7 +290,8 @@ YAML 声明**逐一相等**；`/download/feed/` 是 `/download/` 别名下的真
    **引用的资产**（相对路径，相对 feed 目录解析）放进去，原子切换（先写 `feed.new/` 再 `mv`）。
 2. **应用**：`publish: { provider: generic, url: https://purescience.work/download/feed/ }`；GitHub 那条重试路径
    已经在（`electron-updater-strategy.ts` 的 provider 失败重试），要验它是真能兜住，不是只在注释里。
-3. **演练**：用「feed 指向镜像」的一版跑一次原地升级，证明镜像链路能换包 —— 现在这条演练**只走 GitHub**。
+3. ~~**演练**：用「feed 指向镜像」的一版跑一次原地升级，证明镜像链路能换包 —— 现在这条演练**只走 GitHub**~~ →
+   **已覆盖**：`45110776730`（`v2.33.3 → 2.33.4`）从镜像下载了 295,904,957 字节并完成换包，字节数与 feed 声明一致。
 
 **风险**：已装出去的版本仍指 GitHub，换源只对新版本生效；镜像 404 时如果 GitHub 重试没真兜住，就等于把更新
 路径弄断。所以第 3 块（演练）不是可选项，是前置条件。
@@ -526,7 +527,8 @@ Gatekeeper -> accepted      codesign --verify --deep --strict: ok
 （2026-11-22：两个标记 kept/lost/rewritten + 反向对照，逐字读数见
 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`「第 5、6 趟」与「反向对照的隔离实验」；标记仍是代理指标，
 **不证明那个 SQLite 库读得出来**）；
-feed 只走 GitHub Releases，没验镜像链路；3 绿 / 4 趟不等于不再偶发红，也还没有非手动触发的样本。
+~~feed 只走 GitHub Releases，没验镜像链路~~（`45110776730` 已从镜像完成一次换包）；3 绿 / 4 趟不等于不再偶发红，
+非手动触发的 tag 样本仍是 2 条且都红在演练自己的时序（见上）。
 
 **x64 那一半也补上了**（`45002891087`，`macos-15-intel`，`architecture: bundle x86_64 on host x86_64` →
 `passed from=2.33.1 to=2.33.2`）。此前这里写着「x64 没有 runner 可用」——**那条是错的**：`macos-13` 于

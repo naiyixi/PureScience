@@ -210,9 +210,9 @@ macOS upgrade reading: passed from=2.33.2 to=2.33.3 relaunched="2.33.3"   data=u
 | AppImage | 318374697 | 318374697 |
 | deb | 242418184 | 242418184 |
 
-**这一趟没有证明的事**：这次换包的**下载**仍走 GitHub —— 被升级的 2.33.2 那个包的 `app-update.yml` 还指着
-GitHub（它是改源之前造的）。「从镜像完成一次换包」要等 `v2.33.3 → v2.33.4`，那是第一次有安装包指着镜像去
-下载并安装。
+~~**这一趟没有证明的事**：这次换包的**下载**仍走 GitHub~~ → **已由第 9 趟的 `45110776730` 补上**：被升级的
+2.33.3 那个包的 `app-update.yml` 已经指着镜像，`download()` 回来 `downloadedBytes: 295904957`，与镜像 feed 里
+`mac-arm64.zip` 自己声明的 `size` **逐字节相同** ⇒ 这是第一次**从镜像下载并完成换包**的读数。
 
 ## 第 9 趟：等待本身放错了地方 —— 45 分钟预算 vs tag→资产 80 分钟 + 一趟镜像同步
 
@@ -265,6 +265,22 @@ GitHub（它是改源之前造的）。「从镜像完成一次换包」要等 `
 'true'` 那种写法）、预算 ≥ 240 且作业超时 ≥ 预算 + 15 分钟、两种具名失败与「两个 zip」要求都在。四处变异各自
 只红 1 例（去掉 `needs` / 预算改 45 / 换成布尔假值写法 / 演练改回自己解析版本），还原后 6 例全绿。
 
+**同一轮的真机读数（`45110776730`，`v2.33.3 → 2.33.4`，`require_feed_version=true`）**：镜像已供这一版，
+于是这条演练第一次**从镜像**下载并换包：
+
+```
+[mac-upgrade] check() -> {"state":"available","latest":"2.33.4",…,"totalBytes":295904957,"current":"2.33.3","applyKind":"restart"}
+[mac-upgrade] download() -> {"state":"ready","latest":"2.33.4",…,"progress":100,"downloadedBytes":295904957}
+[mac-upgrade] on disk now: 2.33.4 (was 2.33.3, check saw 2.33.3)
+[mac-upgrade] relaunched reports {"name":"PureScience","version":"2.33.4",…}
+[mac-upgrade] Gatekeeper: …/previous/PureScience.app: accepted
+[mac-upgrade] user data after the swap: userData:kept storage:kept
+macOS upgrade reading: passed from=2.33.3 to=2.33.4 relaunched="2.33.4" data=userData:kept storage:kept feed=offers 2.33.4
+```
+
+`downloadedBytes` 与镜像 feed 声明的 `size` 逐字节相同（295,904,957）⇒ 下载真的走的是镜像，不是 GitHub；
+`feed=offers 2.33.4` 是从换包后的 bundle 里读 `app-update.yml` 再问镜像得来的。这一趟**只跑了 arm64**。
+
 **这一趟没有证明的事**：`readiness` 闸门**没有被一次真 tag 推起来过** —— 它的首次真样本是下一次发版；
 本机那五种形状只证明脚本的分支，不证明 GitHub 上 `needs` 与 outputs 的接线（那要真跑）。
 
@@ -273,7 +289,8 @@ GitHub（它是改源之前造的）。「从镜像完成一次换包」要等 `
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。
 - **只有 dispatch 触发**，没有接进 `release.yml`。一条绿过一次的演练要不要成为发版硬门，是单独拍板的事；现在它只出证据。
 - ~~没有覆盖「用户自己的数据」~~ → **已覆盖一半**：标记能证明「换包没有抹掉 userData 与 storage root」，但它是标记不是内容 —— 真会话、真文献库（SQLite 里的行、附件）在换包后是否仍可读、是否被新版本正确迁移，仍未验证。
-- **没有覆盖更新源故障**：feed 与包都来自 GitHub Releases，演练没有验证镜像/官网链路。
+- ~~**没有覆盖更新源故障**：feed 与包都来自 GitHub Releases，演练没有验证镜像/官网链路~~ → **镜像链路已覆盖**
+  （`45110776730`：下载走镜像、字节数与 feed 声明一致）；**仍未覆盖**的是「镜像坏掉/半同步时应用怎么表现」。
 - **「一次绿」不等于「不再偶发红」**。这个判断只有时间能给（同 `references-page-selection` 那条）。
 
 ## 复现
