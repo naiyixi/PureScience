@@ -1,5 +1,58 @@
 # PureScience 更新日记
 
+## v2.33.4 — 2026-11-23
+
+### 更新下载会自己再来一次 —— 静默停滞与连接被重置都算，界面写清「从头开始」
+
+**应用自己的日志里三次失败的下载，没有一次把话说完整。** 2.32.0 之后的 update-download 记录是
+started 10 / completed 5 / failed 3 / cancelled 2；三次失败按耗时是 **38 分钟、53 分钟、10 分钟**。
+前两次之后一行字节记录都没再出现（静默停滞），第三次是**连接被重置**：错误确实到达了，只是到达时
+已经过去 53 分钟。上一版那个 60 秒停滞看门狗只能看见前一种 —— 第三种它从结构上看不见，因为那是
+一个「答话」，不是一段沉默。
+
+现在**一次下载里有两次传输名额**。停滞（60 秒没有新字节）且还有名额 ⇒ 应用自己换新 token 重下，
+诊断行只打一行 warn，带尝试序号、次数、已下字节与总字节；**连接被重置 / 网络切换 / 网络超时同样重下**，
+判据取 `diagnosticErrorFields()` —— 就是日志行里写 `errorCategory` 的那个函数，所以「日志说
+connection-reset」与「代码因此重下」不可能各说各话（不新造第二个「什么算瞬时」的意见）。两次都用尽
+才落成 error 状态，并在诊断里留下 `attempts` / `attemptsUsed`，让下一次真机读数能看出重下真的发生过。
+
+**重下是从头开始，界面就这么写。** `electron-updater` 6.8.9 在 `executeDownload` 的失败分支里会删掉
+temp 文件，所以这条路上没有 Range 续传；进度相位新增 `restarting`，文案是
+`Connection lost, restarting from the beginning… (attempt N)`，进度条继续脉动而不是冻在旧位置。
+装机包下载那条真续传（`reconnecting`）不受影响，两者不再共用一句话。
+
+读数：定向 `vitest src/main/update src/main/net` **20 文件 / 264 例通过**；变异（名额改 1）⇒ 4 例红、
+（相位改回 `reconnecting`）⇒ 2 例红；真 socket 两例 —— 「永久静默」= 两次判停后报错且已下字节保留，
+「首试静默、次试给全量」= **两次真实请求**、广播 `restarting (attempt 1)`、终态 `ready`。
+
+### 另外两件
+
+- **纠正被拒时会重发，只在独苗时**：上一版预判的那条缝在生产日志里 70 次注入一次都没命中，所以这条
+  修的是「万一」而不是「正在发生」—— 它在日志里留下具名行，下一次真命中时读得出来。
+- **发版闸门收紧了两种弱判据**：Windows 车道要求**连续三次真机读数**（攒不到三次，发版前置就红），
+  且 `not-applicable` 从「取消跳过」改为**判红**——「没测到」与「没认证」是两件事，后者不能靠更早的
+  绿活着。
+
+### 明确没做 / 边界（具名）
+
+- **没有打包版读数**：这条路径只有装机版走，本机造不出一次真实的镜像停滞。真机判据写在
+  `docs/evidence/2026-11-23-update-download-restart.md` §四：日志出现
+  `update download failed mid-transfer; restarting the transfer` 且带 `errorCategory: "connection-reset"`、
+  随后同一次下载 `outcome: 'completed'`；或失败行带 `attempts: 2` / `attemptsUsed: 2`。
+- Node 原生 `ECONNRESET`（没有 `net::` 前缀、分类落到 `network` 兜底）**不重试**：它与
+  `ECONNREFUSED`/`ENETUNREACH` 同类，要重试得先把分类器拆开 —— 那是共享层的改动，本版不做。
+- 重下仍是 **0 字节起步**，没有续传；界面写的就是这句实话。
+- 装机版此刻是 2.33.2，本版要等下一次更新才到用户手里 ⇒「更新不再停在 38 分钟」在用户侧**尚未**被
+  真机证实。
+
+### 质量与证据口径
+
+门禁在隔离工作树里的 `__GATE_SHA8__` 上跑（与本提交的差量只有本文件正文）：`eslint --no-cache .`
+全仓 **0 error / __LINT_WARN__ warning**，双 typecheck **0 error**，全量 vitest
+**__TEST_FILES__ 文件 / __TEST_PASSED__ 例通过**；`__TEST_BASELINE_FAIL__` 例红是共享 Prisma client 由
+会话在制 schema 生成带来的基线红（基础提交上同样红），不是本版引入。工作树当时带着会话未提交的在制品
+⇒ **本版不含它们**。
+
 ## v2.33.3 — 2026-11-22
 
 ### 自更新改走自建镜像：国内用户终于有自更新了
