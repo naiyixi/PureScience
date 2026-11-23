@@ -32,7 +32,12 @@ import { DEFAULT_RUNTIME_CDN_BASE, runtimeSubdir } from '../../src/main/notebook
 // the bundle" and "the bundle is here and the kernel still did not run" are different facts, and only the
 // second one is about this product.
 test('runs a python cell on a runtime the app provisions itself', async ({ app }) => {
-  test.setTimeout(600_000)
+  // The subject of this lane IS first-run provisioning: the app installs python-3.12 for the platform before the
+  // cell can print anything. The fixture budgets that at 15 minutes (`PROVISION_AWARE_TIMEOUT_MS`), and the
+  // wait here used to cut it off at 5 — so a provisioning run that was merely slow ended with the page showing
+  // neither the reply nor the fixture's named failure, and the report accused nothing in particular. The wait
+  // now outlives the provisioning budget it is waiting for.
+  test.setTimeout(1_020_000)
 
   const manifestUrl = `${DEFAULT_RUNTIME_CDN_BASE}/${runtimeSubdir()}-manifest.json`
   let reachable = false
@@ -52,6 +57,6 @@ test('runs a python cell on a runtime the app provisions itself', async ({ app }
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Notebook without a pack')
-  await sendPrompt(page, 'Run a python cell.', 'Python cell ran.', 300_000)
+  await sendPrompt(page, 'Run a python cell.', 'Python cell ran.', 960_000)
   await expect(page.getByText('Python cell ran.', { exact: false })).toBeVisible()
 })

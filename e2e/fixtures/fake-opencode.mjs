@@ -15,6 +15,11 @@ const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
 // IC14: a PYTHON notebook run — the runtime binding strip only exists for the env-scoped kernels
 // (python/r), and the other notebook scenarios all drive bash.
 const NOTEBOOK_PYTHON_PROMPT = 'Run a python cell.'
+// The reviewer is a second agent in its own session: the app sends it a prompt that opens with
+// `You are reviewing turn: <id>` and hands it the reviewer MCP server. Until now this fixture had no
+// reviewer behaviour at all — it ended its turn without ever calling `submit_findings`, so every spec that
+// audits a review watched a reviewer sit still for its whole budget and then fail on something else.
+const REVIEWER_PROMPT_MARKER = 'You are reviewing turn:'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
 const PDF_PROSE_PROMPT = 'Create a prose PDF fixture.'
@@ -280,6 +285,41 @@ const runPythonNotebookCell = async (sessionId, prompt) => {
   if (prompt.includes('#3')) return 'Python cell ran (#3).'
   if (prompt.includes('#2')) return 'Python cell ran (#2).'
   return 'Python cell ran.'
+}
+
+// Reads the frozen turn, then submits exactly one explicit pass check — the shape the server demands (an empty
+// array is never a pass, and a check without evidence is invalid). The reply says what happened so a spec can
+// assert on the reviewer's own action rather than on a timeout.
+const submitReviewerFindings = async (sessionId) => {
+  await withMcpClient(sessionId, 'reviewer-mcp', async (client) => {
+    const turn = toolResult(
+      'read_turn',
+      await client.callTool({ name: 'read_turn', arguments: {} })
+    )
+    if (!turn || typeof turn !== 'object') {
+      throw new Error('The reviewer read_turn returned nothing to audit.')
+    }
+    const submitted = toolResult(
+      'submit_findings',
+      await client.callTool({
+        name: 'submit_findings',
+        arguments: {
+          checks: [
+            {
+              status: 'pass',
+              claim: 'The audited turn carries the evidence its summary cites.',
+              evidence:
+                'read_turn returned the frozen blocks for this turn; no contradiction was found in them.'
+            }
+          ]
+        }
+      })
+    )
+    if (submitted && submitted.rejected) {
+      throw new Error(`The reviewer submission was rejected: ${JSON.stringify(submitted.rejected)}`)
+    }
+  })
+  return 'Review submitted: 1 pass check.'
 }
 
 // IC33: the fixture's only outbound request. The app hands every kernel/shell subprocess the egress proxy env
@@ -854,6 +894,8 @@ if (process.argv.includes('--version')) {
           reply = verifyProviderBridge()
         } else if (prompt.includes(NOTEBOOK_LIFECYCLE_PROMPT)) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
+        } else if (prompt.includes(REVIEWER_PROMPT_MARKER)) {
+          reply = await submitReviewerFindings(context.params.sessionId)
         } else if (prompt.includes(NOTEBOOK_PYTHON_PROMPT)) {
           reply = await runPythonNotebookCell(context.params.sessionId, prompt)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {

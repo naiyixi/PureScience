@@ -753,3 +753,24 @@ workflow（diff 可见），而不是悄悄加个 flag。
 | 界面                         | 设置页一个「导出身份」小节：作者/机构名（文本）+ 类型（个人/机构二选一）+ 默认许可（SPDX 标识符文本，如 `CC-BY-4.0`；`name` 不猜，缺省与 id 同字）。放在离导出最近的面板里，新文案 5–6 键 × 9 语（zh 值不得等于 en，跑 translation-quality）。                                                                                                                                                                                                    |
 | 验收判据（三条，缺一不算完） | ① **没设过** ⇒ crate 里这两个字段**不存在**（不是空串、不是 `null`，且既有断言逐条不动）；② 设置成「某机构 + CC-BY-4.0」后导出 ⇒ `rocrate` 与 `pyld` 两个第三方读者**都**读出非空的 `author`/`license`；③ 改设置再导出 ⇒ 新包逐字反映新值，旧包不变。真机证据落 `docs/evidence/`。                                                                                                                                                                |
 | 边界                         | 不写 `publisher`（那是软件方，等同 `app`，本轮不碰）；不做「按项目覆盖」；不做许可校验（不认识的标识符照写并原样显示，不猜它是不是合法 SPDX）。                                                                                                                                                                                                                                                                                                   |
+
+## 十图收敛（2026-11-23，本轮）
+
+用户给了十张截图，逐条对齐。下面只记**结论与读数**；判断过程在提交说明与证据档里。
+
+| 项 | 结论 | 证据 / 读数 |
+| --- | --- | --- |
+| 全权访问对话框里的英文（中文界面） | 描述是硬编码英文，已进 i18n（`ws.enableFullAccessDetail`，en/zh 同键） | eslint 0；`ComposerAgentControlsMenu.interaction.test` 27 passed |
+| 「在新会话中分支」点了没反应 | 分支要快照到最后一条对话，空会话没有可快照的东西 —— 现在没有对话内容就不提供这个动作 | `workspace` 1921 passed（两个夹具补了真实对话，而不是让判据迁就空会话） |
+| 侧聊按钮压住侧聊框 | 开关打开后左移 `20.5rem`（面板 20rem + 间隔），不再落在面板自己那一列上 | `SideChatPanel.test` 7 passed |
+| 有更新时简体中文溢出 | 底栏允许换行 + 语言标签可省略 | `LanguageToggleButton` 截断；workspace 全绿 |
+| 主模型是 DeepSeek 时图片被挡 | 门只看 provider 级 flag，与模型、与已配置的 `visionModel` 都无关；主进程 `image-input-compatibility-owner` 本就备好中转。改成模型级判定或 `visionModel` 已配置即可传图 | workspace 1921 passed |
+| 本地模型在起作用吗 | **一票活、一票缺 checkpoint**：DECIMER 2.7.2 + pypdfium2 5.14.0 + rdkit 2026.09.1 均 loaded，权重 298,662,033 B；MolScribe 包在（torch 1.13.1）但 checkpoint 缺 | `docs/evidence/2026-11-23-local-models-in-effect.md`（含可重跑命令） |
+| 更新说明写成工作日志 | `manifestNotes` 取 `### 亮点`；发布页亮点在前、技术记录折叠、PR 列表丢弃 | `generate-version-manifest.test` 45 passed；`release-notes.test` 9 passed |
+| 指向 GitHub / Discord / X 的按钮 | 全部摘掉，指向官网；报错上报链接同改 | 设置页星标/Discord/X 三处删除；`APP.links` 只剩 `website/support/releaseNotes` |
+| 小字说明过多 | 两条规则写进 `docs/development.md` 与 `.en.md`：更新说明只写读者看得见的变化；让布局解释，不加小字说明 | — |
+| CodeBuddy 只能手动安装 | 卡片早就有 npm 源，`onInstall` 对非字面量 `'npm'` 的源静默 `return undefined` ⇒ 按钮点了什么都不发生。改成有源就装 | `settings` 733 passed |
+| Pi / Hermes / DeepSeek Harness 接入 | **未开工**（立案）：`AgentFrameworkId` 是贯穿探测/解析/持久化/安装/UI/e2e 的联合类型，必须真跑 ACP 握手才算完成 | `docs/plan-2026-11-23-agent-catalog.md`（三者的安装与 ACP 形态已核实） |
+
+P0 侧未关闭：`artifact-replay.spec.ts:58`、`notebook-python-provisioned-runtime.spec.ts:34` 在 `45166052550`
+（head `e89a79de`）仍红；`connector-custom-detail.spec.ts:16`、`storage-migration.spec.ts:74` 新出现（待判 flaky 与否）。
