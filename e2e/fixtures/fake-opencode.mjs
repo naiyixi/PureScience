@@ -172,6 +172,8 @@ const toolResult = (name, result) => {
 
 const frameworkServerName = (name) => name.replaceAll('-', '_')
 
+const PROVISION_AWARE_TIMEOUT_MS = 15 * 60_000
+
 const withMcpClient = async (sessionId, serverName, operation) => {
   const route = sessionRoutes.get(sessionId)
   const server = route?.mcpServers?.find(
@@ -190,6 +192,14 @@ const withMcpClient = async (sessionId, serverName, operation) => {
     env: stringEnvironment(server.env)
   })
   const client = new Client({ name: 'purescience-e2e-agent', version: VERSION })
+  // A tool call can legitimately take minutes here: creating the default python environment downloads a
+  // ~100 MB runtime pack and extracts it (run 45143965397: `acp:send-prompt` lasted 63.2 s with
+  // `attribution: 'no-cpu-in-process'`, i.e. waiting on I/O). The SDK's default request timeout is 60 s,
+  // which turned a working install into `MCP error -32001: Request timed out` and made the notebook look
+  // broken. The budget is bounded, not absent: a real hang still fails.
+  const rawCallTool = client.callTool.bind(client)
+  client.callTool = (params, schema, options) =>
+    rawCallTool(params, schema, { timeout: PROVISION_AWARE_TIMEOUT_MS, ...options })
   await client.connect(transport)
   try {
     return await operation(client)

@@ -9,7 +9,11 @@ import { createProject, receiptText, sendPrompt } from './helpers'
 // path makes it — and every field it brings back has to appear in what the window renders. Fields are
 // compared by VALUE (byte offsets, counts, paths, reason strings), not by comparing two dictionaries.
 
-test.setTimeout(180_000)
+// 600 s, not 180: the replay runs a python cell, and a fresh data root has no runtime yet — the app now
+// installs the default environment on demand, which downloads a ~100 MB pack (45143965397 measured 180 s
+// exceeded at `page.evaluate` with the install still in flight). The budget covers an install plus the
+// replay; it is not a wait for something that used to be fast, it is the cost of the path being real.
+test.setTimeout(600_000)
 
 type ReplayResult = {
   stopped?: string

@@ -11,6 +11,10 @@ import { createProject, sendPrompt } from './helpers'
 // it. A receipt whose hash cannot be recomputed this way would be the thing worth worrying about.
 const SAFE_CODE = 'total = 1 + 1\nprint(total)'
 
+// 600 s: the cell runs on the app-managed runtime, and a fresh data root installs it on first use
+// (~100 MB download plus extraction). 45143965397 hit the 120 s default at `page.evaluate` mid-install.
+test.setTimeout(600_000)
+
 test('a run that passes the review carries a receipt this spec recomputes', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
