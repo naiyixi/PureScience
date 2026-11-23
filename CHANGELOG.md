@@ -36,7 +36,8 @@ temp 文件，所以这条路上没有 Range 续传；进度相位新增 `restar
 ### 明确没做 / 边界（具名）
 
 - **没有打包版读数**：这条路径只有装机版走，本机造不出一次真实的镜像停滞。真机判据写在
-  `docs/evidence/2026-11-23-update-download-restart.md` §四：日志出现
+  `docs/evidence/2026-11-23-update-download-retry-on-reset.md` §四（上一单元那份
+  `…-update-download-restart.md` §四 记的是停滞那条）：日志出现
   `update download failed mid-transfer; restarting the transfer` 且带 `errorCategory: "connection-reset"`、
   随后同一次下载 `outcome: 'completed'`；或失败行带 `attempts: 2` / `attemptsUsed: 2`。
 - Node 原生 `ECONNRESET`（没有 `net::` 前缀、分类落到 `network` 兜底）**不重试**：它与
@@ -47,11 +48,13 @@ temp 文件，所以这条路上没有 Range 续传；进度相位新增 `restar
 
 ### 质量与证据口径
 
-门禁在隔离工作树里的 `__GATE_SHA8__` 上跑（与本提交的差量只有本文件正文）：`eslint --no-cache .`
-全仓 **0 error / __LINT_WARN__ warning**，双 typecheck **0 error**，全量 vitest
-**__TEST_FILES__ 文件 / __TEST_PASSED__ 例通过**；`__TEST_BASELINE_FAIL__` 例红是共享 Prisma client 由
-会话在制 schema 生成带来的基线红（基础提交上同样红），不是本版引入。工作树当时带着会话未提交的在制品
-⇒ **本版不含它们**。
+门禁在隔离工作树里的 `cac48073` 上跑（与本提交的差量只有本文件正文）：`eslint --no-cache .` 全仓
+**0 error / 101 warning**，双 typecheck **0 error**，全量 vitest **1516 文件 / 19,088 例通过**；
+**8 例红是基线红，不是本版引入** —— 三条失败文件读的都是
+`Reference runtime DDL is missing Prisma columns: expected [ 'edition' ]`：共享 `node_modules` 里的 Prisma
+client 由会话在制 schema（`prisma/schema.prisma` 加 `edition String?`，未提交）生成，而本提交推出的运行时
+DDL 没有该列；基础提交 `f3875d03` 上同样 8 例红，CI 从**提交里**的 schema 生成 client，不存在这一态。
+工作树当时带着会话未提交的在制品 ⇒ **本版不含它们**。
 
 ## v2.33.3 — 2026-11-22
 
