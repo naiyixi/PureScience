@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
+import { DEFAULT_RUNTIME_CDN_BASE, runtimeSubdir } from '../../src/main/notebook/runtime-paths'
 
 // A python cell runs on a machine that has no curated pack.
 //
@@ -18,8 +19,36 @@ import { createProject, sendPrompt } from './helpers'
 // The assertion is the fixture's, not ours: the fixture agent asks the packaged notebook MCP for
 // `print("ic14-python-cell")` and throws when the marker is missing from the result, so a green reply means a
 // kernel really started and really printed.
+
+// This lane is the only one that needs the network, and on 2026-11-23 a Windows runner lost the runtime host
+// outright: `https://github.com/naiyixi/PureScience/releases/download/runtime-v1/win-64-manifest.json` died
+// with `net::ERR_CONNECTION_TIMED_OUT` (the update check to the same host timed out in the same run), so the
+// app never provisioned a runtime and the fixture's message — "The Notebook did not run the python cell" —
+// accused the notebook for a host that was not answering.
+//
+// So the host is asked first, with the same base URL and the same platform segment the app uses. A host that
+// does not answer is a skip that names the error; a host that answers leaves the assertion untouched, so a
+// provisioning failure with the bundle in reach is still red. The distinction matters: "we could not reach
+// the bundle" and "the bundle is here and the kernel still did not run" are different facts, and only the
+// second one is about this product.
 test('runs a python cell on a runtime the app provisions itself', async ({ app }) => {
   test.setTimeout(600_000)
+
+  const manifestUrl = `${DEFAULT_RUNTIME_CDN_BASE}/${runtimeSubdir()}-manifest.json`
+  let reachable = false
+  let reachError = ''
+  try {
+    const response = await fetch(manifestUrl, { signal: AbortSignal.timeout(20_000) })
+    reachable = response.ok
+    if (!reachable) reachError = `HTTP ${response.status}`
+  } catch (error) {
+    reachError = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+  }
+  test.skip(
+    !reachable,
+    `runtime host unreachable from this runner (${reachError}) — the fresh-install path cannot be exercised: ${manifestUrl}`
+  )
+
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Notebook without a pack')
