@@ -1,5 +1,87 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十、本轮追加（执行器，2026-11-23 23:1x–）—— 0/3 的闸门现在卡在「没有 windows 作业」，不是卡在 P0
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == f0df6afa`，`package.json` = **2.33.5**，`gh release list` 的 Latest 仍是 **v2.33.4**
+  （v2.33.5 的 tag 已按发版恢复规程删掉、无页可丢）。工作树 **39 个改动 + 3 个未跟踪**仍是会话在制
+  （`prisma/schema.prisma`、`shared/citation/*`、`ro-crate*`、九份 i18n、`session-persistence/*`、`crash-diagnostics`、
+  `main/index.ts`、`RoCrateExportDialog*` …）⇒ **一个字节没碰**，本轮不提交任何源码路径。
+- 会话在同一棵树上**每 10–20 分钟一笔**往前推（22:30 / 22:38 / 22:39 / 22:55 / 23:12 五笔），当前
+  `Nightly` 与 `Windows Full Test` 都在跑 `f0df6afa`。**本轮不推送任何会取消它们的东西**（本轮只落这一份 `.md`，
+  两条车道都有 `**/*.md` 的 `paths-ignore`，不会因为这次推送新建 run，也就不会顶掉在跑的那趟）。
+
+### 一 现取读数：闸门读数不是「P0 红了一次」，是「七趟都没有 windows 作业」
+
+用仓里自己的仪器（`scripts/windows-gate-streak.mjs`，不手搓）现取：
+
+```
+streak 0/3   skipped: 45202604327 no windows job / 45199580653 no windows job / 45196700636 no windows job /
+             45196469226 no windows job / 45194954567 no windows job / 45187233227 no windows job /
+             45185889448 no windows job / 45166052550 reading=failed
+```
+
+把最近 25 趟 Nightly 逐趟读一遍（`gh api …/runs/<id>/jobs`，只看 `Build windows-x64` 与 `Verify` 两个作业）：
+
+| run | head | 结局 | windows 作业 | Verify |
+| --- | --- | --- | --- | --- |
+| 45202604327 | f0df6afa | in_progress | — | in_progress |
+| 45199580653 | a9747ecd | failure | **没有** | failure（typecheck） |
+| 45196700636 | 1c657141 | failure | **没有** | failure（typecheck） |
+| 45196469226 | f0713789 | cancelled | 没有 | cancelled |
+| 45194954567 | 127356cd | cancelled | 没有 | cancelled |
+| 45187233227 | 022f0577 | failure | 没有 | cancelled |
+| 45185889448 | de8dacaa | failure | 没有 | failure |
+| 45166052550 | e89a79de | cancelled | success（读数 `failed`） | success |
+| 45165554938 | e89a79de | cancelled | 没有 | cancelled |
+| 45161879456 | 1a9d1c57 | cancelled | success（读数 `failed`） | success |
+| 45143965397 | 2f88dd77 | failure | success（读数 `failed`） | success |
+| 45097335875 | 0ac9bbd8 | **success** | success（读数 `passed`） | success |
+
+⇒ 自 `45166052550` 之后 **七趟 Nightly 一趟都没有把 `Build windows-x64` 作业跑起来**：四趟 `Verify` 红在 typecheck，
+三趟被后一笔 push 取消。**「0/3」当前的主因是 Verify 那一环没起来，不是 P0 又红了。**
+
+### 二 现取读数：`f0df6afa` 的 Verify 还差一笔，而那一笔已经在会话的工作树里
+
+在隔离工作树（`git worktree add /tmp/ps-exec/wt f0df6afa` + 软链 `node_modules`）里跑
+`src/renderer/src/i18n/translation-quality.test.ts`：**7 例红 / 35 例过**，红的是同一件事 —— 四个键
+`roCrate.profiles.{heading,checked,unchecked,none}` 已在 `en.ts` 里、却没有被译进七份译本、也没进
+`pending-translations/*.pending.json`。同一支用例在**共享工作树**（会话在制那份）上 **42/42 全绿**，
+四组译文已经在 `de/es/fr/ja/ko/ru/zh-Hant.ts` 里 ⇒ **会话下一笔提交就会关掉它**，不需要任何人另写一遍。
+同理，`a9747ecd` / `1c657141` 的 typecheck 红（`ERR_MODULE_NOT_FOUND: '../../shared/agent-tool-budget'`）
+由 `f0df6afa` 自己那笔「补上工具预算那份模块」收口。
+
+### 三 因此「3/3」的准确形状
+
+1. **Verify 先绿**（上面那笔 i18n 提交落地后）；
+2. 绿了之后 `Build windows-x64` 才会起来，P0 跑完约 **100 分钟**，才有一行 `electron P0 reading: passed`；
+3. 连续**三趟**都要各有一行。而 `nightly.yml` 的并发组按事件分（`nightly-${{ github.event_name }}`，
+   `cancel-in-progress: true`）⇒ **push 会取消 push**（每 10 分钟推一次就永远攒不到一趟），
+   `workflow_dispatch` 不受 push 影响、但**两次 dispatch 之间也会互相取消**。
+
+⇒ 攒读数只有两条路：**冻结推送**（让 push 那趟跑完，一趟约 2–2.5 小时 × 3），或**串行 dispatch，一趟一趟来**
+（每趟都要等它落定再起下一趟，3 趟 ≈ 7–8 小时）。两条都要求「一次只跑一趟」，而当前形态是 10 分钟一笔推送。
+
+### 四 本轮没做什么（具名）
+
+- **没有 dispatch**：当前 head 的 Verify 还差那笔 i18n（§二），这时候 dispatch 出去必然 `Verify` 红 ⇒ 白烧一趟
+  2.5 小时的 Nightly，而且它会把上一趟 dispatch 顶掉（同组）。
+- **没有碰任何源码路径、没有提交 CHANGELOG/README**：那是会话在制（`README.md`/`README.en.md`/`CHANGELOG.md`
+  三份都在改动里），替它落笔会把它半成品带上主干。
+- **没有复跑 Windows P0 那两条 spec**：本机是 macOS，跑到的是 `passed`/`failed` 之外的第三种证据（本机读数），
+  而闸门要的是 Windows 车道自己的那行；会话刚在 `f14393de` 里改过夹具与等待预算，本机复跑也验不出那笔在
+  Windows 上的效果。
+
+### 五 下一轮第一步
+
+① 开工先看**某个 head 的 `Verify` 是否已经绿**（`gh run list --workflow=nightly.yml --limit 5`）；绿了就在它上面
+起**一次** `gh workflow run nightly.yml --ref main`，等落定后读 `Build windows-x64` 的那行
+`electron P0 reading: …`（这是第 1/3 份），再决定第 2 份从哪里起；
+② 期间若会话仍在每 10 分钟一推，把「冻结推送」写在汇报里交给用户拍板，别自己在会话正在推的时候抢着 dispatch；
+③ 会话那批在制落地后（`roCrate` 导出改版 + 引用导入 + 会话持久化），`v2.33.5` 的四件套要复核一遍
+（`package.json` 已是 2.33.5，CHANGELOG/README 横幅三份都在改动里 ⇒ 以会话落定的版本为准，不重复写）。
+
 ## 二百〇九、本轮追加（执行器，2026-11-23 12:1x–）—— 演练的等待搬到 ubuntu：45 分钟的预算等的是一趟 150 分钟的事
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
