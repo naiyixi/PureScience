@@ -50,6 +50,26 @@
 | 3.2 安装诊断闭环     | **已完成**：安装侧「装坏 → 覆盖安装 → 恢复」真机走通；运行时侧新增 `interpreter-history`，被删的解释器留在列表里标 `runnable:false` 并写明原因（界面渲染 `detail`）          | 「装坏 → 一键重装 → 可用」已取到；**点名也取到**：新包上 `stillListed: true` + `detail: Interpreter is no longer at this path`，旧包在同一台机器上只会少一条（run 44467544070 第 6 步） |
 | 3.3 升级回滚         | **已完成**：更新前备份安装目录 + 写标记 + 起独立监管进程；新版本健康则清标记，等不到健康信号就用备份盖回去并重启旧版；备份做不成则拒绝更新；进程内 3 次未健康也回滚          | 真机上把安装目录装坏 → 监管进程恢复（哈希一致、标记写 rolledBackTo）→ 健康场景不动它；run 44482629238 第 7/8 步                                                                         |
 
+### v3.3 的判据原本会腐烂（2026-11-22 回查 → 2026-11-23 重新取证）
+
+三行「已完成」当时都有真读数，但**都是 2026-11-19 那三次 `windows-install-verify` 的**，而那个 workflow
+只手动触发、输入默认值写死 `v2.29.0 → v2.30.2`。产品此后走到 2.33.3 ⇒ 判据连同夹具一起过期，「跑过了」
+不能当作「现在成立」。
+
+改成每周一次，版本留空即从 release 列表自动取最新两个（`0ac9bbd8`）。首批新鲜读数 run `45097349831`
+（head `0ac9bbd8`，`resolved from the repository: v2.33.2 -> v2.33.3`）九步全 ✓：
+
+```
+installed-launcher-exists / reads-readiness-and-runtimes / broken-runtime-is-detected /
+repair-restores-runtimes / upgrade-changes-version / upgrade-keeps-runtimes /
+upgrade-names-a-deleted-runtime / rollback-restores-the-previous-install / healthy-update-is-left-alone
+{"outcome":"rolled-back","restoredFrom":"…\rollback-backup","version":"2.33.3.0","relaunched":true}
+{"outcome":"healthy","version":"2.33.3.0"}
+```
+
+证据 `docs/evidence/2026-11-23-windows-install-verify-refresh.md`。仍然**不证明**自动更新链路（Windows 侧
+那格是 Release 的 `windows-upgrade-smoke`），也不证明镜像下载 —— 它验的是安装包覆盖安装与回滚。
+
 ## v3.4 复现与打包
 
 > **已随 v2.31.0 发布**（tag `7f20cd8e`，Release run `44665948101` success）：四个平台 `packageSmoke` 全
