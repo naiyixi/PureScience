@@ -9,6 +9,7 @@ import type {
 import type { OfficialVendorId } from '../../shared/provider-registry'
 import type { CustomReasoningEffortTransport } from '../../shared/reasoning-effort'
 import { assertEndpointTransportAllowed } from '../../shared/endpoint-transport'
+import { AGENT_MCP_TOOL_BUDGET_MS } from '../../shared/agent-tool-budget'
 import { normalizeAnthropicBaseUrl } from './base-url'
 
 // Resolves an active provider into the environment overrides that the ACP agent (and the claude
@@ -77,6 +78,13 @@ const buildProviderEnv = (
   const env: Record<string, string> = {
     CLAUDE_CODE_EXECUTABLE: claudeExecutablePath
   }
+
+  // Claude Code gives each MCP tool call a wall-clock budget and aborts the call itself when it
+  // expires — its own answer is "The operation timed out.", with no duration and no output. Our tools
+  // enforce their own deadline first (see `shared/agent-tool-budget.ts` for the measurements), so the
+  // client's budget is set above the largest deadline a tool will accept: otherwise the tool's named
+  // answer can never be delivered, which is exactly the shape the field logs show.
+  env.MCP_TOOL_TIMEOUT = String(AGENT_MCP_TOOL_BUDGET_MS)
 
   // agent-process.ts throws if CLAUDE_CONFIG_DIR is absent — it refuses to start outside a known
   // config dir to prevent silent credential leaks. For claude-shared we satisfy the guard with the
