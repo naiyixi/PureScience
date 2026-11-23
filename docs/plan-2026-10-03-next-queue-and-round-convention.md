@@ -39,8 +39,10 @@ streak 0/3   skipped: 45202604327 no windows job / 45199580653 no windows job / 
 | 45143965397 | 2f88dd77 | failure | success（读数 `failed`） | success |
 | 45097335875 | 0ac9bbd8 | **success** | success（读数 `passed`） | success |
 
-⇒ 自 `45166052550` 之后 **七趟 Nightly 一趟都没有把 `Build windows-x64` 作业跑起来**：四趟 `Verify` 红在 typecheck，
-三趟被后一笔 push 取消。**「0/3」当前的主因是 Verify 那一环没起来，不是 P0 又红了。**
+⇒ 自 `45166052550` 之后 **七趟 Nightly 一趟都没有把 `Build windows-x64` 作业跑起来**：三趟 `Verify` 红在
+`Typecheck` 这一步（`45185889448`/`45199580653`/`45196700636`，逐趟读的是 `Verify` 作业的失败步骤清单），
+四趟被后一笔 push 取消（`45196469226`/`45194954567`/`45187233227`/`45165554938`）。
+**「0/3」当前的主因是 Verify 那一环没起来，不是 P0 又红了。**
 
 ### 二 现取读数：`f0df6afa` 的 Verify 还差一笔，而那一笔已经在会话的工作树里
 
@@ -49,8 +51,11 @@ streak 0/3   skipped: 45202604327 no windows job / 45199580653 no windows job / 
 `roCrate.profiles.{heading,checked,unchecked,none}` 已在 `en.ts` 里、却没有被译进七份译本、也没进
 `pending-translations/*.pending.json`。同一支用例在**共享工作树**（会话在制那份）上 **42/42 全绿**，
 四组译文已经在 `de/es/fr/ja/ko/ru/zh-Hant.ts` 里 ⇒ **会话下一笔提交就会关掉它**，不需要任何人另写一遍。
-同理，`a9747ecd` / `1c657141` 的 typecheck 红（`ERR_MODULE_NOT_FOUND: '../../shared/agent-tool-budget'`）
-由 `f0df6afa` 自己那笔「补上工具预算那份模块」收口。
+同理，`a9747ecd` / `1c657141` 的 Typecheck 红（`ERR_MODULE_NOT_FOUND: '../../shared/agent-tool-budget'`，module 只存在于
+会话未提交的工作树里）就是 `f0df6afa` 那笔「补上工具预算那份模块」要收的口；**那笔自己的 `Verify` 此刻仍在跑
+（`45202604327`），本轮没有它的判决**，也没有在本机另跑一遍 typecheck —— 共享 `node_modules` 的 Prisma client 由会话
+在制 schema 生成，本机跑出来的红不是 CI 那道（同 `docs/evidence/2026-11-23-v2335-release-blocked-by-windows-gate.md`
+里那 8 例基线红的成因）。
 
 ### 三 因此「3/3」的准确形状
 
