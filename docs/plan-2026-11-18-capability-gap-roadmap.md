@@ -46,8 +46,20 @@
   `e2e/certification/external-mcp-client.spec.ts` 里，随 `test:e2e:p0` 每趟跑 macOS 与 Windows。
   最新 windows P0（`45031035383`）日志：`[f1] tools/list` **12 个工具**逐一对表、写操作停在应用自己的
   审批卡上（declined card 原文可见）。**更正**：我先前把它们归进「会腐烂」是过虑了。
-- **仍是一次性**：`session_activity` 的 `running` 与 `list_schedules` 读出真定时任务 —— spec 没调这两个
-  只读工具，夹具也没有「把回合挂住」的开关。两格都不算覆盖。
+- **原先的两小格已补上（同日）**：`e2e/certification/external-mcp-activity.spec.ts` —— 夹具本来就有
+  「把回合挂住」的行为（对 `Continue the interrupted turn fixture.` 只流一行然后不结束），于是外部 CLI
+  客户端可以在回合**真的在飞**时读 `session_activity`：
+
+  ```
+  [f2] before the turn:  {"total":0,"running":0, ...}          ← 反向对照：没发过就该是 0
+  [f2] in flight:        {"total":1,"running":1, "sessions":[{"id":"e2e-session-1","status":"running", …}]}
+  [f2] list_schedules:   {"total":1,"enabled":1,"schedules":[{"id":"39280fa4-…","label":"mcp activity drill",
+                          "everyMinutes":30,"enabled":true,"nextDue":1795408859064, …}]}
+  ```
+
+  定时任务由 `window.api.routine.upsert`（设置面板同一条通道）创建，不是测试自己写库。两条判据都能红：
+  发送前 `running` 必须是 0；`running` 行的 id 必须等于 app 自己 `listCatalog` 里那条。`1 passed (32.3s)`，
+  进 `e2e/certification` ⇒ 随 `test:e2e:p0` 每趟在 macOS 与 Windows 上跑。
 
 ## v3.2 技能合规借力
 
