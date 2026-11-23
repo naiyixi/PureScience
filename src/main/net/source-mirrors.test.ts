@@ -165,8 +165,12 @@ describe('the GitHub release-asset rule (measured 2026-10-17)', () => {
   const asset =
     'https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip'
 
-  it('offers the two proxies that served byte-identical bytes, origin-first order preserved', () => {
+  it('offers our own copy first, then the two proxies that served byte-identical bytes', () => {
     expect(mirrorCandidatesFor(asset)).toEqual([
+      {
+        url: 'https://purescience.work/download/models/structure-recognition-primary.zip',
+        host: 'purescience.work'
+      },
       {
         url: `https://gh-proxy.com/https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip`,
         host: 'gh-proxy.com'
@@ -192,6 +196,26 @@ describe('the GitHub release-asset rule (measured 2026-10-17)', () => {
     expect(mirrorCandidatesFor(runtime)[0].url).toBe(
       'https://purescience.work/download/runtime/osx-arm64-python-3.12.tar.zst'
     )
+  })
+
+  it('sends the model-weight release asset to our own host, and only that exact path', () => {
+    // The weights are the other family we publish ourselves — and the one a Chinese reader hit as
+    // `fetch failed` when the first hop was GitHub.
+    expect(
+      mirrorCandidatesFor(
+        'https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip'
+      ).map((candidate) => candidate.url)
+    ).toEqual([
+      'https://purescience.work/download/models/structure-recognition-primary.zip',
+      `https://gh-proxy.com/https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip`,
+      `https://ghfast.top/https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip`
+    ])
+    // A different asset revision has no twin over there, so nothing is guessed.
+    expect(
+      mirrorCandidatesFor(
+        'https://github.com/naiyixi/PureScience/releases/download/models-v2/structure-recognition-primary.zip'
+      ).map((candidate) => candidate.host)
+    ).toEqual(['gh-proxy.com', 'ghfast.top'])
   })
 
   it('does not invent a self-host path for a runtime URL it cannot mirror exactly', () => {
@@ -249,7 +273,9 @@ describe('streamWithMirrorFallback', () => {
     expect(removeFile).not.toHaveBeenCalled()
   })
 
-  it('drops the origin partial and streams the mirror when the origin fails', async () => {
+  // With the weights published on our own host, the first fallback is that copy — which is the point of
+  // publishing them: a reader in China should reach bytes we serve before a third party's proxy.
+  it('drops the origin partial and streams our own copy when the origin fails', async () => {
     const calls: string[] = []
     const removeFile = vi.fn(async () => undefined)
     const stream = vi.fn(async (url: string) => {
@@ -262,8 +288,11 @@ describe('streamWithMirrorFallback', () => {
       { expectedSha256: digest },
       { stream, removeFile }
     )
-    expect(result.via).toBe('gh-proxy.com')
-    expect(calls).toHaveLength(2)
+    expect(result.via).toBe('purescience.work')
+    expect(calls).toEqual([
+      'https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip',
+      'https://purescience.work/download/models/structure-recognition-primary.zip'
+    ])
     // The partial from the origin's byte stream must not be glued onto the mirror's.
     expect(removeFile).toHaveBeenCalledWith('/tmp/weights.part')
   })
@@ -292,6 +321,6 @@ describe('streamWithMirrorFallback', () => {
         { stream, removeFile: async () => undefined }
       )
     ).rejects.toThrow('failed: ghfast.top')
-    expect(hosts).toEqual(['github.com', 'gh-proxy.com', 'ghfast.top'])
+    expect(hosts).toEqual(['github.com', 'purescience.work', 'gh-proxy.com', 'ghfast.top'])
   })
 })

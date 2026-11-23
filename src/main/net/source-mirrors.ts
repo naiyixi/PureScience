@@ -68,12 +68,24 @@ const MIRROR_RULES: MirrorRule[] = [
     // repository's releases have no twin over there, and a 404 from a guessed path would look like an
     // outage to a first run.
     rewrite: (url) => {
-      const match = /^\/naiyixi\/PureScience\/releases\/download\/runtime-v1\/([^/]+)$/.exec(
+      // Two asset families live on our host: the notebook runtime bundle (`runtime-v1`) and the model
+      // weights (`models-v1`). Both are published byte-identically and both are checked against a digest
+      // before use — the weight manifest carries a sha256, the runtime bundle is verified by its manifest.
+      // Anything else under /releases/download/ is left alone: no twin over there, and a 404 from a guessed
+      // path would look like an outage to a first run.
+      const runtime = /^\/naiyixi\/PureScience\/releases\/download\/runtime-v1\/([^/]+)$/.exec(
         url.pathname
       )
-      if (!match) return []
+      const weights = /^\/naiyixi\/PureScience\/releases\/download\/models-v1\/([^/]+)$/.exec(
+        url.pathname
+      )
+      if (!runtime && !weights) return []
       if (url.search !== '' || url.username !== '' || url.password !== '') return []
-      return [`https://purescience.work/download/runtime/${match[1]}`]
+      return [
+        runtime
+          ? `https://purescience.work/download/runtime/${runtime[1]}`
+          : `https://purescience.work/download/models/${weights![1]}`
+      ]
     }
   },
   {
