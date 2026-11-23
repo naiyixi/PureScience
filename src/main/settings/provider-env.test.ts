@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { buildProviderEnv, getAppClaudeConfigDir } from './provider-env'
+import { AGENT_MCP_TOOL_BUDGET_MS } from '../../shared/agent-tool-budget'
 
 const options = { storageRoot: '/root', claudeExecutablePath: '/bin/claude' }
 
@@ -20,6 +21,7 @@ describe('provider-env', () => {
 
     expect(env).toEqual({
       CLAUDE_CODE_EXECUTABLE: '/bin/claude',
+      MCP_TOOL_TIMEOUT: String(AGENT_MCP_TOOL_BUDGET_MS),
       CLAUDE_CONFIG_DIR: getAppClaudeConfigDir('/root'),
       ANTHROPIC_MODEL: 'claude-sonnet-4-5',
       ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
@@ -82,6 +84,7 @@ describe('provider-env', () => {
 
     expect(env).toEqual({
       CLAUDE_CODE_EXECUTABLE: '/bin/claude',
+      MCP_TOOL_TIMEOUT: String(AGENT_MCP_TOOL_BUDGET_MS),
       CLAUDE_CONFIG_DIR: getAppClaudeConfigDir('/root'),
       ANTHROPIC_MODEL: 'claude-sonnet-4-5',
       CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oauth-token'
@@ -98,7 +101,10 @@ describe('provider-env', () => {
 
     expect(env).toEqual({
       CLAUDE_CODE_EXECUTABLE: '/bin/claude',
-      CLAUDE_CONFIG_DIR: getAppClaudeConfigDir('/root')
+      CLAUDE_CONFIG_DIR: getAppClaudeConfigDir('/root'),
+      // The agent's MCP tool budget is exported with every launch so a long provisioning call is not
+      // cut off by the SDK's 60 s default; the paired lane in the E2E fixture uses the same 15 minutes.
+      MCP_TOOL_TIMEOUT: String(AGENT_MCP_TOOL_BUDGET_MS)
     })
     expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined()
   })
@@ -109,6 +115,7 @@ describe('provider-env', () => {
     expect(env).toEqual({
       CLAUDE_CODE_EXECUTABLE: '/bin/claude',
       CLAUDE_CONFIG_DIR: join(homedir(), '.claude'),
+      MCP_TOOL_TIMEOUT: String(AGENT_MCP_TOOL_BUDGET_MS),
       ANTHROPIC_MODEL: 'claude-sonnet-4-5'
     })
     expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined()

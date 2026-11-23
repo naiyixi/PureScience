@@ -592,7 +592,6 @@ const api: PureScienceAPI = {
     onViewProbe: (listener) =>
       electronRendererContracts.subscribe('notifications.onViewProbe', listener)
   },
-  github: {},
   network: {
     getInfo: () => electronRendererContracts.invoke('network.getInfo'),
     checkConnectivity: () => electronRendererContracts.invoke('network.checkConnectivity')
