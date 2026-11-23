@@ -54,9 +54,13 @@ Nightly 与 Windows P0；三条用例合计会给 P0 增加约 10 分钟，真�
 
 ### 质量与证据口径
 
-门禁在隔离工作树里的本提交上跑：`eslint --no-cache .` 全仓 **@@LINT@@**，双 typecheck **@@TSC@@**，
-全量 vitest **@@VITEST@@**。工作树当时带着会话未提交的在制品（43 个路径：RO-Crate 导出、citation/ris 导入、
-九份 i18n、`prisma/schema.prisma` 的 `edition`、`diagnostics/module-load` 等）⇒ **本版不含它们**；本提交只动
+门禁在隔离工作树里的 `fbfb3df4` 上跑（与本提交的差量只有本节正文）：`eslint --no-cache .` 全仓 **0 error / 101 warning**，双 typecheck
+**0 error**，仓规五查 **OK**；全量 vitest **1519 文件 / 19,130 例通过、8 例红（336.7 s）**，而那 8 例是**基线红、
+不是本版引入** —— 三条失败文件都读的是 `Reference runtime DDL is missing Prisma columns: expected [ 'edition' ]`：
+共享 `node_modules` 里的 Prisma client 由会话在制 schema（`prisma/schema.prisma` 加 `edition String?`，未提交）
+生成，而本提交推出的运行时 DDL 没有该列；CI 从**提交里**的 schema 生成 client，不存在这一态。
+工作树当时带着会话未提交的在制品（43 个路径：RO-Crate 导出、citation/ris 导入、九份 i18n、`prisma/schema.prisma`
+的 `edition`、`diagnostics/module-load` 等）⇒ **本版不含它们**；本提交只动
 `CHANGELOG.md` / `README.md` / `README.en.md` / `package.json` / `package-lock.json`。
 
 ## v2.33.4 — 2026-11-23
