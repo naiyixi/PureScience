@@ -49,8 +49,17 @@ ok   win-64-python-3.13       99166845
 FAIL linux-64-python-3.11   got=33554432 want=118168852   ← 正好 32 MiB，被截断
 ```
 
-15/16 一次过，一个 32 MiB 处断掉（不是校验失败，是没传完）。该文件已用 `curl -C -` 断点续传补齐，并对全部 24 个
-文件做 `sha256` 与本地副本逐一比对（本地那份的大小早已与 release 声明逐个相等）。 —— 未镜像的文件在候选链里会
+15/16 一次过，一个 32 MiB 处断掉（不是校验失败，是没传完）。该文件已用 `curl -C -` 续传到 `118,168,852` 字节。
+
+**收口读数**：24 个文件的 `sha256` 与本地副本 **24/24 逐位相同**（`diff=0 missing=0 extra=0`）；
+公网 `https://purescience.work/download/runtime/<file>` **24/24 `HTTP 200` 且 `Content-Length` 等于声明字节**。
+
+## 脚本自己也被抓到两个 bug（都只在真跑时暴露）
+
+1. `mapfile: command not found` —— 照 GNU bash 写的，macOS 是 3.2，改成 `while read`。
+2. `!! skip … (local size differs)` —— BSD 的 `wc -c` 输出带前导空格（` 99085435`），与声明数字串不等；三处比较加 `tr -d ' '`。
+3. **`ssh`/`scp` 在 `while read` 循环里会吃掉 heredoc 的剩余行** —— 表现是「24 个文件只核了 1 个，然后什么都不打印」。
+   加 `-n`（不进 stdin）后 24 条 `ok`、0 条 `FAIL`。这个 bug 特别值得记：它让一个会漏检 23 个文件的脚本看起来像通过了。 —— 未镜像的文件在候选链里会
 落空并继续问 origin/代理，所以「部分镜像」是优雅降级，不是错。
 
 ## 代码侧：两处顺序改了，并用 `via` 说出来

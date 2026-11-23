@@ -57,7 +57,7 @@ while read -r name size; do
   ok=0
   attempt=1
   while [ "$attempt" -le 3 ]; do
-    if scp -C -i "$KEY" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 \
+    if scp -n -C -i "$KEY" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 \
       "$SRC/$name" "$HOST:$DEST/$name"; then
       ok=1
       break
@@ -76,7 +76,7 @@ fail=0
 while read -r name size; do
   [ -n "${name:-}" ] || continue
   if [ -n "$ONLY" ]; then case "$name" in *"$ONLY"*) ;; *) continue ;; esac; fi
-  disk=$(ssh -i "$KEY" -o ConnectTimeout=15 "$HOST" "wc -c < $DEST/$name 2>/dev/null || echo 0" | tr -d ' ')
+  disk=$(ssh -n -i "$KEY" -o ConnectTimeout=15 "$HOST" "wc -c < $DEST/$name 2>/dev/null || echo 0" | tr -d ' ')
   http=$(curl -sSI --max-time 20 "$PUBLIC/$name" | awk 'BEGIN{IGNORECASE=1} /^HTTP\//{code=$2} /^content-length:/{len=$2} END{printf "%s %s", code, len}' | tr -d '\r')
   if [ "$disk" = "$size" ] && [ "${http%% *}" = "200" ] && [ "${http##* }" = "$size" ]; then
     echo "ok   $name ($size bytes, http 200)"
