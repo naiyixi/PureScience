@@ -422,10 +422,13 @@ const SideChatToggleButton = ({
     <button
       type="button"
       data-testid="workspace-side-chat-toggle"
-      className={`absolute right-11 top-0 z-50 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
+      // Open, the panel owns the right edge, so the toggle steps left of it (20rem panel + a 0.5rem gap).
+      // Left where it was, it sat on top of the panel's own header and beside the composer — a control
+      // covering the thing it controls.
+      className={`absolute top-0 z-50 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg ${
         isOpen
-          ? 'bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
-          : 'bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
+          ? 'right-[20.5rem] bg-primary/20 shadow-card backdrop-blur text-action-panel-toggle'
+          : 'right-11 bg-transparent shadow-none text-action-panel-toggle hover:bg-surface-control-hover'
       }`}
       aria-label={isOpen ? t('ws.closeSideChat') : t('ws.openSideChat')}
       aria-expanded={isOpen}
@@ -2281,6 +2284,11 @@ const WorkspacePage = ({
     dispatchSend(branchInNewSession ? undefined : activeSession?.id)
   }
 
+  // Branching snapshots the transcript through its last turn. A session that exists but holds no turn has
+  // nothing to snapshot, and offering the action there produced a button that did nothing at all — the blank
+  // New conversation in the report.
+  const hasBranchableTranscript = (activeSession?.messages.length ?? 0) > 0
+
   const branchCurrentMessage = (forcedSkillIds: string[]): void => {
     sendCurrentMessage(forcedSkillIds, { branchInNewSession: true })
   }
@@ -3046,7 +3054,7 @@ const WorkspacePage = ({
             onSendMessage={sendCurrentMessage}
             onPlanFirst={planCurrentMessage}
             onRespondToRestoredPlan={respondToRestoredPlan}
-            onBranchInNewSession={activeSession ? branchCurrentMessage : undefined}
+            onBranchInNewSession={hasBranchableTranscript ? branchCurrentMessage : undefined}
             onStageAttachmentFiles={stageAttachmentFiles}
             onRemoveAttachment={removeComposerAttachment}
             onCancelAttachmentTransfer={cancelAttachmentTransfer}

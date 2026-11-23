@@ -33,10 +33,10 @@ const LanguageToggleButton = ({ className }: LanguageToggleButtonProps): React.J
           size="sm"
           aria-label={t('common.language')}
           title={t('common.language')}
-          className={cn('gap-1.5 text-muted-foreground hover:text-foreground', className)}
+          className={cn('min-w-0 gap-1.5 text-muted-foreground hover:text-foreground', className)}
         >
           <Languages className="h-4 w-4" aria-hidden="true" />
-          <span className="text-xs font-medium">{label}</span>
+          <span className="truncate text-xs font-medium">{label}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

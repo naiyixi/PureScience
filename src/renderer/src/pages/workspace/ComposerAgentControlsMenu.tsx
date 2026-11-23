@@ -613,9 +613,7 @@ const ComposerAgentControlsMenu = ({
                     {t('ws.enableFullAccessQuestion')}
                   </AlertDialog.Title>
                   <AlertDialog.Description className={dialogDescriptionClassName}>
-                    The agent can run commands, change files, execute notebook code, and make
-                    network requests without asking first. Authentication failures and execution
-                    errors can still stop the run.
+                    {t('ws.enableFullAccessDetail')}
                   </AlertDialog.Description>
                 </div>
               </div>

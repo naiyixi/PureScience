@@ -4641,6 +4641,10 @@ export const en: Record<ZhKey, string> = {
   'settings.skillForkAction': 'Duplicate as my skill',
   'settings.skillForkFailed': 'Could not duplicate this skill: {reason}',
   'roCrate.inspect.heading': 'Check a crate from elsewhere',
+  'roCrate.profiles.heading': 'Declared profiles',
+  'roCrate.profiles.checked': '— checked against RO-Crate 1.1',
+  'roCrate.profiles.unchecked': '— not checked here; this app judges RO-Crate 1.1 only',
+  'roCrate.profiles.none': 'This crate declares no profile.',
   'roCrate.inspect.scopeNote':
     'Read-only: the folder is not modified and nothing is imported into a project. Passing means every rule this app can apply held — not that the crate is scientifically right. A row marked export-contract is this app’s own expectation of the crates it writes.',
   'roCrate.inspect.pathLabel': 'Crate folder',
@@ -4923,6 +4927,8 @@ export const en: Record<ZhKey, string> = {
   'ws.loadingArtifacts': 'Loading artifacts…',
   'ws.resendOnNewBranch': 'Resend on a new branch?',
   'ws.enableFullAccessQuestion': 'Enable Full access?',
+  'ws.enableFullAccessDetail':
+    'The agent can run commands, change files, execute notebook code, and make network requests without asking first. Authentication failures and execution errors can still stop the run.',
   'ws.createNewSpecialist': 'Create new…',
   'ws.invalidPlanDocument': 'Invalid Plan document. This preview cannot be displayed.',
   'ws.boundedEvidenceNotice':

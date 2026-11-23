@@ -683,7 +683,10 @@ const WorkspaceSidebar = ({
             ))}
           </div>
 
-          <div className="relative flex shrink-0 items-center gap-1 p-2">
+          {/* The update capsule only exists when there is an update, and it used to push the language
+              chip past the rail's edge instead of finding room for itself. Wrapping keeps every control
+              inside the rail without hiding any of them. */}
+          <div className="relative flex shrink-0 flex-wrap items-center gap-1 p-2">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-rail-card-bg to-rail-card-bg/0"

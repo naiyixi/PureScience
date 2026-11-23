@@ -4316,6 +4316,10 @@ export const zh = {
   'settings.skillForkAction': '复制为我的技能',
   'settings.skillForkFailed': '无法复制这份技能：{reason}',
   'roCrate.inspect.heading': '检查外来的 crate',
+  'roCrate.profiles.heading': '声明的 profile',
+  'roCrate.profiles.checked': '— 已按 RO-Crate 1.1 核对',
+  'roCrate.profiles.unchecked': '— 本应用不核对（只核对 RO-Crate 1.1）',
+  'roCrate.profiles.none': '这份包没有声明任何 profile。',
   'roCrate.inspect.scopeNote':
     '只读：不会改动来源目录，也不会把 crate 导入任何项目。「通过」只表示本应用能套用的每条规则都成立，不代表它在科学上正确；标为 export-contract 的规则，是本应用对自己写出的 crate 的要求。',
   'roCrate.inspect.pathLabel': 'crate 目录',
@@ -4581,6 +4585,8 @@ export const zh = {
   'ws.loadingArtifacts': '正在加载产物…',
   'ws.resendOnNewBranch': '在新分支上重发？',
   'ws.enableFullAccessQuestion': '启用完全访问？',
+  'ws.enableFullAccessDetail':
+    '智能体可以直接运行命令、修改文件、执行笔记本代码、发起网络请求，不再逐次询问。认证失败与执行错误仍然会中断这次运行。',
   'ws.createNewSpecialist': '新建…',
   'ws.invalidPlanDocument': '计划文档无效，无法显示此预览。',
   'ws.boundedEvidenceNotice':
