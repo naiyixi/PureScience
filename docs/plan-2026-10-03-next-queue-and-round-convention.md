@@ -37,7 +37,14 @@
   没有提交。CHANGELOG 的「质量与证据口径」把这件事写成了事实。
 - 发版窗口内**没有其它推送**；本次两笔推送（`99d91f0d`、`bda25ad4`）之前都现查过在飞车道为零。
 - 装机版仍是 2.33.2 ⇒ 用户侧「更新不再停在 38 分钟」**尚未**被真机证实（判据写在证据档 §四）。
-- 镜像 feed 要等下一次 sync 才会提供 2.33.4；发布页出现 ≠ 网站可下载。
+- 镜像 feed 要等下一次 sync 才会提供 2.33.4；发布页出现 ≠ 网站可下载（现取 `latest-mac.yml` 仍 `version: 2.33.3`）。
+- **`macOS Upgrade Smoke`（同一提交）红，归因是闸门自身的时序预算，不是产品缺陷**：两份 job 都红在
+  `Drive the upgrade`，日志逐行是 `the feed still says 2.33.3 (waiting for 2.33.4, …s of 2700s)`，收尾
+  `Error: The feed still says we are current (2.33.3) after waiting 2709s for 2.33.4; the drill needs an older app than
+  the version the feed offers`。这一趟 tag → 资产发布用了 **80 分钟**（`00:43Z` → `02:03Z`），而演练在打 tag 的那一刻起等
+  45 分钟 ⇒ **这道演练对「构建超过 45 分钟的版本」必然红**。下一单元：把预算与真实管线对齐（等 publish 事件，或把 45 分钟
+  抬到覆盖 tag→资产→sync），**不许降级成「发布后人工复核」**。代价写明：本版**没有**一次「装机 2.33.3 经镜像升到 2.33.4」
+  的真机读数。
 
 ### 四 下一轮第一步
 
