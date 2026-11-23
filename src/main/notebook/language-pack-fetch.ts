@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import type { DownloadProgress } from '../../shared/download-progress'
 import { netFetchStandard } from '../skills/net-fetch'
-import { downloadWithMirrorFallback } from '../net/source-mirrors'
+import { downloadWithMirrorFallback, mirrorCandidatesFor } from '../net/source-mirrors'
 
 import {
   manifestUrl,
@@ -67,12 +67,61 @@ const PACK_STALL_TIMEOUT_MS = 60_000
 const withCancel = (internal: AbortSignal, external?: AbortSignal): AbortSignal =>
   external ? AbortSignal.any([internal, external]) : internal
 
-const fetchText = async (url: string, external?: AbortSignal): Promise<string> => {
-  const signal = withCancel(AbortSignal.timeout(MANIFEST_TIMEOUT_MS), external)
-  // Electron net.fetch so the manifest request honors the system/VPN proxy, matching the pack download.
-  const response = await netFetchStandard(url, { signal })
-  if (!response.ok) throw new Error(`runtime manifest request failed (${response.status})`)
-  return response.text()
+// The manifest is the one request with no second chance: the pack archive already falls back to the
+// measured mirror hosts (`downloadWithMirrorFallback`), but the manifest — which carries the digests that
+// make that fallback safe — was fetched from the origin alone. On 2026-11-23 a Windows runner lost
+// `github.com` outright (`net::ERR_CONNECTION_TIMED_OUT` on
+// `releases/download/runtime-v1/win-64-manifest.json`) and first-run provisioning failed with nothing else
+// tried, while the very same release assets were being served by mirror hosts the download path already
+// trusts. So the manifest now walks the same candidate list.
+//
+// Origin is always asked FIRST and its bytes win whenever it answers: the mirrors exist for reachability,
+// not for correctness. A mirror-served manifest is therefore only possible when the origin did not answer,
+// and the host that served it travels back with the text so the progress line can name it (a fallback the
+// user cannot see is a fallback that reads as an origin download).
+export type ManifestFetchDeps = {
+  /** Injected so the candidate walk is unit-testable without a network. */
+  fetchStandard?: (
+    url: string,
+    init: { signal: AbortSignal }
+  ) => Promise<{
+    ok: boolean
+    status: number
+    text: () => Promise<string>
+  }>
+  /** Injected so a test can name the hosts without depending on the live mirror table. */
+  candidates?: (url: string) => { url: string; host: string }[]
+}
+
+export const fetchManifestText = async (
+  url: string,
+  external?: AbortSignal,
+  deps: ManifestFetchDeps = {}
+): Promise<{ text: string; via: string }> => {
+  const fetchStandard = deps.fetchStandard ?? netFetchStandard
+  const candidates: { url: string; host: string }[] = [
+    { url, host: new URL(url).hostname },
+    ...(deps.candidates ?? mirrorCandidatesFor)(url)
+  ]
+  const failures: string[] = []
+  for (const candidate of candidates) {
+    const signal = withCancel(AbortSignal.timeout(MANIFEST_TIMEOUT_MS), external)
+    try {
+      // Electron net.fetch so the manifest request honors the system/VPN proxy, matching the pack download.
+      const response = await fetchStandard(candidate.url, { signal })
+      if (!response.ok) {
+        failures.push(`${candidate.host} answered ${response.status}`)
+        continue
+      }
+      return { text: await response.text(), via: candidate.host }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      failures.push(`${candidate.host}: ${reason}`)
+    }
+  }
+  // Every candidate named: a provisioning failure has to say who was asked and what each one said, or the
+  // next reader blames the runtime instead of the network (that is exactly what happened above).
+  throw new Error(`runtime manifest request failed (${failures.join('; ')})`)
 }
 
 // Default download implementation: delegates to the shared resilient core with Electron net.fetch so
@@ -237,6 +286,9 @@ export const createFetchBundleAdapter = (
         message: 'Fetching managed runtime manifest…',
         progress: 0.05
       })
+      // A manifest served by a mirror is said out loud in the progress line: the bytes about to be trusted
+      // came from that host, and naming it keeps a fallback from reading as an origin download.
+      let manifestVia: string | undefined
       const fetched = await fetchLanguagePack(
         // Download the archive to the stable cache dir (not workDir) so its .part survives for resume.
         archiveDir,
@@ -248,7 +300,13 @@ export const createFetchBundleAdapter = (
         {
           // Bake the external cancel signal into the default fetchers so a user Cancel aborts the
           // in-flight manifest fetch and pack download (injected test deps opt out, as before).
-          fetchText: deps.fetchText ?? ((url) => fetchText(url, signal)),
+          fetchText:
+            deps.fetchText ??
+            (async (url) => {
+              const manifest = await fetchManifestText(url, signal)
+              manifestVia = manifest.via
+              return manifest.text
+            }),
           download:
             deps.download ??
             ((url, dest, op, expected) => downloadFile(url, dest, op, signal, expected)),
@@ -276,10 +334,13 @@ export const createFetchBundleAdapter = (
       onProgress({
         phase: `fetch-${spec.language}`,
         // A mirrored download says so where the user already reads the progress line — the source is part of
-        // the fact, not an implementation detail. Origin downloads keep the message they always had.
+        // the fact, not an implementation detail. Origin downloads keep the message they always had. The
+        // manifest host is named too, because it is the document the archive's digest was read from.
         message:
           fetched.via === 'origin'
-            ? `Downloaded ${fetched.entry.file}`
+            ? manifestVia && manifestVia !== 'github.com'
+              ? `Downloaded ${fetched.entry.file} (manifest from ${manifestVia})`
+              : `Downloaded ${fetched.entry.file}`
             : `Downloaded ${fetched.entry.file} from ${fetched.via}`,
         progress: 0.35
       })
