@@ -1,5 +1,54 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇八、本轮追加（执行器，2026-11-23 08:2x–）—— 发版 v2.33.4：更新下载自己重下一次 + 闸门收两处弱判据
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == 99d91f0d`（本地领先 origin/main 一笔纯 docs），先推出去：`pre-push` 全过，`6bce9272..99d91f0d`。
+  推前现查**无在飞车道**（`6bce9272` 的 Nightly / Windows 双双 completed/success，`c0789ec6` 两条是被同轮推送取消的、
+  无判决，由 `6bce9272` 代为取证）。
+- 工作树 39 个改动 + 4 个未跟踪**仍是会话在制**（`prisma/schema.prisma` 加 `Reference.edition`、`shared/citation/*`、
+  `ro-crate*`、九份 i18n、`provider-env*`、`logger*`、`diagnostics/module-load*` 等）⇒ **一个字节没碰**；
+  本单元只动发版四件套 + `docs/**`。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）已耗尽、C 段外部阻塞 ⇒ 取上一轮 §五 ② 的发版候选：v2.33.3 之后已积累
+  11 笔（两笔 update 链路修复 + 纠正重发 + 三道闸门），版本号抬到 **2.33.4**。
+- 装机版现取 = **2.33.2**，Latest 页 = v2.33.3 ⇒ 本版发出去之后仍要等一次真实更新才到用户手里。
+
+### 一 交付（两笔）
+
+| 提交 | 内容 |
+| --- | --- |
+| `cac48073` | 四件套：CHANGELOG v2.33.4 新段（含门禁读数占位）/ `package.json`+`package-lock.json` 2.33.4 / 双语 README 横幅逐字节一致；成熟度块**前插**本版头条句、把上一条改写成 The previous version，并补上 v2.33.3 那一版（它发版时块没跟），使 Release 正文首句与版本对得上 |
+| `bda25ad4` | CHANGELOG 填入门禁读数（`cac48073` 那次隔离门禁）+ 真机判据指针改正：本版做的是连接重置，指到 `…-update-download-retry-on-reset.md` §四，而不是停滞那份 |
+
+### 二 读数（本机现取）
+
+| 项 | 读数 |
+| --- | --- |
+| 隔离门禁 @`cac48073`（技能自带 `release-gate.sh`） | `eslint --no-cache .` **0 error / 101 warning**；双 typecheck **0 error**；全量 vitest **1516 files / 19,088 passed**（253.6 s） |
+| 那 8 例红 | **基线红**：三条失败文件都报 `Reference runtime DDL is missing Prisma columns: expected [ 'edition' ]` —— 共享 `node_modules` 的 Prisma client 由会话在制 schema 生成，而提交里没有该列；基础提交 `f3875d03` 上同样 8 例红。**CI 同提交 `Verify` success 反证**（CI 从提交里的 schema 生成 client） |
+| Windows 闸门（发版前置，新增） | `windows-gate-streak --need 3` → **3/3 satisfied**（credited `45073545519` / `45049971074` / `45046599780`，skipped `45073169891` no windows job）。注意：本机无 token 时读 job 日志得 **403 / exit 2**，是仪器口径（需 `--token`），不是闸门红 |
+| Release run `45090413522` | preflight **success** → Verify（lint+typecheck+test+package）**success** → linux-x64 / macos-x64 **success** → macos-arm64 / windows-x64 在跑（终态见下一节） |
+| 同一提交的主干车道 | `Windows Full Test` **success**；`Nightly` 在跑 |
+
+### 三 边界（具名）
+
+- **本版不含会话在制**：那 39 个路径（ro-crate / citation / i18n / prisma schema / diagnostics 等）全在工作树里，
+  没有提交。CHANGELOG 的「质量与证据口径」把这件事写成了事实。
+- 发版窗口内**没有其它推送**；本次两笔推送（`99d91f0d`、`bda25ad4`）之前都现查过在飞车道为零。
+- 装机版仍是 2.33.2 ⇒ 用户侧「更新不再停在 38 分钟」**尚未**被真机证实（判据写在证据档 §四）。
+- 镜像 feed 要等下一次 sync 才会提供 2.33.4；发布页出现 ≠ 网站可下载。
+
+### 四 下一轮第一步
+
+① 读 Release 页与资产（数到 17 项，v2.33.3 的基线）、`RELEASE-CERTIFICATION.json` 的 `sourceSha` 必须等于 `bda25ad4`；
+② 用 `node scripts/release-notes.mjs v2.33.4 --keep-generated --apply` 写正文并回读字节数；
+③ sync 之后核 feed 是否 `offers 2.33.4`；
+④ 候选（本轮读源时确认、真机未证实）：`UpdateDialog.tsx:179` 把 `dialogStatus.error` 原样上屏，而主进程
+`electron-updater-strategy.ts:501/512` 直接写 `error.message` ⇒ 传输失败时用户可能看到 `net::ERR_*` 内部标识
+（测试 `electron-updater-strategy.test.ts:605` 正钉着 `status.error` 含 `ERR_CONNECTION_RESET`）。
+修法：主进程侧给传输失败一句具名话，走 `lib/main-message-catalog.ts` 的九语目录，不是渲染层硬塞英文。
+
 ## 二百〇七、本轮追加（执行器，2026-11-23 05:4x–）—— 连接被重置也重下一次：判据复用日志行那个分类器，不另造一份
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
