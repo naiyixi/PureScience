@@ -31,7 +31,10 @@ feed 仍指 2.33.4（latest-mac.yml 未动）
 
 `/var/www/purescience/downloads/runtime/` —— nginx `location ^~ /download/` 别名到 `downloads/`，所以公网是
 `https://purescience.work/download/runtime/<file>`。第一批是 **manifest × 4 + 四个平台的 python 3.12**
-（正是默认规格那一份，约 352 MB）。其余 python 3.11/3.13 与 R 4.3/4.4 待续推 —— 未镜像的文件在候选链里会
+（正是默认规格那一份，约 352 MB）。第一批 8 个文件逐个核过：公网 `HTTP 200` 且 `Content-Length` 等于 release 声明的字节数；Windows 那份
+99,085,435 字节的 `sha256` 与本地副本逐位相同（`ae3916aa…`），不是「大小对了就算」。
+
+其余 python 3.11/3.13 与 R 4.3/4.4（16 个文件，约 2.76 GB）在后台续推 —— 未镜像的文件在候选链里会
 落空并继续问 origin/代理，所以「部分镜像」是优雅降级，不是错。
 
 ## 代码侧：两处顺序改了，并用 `via` 说出来
