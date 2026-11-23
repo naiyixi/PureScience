@@ -178,7 +178,13 @@ type ElectronApp = {
    */
   stubUpdateManifest: (
     manifest: unknown,
-    artifacts?: ReadonlyArray<{ fileName: string; base64: string }>
+    artifacts?: ReadonlyArray<{ fileName: string; base64: string }>,
+    /**
+     * A transport failure for the artifact request, in the shape Chromium produces (`net::ERR_*` inside
+     * the message). The manifest is still served, so the app reaches `available` and the download is the
+     * thing that fails — which is the state whose copy a spec needs on screen.
+     */
+    failure?: { artifactError?: string }
   ) => Promise<void>
   requestMainWindowClose: () => Promise<void>
   /**
