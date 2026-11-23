@@ -9,11 +9,15 @@
 #
 # Usage:  scripts/push-runtime-mirror.sh [tag] [--only <substring>]
 #   tag                 defaults to runtime-v1
-#   --only <substring>  upload only assets whose name contains <substring> (e.g. python-3.12)
+#   --only <substring>  handle only assets whose name contains <substring> (e.g. python-3.12)
 #
 # Requires: gh (a token that can read releases), ssh key at ~/.ssh/purescience_deploy, a local directory of
 # assets already downloaded (`scripts/fetch-runtime-bundle.sh` produces it), and the deploy host's
 # /var/www/purescience/downloads/runtime as the destination (that is what nginx aliases /download/ to).
+#
+# Written for bash 3.2, the shell macOS ships: no `mapfile`, no associative arrays. Uploads are scp with three
+# attempts per file — a broken pipe mid-file is what actually happened on the first run, and a file that is
+# already the right size on the far side is skipped rather than re-sent.
 set -euo pipefail
 
 TAG=${1:-runtime-v1}
@@ -28,68 +32,60 @@ DEST=/var/www/purescience/downloads/runtime
 PUBLIC=https://purescience.work/download/runtime
 SRC=${PURESCIENCE_RUNTIME_BUNDLE_DIR:-/tmp/rt-bundle}
 
-[ -d "$SRC" ] || { echo "no local bundle at $SRC — run the fetch step first"; exit 1; }
+[ -d "$SRC" ] || { echo "no local bundle at $SRC — run scripts/fetch-runtime-bundle.sh first"; exit 1; }
 
-mail() { echo "== $*"; }
+echo "== listing assets for $TAG"
+ASSETS=""
+while IFS= read -r row; do ASSETS="$ASSETS$row"$'\n'; done < <(
+  gh api "repos/$REPO/releases/tags/$TAG" --jq '.assets[] | "\(.name) \(.size)"'
+)
+[ -n "$ASSETS" ] || { echo "no assets for $TAG"; exit 1; }
 
-mail "listing assets for $TAG"
-mapfile -t ASSETS < <(gh api "repos/$REPO/releases/tags/$TAG" --jq '.assets[] | "\(.name) \(.size)"')
-[ "${#ASSETS[@]}" -gt 0 ] || { echo "no assets for $TAG"; exit 1; }
+ssh -i "$KEY" -o ConnectTimeout=15 -o ServerAliveInterval=15 "$HOST" "mkdir -p $DEST"
+REMOTE=$(ssh -i "$KEY" -o ConnectTimeout=15 -o ServerAliveInterval=15 "$HOST" \
+  "cd $DEST 2>/dev/null && for f in *; do printf '%s %s\n' \"\$f\" \$(wc -c < \"\$f\"); done") || REMOTE=""
+remote_size() { echo "$REMOTE" | awk -v want="$1" '$1 == want { print $2; exit }'; }
 
-ssh -i "$KEY" -o ConnectTimeout=15 "$HOST" "mkdir -p $DEST"
+echo "== uploading (skipping files already the right size)"
+while read -r name size; do
+  [ -n "${name:-}" ] || continue
+  if [ -n "$ONLY" ]; then case "$name" in *"$ONLY"*) ;; *) continue ;; esac; fi
+  if [ ! -f "$SRC/$name" ]; then echo "!! skip $name (no local copy)"; continue; fi
+  if [ "$(wc -c < "$SRC/$name" | tr -d ' ')" != "$size" ]; then echo "!! skip $name (local size differs)"; continue; fi
+  if [ "$(remote_size "$name")" = "$size" ]; then echo "have $name"; continue; fi
 
-mail "uploading (parallel per file, resumable where rsync exists)"
-# scp has no resume: on 2026-11-23 one 99 MB file died at 13 MB with a broken pipe and would have restarted
-# from zero. rsync --partial --append-verify resumes and re-checks what it already put down. `--append-verify`
-# needs rsync 3; macOS ships openrsync under the same name and rejects the flag with a usage dump, so the
-# version is probed once and the flag is only used where it exists.
-RSYNC3=0
-if command -v rsync >/dev/null 2>&1 && rsync --version 2>/dev/null | head -1 | grep -q 'version 3'; then
-  RSYNC3=1
-fi
-upload_one() {
-  local name=$1
-  if [ "$RSYNC3" = "1" ]; then
-    rsync -s --partial --append-verify --compress \
-      -e "ssh -i $KEY -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=6" \
-      "$SRC/$name" "$HOST:$DEST/$name"
-  elif command -v rsync >/dev/null 2>&1; then
-    rsync -s --partial --compress \
-      -e "ssh -i $KEY -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=6" \
-      "$SRC/$name" "$HOST:$DEST/$name"
-  else
-    scp -C -i "$KEY" -o ConnectTimeout=15 "$SRC/$name" "$HOST:$DEST/$name"
-  fi
-}
+  ok=0
+  attempt=1
+  while [ "$attempt" -le 3 ]; do
+    if scp -C -i "$KEY" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 \
+      "$SRC/$name" "$HOST:$DEST/$name"; then
+      ok=1
+      break
+    fi
+    echo "   attempt $attempt failed for $name; retrying"
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+  [ "$ok" = "1" ] || echo "FAIL $name (3 attempts)"
+done <<EOF
+$ASSETS
+EOF
 
-PIDS=()
-for row in "${ASSETS[@]}"; do
-  name=${row% *}
-  size=${row##* }
-  [ -n "$ONLY" ] && case "$name" in *"$ONLY"*) ;; *) continue ;; esac
-  if [ -f "$SRC/$name" ] && [ "$(wc -c < "$SRC/$name")" = "$size" ]; then
-    upload_one "$name" &
-    PIDS+=($!)
-  else
-    echo "!! skip $name (local copy missing or wrong size)"
-  fi
-done
-for pid in "${PIDS[@]:-}"; do [ -n "$pid" ] && wait "$pid"; done
-
-mail "verifying bytes and what the public URL actually serves"
+echo "== verifying bytes and what the public URL actually serves"
 fail=0
-for row in "${ASSETS[@]}"; do
-  name=${row% *}
-  size=${row##* }
-  [ -n "$ONLY" ] && case "$name" in *"$ONLY"*) ;; *) continue ;; esac
-  remote=$(ssh -i "$KEY" "$HOST" "wc -c < $DEST/$name 2>/dev/null || echo 0")
+while read -r name size; do
+  [ -n "${name:-}" ] || continue
+  if [ -n "$ONLY" ]; then case "$name" in *"$ONLY"*) ;; *) continue ;; esac; fi
+  disk=$(ssh -i "$KEY" -o ConnectTimeout=15 "$HOST" "wc -c < $DEST/$name 2>/dev/null || echo 0" | tr -d ' ')
   http=$(curl -sSI --max-time 20 "$PUBLIC/$name" | awk 'BEGIN{IGNORECASE=1} /^HTTP\//{code=$2} /^content-length:/{len=$2} END{printf "%s %s", code, len}' | tr -d '\r')
-  if [ "$remote" = "$size" ] && [ "${http%% *}" = "200" ] && [ "${http##* }" = "$size" ]; then
+  if [ "$disk" = "$size" ] && [ "${http%% *}" = "200" ] && [ "${http##* }" = "$size" ]; then
     echo "ok   $name ($size bytes, http 200)"
   else
-    echo "FAIL $name declared=$size disk=$remote http=($http)"
+    echo "FAIL $name declared=$size disk=$disk http=($http)"
     fail=1
   fi
-done
+done <<EOF
+$ASSETS
+EOF
 
 exit "$fail"
