@@ -435,10 +435,10 @@ const AgentPanel = ({
       managed: codebuddyManaged,
       installSources: getCodebuddyInstallSources(),
       install: codebuddyInstall,
-      onInstall: (source) => {
-        if (source !== 'npm') return Promise.resolve(undefined)
-        return installCodebuddy()
-      }
+      // CodeBuddy has exactly one source, so any press installs. The previous guard returned undefined for
+      // every source that was not the literal 'npm' and the card's button then did nothing — which is what
+      // "CodeBuddy can only be installed by hand" looked like from the outside.
+      onInstall: () => installCodebuddy()
     }
   ]
 

@@ -2230,7 +2230,7 @@ export const zh = {
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentCodeBuddyDesc': '腾讯的编码智能体，通过 OpenAI 兼容端点连接。',
   'settings.agentCodeBuddyNotReady':
-    '此框架需要 CodeBuddy。手动安装 @tencent-ai/codebuddy-code 后重新检测。',
+    '尚未检测到 CodeBuddy。',
   'settings.detecting': '正在检测…',
   'settings.redetect': '重新检测',
   'settings.oauthSignInFailed': 'OAuth 登录失败。',

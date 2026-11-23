@@ -2398,7 +2398,7 @@ export const en: Record<ZhKey, string> = {
   'settings.agentCodeBuddyDesc':
     "Tencent's coding agent, connected through an OpenAI-compatible endpoint.",
   'settings.agentCodeBuddyNotReady':
-    'CodeBuddy is required for this framework. Install @tencent-ai/codebuddy-code manually and re-detect.',
+    'CodeBuddy was not detected.',
   'settings.detecting': 'Detecting…',
   'settings.redetect': 'Re-detect',
   'settings.oauthSignInFailed': 'OAuth sign-in failed.',
