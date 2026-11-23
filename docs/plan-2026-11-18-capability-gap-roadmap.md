@@ -34,6 +34,21 @@
 | 1.4 MCP `activity`/`schedule` | **实现完成**：`session_activity`（读 `sessions:list-catalog`）与 `list_schedules`（读 `routine:list-all`）两个只读工具，复用已有命令、不新开通道（白名单 9→10）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 拒绝沉默即完成：返回 `running` 计数；停掉的定时任务带 `pausedReason`/`missedTicks`/`lastOkAt`，与空闲可分                                                                                                                                      | 实机：12 工具上线、启动认证无报错；真定时任务被 `list_schedules` 读出（每 30 分钟、nextDue 有值）；`session_activity` 如实显示 `idle → error → idle` 与消息数变化。**未完成**：`running` 未实机观察到（隔离根无可用凭证，run 建连即 error），仅单测映射；已立案                                                                                                            |
 | 1.5 SDK                       | **已在仓里（旧口径「仅 CLI」已过时，2026-11-19 就地更正）**：`packages/purescience` 就是那个 SDK（npm `purescience` 0.1.2），20 个公开方法覆盖项目/会话/运行/产物/会话包/就绪度/审批/事件。本轮补的是**声明面**：`index.d.ts` 只声明了 11 个，9 个已发货方法 TypeScript 调用方看不见（`pendingPermissions`、`respondPermission`、`getReadiness`、`listRuntimes`、`listConnectors`、`getCapabilities`、`replayVersion`、`downloadSessionPackage`、`importSessionPackage`）⇒ 已补齐并加两层护栏（声明↔运行时对账用例 + 由 typecheck 编译的类型化消费者）。具名缺口**已定因并修**：无窗口实例确实会发布 `web-service.json`（隔离实例真机读数 + `purescience status` 回 running）；用户实例缺文件是**删除不认主** —— 旧一代进程收尾时删掉了新一代刚写的登记，修在 `6c6c5143`（证据 `docs/evidence/2026-11-19-web-service-state-ownership.md`） | 薄 SDK（TypeScript）包住会话与工具                                                                                                                                                                                                             | 声明面已对齐（20/20，差额仅两个传输内部方法；包内 85 例、双 typecheck、eslint 全绿，只读真机读数 5 个方法应答真数据）。**判据已取（2026-11-19）**：`examples/sdk-analysis.mjs`（24 行含注释）在隔离实例上真跑完一次分析——`connectToPureScience` → `createProject` → `startRun` → `waitForRun` → 输出，`completed`，2.7 秒，真模型答案；`docs/guides/sdk.md` 记示例与方法表 |
 
+### v3.1 的判据重新取证（2026-11-23）
+
+上一轮审计把 v3.1 归进「11-19 之后没再跑」。重跑结果分两类，证据
+`docs/evidence/2026-11-23-mcp-surface-refresh.md`：
+
+- **本机重跑（EXIT=0）**：1.1 literature 外部客户端 —— 3 工具对表、search 6 条 / 0 错误、
+  cite 出真引文（`read: "Metadata only"` 如实降级）、get 命中 arXiv 2103.14030（Swin）。
+  1.3 pptx —— Quick Look 缩略图 22,444 字节且 `stderr` 空、应用自己的 `parseZip` 读出 4 页。
+- **CI 持续覆盖（不是一次性）**：1.2 与 1.4 的工具面在
+  `e2e/certification/external-mcp-client.spec.ts` 里，随 `test:e2e:p0` 每趟跑 macOS 与 Windows。
+  最新 windows P0（`45031035383`）日志：`[f1] tools/list` **12 个工具**逐一对表、写操作停在应用自己的
+  审批卡上（declined card 原文可见）。**更正**：我先前把它们归进「会腐烂」是过虑了。
+- **仍是一次性**：`session_activity` 的 `running` 与 `list_schedules` 读出真定时任务 —— spec 没调这两个
+  只读工具，夹具也没有「把回合挂住」的开关。两格都不算覆盖。
+
 ## v3.2 技能合规借力
 
 | 单元                                      | 动作                                                                                                                                                                                                                                                     | 判据                                                                                                                                                                   |
