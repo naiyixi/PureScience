@@ -1,5 +1,94 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十一、本轮追加（执行器，2026-11-24 01:3x–）—— 闸门拿到第一份读数：`electron P0 reading: passed`（1/3）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 6491120d`（会话那笔「RO-Crate profile 那四条文案补上 7 个语种」正是上一轮 §二
+  说的「下一笔就关掉 i18n 门」的那一笔），`package.json` = **2.33.5**，`gh release list` 的 Latest 仍是 **v2.33.4**，
+  `git tag -l 'v2.33.5'` 与 `git ls-remote --tags origin` 都**没有** v2.33.5（上一轮按恢复规程删掉、无页可丢）。
+- 工作树 **32 个改动 + 3 个未跟踪**仍是会话在制（`ro-crate*`、`shared/citation/*`、`session-persistence/*`、
+  `prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`notebook/mcp-server`、`RoCrateExportDialog*`、九份 i18n …）
+  ⇒ **一个字节没碰**，本轮只落 `docs/`（两条车道都有 `**/*.md` 的 `paths-ignore`，这次提交不新建 run）。
+- 进轮在飞：`45207617763`（`push` @ `6491120d`）的 `macos-arm64` 还在跑 P0；本轮不推任何会顶掉它的东西，
+  docs 提交等它落定后再推。
+
+### 一 现取读数：第一份 windows 读数到手
+
+run `45207617763` @ `6491120d`，作业 `build / Build windows-x64`（`137829414000`）`completed / success`，
+日志逐字：
+
+```
+2026-11-23T17:23:25.8058784Z electron P0 reading: passed
+```
+
+同一作业里 P0 自己的汇总行是 `125 passed (59.9m)`；同一 run 的 `build / Verify (lint + typecheck + test + package)`
+也是 `completed / success`。仓里自己的仪器（`node scripts/windows-gate-streak.mjs --limit 10`）：
+
+```
+windows gate streak: 1/3 (not yet)
+  credited: 45207617763
+  skipped: 45202604327 — no windows job
+  …
+  skipped: 45166052550 — reading=failed
+```
+
+**读日志的一处坑**：同一段日志先出现的是脚本体自己那行 `echo "electron P0 reading: $electron_p0"`，再上面还有
+`electron_p0=not-applicable`（赋初值那段）—— 那是 GitHub 把整个脚本打进 `##[group]Run` 的形状，照第一处匹配读会把
+`$electron_p0` / `not-applicable` 当答案。真读数只有一处，带时间戳、值是状态（仪器里 `readingOf()` 就是按这条取的）。
+
+### 二 前七趟为什么一份读数都没有（已定因，不必再查）
+
+不是 P0 又红了，而是 **windows 作业根本没起来**：那七趟的 `Verify` 要么红在 `Typecheck`，要么被后一笔 push 取消
+（上一轮 §一 只有作业级读数支撑）。`6491120d` 把 i18n 门关掉后 `Verify` 转 success ⇒ 同一趟 run 的 windows 作业
+自然跑起来了。**这一环不需要任何新代码。**
+
+### 三 同一 run 里 `Build macos-x64` 的红是基础设施，不是产品缺陷
+
+`137829413886` 判 `failure`，但同一份 API 读数：`startedAt = null`、`completedAt = null`，日志下载返回
+`BlobNotFound`（HTTP 404），步骤表停在 `Build & package` `in_progress`、其后全 `pending`；同 run 的 windows 与 linux
+都 success。形状是「runner 没把日志落下来」。**它不影响闸门**：判据单位是 windows 作业自己那行读数，
+不是整趟 run 的 conclusion（脚本头注释，2026-11-22 拍板）。本轮不改代码、不重跑。
+
+### 四 为第二份读数起的派发
+
+`gh workflow run nightly.yml --ref main` ⇒ run **`45228614662`** @ `6491120d`，`event = workflow_dispatch`。
+`nightly.yml` 的并发组按事件分（`nightly-${{ github.event_name }}`，`cancel-in-progress: true`）⇒ 派发那趟与
+会话每十几分钟一笔的 push 车道**互不取消**；两趟派发之间才会互相取消，所以**一次只起一趟**。
+**派发这条路不需要冻结推送。**
+
+### 五 发版的其余前置：只剩「四件套落定」这一步
+
+`release.yml` 的 `release-preflight` 只有三步：tag 与 `package.json` 对齐、tag 提交在 main 上、windows 三连读数。
+前两步用 2.33.5 的现状核过（`git show HEAD:package.json` 的 `version` = `2.33.5`、HEAD 在 main 上）。
+⇒ **3/3 之后唯一要做的是在会话把四件套落定之后重建 tag**：`CHANGELOG.md` / `README.md` / `README.en.md`
+三份此刻都在会话的工作树里改动中，现在打 tag 会发布一份与它下一笔不一致的横幅。
+
+**⚠️ 那三份里有一句话已经被本轮的读数据反过来了（落 tag 前必须改）：**会话在制的 `README.md:35` /
+`README.en.md:35`（两份需逐字节一致）写着「**That reading is not green yet, and its first read came back red** —
+Windows P0 (run `45161879456`) reports `123 passed / 2 failed` …this version waits for it」，`CHANGELOG.md` 对应句写着
+「**P0 三条超时用例尚无绿的读数，而且第一份真读数已经是红**…**本版因此暂缓发布**」。而 `6491120d` 这一趟
+Windows P0 的汇总是 **`14 skipped` / `125 passed (59.9m)` / 0 failed**，且那句点名的那条 spec
+（`e2e/certification/notebook-python-provisioned-runtime.spec.ts`）在日志里 `16:43:56` 起跑、`16:48:45` 结束（约 4 分 49 秒）
+—— 它没有超时、是 passed；14 条 skipped 是**夹具缺件**那一类（`no curated pack on this machine` /
+`no user-mode sshd on 127.0.0.1:<port>` / `no scanned fixture`），不是那两条超时用例。
+⇒ 落 tag 之前那三句要改成「已经量到绿」的说法；不改就是拿一句「本版暂缓发布」去发这一版（同一种失真，方向相反）。
+本执行器**不替会话落笔**：三份都在它的在制里，改了会把它半成品顶到主干。
+
+### 六 本轮没做什么（具名）
+
+- 没有碰任何源码路径；没有提交 `CHANGELOG.md` / `README.md` / `README.en.md` / `package.json`（三份在会话在制里）。
+- 没有在 `45207617763` 仍在跑的时候推送（docs 提交等它落定后再推），也没有起第二趟派发。
+- **没有为了让 3/3 更快去给 `nightly.yml` 加「只跑一个平台」的输入**：那是为取证便利改门禁自己的车道文件。
+
+### 七 下一轮第一步
+
+① 读 `45228614662` 的 `build / Build windows-x64` 那行得 **2/3**；它落定后立刻再起**一次** `gh workflow run nightly.yml
+--ref main` 拿 **3/3**（一次只起一趟，别与在跑的那趟并行）。
+② 3/3 之后打 tag：以会话四件套落定那笔为准（`git status` 里那三份消失 = 它落定了），`git tag v2.33.5 <sha>` +
+`git push origin v2.33.5`，再按「发布核验」读页与资产（`isLatest` 用 `gh release list` 判）。
+③ 若闸门已经 3/3 而四件套仍挂着：不要替会话落笔（那份横幅是它的判断），把它写进汇报的「等它落定」一行。
+
 ## 二百一十、本轮追加（执行器，2026-11-23 23:1x–）—— 0/3 的闸门现在卡在「没有 windows 作业」，不是卡在 P0
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
