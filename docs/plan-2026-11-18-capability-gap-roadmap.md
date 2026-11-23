@@ -409,6 +409,12 @@ PDF），那条用例本身按「tool-missing」分支正常通过。
 **下一步**：这 12 个失败是真工作项，不是把闸门放松的理由 —— Windows 车道保持「读数可见、不挡发版」，
 一项一项查完再考虑把它提升成硬门。
 
+**收口（2026-11-22 回查）**：这 12 个已经全绿，不是「查完了」而是「读数变了」——
+`45031035383` 的 windows-x64 作业是 **124 passed / 13 skipped / 0 failed（46.2 分钟）**，读数
+`electron P0 reading: passed`（此前 111 passed / 12 failed）。所以上面那张分类表现在是**历史**，
+不是待办；闸门也已在同日拍板落地（见「Windows 车道要不要成为硬门」一节，读数是
+`scripts/windows-gate-streak.mjs` 的 3/3 satisfied）。
+
 ### 读数：Windows P0 从 `not-applicable` 到 `passed`（2026-11-22）
 
 | 趟次 | HEAD | Windows 车道读数 |
