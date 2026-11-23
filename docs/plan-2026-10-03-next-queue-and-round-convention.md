@@ -50,6 +50,10 @@ windows gate streak: 1/3 (not yet)
 都 success。形状是「runner 没把日志落下来」。**它不影响闸门**：判据单位是 windows 作业自己那行读数，
 不是整趟 run 的 conclusion（脚本头注释，2026-11-22 拍板）。本轮不改代码、不重跑。
 
+该 run 的**终态**（本轮结束时现取，`gh api …/runs/45207617763/jobs`）：六个作业里五个 `success`
+（Resolve matrix / Verify / linux-x64 / **macos-arm64** / windows-x64），唯一红是 macos-x64，`publish` 按设计 `skipped`
+⇒ 「mac 机器当时也坏」这个解释不成立（同 run 的 arm64 打包与 P0 都跑完了），更坐实是那台 x64 runner 自己的日志没落。
+
 ### 四 为第二份读数起的派发
 
 `gh workflow run nightly.yml --ref main` ⇒ run **`45228614662`** @ `6491120d`，`event = workflow_dispatch`。
