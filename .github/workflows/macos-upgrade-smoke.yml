@@ -12,6 +12,12 @@ name: macOS Upgrade Smoke
 #   * push a `v*` tag  -> it runs by itself against the release just tagged, on BOTH architectures.
 #   * workflow_dispatch -> run it by hand with any pair, one architecture.
 #
+# The tag lane waits for the mirror before it spends a macOS runner: a tag push starts the release build at
+# the same second, the assets take ~80 minutes to publish, and the mirror this build polls is fed by a cron
+# afterwards — so the first version of this lane asked for a version nobody served yet and reddened on a
+# healthy release (run 45090413547: 45 minutes of waiting, then a sentence about the feed). A `readiness`
+# job on ubuntu now holds that wait and the drill starts when the feed actually offers the version.
+#
 # The tag lane is OBSERVATION, not a gate. It is a separate workflow, so nothing it says can hold back
 # `publish` in release.yml; a red run here shows up in the Actions list, leaves its log, and blocks nothing.
 # That is deliberate: this drill failed seven times in a row before its first green (every one of them a
@@ -112,37 +118,24 @@ permissions:
   contents: read
 
 jobs:
-  drill:
-    name: Upgrade macOS app in place (${{ matrix.arch }})
-    # The image follows the architecture, because the app that swaps itself must be the app for this host: an
-    # x86_64 bundle will start on an arm64 runner through Rosetta, but the drill refuses that pair by name
-    # rather than reporting a translation as the upgrade that architecture performs.
-    #
-    # `macos-15`, not `macos-14`: the 14 image was retired 2026-11-02, and a dispatch against it does not
-    # queue and time out — it is cancelled within a second with zero steps, and the only place that says
-    # why is an annotation the run API keeps: "The configuration 'macos-14-arm64-us-default' is not
-    # supported". Two dispatches were read as "something is cancelling my runs" before that was checked.
-    #
-    # `macos-15-intel` is the x64 image (available since 2025-09, through ~2027). Its existence is why the
-    # x64 half of this drill is possible at all — for a while the roadmap recorded x64 as "no runner
-    # available", which was wrong.
-    runs-on: ${{ matrix.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        # A tag push drills both halves; a manual dispatch drills the one you asked for.
-        arch: ${{ fromJSON((github.event_name == 'push' || inputs.simulate_tag != '') && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
+  # The two clocks this drill depends on are not the drill's: the release a tag starts takes about 80 minutes
+  # to publish its assets, and the mirror this build polls is fed by a server-side cron afterwards. A drill
+  # that starts at tag time therefore asks for a version nobody serves yet — measured on run 45090413547,
+  # which burned its whole 45-minute budget waiting and then failed with a sentence about the feed instead of
+  # about the upgrade. An ubuntu runner waiting costs a tenth of a macOS runner, so the wait lives here and
+  # the drill starts when the thing it measures exists. This gate decides *when*, never *what*: the drill
+  # still asks the installed bundle's own updater and still fails if the answer disagrees.
+  readiness:
+    name: Wait for the mirror to serve the release
+    # 240 minutes of waiting plus room for the resolve step: publishing measured ~80 minutes on v2.33.4 (tag
+    # 00:43Z -> assets 02:03Z), and the mirror's last-modified stamp for 2.33.4 was 03:11Z, i.e. up to one
+    # hourly sync after the assets. 240 leaves margin on both without turning this into a half-day job.
+    runs-on: ubuntu-latest
+    timeout-minutes: 280
+    outputs:
+      previous_tag: ${{ steps.resolve.outputs.previous_tag }}
+      next_version: ${{ steps.resolve.outputs.next_version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22
-          cache: npm
-
       # Which pair is under test. On a tag push the answer has to come from the repository, not from a
       # human: `next_version` is the tag being published, and `previous_tag` is the newest published release
       # older than it. The search is by version order, not by date, and a tag that is not a plain x.y.z is
@@ -206,12 +199,105 @@ jobs:
           fi
           echo "next_version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
-      # The previous release's own zip — the same bytes a user downloaded, not a build of this tree.
-      - name: Fetch the previous release
+      # Wait for the mirror, not for GitHub: the drill installs the previous release and then relies on the
+      # installed app's feed (a generic provider pointing at the mirror) to offer the target version. Both mac
+      # zips are required because the tag lane drills both architectures off this one wait.
+      #
+      # Whether to wait is the difference between the tag lane and a rehearsal: a tag push has nothing to
+      # measure until the mirror catches up (wait), while a dispatch usually drills an already-published pair
+      # and should start at once (the drill names the feed it got if that assumption is wrong).
+      - name: Wait until the mirror offers it
         if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
+          NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
+          # `inputs.require_feed_version` is a boolean, and `false || 'true'` would read as 'true' — so the
+          # event decides first, and the input can only ever add a wait, never remove the tag lane's.
+          WAIT_FOR_FEED: ${{ (github.event_name == 'push' || inputs.simulate_tag != '') && 'true' || (inputs.require_feed_version && 'true' || 'false') }}
+          EXPECT_FEED_URL: ${{ inputs.expect_feed_url || 'https://purescience.work/download/feed/' }}
+          BUDGET_MINUTES: '240'
+        run: |
+          set -uo pipefail
+          if [ "${WAIT_FOR_FEED}" != 'true' ]; then
+            echo "::notice::not waiting for the mirror (require_feed_version is off) — the drill reports what the feed says when it starts"
+            exit 0
+          fi
+          feed="${EXPECT_FEED_URL%/}/latest-mac.yml"
+          started=$(date +%s)
+          deadline=$((started + BUDGET_MINUTES * 60))
+          polls=0
+          last_offered='(nothing)'
+          while :; do
+            polls=$((polls + 1))
+            body=$(curl -fsS --max-time 30 "${feed}" 2>/dev/null) || body=''
+            offered=$(printf '%s\n' "${body}" | sed -n 's/^version:[[:space:]]*//p' | head -1 | tr -d "\"'")
+            offered=${offered:-}
+            waited=$(( $(date +%s) - started ))
+            if [ -z "${offered}" ]; then
+              echo "[${polls}] the mirror answered nothing for ${feed} (${waited}s of $((BUDGET_MINUTES * 60))s)"
+            elif [ "${offered}" = "${NEXT_VERSION}" ]; then
+              missing=''
+              for zip in -mac-arm64.zip -mac-x64.zip; do
+                printf '%s' "${body}" | grep -q -- "${NEXT_VERSION}${zip}" || missing="${missing} ${NEXT_VERSION}${zip}"
+              done
+              if [ -z "${missing}" ]; then
+                echo "::notice::the mirror offers ${NEXT_VERSION} with both mac zips (after ${waited}s, ${polls} poll(s))"
+                exit 0
+              fi
+              echo "[${polls}] the feed already says ${offered} but does not list:${missing} (${waited}s)"
+            elif [ "$(printf '%s\n%s\n' "${offered}" "${NEXT_VERSION}" | sort -V | tail -1)" = "${offered}" ]; then
+              # Waiting cannot move a feed backwards: an upgrade to an older version is not what this drill
+              # proves, so say so now instead of after four hours.
+              echo "::error::the mirror already offers ${offered}, which is newer than the target ${NEXT_VERSION} — waiting cannot change that"
+              exit 1
+            else
+              echo "[${polls}] the mirror still says ${offered} (waiting for ${NEXT_VERSION}, ${waited}s of $((BUDGET_MINUTES * 60))s)"
+            fi
+            last_offered="${offered:-(nothing)}"
+            if [ "$(date +%s)" -ge "${deadline}" ]; then
+              echo "::error::the mirror did not offer ${NEXT_VERSION} with both mac zips within ${BUDGET_MINUTES} minutes (last reading: ${last_offered}); the drill needs a feed that serves the version it is asked to install"
+              exit 1
+            fi
+            sleep 60
+          done
+
+  drill:
+    needs: readiness
+    if: ${{ needs.readiness.outputs.previous_tag != '' }}
+    name: Upgrade macOS app in place (${{ matrix.arch }})
+    # The image follows the architecture, because the app that swaps itself must be the app for this host: an
+    # x86_64 bundle will start on an arm64 runner through Rosetta, but the drill refuses that pair by name
+    # rather than reporting a translation as the upgrade that architecture performs.
+    #
+    # `macos-15`, not `macos-14`: the 14 image was retired 2026-11-02, and a dispatch against it does not
+    # queue and time out — it is cancelled within a second with zero steps, and the only place that says
+    # why is an annotation the run API keeps: "The configuration 'macos-14-arm64-us-default' is not
+    # supported". Two dispatches were read as "something is cancelling my runs" before that was checked.
+    #
+    # `macos-15-intel` is the x64 image (available since 2025-09, through ~2027). Its existence is why the
+    # x64 half of this drill is possible at all — for a while the roadmap recorded x64 as "no runner
+    # available", which was wrong.
+    runs-on: ${{ matrix.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # A tag push drills both halves; a manual dispatch drills the one you asked for.
+        arch: ${{ fromJSON((github.event_name == 'push' || inputs.simulate_tag != '') && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # The previous release's own zip — the same bytes a user downloaded, not a build of this tree.
+      - name: Fetch the previous release
+        env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_TAG: ${{ steps.resolve.outputs.previous_tag }}
+          PREVIOUS_TAG: ${{ needs.readiness.outputs.previous_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/previous"
           gh release view "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' \
@@ -221,16 +307,14 @@ jobs:
           ls -l "$RUNNER_TEMP/previous"
 
       - name: Install dependencies
-        if: ${{ steps.resolve.outputs.previous_tag != '' }}
         run: npm ci
 
       # Redirect, do not pipe. `| tee` keeps the step alive for as long as ANY process still holds the other
       # end of the pipe — a launched app inherits stdout, so the step can sit "in_progress" an hour after the
       # drill has already decided (measured on this workflow's first run). The log is printed afterwards.
       - name: Drive the upgrade
-        if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
-          NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
+          NEXT_VERSION: ${{ needs.readiness.outputs.next_version }}
           EXTRA_ARGS: ${{ inputs.extra_args || '--keep-home --seed-user-data' }}
           PURESCIENCE_DRILL_SABOTAGE: ${{ inputs.sabotage || 'none' }}
           # `||` fires on the `push: tags` lane, where `inputs` is empty — that lane must assert the
@@ -258,7 +342,7 @@ jobs:
       # The reading outlives the run even when the drill fails: the log is what says whether the feed was
       # wrong, the download was refused, or the hand-over left the old bundle in place.
       - name: Upload reading
-        if: ${{ always() && steps.resolve.outputs.previous_tag != '' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: macos-upgrade-reading-${{ matrix.arch }}

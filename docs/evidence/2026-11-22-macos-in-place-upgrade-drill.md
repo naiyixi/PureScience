@@ -214,6 +214,60 @@ macOS upgrade reading: passed from=2.33.2 to=2.33.3 relaunched="2.33.3"   data=u
 GitHub（它是改源之前造的）。「从镜像完成一次换包」要等 `v2.33.3 → v2.33.4`，那是第一次有安装包指着镜像去
 下载并安装。
 
+## 第 9 趟：等待本身放错了地方 —— 45 分钟预算 vs tag→资产 80 分钟 + 一趟镜像同步
+
+推 `v2.33.4` 带起来的 `45090413547` 又是一次红，而这一次红把「预算取多少」这个问题变成了「预算该住在
+哪个进程里」：
+
+| 时刻（UTC） | 事件 | 来源 |
+| --- | --- | --- |
+| `00:43` | tag 推送，演练与 Release 同时开始 | run `45090413547` 的 `createdAt` |
+| `00:43:15` / `00:43:25` | 两个架构的 job 起来 | 同上 |
+| `01:30:59` / `01:32:27` | 两个架构先后放弃（`the feed still says 2.33.3 … 2709s`） | 同上 |
+| `02:03` | Release 的 `publish` 落资产 | run `45090413522` |
+| `03:11:13` | 镜像 `latest-mac.yml` / `latest.yml` 的 `last-modified` | `curl -sI https://purescience.work/download/feed/latest-mac.yml` |
+
+也就是说：**演练等待的目标（镜像供出这一版）出现在打 tag 之后约 150 分钟**，而它手里的预算是 45 分钟。
+任何短于这 150 分钟的预算都必然在一条健康的发版上变红；而把 45 调大只是让两个 macOS runner 干等
+（macOS runner 的计费是 ubuntu 的十倍）。
+
+**修法：把等待搬到一个便宜且只需要干等的进程里。** `macos-upgrade-smoke.yml` 拆成两个作业：
+
+- `readiness`（`ubuntu-latest`，`timeout-minutes: 280`）：先做原来那步版本解析（所以「有没有东西可测」仍然
+  由仓库自己的 release 列表回答），再轮询镜像的 `latest-mac.yml`，直到它同时满足 **`version: <下一版>`** 与
+  **两个 mac zip 都在**（tag 通道一次等待服务两个架构）。预算 240 分钟；每 60 秒打一行「镜像还说 X，已等 N 秒」。
+- `drill`（原样在 macOS 上跑）：`needs: readiness`，版本从 `needs.readiness.outputs` 取 —— 不再自己解析一次，
+  否则闸门等的版本与演练装的版本可以是两个数。
+
+两条方向判据与演练内那条同义：镜像比目标**更新** ⇒ 立刻具名失败（等待改不了方向）；预算用尽 ⇒ 具名
+`the mirror did not offer <X> with both mac zips within 240 minutes (last reading: <Y>)`。
+
+**`require_feed_version` 的语义随之变清楚**：它现在表示「让等待成立」。tag 通道恒等（由 `github.event_name`
+决定，**不用布尔输入的假值兜底** —— `inputs.require_feed_version` 是布尔，`false || 'true'` 会算成 `'true'`，
+照那样写会让 dispatch 的「关掉」失效），dispatch 默认不等（它通常演练一对已发布的版本，`require_feed_version=true`
+时才等）。演练自己那句 `PURESCIENCE_DRILL_FEED_WAIT_MS`（45 分钟）一个字节没改 —— 闸门只决定**什么时候开始**，
+「feed 供的是不是这一版」仍由已安装包的 updater 回答。
+
+**本机读数（闸门的五种 feed 形状）**：把工作流里那段 `run:` 原样抽出来，对着本地 feed 文件跑（`BUDGET_MINUTES=0`
+以便一次到判定）：
+
+| feed 形状 | 读数 | EXIT |
+| --- | --- | --- |
+| 供对（`version: 2.33.4` + 两个 zip） | `::notice::the mirror offers 2.33.4 with both mac zips (after 0s, 1 poll(s))` | 0 |
+| 落后（`2.33.3`） | `… did not offer 2.33.4 with both mac zips within 0 minutes (last reading: 2.33.3)` | 1 |
+| 超前（`2.33.5`） | `the mirror already offers 2.33.5, which is newer than the target 2.33.4 — waiting cannot change that` | 1 |
+| 版本对但缺 x64 zip | `the feed already says 2.33.4 but does not list: 2.33.4-mac-x64.zip` → 期满具名退出 | 1 |
+| 取不到（无文件） | `the mirror answered nothing for file://…` → 期满具名退出 `(last reading: (nothing))` | 1 |
+| `WAIT_FOR_FEED=false`（任一形状） | `::notice::not waiting for the mirror …` | 0 |
+
+工作流契约测试 `scripts/ci/macos-upgrade-smoke-workflow.test.ts` **6 例**钉住：闸门在 ubuntu 上、`drill` `needs`
+它、演练的版本来自 `needs.readiness.outputs`、tag 通道的等待由事件决定（并明确禁掉 `inputs.require_feed_version ||
+'true'` 那种写法）、预算 ≥ 240 且作业超时 ≥ 预算 + 15 分钟、两种具名失败与「两个 zip」要求都在。四处变异各自
+只红 1 例（去掉 `needs` / 预算改 45 / 换成布尔假值写法 / 演练改回自己解析版本），还原后 6 例全绿。
+
+**这一趟没有证明的事**：`readiness` 闸门**没有被一次真 tag 推起来过** —— 它的首次真样本是下一次发版；
+本机那五种形状只证明脚本的分支，不证明 GitHub 上 `needs` 与 outputs 的接线（那要真跑）。
+
 ## 这条判据**没有**证明的事
 
 - ~~只在 arm64 上跑过~~ → **arm64 与 x64 都跑过**（`45002891087` 在 `macos-15-intel` 上，宿主与包架构由脚本断言）；但**只 dispatch**，还没有非手动触发的样本。

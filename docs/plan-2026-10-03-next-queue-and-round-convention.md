@@ -1,5 +1,76 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百〇九、本轮追加（执行器，2026-11-23 12:1x–）—— 演练的等待搬到 ubuntu：45 分钟的预算等的是一趟 150 分钟的事
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == a763f74c`（v3.1 取证的第三笔 docs），`package.json` = 2.33.4，`gh release list` 的
+  Latest = **v2.33.4**。轮内会话仍在同一棵树上推进：`8fc62ed2`（mcp running 夹具）+ `193c6b4e`（v3.1 收尾）先后
+  落了并推上 main ⇒ HEAD 变成 `193c6b4e`；工作树 39 个改动 + 5 个未跟踪**仍是会话在制**（`prisma/schema.prisma`
+  的 `edition`、`shared/citation/*`、`ro-crate*`、九份 i18n、`provider-env*`、`logger*`、`diagnostics/module-load*`…）
+  ⇒ **一个字节没碰**。本轮只碰 `.github/workflows/macos-upgrade-smoke.yml`、
+  `scripts/ci/macos-upgrade-smoke-workflow.test.ts`（新）与 `docs/**`。
+- 进轮在飞：`193c6b4e` 的 `Nightly` 与 `Windows Full Test` 都在跑；`Windows Full Test` 在轮内落定 **success**，
+  `Nightly` 被本轮推送顶掉（点名，不写成「它绿了」）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）耗尽、C 段外部阻塞 ⇒ 取 §二百〇八 §四 ② 自己写下的那条：修演练的等待预算。
+
+### 一 先量再定：预算的错不在数值，在位置
+
+`v2.33.4` 的 tag 通道（`45090413547`）两个架构都红在 `Drive the upgrade`，日志逐行是
+`the feed still says 2.33.3 (waiting for 2.33.4, … of 2700s)`，收尾
+`Error: The feed still says we are current (2.33.3) after waiting 2709s for 2.33.4`。现取三个时刻：
+
+| 时刻（UTC） | 事件 | 来源 |
+| --- | --- | --- |
+| `00:43` | tag 推送，演练与 Release 同时开始 | run `45090413547` 的 `createdAt` |
+| `01:30:59` / `01:32:27` | 两个架构先后放弃（等满 45 分钟） | 同 run 的两个 job |
+| `02:03` | Release 的 `publish` 落资产 | run `45090413522` |
+| `03:11:13` | 镜像 `latest-mac.yml` 的 `last-modified` | `curl -sI https://purescience.work/download/feed/latest-mac.yml` |
+
+⇒ 演练等的那个东西出现在打 tag 之后约 **150 分钟**，而它手里是 **45 分钟**：任何短于 150 分钟的预算都必然
+在一条健康的发版上变红。把 45 调大也不对 —— 那让两个 macOS runner（计费是 ubuntu 的十倍）干等两个半小时。
+
+### 二 交付
+
+| 文件 | 内容 |
+| --- | --- |
+| `.github/workflows/macos-upgrade-smoke.yml` | 新增 `readiness` 作业（`ubuntu-latest`，`timeout-minutes: 280`）：版本解析从 `drill` 搬到这里，再轮询镜像 `latest-mac.yml` 直到 **`version` 等于目标且两个 mac zip 都在**；预算 240 分钟、每 60 秒一行。`drill` 改成 `needs: readiness`，版本只从 `needs.readiness.outputs` 取。两条具名失败：镜像比目标新（立刻）/ 预算用尽（`the mirror did not offer X with both mac zips within 240 minutes (last reading: Y)`） |
+| 同上，`require_feed_version` 的语义 | 从「同步后手工复查」变成「让等待成立」：tag 通道恒等（由 `github.event_name` 决定，**不用布尔输入的假值兜底**），dispatch 默认不等、勾上才等。演练自己的 `PURESCIENCE_DRILL_FEED_WAIT_MS`（45 分钟）一个字节没改 |
+| `scripts/ci/macos-upgrade-smoke-workflow.test.ts`（新） | 6 例钉住：闸门在 ubuntu；`drill` `needs` 它；演练的版本与 tag 来自 `needs.readiness.outputs`（不许自己再解析一遍）；tag 通道的等待由事件决定（并明确禁掉 `inputs.require_feed_version || 'true'` 写法）；预算 ≥ 240 且作业超时 ≥ 预算 + 15 分钟；两种具名失败与「两个 zip」都在 |
+| `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md` | 新增「第 9 趟」：上表三个时刻、修法、五种 feed 形状的本机读数、没有证明的事 |
+| `docs/plan-2026-11-18-capability-gap-roadmap.md` | tag 样本从「1/3 红」改为「2 条、都红在演练自己的时序」，并把修法写在该段；晋升硬门判据不变 |
+
+### 三 读数（本机现取）
+
+| 项 | 读数 |
+| --- | --- |
+| 新用例 | `scripts/ci/macos-upgrade-smoke-workflow.test.ts` **6 passed**；`vitest scripts/ci scripts/macos-upgrade-certification.test.ts` **22 files / 277 passed** |
+| 变异 ×4 | 去掉 `needs` / 预算改 45 / 换成布尔假值写法 / 演练改回自己解析 —— 各**只红 1 例**，还原后 6 例全绿（还原后文件 sha 与改前一致） |
+| 闸门脚本五种 feed 形状 | 供对 ⇒ `::notice::the mirror offers 2.33.4 with both mac zips` EXIT=0；落后 ⇒ 期满具名 EXIT=1；超前 ⇒ 立刻具名 EXIT=1；缺 x64 zip ⇒ 具名列出缺哪个 EXIT=1；取不到 ⇒ 具名 `(last reading: (nothing))` EXIT=1；`WAIT_FOR_FEED=false` ⇒ notice EXIT=0 |
+| 镜像现取 | `latest-mac.yml` `version: 2.33.4`，两个 mac zip 都在（295,904,957 / 312,405,376），`releaseDate 2026-11-23T02:02:51Z` ⇒ §二百〇八 §四 ① 的「sync 后核 feed offers 2.33.4」成立 |
+| lint | `eslint --no-cache` 新测试文件 **0 error 0 warning**（prettier 两条 warning 已就地修掉） |
+| typecheck | `typecheck:node` 在共享树上是 **EXIT=2**，两条 `TS6133` 都在会话在制的 `src/main/settings/provider-env.test.ts` ⇒ 读数取隔离工作树那份（见下） |
+
+### 四 边界（具名）
+
+- **`readiness` 闸门没有被一次真 tag 推起来过**：首次真样本是下一次发版。本机五种 feed 形状只证明脚本分支，
+  不证明 GitHub 上 `needs` / outputs / `if:` 的接线（接线错的表现是 drill 直接 skipped，那要真跑才看得见）。
+- **本轮那次真机升级读数只跑了 arm64**（dispatch `45110776730`，`v2.33.3 → 2.33.4`，`require_feed_version=true`）；
+  x64 仍是上一次 `45002891087` 的 v2.33.1→2.33.2 读数。
+- 装机版仍是 **2.33.2** ⇒ 用户侧「更新不再停在 38 分钟」仍未被真机证实（判据在 `docs/evidence/2026-11-23-update-download-retry-on-reset.md` §四）。
+- 本版**不含**会话那 39 个在制路径；本轮三笔只动工作流、一支新测试与 `docs/**`。
+
+### 五 下一轮第一步
+
+① 下一次发版时读 tag 通道的 `readiness` 作业：判据是日志里出现
+`::notice::the mirror offers <X> with both mac zips (after Ns, M poll(s))` 且 `drill` 紧接着起来（这就是闸门的
+第一份真样本）；
+② 候选（与 §二百〇八 §四 ③ 同一条，仍未开工）：`UpdateDialog` 原样上屏 `net::ERR_*` 内部标识 —— 修法是主进程
+侧给传输失败一句具名话、走 `lib/main-message-catalog.ts` 的九语目录（`src/renderer/src/i18n/**` 正在会话手上，
+动它要 `git add -p`）；
+③ `bda25ad4` 的 `Nightly` 无判决（被 `0ac9bbd8` 顶掉）已由 `0ac9bbd8` 的 Nightly/Windows 双 success 代为取证，
+不再单列。
+
 ## 二百〇八、本轮追加（执行器，2026-11-23 08:2x–）—— 发版 v2.33.4：更新下载自己重下一次 + 闸门收两处弱判据
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

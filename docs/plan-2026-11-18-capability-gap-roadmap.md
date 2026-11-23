@@ -572,15 +572,25 @@ run 的 summary 与 artifact，便于不打开 job 日志也能看。
 60 秒重试、预算 45 分钟（`PURESCIENCE_DRILL_FEED_WAIT_MS` 可调）；feed 版本比目标**更新**（重跑旧 tag）立刻
 失败，因为等待改不了方向。方向判断抽成 `feedWaitDecision` 并有 6 条用例。
 
+**tag 通道第二次自己跑（`45090413547`，v2.33.4）还是红在时序，而且这一次证明预算本身选错了地方**：45 分钟
+的等待在两个 macOS runner 里空转，而这一趟 tag（`00:43Z`）→ 资产（`02:03Z`）就用了 80 分钟，镜像 feed 的
+`last-modified` 是 `03:11Z`（资产之后的一趟小时级同步）—— 任何比这更短的预算都必然红在一条健康的发版上。
+修法不是把 45 分钟调大（那是继续让两个贵十倍的 runner 干等），而是**把等待搬到便宜的地方**：新增
+`readiness` 作业（`ubuntu-latest`，预算 240 分钟）先轮询镜像 feed，直到它同时供出 `version: <下一版>` 与两个
+mac zip，再由它 `needs` 出 macOS 演练；feed 比目标**更新**时立刻具名失败（等待改不了方向），预算用尽时也具名
+（`the mirror did not offer X with both mac zips within 240 minutes`）。`require_feed_version` 从「同步后的
+手工复查」变成「让等待成立」的开关：tag 通道恒等（事件决定，不由布尔输入的假值兜底），dispatch 默认不等。
+演练自己的 feed 判断一个字节没放松 —— 闸门只决定**什么时候开始**，答案仍由已安装包的 updater 给。
+
 同理，feed 断言拆成两半：**「这个包装出来的 build 会不会去问镜像」在 tag 时判**（读已安装 bundle 的
 `app-update.yml`），**「镜像已经供这一版」由同步后的单独一次 `require_feed_version=true` 判**。合在一起判，
 就得到一个和 build 无关的红。
 
-**非手动样本：1/3，而且是红的。** `45037339833`（推 `v2.33.3` 带起来的第一趟 tag 通道）红在
-`The feed already says we are current (2.33.2)` —— 时序问题，已修（见上）。修好之后的绿都是 dispatch
-（`45049362271`），**不算 tag 样本**。：tag 通道要等真打发布 tag 时才算第一次。晋升硬门（B）的判据不变：连续 3 条 tag 通道
-绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish` 只多一条
-`macOS upgrade == passed` 的 `needs`。
+**非手动样本：2 条，都是红的（都红在演练自己的时序，不是换包）**：`45037339833`（v2.33.3）与
+`45090413547`（v2.33.4）。两次的修法都在上面；修法之后还没有第三条 tag 样本 —— `readiness` 闸门本机用
+五种 feed 形状（供对 / 落后 / 超前 / 缺一个 zip / 取不到）跑过，**但没被一次真 tag 推起来过**。晋升硬门（B）的
+判据不变：连续 3 条 tag 通道绿且期间没有放宽断言/加 retry、失败记成 `failed` 而非跳过，接上之后 `publish`
+只多一条 `macOS upgrade == passed` 的 `needs`。
 
 细节与一路上被改掉的六处读数谎话见 `docs/evidence/2026-11-22-macos-in-place-upgrade-drill.md`。
 
