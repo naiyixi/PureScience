@@ -1,5 +1,64 @@
 # PureScience 更新日记
 
+## v2.33.5 — 2026-11-23
+
+### 笔记本的 Python 运行时也先问自家的主机 —— 墙内首启量到 421 KB/s，而这条路第一次真的被走通
+
+**装上 Python 运行时这一步，此前只有 GitHub 一条路。** 自更新早已改走 `purescience.work/download/feed/`，
+运行时包没有：`runtime-v1` 的 manifest 与四个平台的归档都从 release 直取。实测部署机到 GitHub 对象存储
+**11.8 KB/s**（59 秒 711 KB），到自家主机 **421 KB/s** —— 相差 19 倍；也就是说，墙内用户第一次开笔记本时，
+要么等十几分钟，要么根本装不上。
+
+现在 manifest 与归档的第一跳都是自家主机：`source-mirrors` 加了一条只认 `runtime-v1` 精确资产路径的规则，
+并把自家发布的主机（`VENDOR_MIRROR_HOSTS`）排到 origin **之前**，三方镜像仍严格排在 origin 之后 —— 顺序就是
+信任边界；嵌套路径与带 query 的 URL 一律不猜（猜出来的是 404）。取包由 `scripts/fetch-runtime-bundle.sh`
+在能到 GitHub 的机器上做、`scripts/push-runtime-mirror.sh` 推上去逐个核对磁盘与公网长度 —— 镜像不由 cron 拉，
+因为部署机自己只有 11.8 KB/s。已上线 24 个文件（manifest ×4 + 三个 Python 版本 ×4 + 两个 R 版本 ×4）：
+**sha256 24/24 与本地副本逐位相同**，公网 `HTTP 200` 且 `Content-Length` 等于 release 声明的字节数。
+
+**manifest 那一条是缺陷，不是优化。** Windows P0 在 `45110636552` 上红的是「笔记本跑不起来」：应用日志里
+`win-64-manifest.json` 只有一次机会，`net::ERR_CONNECTION_TIMED_OUT` 之后没有任何宿主可问，于是运行时装配
+失败、夹具报 `The Notebook did not run the python cell`。现在 `fetchManifestText` 与归档同序走候选、并把
+`via` 带进进度行；全都答不上时逐条列出主机与原因 —— 运行时不再替网络背锅。
+
+**镜像通了之后，P0 红的位置立刻换了，而新位置是真读数。** 同样的三条用例在 `45143965397` 上不再是网络问题：
+应用日志里 manifest 与包都是 `purescience.work … 200`，随后 `acp:send-prompt` **63.2 s**、`cpuShare 0.071`、
+`no-cpu-in-process` —— 时间花在下载与解包上，而 MCP SDK 的默认请求超时是 60 s，于是「装到一半」被读成
+`MCP error -32001: Request timed out`。夹具扮演的是一个愿意等安装的 agent，60 秒等于把能用的安装读成坏软件：
+`callTool` 改成 15 分钟**有界**预算（真挂住仍然红），两条 spec 的 `setTimeout` 提到 600 s，注释里写明它们等的是
+「首次安装一个约 100 MB 的运行时」而不是「以前很快、现在慢了」。这条**还没有一次跑绿的读数**，判据是下一趟
+Nightly 与 Windows P0；三条用例合计会给 P0 增加约 10 分钟，真正的省法是三处共用一份预热好的运行时缓存，
+那是下一件事。
+
+### 另外两件
+
+- **更新失败的原文不再直接上屏**：真机语料里五次更新失败（检查 2 次、下载 3 次）每次都是更新器抛回的英文
+  原文，读者看到的是 `net::ERR_*` 或 `read ECONNRESET` 这种内部标识。现在主进程把一次失败归进**封闭词表**
+  （`errorReason` 九个值，读不懂就是 `unknown`，不猜），对话框按读者语言出句；只有 `unknown` 才在下面补一行
+  原文 —— 那时它是唯一线索。九语 10 键；原文 `error` 字段一个字节没动（读者报障要靠它），已具名的句子
+  （安装门拒绝、备份失败、停滞）保持原样，不叠一层 reason。
+- **macOS 升级演练的等待搬到 ubuntu**：45 分钟的预算等的是一趟 tag→资产→镜像约 150 分钟的事，任何短于它的
+  预算都会在健康发版上变红，而把 45 分钟调大等于让两个 macOS runner（计费是 ubuntu 的十倍）干等两个半小时。
+  现在 `readiness` 作业（ubuntu，预算 240 分钟）先轮询镜像，直到它同时供出版本与两个 mac zip，`drill` 只从
+  它的 outputs 取版本；两条具名失败（镜像比目标新 / 预算用尽）各自立刻停。**首次真样本就是本版这一次发版** ——
+  此前五种 feed 形状只在本机跑过脚本分支，`needs`/outputs 的接线要真跑才看得见。
+
+### 明确没做 / 边界（具名）
+
+- **P0 三条超时用例尚无绿的读数**：本版把预算改到够装一次运行时，判据是下一趟 Nightly 与 Windows P0。
+- **镜像只覆盖首批 24 个文件**（manifest + python 3.11/3.12/3.13 + R 4.3/4.4，四平台）；未镜像的路径在候选链里
+  会落空并继续问 origin 与三方代理，所以「部分镜像」是优雅降级，不是错。
+- **`readiness` 闸门此前从未被一次真 tag 推起来过**（本版是第一次）。接线错的表现是 `drill` 直接 skipped，
+  只有真跑看得见。
+- 装机版此刻是 2.33.2 ⇒ 用户侧要等更新才走到本版。
+
+### 质量与证据口径
+
+门禁在隔离工作树里的本提交上跑：`eslint --no-cache .` 全仓 **@@LINT@@**，双 typecheck **@@TSC@@**，
+全量 vitest **@@VITEST@@**。工作树当时带着会话未提交的在制品（43 个路径：RO-Crate 导出、citation/ris 导入、
+九份 i18n、`prisma/schema.prisma` 的 `edition`、`diagnostics/module-load` 等）⇒ **本版不含它们**；本提交只动
+`CHANGELOG.md` / `README.md` / `README.en.md` / `package.json` / `package-lock.json`。
+
 ## v2.33.4 — 2026-11-23
 
 ### 更新下载会自己再来一次 —— 静默停滞与连接被重置都算，界面写清「从头开始」
