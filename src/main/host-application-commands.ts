@@ -99,7 +99,6 @@ import {
 import type { CallerContext } from './caller-context'
 import type { CliCommandOwner } from './cli-install/ipc'
 import type { FolderGrantsService } from './folder-grants'
-import type { GithubCommandOwner } from './github-ipc'
 import type { LocalFsService } from './local-fs/service'
 import type { LogsCommandOwner } from './logs-ipc'
 import {
@@ -123,12 +122,6 @@ const cliCommands = Object.freeze({
   install: defineApplicationCommand<'cli:install', readonly [], CliLauncherStatus>('cli:install'),
   uninstall: defineApplicationCommand<'cli:uninstall', readonly [], CliLauncherStatus>(
     'cli:uninstall'
-  )
-})
-
-const githubCommands = Object.freeze({
-  getStars: defineApplicationCommand<'github:get-stars', readonly [], number | null>(
-    'github:get-stars'
   )
 })
 
@@ -587,7 +580,6 @@ const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
   goal: goalCommands,
-  github: githubCommands,
   localFs: localFsCommands,
   logs: logsCommands,
   notifications: notificationCommands,
@@ -610,7 +602,6 @@ const hostApplicationCommands = Object.freeze({
 const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('cli', Object.values(cliCommands)),
   defineApplicationCommandGroup('folderGrants', Object.values(folderGrantsCommands)),
-  defineApplicationCommandGroup('github', Object.values(githubCommands)),
   defineApplicationCommandGroup('local-fs', Object.values(localFsCommands)),
   defineApplicationCommandGroup('logs', Object.values(logsCommands)),
   defineApplicationCommandGroup('notifications', Object.values(notificationCommands)),
@@ -716,6 +707,15 @@ const localCommand = <Result>(
   return invoke()
 }
 
+// Groups are looked up by name, not by position: this list used to be indexed, so removing one group
+// silently shifted every later `registerGroup` call onto its neighbour and the failure surfaced as
+// "handler is missing" for an unrelated channel.
+const hostCommandGroup = (name: string): ApplicationCommandGroup => {
+  const group = hostApplicationCommandGroups.find((candidate) => candidate.name === name)
+  if (!group) throw new Error(`Unknown host command group: ${name}`)
+  return group
+}
+
 // Production composition registers all bounded command groups atomically; this group must not be
 // exposed through a live transport in isolation.
 const registerHostApplicationCommands = (
@@ -724,14 +724,14 @@ const registerHostApplicationCommands = (
 ): ApplicationCommandInstallation => {
   const scope = registrar.createScope()
   try {
-    scope.registerGroup(hostApplicationCommandGroups[0], {
+    scope.registerGroup(hostCommandGroup('cli'), {
       'cli:get-status': () => dependencies.cli.getStatus(),
       'cli:install': ({ callerContext }) =>
         localCommand(callerContext, 'cli:install', () => dependencies.cli.install()),
       'cli:uninstall': ({ callerContext }) =>
         localCommand(callerContext, 'cli:uninstall', () => dependencies.cli.uninstall())
     })
-    scope.registerGroup(hostApplicationCommandGroups[1], {
+    scope.registerGroup(hostCommandGroup('folderGrants'), {
       'folder-grants:grant': ({ args, callerContext }) =>
         localCommand(callerContext, 'folder-grants:grant', () =>
           dependencies.folderGrants.grant(args[0].path)
@@ -743,10 +743,7 @@ const registerHostApplicationCommands = (
           dependencies.folderGrants.revoke(args[0].rootId)
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[2], {
-      'github:get-stars': () => dependencies.github.getStars()
-    })
-    scope.registerGroup(hostApplicationCommandGroups[3], {
+    scope.registerGroup(hostCommandGroup('local-fs'), {
       'local-fs:get-roots': ({ callerContext }) =>
         localCommand(callerContext, 'local-fs:get-roots', () => dependencies.localFs.getRoots()),
       'local-fs:list-dir': ({ args, callerContext }) =>
@@ -766,7 +763,7 @@ const registerHostApplicationCommands = (
           dependencies.localFs.revealInFolder(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[4], {
+    scope.registerGroup(hostCommandGroup('logs'), {
       'logs:get-path': () => dependencies.logs.getPath(),
       'logs:open-file': ({ callerContext }) =>
         localCommand(callerContext, 'logs:open-file', () => dependencies.logs.openFile()),
@@ -775,7 +772,7 @@ const registerHostApplicationCommands = (
           dependencies.logs.revealInFolder()
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[5], {
+    scope.registerGroup(hostCommandGroup('notifications'), {
       'notifications:peek-pending-open-session': () =>
         dependencies.notifications.peekPendingOpenSession(),
       'notifications:take-pending-open-session': ({ args }) =>
@@ -783,7 +780,7 @@ const registerHostApplicationCommands = (
           ? dependencies.notifications.takePendingOpenSession(args[0])
           : null
     })
-    scope.registerGroup(hostApplicationCommandGroups[6], {
+    scope.registerGroup(hostCommandGroup('remote-access'), {
       'remote-access:approve': ({ args, callerContext }) => {
         requirePairingManager(callerContext)
         const desktop = isDesktopCaller(callerContext)
@@ -824,7 +821,7 @@ const registerHostApplicationCommands = (
         return dependencies.remoteAccess.setMode(args[0].mode)
       }
     })
-    scope.registerGroup(hostApplicationCommandGroups[7], {
+    scope.registerGroup(hostCommandGroup('reviewer'), {
       'reviewer:abort-fix-loop': ({ args }) => dependencies.reviewer.abortFixLoop(args[0]),
       'reviewer:get-checklist': ({ args }) => dependencies.reviewer.getChecklist(args[0]),
       'reviewer:get-for-session': ({ args }) => dependencies.reviewer.getForSession(args[0]),
@@ -833,7 +830,7 @@ const registerHostApplicationCommands = (
       'reviewer:run': ({ args }) => dependencies.reviewer.run(args[0]),
       'reviewer:evidence': ({ args }) => dependencies.reviewer.evidence(args[0])
     })
-    scope.registerGroup(hostApplicationCommandGroups[8], {
+    scope.registerGroup(hostCommandGroup('routine'), {
       'routine:list-all': ({ callerContext }) =>
         localCommand(callerContext, 'routine:list-all', () => dependencies.routine.listAll()),
       'routine:upsert': ({ args, callerContext }) =>
@@ -849,7 +846,7 @@ const registerHostApplicationCommands = (
           dependencies.routine.setEnabled(args[0].sessionId, args[0].routineId, args[0].enabled)
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[9], {
+    scope.registerGroup(hostCommandGroup('endpoint'), {
       'endpoint:list-all': ({ callerContext }) =>
         localCommand(callerContext, 'endpoint:list-all', () => dependencies.endpoint.listAll()),
       'endpoint:register': ({ args, callerContext }) =>
@@ -867,7 +864,7 @@ const registerHostApplicationCommands = (
       'endpoint:remove': ({ args, callerContext }) =>
         localCommand(callerContext, 'endpoint:remove', () => dependencies.endpoint.remove(args[0]))
     })
-    scope.registerGroup(hostApplicationCommandGroups[10], {
+    scope.registerGroup(hostCommandGroup('annotation'), {
       'annotation:set': ({ args, callerContext }) =>
         localCommand(callerContext, 'annotation:set', () =>
           dependencies.annotation.set(args[0].projectId, args[0].request)
@@ -881,7 +878,7 @@ const registerHostApplicationCommands = (
           dependencies.annotation.remove(args[0].projectId, args[0].annotationId)
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[11], {
+    scope.registerGroup(hostCommandGroup('pdf'), {
       'pdf:open': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:open', () =>
           dependencies.pdf.open(args[0].projectId, args[0].path)
@@ -913,19 +910,19 @@ const registerHostApplicationCommands = (
       'pdf:ocr': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:ocr', () => dependencies.pdf.ocr(args[0]))
     })
-    scope.registerGroup(hostApplicationCommandGroups[12], {
+    scope.registerGroup(hostCommandGroup('figure'), {
       'figure:review': ({ args, callerContext }) =>
         localCommand(callerContext, 'figure:review', () =>
           dependencies.figure.review(args[0].projectId, args[0].request)
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[13], {
+    scope.registerGroup(hostCommandGroup('query'), {
       'query:run': ({ args, callerContext }) =>
         localCommand(callerContext, 'query:run', () =>
           dependencies.query.run(args[0].projectId, args[0].sql)
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[14], {
+    scope.registerGroup(hostCommandGroup('storage'), {
       'storage:cancel-migrate': ({ callerContext }) =>
         localCommand(callerContext, 'storage:cancel-migrate', () =>
           dependencies.storage.cancelMigrate()
@@ -968,7 +965,7 @@ const registerHostApplicationCommands = (
           dependencies.storage.validateDataRoot(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[15], {
+    scope.registerGroup(hostCommandGroup('update'), {
       'update:apply': ({ callerContext }) =>
         localCommand(callerContext, 'update:apply', () => dependencies.update.apply()),
       'update:cancel': ({ callerContext }) =>
@@ -983,7 +980,7 @@ const registerHostApplicationCommands = (
     // one transport-independent path, and deliberately nowhere near an agent-facing tool list.
     // Saved search filter sets: the same transport-independent path as the bookmarks beside them, and
     // deliberately nowhere near an agent-facing tool list.
-    scope.registerGroup(hostApplicationCommandGroups[17], {
+    scope.registerGroup(hostCommandGroup('searchPins'), {
       'search-pins:list': ({ callerContext }) =>
         localCommand(callerContext, 'search-pins:list', () => dependencies.searchPins.list()),
       'search-pins:remove': ({ args, callerContext }) =>
@@ -993,7 +990,7 @@ const registerHostApplicationCommands = (
       'search-pins:save': ({ args, callerContext }) =>
         localCommand(callerContext, 'search-pins:save', () => dependencies.searchPins.save(args[0]))
     })
-    scope.registerGroup(hostApplicationCommandGroups[16], {
+    scope.registerGroup(hostCommandGroup('bookmark'), {
       'bookmark:set': ({ args, callerContext }) =>
         localCommand(callerContext, 'bookmark:set', () => dependencies.bookmark.set(args[0])),
       'bookmark:list': ({ args, callerContext }) =>
@@ -1010,11 +1007,11 @@ const registerHostApplicationCommands = (
     // PDF annotations (文档标注层 A3): the same transport-independent path as the bookmarks, and
     // deliberately nowhere near an agent-facing tool list. Every channel is local-only, so each one goes
     // through localCommand — a paired remote browser cannot reach the reader's markup.
-    scope.registerGroup(hostApplicationCommandGroups[19], {
+    scope.registerGroup(hostCommandGroup('goal'), {
       'goal:list-all': ({ callerContext }) =>
         localCommand(callerContext, 'goal:list-all', () => dependencies.goal.listAll())
     })
-    scope.registerGroup(hostApplicationCommandGroups[18], {
+    scope.registerGroup(hostCommandGroup('pdfAnnotations'), {
       'pdf-annotations:create': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf-annotations:create', () =>
           dependencies.pdfAnnotations.create(args[0])
@@ -1047,7 +1044,7 @@ const registerHostApplicationCommands = (
           dependencies.pdfAnnotations.remove(args[0])
         )
     })
-    scope.registerGroup(hostApplicationCommandGroups[20], {
+    scope.registerGroup(hostCommandGroup('caseBundles'), {
       'cases:export-bundle': ({ args, callerContext }) =>
         localCommand(callerContext, 'cases:export-bundle', () =>
           dependencies.caseBundles.export(args[0])

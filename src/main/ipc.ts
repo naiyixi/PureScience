@@ -128,7 +128,6 @@ import type { ToolContext } from './connectors/types'
 import { registerFileSaveHandlers } from './file-save'
 import { createSessionArtifactFileResolver } from './session-artifact-file-resolver'
 import { createCliCommandOwner, registerCliInstallIpcHandlers } from './cli-install/ipc'
-import { createGithubCommandOwner, registerGithubIpcHandlers } from './github-ipc'
 import {
   BackendShutdownOutcomeError,
   BackendShutdownCoordinator,
@@ -2686,7 +2685,6 @@ const createApplicationModules = async (
     )
 
   const cliCommandOwner = createCliCommandOwner()
-  const githubCommandOwner = createGithubCommandOwner()
   const logsCommandOwner = createLogsCommandOwner()
   // The support bundle records the storage location *class*, never the path, matching the storage log above:
   // a bundle that carried absolute paths would hand over the user name and folder layout it is meant to spare.
@@ -2798,7 +2796,6 @@ const createApplicationModules = async (
     registerLogsIpcHandlers(logsCommandOwner)
     registerSupportBundleIpcHandlers(supportBundleCommandOwner)
     registerVisionEvidenceIpcHandlers(visionEvidenceCommandOwner)
-    registerGithubIpcHandlers({}, githubCommandOwner)
     registerNetworkIpcHandlers()
     registerCliInstallIpcHandlers(cliCommandOwner)
     registerWindowIpcHandlers()
@@ -4251,7 +4248,6 @@ const createApplicationModules = async (
     host: {
       cli: cliCommandOwner,
       folderGrants: folderGrantsService,
-      github: githubCommandOwner,
       localFs: localFsService,
       logs: logsCommandOwner,
       notifications: {

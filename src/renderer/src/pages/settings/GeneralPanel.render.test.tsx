@@ -120,7 +120,6 @@ beforeEach(() => {
     platform: 'win32',
     window: { onCloseConfirmRequest: vi.fn() },
     cli: cliApi,
-    github: { getStars: vi.fn().mockResolvedValue(1) },
     settings: settingsApi
   }
 })

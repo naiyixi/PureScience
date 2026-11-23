@@ -952,9 +952,6 @@ export interface PureScienceAPI {
     syncViewState?(state: UnreadTaskViewState): void
     onViewProbe?(listener: AcpListener<number>): RemoveListener
   }
-  github: {
-    getStars(): Promise<number | null>
-  }
   network: {
     getInfo(): Promise<NetworkInfo>
     checkConnectivity(): Promise<boolean>

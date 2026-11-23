@@ -85,7 +85,6 @@ export const WEB_INVOKE_CHANNELS = {
   'folderGrants.grant': 'folder-grants:grant',
   'folderGrants.list': 'folder-grants:list',
   'folderGrants.revoke': 'folder-grants:revoke',
-  'github.getStars': 'github:get-stars',
   'goals.listAll': 'goal:list-all',
   'lifecycle.getClientId': 'lifecycle:client-id',
   'localFs.getRoots': 'local-fs:get-roots',

@@ -202,9 +202,6 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     // schema. Local-only (the cache lives in the local project database), hence ELECTRON rather than WEB.
     ['listVisionEvidence', 'diagnostics:list-vision-evidence', ELECTRON],
   ]),
-  group('github', 'github', [
-    ['getStars', 'github:get-stars'],
-  ]),
   group('handoff', 'handoff', [
     // Only the event survives: `handoff-lifecycle:list` / `:retry` had no registrar in the main process and
     // no caller in the renderer (the UI's own path is `specialist.getHandoffEvents` / `retryHandoff`), so

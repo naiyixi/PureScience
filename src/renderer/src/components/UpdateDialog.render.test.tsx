@@ -96,14 +96,18 @@ describe('UpdateDialog', () => {
     expect(document.body.textContent).toContain('Shiny new things')
   })
 
-  it('links to the matching GitHub release when notes are missing', () => {
+  // The reader is sent to our own site, not to a repository: the release page carries the same notes and
+  // does not hand a first-time user a wall of code. Before this, the dialog guessed a tag URL on GitHub —
+  // which is exactly the kind of link this round removed from the product.
+  it('links to the product site when notes are missing', () => {
     useUpdateStore.setState({
       isDialogOpen: true,
       status: { state: 'available', current: '0.1.0', latest: '0.2.0' }
     })
     act(() => root.render(<UpdateDialog />))
-    const link = document.body.querySelector('a[href*="/releases/tag/v0.2.0"]')
+    const link = document.body.querySelector('a[href^="https://purescience.work"]')
     expect(link).not.toBeNull()
+    expect(document.body.querySelector('a[href*="github.com"]')).toBeNull()
   })
 
   it('invokes download when the download button is clicked', () => {

@@ -87,11 +87,6 @@ describe('production application command wiring', () => {
         'update: updateCommandOwner'
       ],
       ['cliCommandOwner', 'registerCliInstallIpcHandlers(cliCommandOwner)', 'cli: cliCommandOwner'],
-      [
-        'githubCommandOwner',
-        'registerGithubIpcHandlers({}, githubCommandOwner)',
-        'github: githubCommandOwner'
-      ],
       ['logsCommandOwner', 'registerLogsIpcHandlers(logsCommandOwner)', 'logs: logsCommandOwner'],
       [
         'uploadCommandOwner',

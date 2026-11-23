@@ -49,7 +49,6 @@ const HOST_CAPABILITIES = [
   'caseBundles',
   'cli',
   'folderGrants',
-  'github',
   'goal',
   'local-fs',
   'logs',
@@ -95,7 +94,6 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     install: vi.fn(async () => ({ installed: true, target: '/bin/purescience', onPath: true })),
     uninstall: vi.fn(async () => ({ installed: false, target: '/bin/purescience', onPath: true }))
   },
-  github: { getStars: vi.fn(async () => 42) },
   localFs: {
     getRoots: vi.fn(() => ({ home: '/home/scientist', machineName: 'Lab' })),
     listDir: vi.fn(async (path: string) => ({ entries: [], truncated: false, resolvedPath: path })),
@@ -541,7 +539,7 @@ describe('Host application commands', () => {
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
     // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
     // 88 with OCR (pdf:ocr, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(93)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(92)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -559,7 +557,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(93)
+    expect(router.dispatcher.commandNames()).toHaveLength(92)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -611,7 +609,6 @@ describe('Host application commands', () => {
     await router.dispatcher.invoke(hostApplicationCommands.cli.getStatus, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.cli.install, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.cli.uninstall, invocation([]))
-    await router.dispatcher.invoke(hostApplicationCommands.github.getStars, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.localFs.getRoots, invocation([]))
     await router.dispatcher.invoke(hostApplicationCommands.localFs.listDir, invocation(['/data']))
     await router.dispatcher.invoke(

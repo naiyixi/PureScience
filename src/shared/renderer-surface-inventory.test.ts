@@ -358,7 +358,7 @@ describe('renderer surface inventory', () => {
     // the inventory and the catalog move together.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL): two preload methods
     // for two contracts, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(511)
+    expect(electronPaths).toHaveLength(510)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -378,7 +378,7 @@ describe('renderer surface inventory', () => {
     // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke entry in the generated map.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(390)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(389)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

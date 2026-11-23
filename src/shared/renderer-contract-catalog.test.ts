@@ -30,7 +30,7 @@ describe('renderer contract catalog', () => {
     // 460 with the window package install/uninstall (runtime.manage-packages, IC13): another LOCAL
     // runtime channel, so the catalog, the preload inventory and the local-Web installation set each
     // move by one while the remote-Web one grows by the rejecting stub it gets for being local-only.
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(51)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(50)
     // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
     // local-Web installation set each move by three while the remote-Web set grows by the same three.
@@ -73,7 +73,7 @@ describe('renderer contract catalog', () => {
     // 504 with reading text out of an image (pdf.ocr, LOCAL): one more capability-owned request contract
     // in the pdf group.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, both LOCAL): two more.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(511)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(510)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -90,7 +90,7 @@ describe('renderer contract catalog', () => {
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke-map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(390)
+    expect(Object.keys(projection.invoke)).toHaveLength(389)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -116,7 +116,7 @@ describe('renderer contract catalog', () => {
     // pdf reads it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(420)
+    ).toHaveLength(419)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
