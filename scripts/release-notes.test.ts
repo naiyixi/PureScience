@@ -76,18 +76,23 @@ describe('release notes composition', () => {
     )
   })
 
-  it('orders maturity, then the changelog entry, then the generated notes, and omits an empty tail', () => {
-    const body = composeReleaseBody({
-      maturity: 'M',
-      changelog: 'C',
-      generated: 'G'
-    })
-    expect(body.indexOf('M')).toBeLessThan(body.indexOf('C'))
-    expect(body.indexOf('C')).toBeLessThan(body.indexOf('G'))
+  // A reader deciding whether to install reads this page. It leads with maturity and the reader-facing
+  // 亮点 block; the engineering record stays collapsed; the generated PR list is dropped, because a list of
+  // pull-request titles is exactly the work log the page is trying not to be.
+  it('leads with the reader-facing block, keeps the record collapsed, and drops the PR list', () => {
+    const changelog = ['### 亮点', '', '- 首启不再等十几分钟', '', '### 工程记录', '', '细节'].join('\n')
+    const body = composeReleaseBody({ maturity: 'M', changelog, generated: 'G' })
+
+    expect(body.startsWith('M')).toBe(true)
+    expect(body.indexOf('首启不再等十几分钟')).toBeLessThan(body.indexOf('<details>'))
+    expect(body).toContain('<details>')
+    expect(body).toContain('### 工程记录')
+    expect(body).not.toContain('G')
     expect(body.endsWith('\n')).toBe(true)
 
-    const withoutTail = composeReleaseBody({ maturity: 'M', changelog: 'C' })
-    expect(withoutTail.trim()).toBe('M\n\n---\n\nC')
+    // No 亮点 block: everything the entry carries is the record, so it goes into the collapsed part.
+    const withoutHighlights = composeReleaseBody({ maturity: 'M', changelog: 'C' })
+    expect(withoutHighlights.trim()).toBe('M\n\n---\n\n<details>\n<summary>技术记录</summary>\n\nC\n\n</details>')
   })
 
   it('puts the macOS signing disclosure directly under the maturity block', () => {
@@ -102,9 +107,9 @@ describe('release notes composition', () => {
     expect(body.indexOf('M')).toBeLessThan(body.indexOf(disclosure))
     expect(body.indexOf(disclosure)).toBeLessThan(body.indexOf('C'))
     expect(body).toContain(MAC_SIGNING_DISCLOSURE_MARKER)
-    // A signed release adds nothing, so every existing composition stays byte-identical.
-    expect(composeReleaseBody({ maturity: 'M', changelog: 'C', disclosure: '' }).trim()).toBe(
-      'M\n\n---\n\nC'
+    // A signed release adds nothing: the page keeps its shape without a disclosure paragraph.
+    expect(composeReleaseBody({ maturity: 'M', changelog: 'C', disclosure: '' })).not.toContain(
+      MAC_SIGNING_DISCLOSURE_MARKER
     )
   })
 

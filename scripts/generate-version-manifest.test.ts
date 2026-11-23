@@ -370,14 +370,21 @@ describe('manifestNotes', () => {
     return join(dir, 'CHANGELOG.md')
   }
 
-  it('carries the entry body for the version, without the entry heading', () => {
+  // The dialog is a product surface: a reader is told what changed for them. The 亮点 block is that text;
+  // the rest of the entry is the engineering record and must not be shipped to the client.
+  it('carries the 亮点 block and nothing else from the entry', () => {
     const path = withTempChangelog(
       [
         '## v1.2.3 — 2026-01-01（标题）',
         '',
-        '**要点**',
+        '### 亮点',
         '',
-        '- 细节',
+        '- 首启不再需要等十几分钟',
+        '- 侧聊不再挡住输入框',
+        '',
+        '### 工程记录',
+        '',
+        '`45143965397` 里 acp:send-prompt 63.2s, spec 超时。',
         '',
         '## v1.2.2 — 2026-01-01（旧）',
         '',
@@ -386,7 +393,31 @@ describe('manifestNotes', () => {
       ].join('\n')
     )
 
-    expect(manifestNotes('1.2.3', path)).toBe('**要点**\n\n- 细节')
+    const notes = manifestNotes('1.2.3', path)
+    expect(notes).toBe('- 首启不再需要等十几分钟\n- 侧聊不再挡住输入框')
+    expect(notes).not.toContain('45143965397')
+    expect(notes).not.toContain('acp:send-prompt')
+  })
+
+  // Older entries carry no 亮点 block. The first paragraph is used, with code spans and commit/run ids
+  // removed — shipping that prose whole is what put a work log in the update prompt.
+  it('strips internals from the first paragraph when an entry has no 亮点 block', () => {
+    const path = withTempChangelog(
+      [
+        '## v1.2.3 — 2026-01-01（标题）',
+        '',
+        '侧聊开关此前压在面板上，`WorkspacePage.tsx` 的 right-11 固定在 45143965397 上暴露。',
+        '',
+        '第二段是工程细节，不该出现。',
+        ''
+      ].join('\n')
+    )
+
+    const notes = manifestNotes('1.2.3', path)
+    expect(notes).toContain('侧聊开关此前压在面板上')
+    expect(notes).not.toContain('WorkspacePage.tsx')
+    expect(notes).not.toContain('45143965397')
+    expect(notes).not.toContain('第二段是工程细节')
   })
 
   it('falls back to the GitHub link when the changelog has no entry for the version', () => {
@@ -400,13 +431,15 @@ describe('manifestNotes', () => {
     )
   })
 
-  it('carries the shipped entry for a released version straight from the repository changelog', () => {
-    // Not a fixture: the manifest generated for a real release must carry the same entry the release
-    // page shows, so the two cannot disagree.
+  it('produces reader-facing notes for a real released version, not the engineering record', () => {
+    // Not a fixture: whatever the repository's own changelog says for a shipped version, the client must
+    // receive prose a reader can use — no entry heading, no run ids, no file paths.
     const notes = manifestNotes('1.68.0')
     expect(notes).not.toBe(NOTES_FALLBACK)
     expect(notes.startsWith('## v')).toBe(false)
-    expect(notes.length).toBeGreaterThan(200)
+    expect(notes).not.toMatch(/\b[0-9a-f]{7,40}\b/i)
+    expect(notes).not.toMatch(/\.(ts|tsx|mjs|yml)\b/)
+    expect(notes.length).toBeGreaterThan(20)
   })
 })
 

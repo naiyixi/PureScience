@@ -210,8 +210,11 @@ const buildLogsFieldText = (context: ErrorReportContext): string => {
   ].join('\n')
 }
 
-const issueUrlFromParams = (params: URLSearchParams): string =>
-  `${APP.links.githubRepo}/issues/new?${params.toString()}`
+// A prefilled issue URL only exists on a forge; the product sends readers to its own site instead.
+const issueUrlFromParams = (params: URLSearchParams): string => {
+  void params
+  return APP.links.support
+}
 
 const encodedParamValueLength = (key: string, value: string): number => {
   const serialized = new URLSearchParams([[key, value]]).toString()

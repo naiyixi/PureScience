@@ -72,11 +72,29 @@ export function extractMaturityBlock(readme) {
 // Order matters: what is verified, then the mac signing fact, then what changed, then the generated
 // PR list. The disclosure sits directly under the maturity block so a reader cannot reach the
 // download links (or an update prompt) without passing it.
+// The reader-facing block inside a CHANGELOG entry: `### 亮点` / `### Highlights`, up to the next heading.
+export function splitReaderFacing(section) {
+  const lines = String(section ?? '').split('\n')
+  const start = lines.findIndex((line) => /^###\s*(亮点|Highlights)\s*$/i.test(line.trim()))
+  if (start < 0) return { highlights: '', rest: String(section ?? '').trim() }
+  const after = lines.slice(start + 1)
+  const end = after.findIndex((line) => /^#{2,3}\s/.test(line))
+  const block = (end < 0 ? after : after.slice(0, end)).join('\n').trim()
+  const rest = [...lines.slice(0, start), ...(end < 0 ? [] : after.slice(end))].join('\n').trim()
+  return { highlights: block, rest }
+}
+
+// A release page is what somebody deciding whether to install reads. It leads with the reader-facing
+// highlights; the engineering record stays, collapsed, for the people who came looking for it. The
+// generated PR list is dropped outright: a list of pull-request titles is the work log the page is
+// trying not to be.
 export function composeReleaseBody({ maturity, changelog, generated = '', disclosure = '' }) {
+  void generated
+  const { highlights, rest } = splitReaderFacing(changelog)
   const parts = [maturity.trim()]
   if (String(disclosure).trim()) parts.push(String(disclosure).trim())
-  parts.push(changelog.trim())
-  if (generated.trim()) parts.push(generated.trim())
+  if (highlights.trim()) parts.push(highlights.trim())
+  parts.push(`<details>\n<summary>技术记录</summary>\n\n${rest.trim()}\n\n</details>`)
   return `${parts.join('\n\n---\n\n')}\n`
 }
 

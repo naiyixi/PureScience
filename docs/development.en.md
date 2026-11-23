@@ -68,3 +68,32 @@ publishable package so there is one command reference to maintain:
 - [CLI guide](../packages/purescience/CLI.md) - installation, service lifecycle, task automation,
   artifacts, output formats, and exit codes
 - [SDK package overview](../packages/purescience/README.md) - Node.js quick start and package entry point
+
+## Two rules about readers (read before writing code)
+
+These are product boundaries, not style preferences. However much work goes in, a reader only sees a product.
+
+### 1. Update notes describe what a reader can see
+
+The update dialog and the release page are **product surfaces**, not a work log. What belongs there:
+
+- what is new, and what a user can now do;
+- which problem is gone, and what feels different;
+- what got faster or steadier, with the order of magnitude ("no more waiting ten minutes on first launch").
+
+What does not: run ids, spec names, file paths, commit hashes, CI lanes, how we diagnosed it internally, what we
+plan to do next. That record lives in `docs/evidence/` and in commit messages, where maintainers read it.
+
+Every CHANGELOG entry carries a `### Highlights` block (or `### 亮点`); the client's update prompt takes only
+that block (`manifestNotes` in `scripts/generate-version-manifest.mjs`). Without it, only the first paragraph is
+used with code paths and hashes stripped — a fallback, not a way to write.
+
+### 2. Let the layout explain; do not add small print
+
+Helper text (subtitles, muted hints, parenthetical explanations, tooltips restating a button's label) is
+**absent by default**. Ask first: do the control's position, icon and grouping already say it? If so, delete the
+text.
+
+- Never say the same thing twice (a heading plus a sentence that repeats it);
+- Do not caption a button; its label is the caption;
+- Do not explain a new feature in prose; let where it appears and what state it shows carry it.

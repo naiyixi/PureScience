@@ -151,7 +151,7 @@ const AppVersionSection = (): React.JSX.Element => {
           {t('settings.helpCenter')}
         </a>
         <a
-          href={APP.links.githubReleases}
+          href={APP.links.releaseNotes}
           target="_blank"
           rel="noreferrer"
           className="text-muted-foreground underline-offset-4 hover:underline"
@@ -159,7 +159,7 @@ const AppVersionSection = (): React.JSX.Element => {
           {t('settings.releaseNotes')}
         </a>
         <a
-          href={APP.links.githubIssues}
+          href={APP.links.support}
           target="_blank"
           rel="noreferrer"
           className="text-muted-foreground underline-offset-4 hover:underline"

@@ -55,7 +55,7 @@ const UpdateDialog = (): React.JSX.Element | null => {
 
   const open = Boolean(isOpen && status.latest)
   const dialogStatus = useRetainedDialogValue(open ? status : undefined)
-  const releaseUrl = `${APP.links.githubReleases}/tag/v${dialogStatus?.latest ?? ''}`
+  const releaseUrl = APP.links.releaseNotes
   const isDownloading = dialogStatus?.state === 'downloading'
   const isReady = dialogStatus?.state === 'ready'
   const isApplying = dialogStatus?.state === 'applying'

@@ -15,12 +15,14 @@ export const APP = {
   githubRepo: GITHUB_REPO,
   links: {
     website: 'https://purescience.work',
-    githubRepo: GITHUB_REPO_URL,
-    githubReleases: `${GITHUB_REPO_URL}/releases`,
-    githubApi: `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,
-    githubIssues: `${GITHUB_REPO_URL}/issues`,
-    discord: 'https://discord.gg/85dKfuGM9',
-    x: 'https://x.com/zerolink_ai'
+    // Everything a reader can click points at the product site. There is no GitHub/Discord/X button in the
+    // app: the site is the one place whose pages we control, and a repository link invites readers into a
+    // work log rather than a product.
+    support: 'https://purescience.work',
+    releaseNotes: 'https://purescience.work',
+    // Internal only: the star count is no longer surfaced anywhere in the UI, but keeping the API URL here
+    // means an accidental re-introduction is a one-line change rather than a re-plumb.
+    githubApi: `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`
   },
   copyright: '© 2026 ZEROLINK. All rights reserved.',
   update: {
