@@ -4701,6 +4701,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': 'Duplicar como skill propio',
   'settings.skillForkFailed': 'No se pudo duplicar este skill: {reason}',
   'roCrate.inspect.heading': 'Comprobar un crate de otro sitio',
+  'roCrate.profiles.heading': 'Perfiles declarados',
+  'roCrate.profiles.checked': '— comprobado según RO-Crate 1.1',
+  'roCrate.profiles.unchecked':
+    '— no se comprueba aquí; esta aplicación solo comprueba RO-Crate 1.1',
+  'roCrate.profiles.none': 'Este paquete no declara ningún perfil.',
   'roCrate.inspect.scopeNote':
     'Solo lectura: la carpeta no se modifica y nada se importa a un proyecto. «Correcto» significa que se cumple cada regla que esta aplicación puede aplicar, no que el crate sea científicamente correcto. Una fila marcada como export-contract es una expectativa de esta aplicación sobre los crates que escribe.',
   'roCrate.inspect.pathLabel': 'Carpeta del crate',

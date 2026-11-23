@@ -4257,6 +4257,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': '複製為我的技能',
   'settings.skillForkFailed': '無法複製這份技能：{reason}',
   'roCrate.inspect.heading': '檢核外來的 crate',
+  'roCrate.profiles.heading': '宣告的 profile',
+  'roCrate.profiles.checked': '— 已按 RO-Crate 1.1 核對',
+  'roCrate.profiles.unchecked': '— 本應用不核對（只核對 RO-Crate 1.1）',
+  'roCrate.profiles.none': '這份包沒有宣告任何 profile。',
   'roCrate.inspect.scopeNote':
     '唯讀：不會更動來源目錄，也不會把 crate 匯入任何專案。「通過」只表示本應用能套用的每條規則都成立，不代表它在科學上正確；標為 export-contract 的規則，是本應用對自己寫出的 crate 的要求。',
   'roCrate.inspect.pathLabel': 'crate 目錄',

@@ -4751,6 +4751,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': 'Als eigenen Skill duplizieren',
   'settings.skillForkFailed': 'Dieser Skill konnte nicht dupliziert werden: {reason}',
   'roCrate.inspect.heading': 'Ein crate von anderswo prüfen',
+  'roCrate.profiles.heading': 'Angegebene Profile',
+  'roCrate.profiles.checked': '— gegen RO-Crate 1.1 geprüft',
+  'roCrate.profiles.unchecked': '— hier nicht geprüft; diese App prüft nur RO-Crate 1.1',
+  'roCrate.profiles.none': 'Dieses Paket gibt kein Profil an.',
   'roCrate.inspect.scopeNote':
     'Nur lesend: der Ordner wird nicht verändert und nichts in ein Projekt importiert. „Bestanden“ heißt, dass jede Regel gilt, die diese Anwendung prüfen kann — nicht, dass das crate wissenschaftlich korrekt ist. Eine Zeile mit export-contract ist eine Erwartung dieser Anwendung an die crates, die sie selbst schreibt.',
   'roCrate.inspect.pathLabel': 'crate-Ordner',

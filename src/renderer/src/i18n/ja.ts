@@ -4606,6 +4606,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': '自分のスキルとして複製',
   'settings.skillForkFailed': 'このスキルを複製できませんでした：{reason}',
   'roCrate.inspect.heading': '他所の crate を検証する',
+  'roCrate.profiles.heading': '宣言されている profile',
+  'roCrate.profiles.checked': '— RO-Crate 1.1 に照らして確認済み',
+  'roCrate.profiles.unchecked': '— このアプリでは確認しません（RO-Crate 1.1 のみ確認します）',
+  'roCrate.profiles.none': 'このパッケージはいずれの profile も宣言していません。',
   'roCrate.inspect.scopeNote':
     '読み取り専用です。フォルダは変更されず、プロジェクトへの取り込みもありません。「合格」は本アプリが適用できるすべての規則が成立したという意味で、crate が科学的に正しいという意味ではありません。export-contract と付いた行は、本アプリが自分の書き出す crate に求める条件です。',
   'roCrate.inspect.pathLabel': 'crate のフォルダ',

@@ -4533,6 +4533,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': '내 스킬로 복제',
   'settings.skillForkFailed': '이 스킬을 복제하지 못했습니다: {reason}',
   'roCrate.inspect.heading': '다른 곳의 crate 검사',
+  'roCrate.profiles.heading': '선언된 profile',
+  'roCrate.profiles.checked': '— RO-Crate 1.1 기준으로 확인함',
+  'roCrate.profiles.unchecked': '— 이 앱은 확인하지 않습니다(RO-Crate 1.1만 확인)',
+  'roCrate.profiles.none': '이 패키지는 어떤 profile도 선언하지 않았습니다.',
   'roCrate.inspect.scopeNote':
     '읽기 전용입니다. 폴더는 수정되지 않고 프로젝트로 가져오지도 않습니다. "통과"는 이 앱이 적용할 수 있는 모든 규칙이 성립했다는 뜻이며, crate가 과학적으로 옳다는 뜻은 아닙니다. export-contract로 표시된 행은 이 앱이 자신이 내보내는 crate에 요구하는 조건입니다.',
   'roCrate.inspect.pathLabel': 'crate 폴더',

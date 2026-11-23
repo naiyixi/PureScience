@@ -4733,6 +4733,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': 'Dupliquer comme skill personnel',
   'settings.skillForkFailed': 'Impossible de dupliquer ce skill : {reason}',
   'roCrate.inspect.heading': 'Vérifier un crate venu d’ailleurs',
+  'roCrate.profiles.heading': 'Profils déclarés',
+  'roCrate.profiles.checked': '— vérifié selon RO-Crate 1.1',
+  'roCrate.profiles.unchecked': '— non vérifié ici ; cette application ne vérifie que RO-Crate 1.1',
+  'roCrate.profiles.none': 'Ce paquet ne déclare aucun profil.',
   'roCrate.inspect.scopeNote':
     'Lecture seule : le dossier n’est pas modifié et rien n’est importé dans un projet. « Vérifié » signifie que toutes les règles que cette application peut appliquer sont satisfaites — pas que le crate soit scientifiquement correct. Une ligne marquée export-contract est une attente de cette application envers les crates qu’elle écrit.',
   'roCrate.inspect.pathLabel': 'Dossier du crate',

@@ -4623,6 +4623,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.skillForkAction': 'Дублировать как мой навык',
   'settings.skillForkFailed': 'Не удалось дублировать этот навык: {reason}',
   'roCrate.inspect.heading': 'Проверить crate из другого места',
+  'roCrate.profiles.heading': 'Объявленные профили',
+  'roCrate.profiles.checked': '— проверено по RO-Crate 1.1',
+  'roCrate.profiles.unchecked':
+    '— здесь не проверяется; это приложение проверяет только RO-Crate 1.1',
+  'roCrate.profiles.none': 'Этот пакет не объявляет ни одного профиля.',
   'roCrate.inspect.scopeNote':
     'Только чтение: папка не изменяется, и ничего не импортируется в проект. «Пройдено» означает, что выполнены все правила, которые это приложение умеет применять, — а не то, что crate научно верен. Строка с export-contract — это требование приложения к тем crate, которые оно само записывает.',
   'roCrate.inspect.pathLabel': 'Папка crate',
