@@ -129,7 +129,7 @@ describe('ReportErrorDialog', () => {
     expect(textarea()?.value).not.toContain('App version')
   })
 
-  it('gates the GitHub issue action behind the consent checkbox', () => {
+  it('gates the report action behind the consent checkbox', () => {
     renderDialog()
     expect(issueLink()?.getAttribute('aria-disabled')).toBe('true')
     expect(issueLink()?.getAttribute('href')).toBeNull()
@@ -139,7 +139,7 @@ describe('ReportErrorDialog', () => {
     })
 
     expect(issueLink()?.getAttribute('aria-disabled')).toBe('false')
-    expect(issueLink()?.getAttribute('href')).toContain('/issues/new?')
+    expect(issueLink()?.getAttribute('href')).toContain('purescience.work')
     expect(issueLink()?.getAttribute('href')).toContain('template=bug_report.yml')
   })
 

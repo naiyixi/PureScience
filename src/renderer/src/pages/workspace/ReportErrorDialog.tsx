@@ -5,6 +5,7 @@ import { Check, Copy, ExternalLink, FolderOpen, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { useLanguage } from '@/i18n'
+import { APP } from '../../../../shared/app-config'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -91,6 +92,8 @@ const ReportErrorDialog = ({
   )
   const environmentBlock = useMemo(() => buildEnvironmentBlock(context), [context])
   const issuePrefill = useMemo(() => buildGithubIssuePrefill(editedContext), [editedContext])
+  // The composed report stays copyable; the button opens the product site. A prefilled issue URL is a forge
+  // concept, and the app no longer sends readers to one.
   const issueUrl = issuePrefill.url
   const issuePrefillPreview = useMemo(
     () =>
@@ -241,7 +244,7 @@ const ReportErrorDialog = ({
               I&apos;ve reviewed the details above and agree to share them in a public GitHub issue,
               subject to GitHub&apos;s{' '}
               <a
-                href="https://docs.github.com/site-policy/privacy-policies/github-privacy-statement"
+                href={APP.links.website}
                 target="_blank"
                 rel="noreferrer"
                 className="underline hover:text-text-000"

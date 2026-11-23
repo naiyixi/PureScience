@@ -94,6 +94,7 @@ import { RoCrateExportDialog } from './RoCrateExportDialog'
 import { FilePreviewDialog } from './FilePreviewDialog'
 import { PreviewPanel } from './PreviewPanel'
 import { SideChatPanel } from './SideChatPanel'
+import { isOfficialVendorId, isVendorModelMultimodal } from '../../../../shared/provider-registry'
 
 // Draft undo/redo coalescing window (ms) and stack depth cap.
 const DRAFT_UNDO_COALESCE_MS = 800
@@ -499,14 +500,22 @@ const WorkspacePage = ({
   const openProject = useNavigationStore((state) => state.openProject)
   const projects = useProjectStore((state) => state.projects)
   const openSettings = useSettingsStore((state) => state.openSettings)
-  const activeProviderId = useSettingsStore((state) => state.activeProviderId)
   const defaultPermissionProfile = useSettingsStore((state) => state.defaultPermissionProfile)
   const catalogSkills = useSettingsStore((state) => state.skills)
   const loadSkills = useSettingsStore((state) => state.loadSkills)
-  const supportsImageInput = useSettingsStore(
-    (state) =>
-      state.providers.find((provider) => provider.id === activeProviderId)?.supportsImageInput
-  )
+  // Whether this conversation can take an image at all. Two ways it can: the active model reads images
+  // itself, or a vision model is configured to turn them into text evidence the main model can read (the
+  // relay in `image-input-compatibility-owner`). The gate used to consult only the provider-level flag, so a
+  // DeepSeek account with a vision model configured was told "not configured for image input" while the
+  // main process was ready to relay — the disabled picker in the report.
+  const acceptsImageInput = useSettingsStore((state) => {
+    const provider = state.providers.find((candidate) => candidate.id === state.activeProviderId)
+    const modelReadsImages =
+      provider?.vendorId !== undefined && isOfficialVendorId(provider.vendorId)
+        ? isVendorModelMultimodal(provider.vendorId, state.activeModel ?? provider.model ?? '')
+        : provider?.supportsImageInput === true
+    return modelReadsImages || state.visionModel !== undefined
+  })
   const scopedProjectId = activeProjectId ?? ''
   const activeProject = useProjectStore((state) =>
     state.projects.find((project) => project.id === scopedProjectId)
@@ -1801,7 +1810,7 @@ const WorkspacePage = ({
   // Converts selected or pasted files into app-managed uploads before they appear in the composer.
   const stageAttachmentFiles = (files: File[]): void => {
     if (!canEditDraft || files.length === 0) return
-    if (files.some((file) => file.type.startsWith('image/')) && supportsImageInput !== true) {
+    if (files.some((file) => file.type.startsWith('image/')) && !acceptsImageInput) {
       setAttachmentError(t('ws.modelNotConfiguredForImage'))
       return
     }
@@ -2038,13 +2047,13 @@ const WorkspacePage = ({
     const branchInNewSession = options.branchInNewSession === true
     if (!canSendMessage) return
     // A blank New conversation has no source transcript to snapshot; ordinary Send already creates the
-    // fresh Session for that case.
-    if (branchInNewSession && !activeSession) return
+    // fresh Session for that case. The action is not offered there either (see hasBranchableTranscript), so
+    // this guard should never be the thing a user presses into.
     // Secondary synchronous guard: blocks a second Enter press that arrives before the state update
     // from the first barrier start triggers a re-render and disables canSendMessage.
     if (activeSession && barrierInFlightRef.current.has(activeSession.id)) return
     if (
-      supportsImageInput !== true &&
+      !acceptsImageInput &&
       attachments.some((attachment) => attachment.mimeType?.startsWith('image/'))
     ) {
       setAttachmentError(t('ws.modelNotConfiguredForImage'))
@@ -2286,7 +2295,7 @@ const WorkspacePage = ({
 
   // Branching snapshots the transcript through its last turn. A session that exists but holds no turn has
   // nothing to snapshot, and offering the action there produced a button that did nothing at all — the blank
-  // New conversation in the report.
+  // New conversation in the report. Send is one key away; the layout says the rest.
   const hasBranchableTranscript = (activeSession?.messages.length ?? 0) > 0
 
   const branchCurrentMessage = (forcedSkillIds: string[]): void => {

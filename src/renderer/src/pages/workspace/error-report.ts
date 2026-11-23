@@ -210,11 +210,10 @@ const buildLogsFieldText = (context: ErrorReportContext): string => {
   ].join('\n')
 }
 
-// A prefilled issue URL only exists on a forge; the product sends readers to its own site instead.
-const issueUrlFromParams = (params: URLSearchParams): string => {
-  void params
-  return APP.links.support
-}
+// The report goes to the product site, not to a forge. The fields stay in the query string so the page can
+// read them, and so the composed text is still decodable by a person who copies the link.
+const issueUrlFromParams = (params: URLSearchParams): string =>
+  `${APP.links.support}?${params.toString()}`
 
 const encodedParamValueLength = (key: string, value: string): number => {
   const serialized = new URLSearchParams([[key, value]]).toString()

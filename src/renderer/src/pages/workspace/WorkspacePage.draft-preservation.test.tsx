@@ -213,7 +213,15 @@ describe('WorkspacePage draft preservation', () => {
     })
     useSessionStore.setState({
       ...createInitialSessionState(),
-      sessions: [createSession('sess-a', 'proj-1'), createSession('sess-b', 'proj-1')],
+      sessions: [
+        // A transcript, because branching snapshots through the last turn: the page no longer offers the
+        // action on a session that holds nothing (that button did nothing at all).
+        {
+          ...createSession('sess-a', 'proj-1'),
+          messages: [userMessage('turn-1', 'summarise the dataset')]
+        },
+        createSession('sess-b', 'proj-1')
+      ],
       selectedSessionId: 'sess-a'
     })
     useSettingsStore.setState({ skills: [], defaultPermissionProfile: 'ask' })

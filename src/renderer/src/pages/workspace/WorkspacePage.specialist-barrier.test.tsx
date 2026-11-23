@@ -112,7 +112,19 @@ const createSession = (overrides: Partial<ChatSession> = {}): ChatSession => {
     title: 'sess-a',
     cwd: '/workspace/proj-1',
     status: 'idle',
-    messages: [],
+    // A real session holds at least one turn; branching (and the barrier it runs first) is reached from
+    // a conversation that has something to branch from.
+    messages: [
+      {
+        id: 'turn-1',
+        role: 'user' as const,
+        content: 'summarise the dataset',
+        status: 'complete' as const,
+        eventIds: [],
+        createdAt: 1,
+        updatedAt: 1
+      }
+    ],
     createdAt: now,
     updatedAt: now,
     ...overrides
@@ -310,7 +322,23 @@ describe('WorkspacePage fail-closed send gate', () => {
     const setSessionSpecialist = vi.fn(() => Promise.resolve({ contextReset: false }))
     useSessionStore.setState({
       ...createInitialSessionState(),
-      sessions: [createSession({ specialistId: 'spec-a', status: 'running' })],
+      sessions: [
+        {
+          ...createSession({ specialistId: 'spec-a', status: 'running' }),
+          // Branching needs a transcript to snapshot; an empty session no longer offers the action.
+          messages: [
+            {
+              id: 'turn-1',
+              role: 'user' as const,
+              content: 'summarise the dataset',
+              status: 'complete' as const,
+              eventIds: [],
+              createdAt: 1,
+              updatedAt: 1
+            }
+          ]
+        }
+      ],
       selectedSessionId: 'sess-a'
     })
     useSpecialistStore.setState({

@@ -82,9 +82,11 @@ describe('buildErrorReportText', () => {
 })
 
 describe('buildGithubIssueUrl', () => {
-  it('targets the bug report template with prefilled, decodable fields', () => {
+  // The report goes to the product site. Everything that made it usable in a forge link (fields encoded,
+  // decodable, bounded) still holds — only the destination changed, so a reader is not sent to a repository.
+  it('targets the product site with prefilled, decodable fields', () => {
     const url = new URL(buildGithubIssueUrl(baseContext))
-    expect(url.pathname).toBe('/naiyixi/PureScience/issues/new')
+    expect(url.origin).toBe('https://purescience.work')
     expect(url.searchParams.get('template')).toBe('bug_report.yml')
     expect(url.searchParams.get('what-happened')).toBe('Run failed: connection reset')
     expect(url.searchParams.get('app-version')).toBe('0.5.1')
