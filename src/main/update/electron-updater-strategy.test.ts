@@ -200,6 +200,7 @@ describe('ElectronUpdaterStrategy', () => {
     const status = await strategy.download()
 
     expect(status.error).toBe('private updater diagnostic detail')
+    expect(status.errorReason).toBe('unknown')
     const records = diagnosticRecords(log)
     expect(records).toEqual(
       expect.arrayContaining([
@@ -603,6 +604,9 @@ describe('ElectronUpdaterStrategy', () => {
     expect(starts).toBe(2)
     expect(status.state).toBe('error')
     expect(status.error).toContain('ERR_CONNECTION_RESET')
+    // The raw token stays in `error` (it is what a reader reports), and the reason is what the dialog
+    // translates — both fields are asserted so neither half can be dropped silently.
+    expect(status.errorReason).toBe('reset')
     const failed = diagnosticRecords(log).find((record) => record.outcome === 'failed')
     expect(failed).toMatchObject({
       errorCategory: 'connection-reset',
@@ -1685,6 +1689,9 @@ describe('ElectronUpdaterStrategy', () => {
 
     expect(status.state).toBe('error')
     expect(status.error).toContain('did not answer within 20 ms')
+    // The dialog has a sentence per reason; a budget that ran out is the timeout one, so the reader never
+    // sees the internal "did not answer within 20 ms" budget figure as the whole message.
+    expect(status.errorReason).toBe('timeout')
     // No GitHub retry: a request that never settles would only spend a second budget on the same silence.
     expect(updater.checkForUpdates).toHaveBeenCalledTimes(1)
   })

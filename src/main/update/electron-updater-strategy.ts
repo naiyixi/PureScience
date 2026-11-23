@@ -9,6 +9,7 @@ import { diagnosticErrorFields, type Logger } from '../logger'
 import { DEFAULT_DOWNLOAD_STALL_MS } from '../net/resilient-download'
 import { createUpdateCacheMaintenance, type InstallMarkerWriter } from './cache-maintenance'
 import { fetchManifest } from './manifest'
+import { describeUpdateFailureReason } from './failure-reason'
 import { describeInstallGateRefusal, type InstallGate, type UpdateStrategy } from './strategy'
 import type { ApplicationEventMap } from '../application-events'
 import { broadcastToRenderers } from '../renderer-broadcast'
@@ -449,7 +450,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       this.setStatus({
         ...this.status,
         state: 'error',
-        error: err instanceof Error ? err.message : 'Update error'
+        error: err instanceof Error ? err.message : 'Update error',
+        errorReason: describeUpdateFailureReason(err)
       })
     })
   }
@@ -498,7 +500,7 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       if (error instanceof UpdateCheckTimeout) {
         // A timeout is not "the feed was unreachable", so the GitHub retry would only spend a second
         // budget on the same silence. Name what happened and let the user retry by hand.
-        this.setStatus({ state: 'error', error: error.message })
+        this.setStatus({ state: 'error', error: error.message, errorReason: 'timeout' })
         operation.fail(error, { result: 'timeout' })
         await this.notesHydration
         return this.status
@@ -510,7 +512,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       if (!recovered) {
         this.setStatus({
           state: 'error',
-          error: error instanceof Error ? error.message : 'Update check failed'
+          error: error instanceof Error ? error.message : 'Update check failed',
+          errorReason: describeUpdateFailureReason(error)
         })
         operation.fail(error, { result: 'error' })
       }
@@ -767,7 +770,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
                 bytes: sample?.bytes ?? 0,
                 total: sample?.total ?? 0,
                 stalledMs: sample ? Date.now() - sample.at : 0
-              })
+              }),
+              errorReason: describeUpdateFailureReason(error)
             })
             operation.fail(error, {
               result: 'error',
@@ -793,7 +797,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
               bytes: sample?.bytes ?? 0,
               total: sample?.total ?? 0,
               stalledMs: sample ? Date.now() - sample.at : 0
-            })
+            }),
+            errorReason: describeUpdateFailureReason(error)
           })
           operation.fail(error, { result: 'error' })
         }
@@ -937,7 +942,8 @@ export class ElectronUpdaterStrategy implements UpdateStrategy {
       this.setStatus({
         ...this.status,
         state: 'error',
-        error: error instanceof Error ? error.message : 'Could not start the update installer.'
+        error: error instanceof Error ? error.message : 'Could not start the update installer.',
+        errorReason: describeUpdateFailureReason(error)
       })
       operation.fail(error, { result: 'error' })
       return this.status

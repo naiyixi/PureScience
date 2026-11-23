@@ -1448,6 +1448,25 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'update.downloadingPercent': '다운로드 중 {percent}%',
   'update.preparing': '업데이트 준비 중…',
   'update.failed': '업데이트 실패',
+  'update.failure.dns':
+    '업데이트 서버의 이름을 확인하지 못했습니다. 네트워크 또는 프록시를 확인한 뒤 다시 시도하세요.',
+  'update.failure.offline':
+    '이 컴퓨터가 현재 인터넷에 연결되어 있지 않습니다. 연결한 뒤 다시 시도하세요.',
+  'update.failure.networkChanged':
+    '업데이트를 요청하는 중에 네트워크가 바뀌어 이번 시도가 취소되었습니다. 연결이 안정된 뒤 다시 시도하세요.',
+  'update.failure.timeout':
+    '업데이트 서버가 제때 응답하지 않았습니다. 잠시 후 다시 시도하거나 설치 파일을 직접 내려받으세요.',
+  'update.failure.refused':
+    '업데이트 서버가 연결을 거부했습니다. 잠시 후 다시 시도하거나 설치 파일을 직접 내려받으세요.',
+  'update.failure.reset':
+    '전송이 끝나기 전에 업데이트 서버와의 연결이 끊어졌습니다. 다시 시도하세요. 내려받기는 처음부터 다시 시작됩니다.',
+  'update.failure.tls':
+    '업데이트 서버의 인증서가 승인되지 않아 아무것도 내려받지 않았습니다. 시스템 시각이나 HTTPS를 검사하는 프록시를 확인하세요.',
+  'update.failure.http':
+    '업데이트 서버가 오류로 응답했습니다. 잠시 후 다시 시도하거나 설치 파일을 직접 내려받으세요.',
+  'update.failure.unknown':
+    '업데이트가 실패했지만 이 앱은 원인을 밝히지 못했습니다. 다시 시도하거나 설치 파일을 직접 내려받으세요.',
+  'update.failure.detailLabel': '세부 정보',
   'update.applyNote':
     'PureScience가 백그라운드 작업을 중지하고 설치를 마치기 위해 종료됩니다. 잠시 걸릴 수 있습니다. 이 단계에서 앱을 다시 열지 마세요. 완료되면 자동으로 다시 시작됩니다.',
   'update.readyRestartHint':

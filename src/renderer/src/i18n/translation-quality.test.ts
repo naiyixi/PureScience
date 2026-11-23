@@ -160,7 +160,11 @@ const PROXY_KEYS = new Set<string>([
   'settings.egressDescription',
   'settings.egressEnabledHint',
   'settings.pemBundleHint',
-  'settings.caBundlePath'
+  'settings.caBundlePath',
+  // The update-failure sentences name the reader's proxy as the thing to check, which is proxy
+  // semantics — the same reason the settings keys above are listed.
+  'update.failure.dns',
+  'update.failure.tls'
 ])
 
 /** 认证令牌（credential）语境保留 token 的键 */

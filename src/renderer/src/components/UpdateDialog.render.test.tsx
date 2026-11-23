@@ -7,6 +7,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LanguageProvider, type Language } from '@/i18n'
+import { en } from '@/i18n/en'
+import { zh } from '@/i18n/zh'
 import { useUpdateStore } from '@/stores/update-store'
 import { UpdateDialog } from './UpdateDialog'
 import { APP } from '../../../shared/app-config'
@@ -201,6 +203,62 @@ describe('UpdateDialog', () => {
     const link = document.body.querySelector(`a[href="${APP.update.downloadPage}"]`)
     expect(link).not.toBeNull()
     expect(link?.textContent).toContain('Download manually')
+  })
+
+  // The dialog used to print whatever the updater threw, so a transport failure put a Chromium token
+  // (`net::ERR_*`) or a socket error on screen. Main now names the cause in a closed vocabulary; these
+  // three cases pin what the reader sees for each shape it can report.
+  it('names a transport failure in the reader’s language instead of printing the token', () => {
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: {
+        state: 'error',
+        current: '0.1.0',
+        latest: '0.2.0',
+        error: 'net::ERR_NAME_NOT_RESOLVED',
+        errorReason: 'dns'
+      }
+    })
+    renderDialog('zh')
+    const text = document.body.textContent ?? ''
+    expect(text).toContain(zh['update.failure.dns'])
+    expect(text).not.toContain('net::ERR_NAME_NOT_RESOLVED')
+    expect(text).not.toContain(en['update.failure.dns'])
+  })
+
+  it('names a cause in English for the default language', () => {
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: {
+        state: 'error',
+        current: '0.1.0',
+        latest: '0.2.0',
+        error: 'read ECONNRESET (stopped at 4.1 KB of 9.8 KB)',
+        errorReason: 'reset'
+      }
+    })
+    act(() => root.render(<UpdateDialog />))
+    const text = document.body.textContent ?? ''
+    expect(text).toContain(en['update.failure.reset'])
+    expect(text).not.toContain('ECONNRESET')
+  })
+
+  it('keeps the raw detail when main could not name the cause', () => {
+    useUpdateStore.setState({
+      isDialogOpen: true,
+      status: {
+        state: 'error',
+        current: '0.1.0',
+        latest: '0.2.0',
+        error: 'sha512 checksum mismatch',
+        errorReason: 'unknown'
+      }
+    })
+    act(() => root.render(<UpdateDialog />))
+    const text = document.body.textContent ?? ''
+    expect(text).toContain(en['update.failure.unknown'])
+    expect(text).toContain(en['update.failure.detailLabel'])
+    expect(text).toContain('sha512 checksum mismatch')
   })
 
   it('shows download size on the download button when totalBytes is present', () => {

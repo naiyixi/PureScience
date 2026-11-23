@@ -13,6 +13,27 @@ export type UpdateManifest = {
 export type UpdateState =
   'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'applying' | 'error'
 
+// Why an update failed, in a closed vocabulary the interface can translate.
+//
+// The status carries two strings on purpose and they answer different questions:
+//   * `error` keeps the raw sentence the updater produced (`read ECONNRESET`, `net::ERR_NAME_NOT_RESOLVED`).
+//     It is what a reader needs to report a failure, and it is deliberately kept OUT of the log — see
+//     `UpdateManifestError`'s note in main.
+//   * `errorReason` says which of a handful of things happened, so the dialog can put a sentence in the
+//     reader's own language in front of that detail instead of leading with an internal token.
+// Closed on both sides: main classifies into these literals (or leaves the field off), and the renderer
+// has one dictionary key per literal — no free text crosses the boundary.
+export type UpdateFailureReason =
+  | 'dns'
+  | 'offline'
+  | 'network-changed'
+  | 'timeout'
+  | 'refused'
+  | 'reset'
+  | 'tls'
+  | 'http'
+  | 'unknown'
+
 // The single status the main process broadcasts and the renderer store mirrors.
 export type UpdateStatus = {
   state: UpdateState
@@ -28,6 +49,9 @@ export type UpdateStatus = {
   downloadProgress?: import('./download-progress').DownloadProgress
   localPath?: string // set when state === 'ready'
   error?: string
+  // Set when main could name the cause; absent for failures main already phrases as a sentence
+  // (install-gate refusals, a failed rollback backup) and for callers that never classified.
+  errorReason?: UpdateFailureReason
   // How the renderer applies a ready update: open the downloaded installer (mac manual reinstall) or
   // restart into an in-place electron-updater install (win/linux). Set by the active strategy.
   applyKind?: 'installer' | 'restart'

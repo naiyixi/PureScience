@@ -2740,6 +2740,25 @@ export const en: Record<ZhKey, string> = {
   'update.downloadingPercent': 'Downloading {percent}%',
   'update.preparing': 'Preparing update…',
   'update.failed': 'Update failed',
+  'update.failure.dns':
+    'The name of the update server could not be resolved. Check the network or proxy, then try again.',
+  'update.failure.offline':
+    'This machine is not connected to the internet. Reconnect, then try again.',
+  'update.failure.networkChanged':
+    'The network changed while the update was being requested, so this attempt was dropped. Try again on a stable connection.',
+  'update.failure.timeout':
+    'The update server did not answer in time. Try again later, or download the installer manually.',
+  'update.failure.refused':
+    'The update server refused the connection. Try again later, or download the installer manually.',
+  'update.failure.reset':
+    'The connection to the update server was closed before the transfer finished. Try again — the download starts over.',
+  'update.failure.tls':
+    'The certificate of the update server was not accepted, so nothing was downloaded. Check the system clock, or a proxy that inspects HTTPS.',
+  'update.failure.http':
+    'The update server answered with an error. Try again later, or download the installer manually.',
+  'update.failure.unknown':
+    'The update failed, and this app could not name the cause. Try again, or download the installer manually.',
+  'update.failure.detailLabel': 'Details',
   'update.applyNote':
     'PureScience is stopping background tasks and will close to finish installing. The update may take a moment; please don’t reopen the app during this step. The updated app will reopen automatically.',
   // U2 (#17): this line sits next to the action button — say which action finishes the install, instead

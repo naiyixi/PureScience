@@ -11,6 +11,7 @@ import type { Logger } from '../logger'
 import { updateInstallerSavePanelOptions } from '../native-file-dialogs'
 import { downloadInstaller } from './downloader'
 import { describeUpdateFailure, fetchManifest, UpdateManifestError } from './manifest'
+import { describeUpdateFailureReason } from './failure-reason'
 import type { UpdateStrategy } from './strategy'
 import type { ApplicationEventMap } from '../application-events'
 import { broadcastToRenderers } from '../renderer-broadcast'
@@ -207,7 +208,8 @@ export class UpdateService implements UpdateStrategy {
       this.setStatus({
         state: 'error',
         current: this.currentVersion,
-        error: error instanceof Error ? error.message : 'Update check failed'
+        error: error instanceof Error ? error.message : 'Update check failed',
+        errorReason: describeUpdateFailureReason(error)
       })
       // Name the class of failure on the line itself: an unreachable feed, a feed answering non-2xx and an
       // unparseable payload all used to read as `errorCategory: 'error'`, which is a dead end for whoever
@@ -330,7 +332,8 @@ export class UpdateService implements UpdateStrategy {
           this.setStatus({
             ...this.status,
             state: 'error',
-            error: error instanceof Error ? error.message : 'Download failed'
+            error: error instanceof Error ? error.message : 'Download failed',
+            errorReason: describeUpdateFailureReason(error)
           })
           operation.fail(error, { result: 'error' })
         }

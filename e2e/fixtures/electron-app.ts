@@ -651,7 +651,11 @@ class ElectronAppHarness implements ElectronApp {
 
   async stubUpdateManifest(
     manifest: unknown,
-    artifacts: ReadonlyArray<{ fileName: string; base64: string }> = []
+    artifacts: ReadonlyArray<{ fileName: string; base64: string }> = [],
+    // A transport failure for the artifact request, in the shape Chromium produces (`net::ERR_*` inside
+    // the message). The manifest is still served, so the app reaches `available` and the download is the
+    // thing that fails — which is the state whose copy this fixture exists to put on screen.
+    failure: { artifactError?: string } = {}
   ): Promise<void> {
     await this.runningApplication.evaluate(
       ({ net }, payload) => {
@@ -663,6 +667,7 @@ class ElectronAppHarness implements ElectronApp {
             Uint8Array.from(Buffer.from(artifact.base64, 'base64')).buffer as ArrayBuffer
           ])
         )
+        const artifactError = payload.failure.artifactError
         // Read at call time by the app's fetch wrapper, so replacing the property is enough — no module
         // is reloaded and every other request keeps going to the real network stack.
         net.fetch = ((input: unknown, init?: unknown) => {
@@ -680,6 +685,9 @@ class ElectronAppHarness implements ElectronApp {
             )
           }
           const bytes = files.get(path.slice(path.lastIndexOf('/') + 1))
+          if (bytes && artifactError) {
+            return Promise.reject(new Error(artifactError))
+          }
           if (bytes) {
             return Promise.resolve(
               new Response(bytes, {
@@ -694,7 +702,7 @@ class ElectronAppHarness implements ElectronApp {
           return originalFetch(input as never, init as never)
         }) as unknown as typeof net.fetch
       },
-      { manifest, artifacts }
+      { manifest, artifacts, failure }
     )
   }
 

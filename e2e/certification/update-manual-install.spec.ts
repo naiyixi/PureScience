@@ -98,6 +98,10 @@ const QUIT_BEFORE_INSTALL = 'Quit PureScience before installing — a running ap
 const MAC_MANUAL_NOTE =
   'macOS builds are ad-hoc signed for now, so macOS refuses to replace a running app in place — download the installer and replace it by hand.'
 
+// The sentence a Chinese reader gets for a closed connection, copied from the dictionary on purpose (the
+// same rule as the three sentences above: this spec is about what the reader sees).
+const FAILURE_RESET_ZH = '与更新服务器的连接在传输完成前被中断。请重试——下载会从头开始。'
+
 test.skip(process.platform !== 'darwin', 'the ad-hoc replacement note is a macOS promise')
 
 // Which updater this launch gets. A Developer-ID-signed stable build is routed to the in-place updater,
@@ -223,4 +227,70 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
   )
 
   await rm(downloadDir, { recursive: true, force: true })
+})
+
+// The other half of the same chain: what the reader is told when the transfer itself fails. This state used
+// to print whatever Chromium threw — `net::ERR_CONNECTION_RESET` and nothing else — because the status
+// carried the updater's raw message and the dialog rendered it verbatim. Main now classifies the failure
+// into a closed vocabulary and the dialog translates that name, keeping the raw message only for causes it
+// cannot name.
+test('a failed download names the cause in the reader’s language instead of printing the transport token', async ({
+  app
+}) => {
+  const page = await app.completeOnboarding()
+  const host = ARTIFACTS[hostArtifactKey()]
+  const target = join(app.storageRoot, 'update-cert-failure', host.file)
+  await mkdir(dirname(target), { recursive: true })
+
+  // The message Chromium puts on a reset connection, verbatim: the token is what the classifier has to
+  // recognise, so the fixture rejects the artifact request with exactly that string.
+  const TRANSPORT_TOKEN = 'net::ERR_CONNECTION_RESET'
+  await app.stubUpdateManifest(
+    manifestWith(sha256Of(ARTIFACT_BYTES)),
+    [{ fileName: host.file, base64: ARTIFACT_BYTES.toString('base64') }],
+    { artifactError: TRANSPORT_TOKEN }
+  )
+  await app.stubSaveDialog(target)
+
+  // The reader's own language, chosen through the real picker before the dialog opens: the sentence under
+  // test only proves something if it is the dictionary under test that rendered.
+  await page.getByRole('button', { name: 'Model settings' }).click()
+  const settings = page.getByRole('dialog', { name: 'Settings' })
+  await settings
+    .getByRole('navigation', { name: 'Settings' })
+    .getByRole('button', { name: 'General', exact: true })
+    .click()
+  await settings.getByRole('combobox', { name: 'Language' }).click()
+  await page.getByRole('option', { name: '简体中文' }).click()
+  const settingsZh = page.getByRole('dialog', { name: '设置' })
+
+  const checkNow = settingsZh.getByRole('button', { name: '立即检查' })
+  await expect(checkNow).toBeEnabled({ timeout: 60_000 })
+  await checkNow.click()
+  const updateButton = settingsZh.getByRole('button', { name: `更新到 ${RELEASE_VERSION}` })
+  await expect(updateButton).toBeVisible({ timeout: 30_000 })
+  await updateButton.click()
+
+  const dialog = page.getByRole('dialog', { name: '有可用更新' })
+  await expect(dialog).toBeVisible()
+  const downloadButton = dialog.getByRole('button', { name: /^下载更新/ })
+  await expect(downloadButton).toBeEnabled()
+  await downloadButton.click()
+
+  // The resilient downloader spends its retry budget on a connection reset before it gives up (~31 s of
+  // backoff), so this waits — a shorter budget would assert against a download that is still retrying.
+  const alert = dialog.getByRole('alert')
+  await expect(alert).toBeVisible({ timeout: 100_000 })
+  await expect(alert).toContainText(FAILURE_RESET_ZH)
+  // The token is what the reader used to get. It must be nowhere in the dialog now.
+  await expect(dialog).not.toContainText(TRANSPORT_TOKEN)
+  // The way out is still offered, and nothing was installed.
+  await expect(dialog.getByRole('link', { name: '手动下载' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '打开安装程序' })).toHaveCount(0)
+
+  console.log(
+    `[update-cert] state=error reason=reset tokenOnScreen=${'no'} sentence=${'zh'} dialog=有可用更新`
+  )
+
+  await rm(dirname(target), { recursive: true, force: true })
 })

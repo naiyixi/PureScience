@@ -15,7 +15,7 @@ import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-valu
 import { cn } from '@/lib/utils'
 import { useUpdateStore } from '@/stores/update-store'
 import { APP } from '../../../shared/app-config'
-import { formatBytes } from '../../../shared/update'
+import { formatBytes, type UpdateFailureReason } from '../../../shared/update'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 // The update confirmation dialog: shows the target version and release notes so the user can decide
@@ -30,6 +30,20 @@ const knownDownloadSize = (totalBytes: number | undefined): number | undefined =
   typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
     ? totalBytes
     : undefined
+
+// One dictionary key per reason main can report. Typed as a full record so adding a reason without its
+// sentence is a type error rather than a dialog that silently falls back to the raw updater message.
+const FAILURE_KEYS = {
+  dns: 'update.failure.dns',
+  offline: 'update.failure.offline',
+  'network-changed': 'update.failure.networkChanged',
+  timeout: 'update.failure.timeout',
+  refused: 'update.failure.refused',
+  reset: 'update.failure.reset',
+  tls: 'update.failure.tls',
+  http: 'update.failure.http',
+  unknown: 'update.failure.unknown'
+} as const satisfies Record<UpdateFailureReason, string>
 
 const UpdateDialog = (): React.JSX.Element | null => {
   const { t, lang } = useLanguage()
@@ -175,9 +189,21 @@ const UpdateDialog = (): React.JSX.Element | null => {
 
             {dialogStatus.state === 'error' ? (
               <div className="mt-3" role="alert">
+                {/* Lead with a sentence in the reader's language: main names the cause in a closed
+                  vocabulary, and the raw updater message (a Chromium token or a socket error) is only
+                  repeated below when that vocabulary could not name it — the one case where the detail
+                  is all there is to go on. */}
                 <p className="text-xs text-destructive">
-                  {dialogStatus.error ?? t('update.failed')}
+                  {dialogStatus.errorReason
+                    ? t(FAILURE_KEYS[dialogStatus.errorReason])
+                    : (dialogStatus.error ?? t('update.failed'))}
                 </p>
+                {dialogStatus.errorReason === 'unknown' && dialogStatus.error ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    <span className="font-medium">{t('update.failure.detailLabel')}</span>{' '}
+                    <span className="break-words font-mono">{dialogStatus.error}</span>
+                  </p>
+                ) : null}
                 {/* Fallback when the in-app update fails (e.g. a blocked/failed in-place install): let the
                   user grab the installer by hand, mirroring the macOS manual-reinstall path. */}
                 <ExternalTextLink href={APP.update.downloadPage} className="mt-1 text-xs">

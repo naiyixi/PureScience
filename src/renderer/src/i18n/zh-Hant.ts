@@ -1376,6 +1376,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'update.downloadingPercent': '正在下載 {percent}%',
   'update.preparing': '正在準備更新…',
   'update.failed': '更新失敗',
+  'update.failure.dns': '無法解析更新伺服器的網域名稱。請檢查網路或代理後重試。',
+  'update.failure.offline': '這台機器目前沒有連上網際網路。請恢復連線後重試。',
+  'update.failure.networkChanged': '請求更新時網路發生切換，這次嘗試已放棄。請在網路穩定後重試。',
+  'update.failure.timeout': '更新伺服器沒有及時回應。請稍後重試，或手動下載安裝檔。',
+  'update.failure.refused': '更新伺服器拒絕了連線。請稍後重試，或手動下載安裝檔。',
+  'update.failure.reset': '與更新伺服器的連線在傳輸完成前中斷。請重試——下載會從頭開始。',
+  'update.failure.tls':
+    '未接受更新伺服器的憑證，因此沒有下載任何內容。請檢查系統時間，或會攔截 HTTPS 的代理。',
+  'update.failure.http': '更新伺服器回傳了錯誤。請稍後重試，或手動下載安裝檔。',
+  'update.failure.unknown': '更新失敗，本應用程式無法判斷原因。請重試，或手動下載安裝檔。',
+  'update.failure.detailLabel': '詳情',
   'update.applyNote':
     'PureScience 正在停止背景工作並將關閉以完成安裝。此過程可能需要片刻，期間請勿重新開啟應用程式；更新完成後會自動重新開啟。',
   'update.readyRestartHint': '下載完成 — 點「重新啟動以更新」即可結束並完成安裝。',

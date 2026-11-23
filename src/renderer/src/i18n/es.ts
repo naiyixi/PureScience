@@ -1501,6 +1501,25 @@ export const es: Partial<Record<ZhKey, string>> = {
   'update.downloadingPercent': 'Descargando {percent}%',
   'update.preparing': 'Preparando la actualización…',
   'update.failed': 'Error en la actualización',
+  'update.failure.dns':
+    'No se pudo resolver el nombre del servidor de actualizaciones. Comprueba la red o el proxy y vuelve a intentarlo.',
+  'update.failure.offline':
+    'Este equipo no está conectado a internet ahora mismo. Reconéctalo y vuelve a intentarlo.',
+  'update.failure.networkChanged':
+    'La red cambió mientras se solicitaba la actualización, así que este intento se descartó. Vuelve a intentarlo con una conexión estable.',
+  'update.failure.timeout':
+    'El servidor de actualizaciones no respondió a tiempo. Vuelve a intentarlo más tarde o descarga el instalador manualmente.',
+  'update.failure.refused':
+    'El servidor de actualizaciones rechazó la conexión. Vuelve a intentarlo más tarde o descarga el instalador manualmente.',
+  'update.failure.reset':
+    'La conexión con el servidor de actualizaciones se cerró antes de terminar la transferencia. Vuelve a intentarlo: la descarga empieza de nuevo.',
+  'update.failure.tls':
+    'No se aceptó el certificado del servidor de actualizaciones, así que no se descargó nada. Comprueba la hora del sistema o algún proxy que inspeccione HTTPS.',
+  'update.failure.http':
+    'El servidor de actualizaciones respondió con un error. Vuelve a intentarlo más tarde o descarga el instalador manualmente.',
+  'update.failure.unknown':
+    'La actualización falló y esta aplicación no pudo determinar la causa. Vuelve a intentarlo o descarga el instalador manualmente.',
+  'update.failure.detailLabel': 'Detalles',
   'update.applyNote':
     'PureScience está deteniendo las tareas en segundo plano y se cerrará para terminar la instalación. Puede tardar un momento; no vuelvas a abrir la aplicación durante este paso. La aplicación se reabrirá automáticamente.',
   'update.readyRestartHint':

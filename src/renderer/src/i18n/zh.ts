@@ -2548,6 +2548,17 @@ export const zh = {
   'update.downloadingPercent': '正在下载 {percent}%',
   'update.preparing': '正在准备更新…',
   'update.failed': '更新失败',
+  'update.failure.dns': '无法解析更新服务器的域名。请检查网络或代理后重试。',
+  'update.failure.offline': '这台机器当前没有连接到互联网。请恢复连接后重试。',
+  'update.failure.networkChanged': '请求更新时网络发生了切换，这次尝试已放弃。请在网络稳定后重试。',
+  'update.failure.timeout': '更新服务器没有及时响应。请稍后重试，或手动下载安装包。',
+  'update.failure.refused': '更新服务器拒绝了连接。请稍后重试，或手动下载安装包。',
+  'update.failure.reset': '与更新服务器的连接在传输完成前被中断。请重试——下载会从头开始。',
+  'update.failure.tls':
+    '没有接受更新服务器的证书，因此没有下载任何内容。请检查系统时间，或会拦截 HTTPS 的代理。',
+  'update.failure.http': '更新服务器返回了错误。请稍后重试，或手动下载安装包。',
+  'update.failure.unknown': '更新失败，本应用无法确定原因。请重试，或手动下载安装包。',
+  'update.failure.detailLabel': '详情',
   'update.applyNote':
     'PureScience 正在停止后台任务并将关闭以完成安装。此过程可能需要片刻，期间请勿重新打开应用；更新完成后会自动重新打开。',
   'update.readyRestartHint': '下载完成 — 点「重启以更新」即可退出并完成安装。',

@@ -1512,6 +1512,25 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'update.downloadingPercent': 'Téléchargement {percent} %',
   'update.preparing': 'Préparation de la mise à jour…',
   'update.failed': 'Échec de la mise à jour',
+  'update.failure.dns':
+    'Le nom du serveur de mise à jour n’a pas pu être résolu. Vérifiez le réseau ou le proxy, puis réessayez.',
+  'update.failure.offline':
+    'Cet ordinateur n’est pas connecté à Internet actuellement. Rétablissez la connexion, puis réessayez.',
+  'update.failure.networkChanged':
+    'Le réseau a changé pendant la demande de mise à jour ; cette tentative a été abandonnée. Réessayez lorsque la connexion est stable.',
+  'update.failure.timeout':
+    'Le serveur de mise à jour n’a pas répondu à temps. Réessayez plus tard ou téléchargez l’installateur manuellement.',
+  'update.failure.refused':
+    'Le serveur de mise à jour a refusé la connexion. Réessayez plus tard ou téléchargez l’installateur manuellement.',
+  'update.failure.reset':
+    'La connexion au serveur de mise à jour a été interrompue avant la fin du transfert. Réessayez : le téléchargement repart de zéro.',
+  'update.failure.tls':
+    'Le certificat du serveur de mise à jour n’a pas été accepté, rien n’a donc été téléchargé. Vérifiez l’horloge du système ou un proxy qui inspecte HTTPS.',
+  'update.failure.http':
+    'Le serveur de mise à jour a répondu par une erreur. Réessayez plus tard ou téléchargez l’installateur manuellement.',
+  'update.failure.unknown':
+    'La mise à jour a échoué et cette application n’a pas pu en déterminer la cause. Réessayez ou téléchargez l’installateur manuellement.',
+  'update.failure.detailLabel': 'Détails',
   'update.applyNote':
     'PureScience arrête les tâches en arrière-plan et va se fermer pour terminer l’installation. Cela peut prendre un moment ; veuillez ne pas rouvrir l’application pendant cette étape. L’application se rouvrira automatiquement.',
   'update.readyRestartHint':

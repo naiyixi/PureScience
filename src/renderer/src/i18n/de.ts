@@ -1512,6 +1512,25 @@ export const de: Partial<Record<ZhKey, string>> = {
   'update.downloadingPercent': 'Lade {percent} %',
   'update.preparing': 'Update wird vorbereitet…',
   'update.failed': 'Update fehlgeschlagen',
+  'update.failure.dns':
+    'Der Name des Update-Servers konnte nicht aufgelöst werden. Prüfen Sie Netzwerk oder Proxy und versuchen Sie es erneut.',
+  'update.failure.offline':
+    'Dieser Rechner ist derzeit nicht mit dem Internet verbunden. Stellen Sie die Verbindung wieder her und versuchen Sie es erneut.',
+  'update.failure.networkChanged':
+    'Während der Update-Anfrage hat das Netzwerk gewechselt, daher wurde dieser Versuch verworfen. Versuchen Sie es bei stabiler Verbindung erneut.',
+  'update.failure.timeout':
+    'Der Update-Server hat nicht rechtzeitig geantwortet. Versuchen Sie es später erneut oder laden Sie das Installationspaket manuell herunter.',
+  'update.failure.refused':
+    'Der Update-Server hat die Verbindung abgelehnt. Versuchen Sie es später erneut oder laden Sie das Installationspaket manuell herunter.',
+  'update.failure.reset':
+    'Die Verbindung zum Update-Server wurde vor Abschluss der Übertragung geschlossen. Versuchen Sie es erneut — der Download beginnt von vorn.',
+  'update.failure.tls':
+    'Das Zertifikat des Update-Servers wurde nicht akzeptiert, daher wurde nichts heruntergeladen. Prüfen Sie die Systemzeit oder einen Proxy, der HTTPS entschlüsselt.',
+  'update.failure.http':
+    'Der Update-Server hat mit einem Fehler geantwortet. Versuchen Sie es später erneut oder laden Sie das Installationspaket manuell herunter.',
+  'update.failure.unknown':
+    'Das Update ist fehlgeschlagen, und diese App konnte die Ursache nicht benennen. Versuchen Sie es erneut oder laden Sie das Installationspaket manuell herunter.',
+  'update.failure.detailLabel': 'Details',
   'update.applyNote':
     'PureScience stoppt Hintergrundaufgaben und wird geschlossen, um die Installation abzuschließen. Das kann einen Moment dauern; öffnen Sie die App währenddessen nicht erneut. Die App startet danach automatisch neu.',
   'update.readyRestartHint':
