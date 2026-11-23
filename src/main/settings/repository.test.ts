@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, normalize, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1336,5 +1336,71 @@ describe('settings repository — export attribution', () => {
     expect(cleared.exportAuthor).toBeUndefined()
     expect(cleared.exportAuthorKind).toBeUndefined()
     expect(cleared.exportAffiliation).toBeUndefined()
+  })
+})
+
+// Windows rejects `rename` onto a destination another process holds open (real-time scanner, search
+// indexer, a second instance). The write is fine and the condition clears, so the publication retries;
+// what these tests pin down is that the mutation lands, the temp file never survives, and a lock that
+// really does not clear is still reported rather than swallowed.
+describe('settings repository: publishing settings.json under a transient rename lock', () => {
+  const lockedError = (code: string): NodeJS.ErrnoException =>
+    Object.assign(new Error(`${code}: operation not permitted, rename`), { code })
+
+  const leftovers = async (root: string): Promise<string[]> =>
+    (await readdir(root)).filter((name) => name.endsWith('.tmp'))
+
+  it('retries a lock the platform reports as transient and lands the mutation', async () => {
+    const root = await createStorageRoot()
+    let locksLeft = 2
+    const renameFile = vi.fn(async (from: string, to: string) => {
+      if (locksLeft > 0) {
+        locksLeft -= 1
+        throw lockedError('EPERM')
+      }
+      await rename(from, to)
+    })
+    const repository = new SettingsRepository(root, { renameFile, retryDelaysMs: [0, 0, 0] })
+
+    await expect(repository.upsertProvider(provider())).resolves.toMatchObject({
+      providers: [expect.objectContaining({ id: 'p1' })]
+    })
+
+    // 换一个仓库读同一个根：验的是「写进文件了」，不是「进程里记住了」。
+    await expect(new SettingsRepository(root).getSettings()).resolves.toMatchObject({
+      providers: [expect.objectContaining({ id: 'p1' })]
+    })
+    expect(await leftovers(root)).toEqual([])
+    expect(warnSpy).toHaveBeenCalledTimes(2)
+    expect(warnSpy.mock.calls.map((call) => call[0])).toEqual([
+      'settings rename hit a transient lock; retrying',
+      'settings rename hit a transient lock; retrying'
+    ])
+  })
+
+  it('reports the lock that never clears instead of pretending the write landed', async () => {
+    const root = await createStorageRoot()
+    const renameFile = vi.fn(async () => {
+      throw lockedError('EPERM')
+    })
+    const repository = new SettingsRepository(root, { renameFile, retryDelaysMs: [0, 0, 0] })
+
+    await expect(repository.upsertProvider(provider())).rejects.toMatchObject({ code: 'EPERM' })
+    // 三档重试 + 最后一次原样抛出：窗口用尽就不再假装还能等到。
+    expect(renameFile).toHaveBeenCalledTimes(4)
+    expect(await leftovers(root)).toEqual([])
+  })
+
+  it('does not retry a failure that is not a lock', async () => {
+    const root = await createStorageRoot()
+    const renameFile = vi.fn(async () => {
+      throw lockedError('EXDEV')
+    })
+    const repository = new SettingsRepository(root, { renameFile, retryDelaysMs: [0, 0, 0] })
+
+    await expect(repository.upsertProvider(provider())).rejects.toMatchObject({ code: 'EXDEV' })
+    expect(renameFile).toHaveBeenCalledTimes(1)
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(await leftovers(root)).toEqual([])
   })
 })

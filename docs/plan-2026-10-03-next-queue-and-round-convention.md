@@ -1,5 +1,102 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十二、本轮追加（执行器，2026-11-24 05:3x–06:3x）—— 第二份读数 `failed`：两处 600 s 都停在同一个运行时包传输上；顺手补掉 settings.json 在 Windows 的瞬时锁
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == c647b188`（上一轮那笔纯 docs），`package.json` = 2.33.5，Latest 仍是 v2.33.4，
+  `v2.33.5` 在本地与远端都不存在。
+- 工作树 **44 个改动 + 4 个未跟踪仍是会话在制**（`ro-crate*`、`shared/citation/*`、`session-persistence/*`、
+  `prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`notebook/mcp-server`、`notebook/language-pack-fetch*`、
+  `RoCrateExportDialog*`、九份 i18n、`scripts/ci/prewarm-runtime-pack.mjs` …）⇒ **一个字节没碰**。
+- **会话已经在做同一个问题**：`notebook/language-pack-fetch.ts` 的工作区改动写着「机器级归档缓存，
+  Windows P0 每趟为同一份包重下 6 次 ×~100 MB」，并在注释里点名它将要写的证据档
+  （`docs/evidence/2026-11-24-windows-gate-second-reading-and-the-transfer-that-cost-it.md`，**本文件尚未落盘**）
+  ⇒ 那份证据与「包传输」这条线归会话，本轮不写、不抢；本轮只把自己的读数写进本档。
+
+### 一 第二份读数（现取，不是推断）
+
+run **`45228614662`**（`Nightly` / `workflow_dispatch` @ `6491120d`），作业 `build / Build windows-x64`
+（`137901271312`）`completed / success`，日志逐字：
+
+```
+2026-11-23T19:25:11.5751614Z electron P0 reading: failed
+```
+
+同一作业里 P0 自己的汇总行：`2 failed` / `123 passed (1.2h)` / `14 skipped`。**作业 success 而读数是 failed 不矛盾**：
+`build.yml` 的 `Run P0 Electron certification` 带 `continue-on-error: true`（第 421 行），闸门判的是那行读数，
+不是作业结论。仓里自己的仪器（`node scripts/windows-gate-streak.mjs --limit 10`）现取：
+
+```
+windows gate streak: 0/3 (not yet)
+  skipped: 45228614662 — reading=failed
+```
+
+⇒ 连续数归零。**两项读数（1/3 → 0/3）都落在同一个提交 `6491120d` 上**：量的是稳定性，不是两个版本。
+
+### 二 两处失败的定因（证据来自该 run 的 `p0-test-results-windows-x64` 附件，不是读日志猜的）
+
+两处都是 `Test timeout of 600000ms exceeded` 停在 `page.evaluate`：
+
+| spec | 位置 | app 进程日志里紧挨着的前两行 |
+| --- | --- | --- |
+| `artifact-replay.spec.ts` | `:58:5`（`:84:46` 的 `page.evaluate`） | `req-23373af0 …/win-64-manifest.json -> 200`，`req-c9dcee18 …/win-64-python-3.12.tar.zst -> 200` |
+| `notebook-run-risk-receipt.spec.ts` | `:18:5`（`:55:32` 的 `page.evaluate`） | 同一对请求（`req-8ff00c10` / `req-d75aa03f`） |
+
+`artifact-replay` 那条还留下了时长：`[ipc] ipc handler rejected { channel: 'artifacts:replay-version', durationMs: 565644.0577 }`
+—— 565 秒耗在同一条链路里，随后被收尾打断（`Environment lease manager is disposed.`，之后的
+`No handler registered for 'notebook-env:status'` / `notebook:state` 都是关窗后的回声，不是缺陷）。
+
+**这也不是 Windows 独有的**：同一趟 run 的 `build / Build macos-arm64`（`137901271647`）P0 也红了同两条
+（`2 failed`），且 `notebook-python-provisioned-runtime.spec.ts` 在那台机器上跑了 **15.3 分钟**（windows 那台
+被标成 `Slow test file (5.0m)`）。⇒ 判据是「运行时包取一次的成本超过一份 spec 的整个预算」，平台只决定快慢。
+（`Build macos-arm64` 的整作业红在 `Enforce platform certification`，是 P0 红的**后果**，别当第二处缺陷。）
+
+包传输这条线的修法归会话（机器级归档缓存 + `scripts/ci/prewarm-runtime-pack.mjs`），本轮不动。
+
+### 三 本轮交付：settings.json 的发布遇瞬时锁要重试，临时件不许留盘
+
+同一份附件里数出来的一处真缺陷（与上面那条不相交，逐条有日志）：
+
+- **现状读数**：257 份 `test-results/app-process/*.log` 里 **103 份**出现
+  `EPERM: operation not permitted, rename '…settings.json.<n>.tmp' -> '…settings.json'`（`code: 'EPERM'` 共 110 次），
+  调用点写的是 `[compute] legacy compute grant migration failed`。
+- **机制**：`SettingsRepository.writeSettings` 只有一次 `writeFile(tmp)` + `rename(tmp, settings.json)`，
+  **无重试、失败后不删临时件**。Windows 上目标文件被别的进程持有时 `rename` 会以 EPERM/EBUSY 拒绝，
+  于是这次 mutation 整笔丢失、还留一个 `.tmp`。
+- **同仓已有正解**：`src/main/settings/agent-config-files.ts` 的 `publishContentAddressedFile` 早就按
+  `TRANSIENT_RENAME_ERROR_CODES = EPERM|EBUSY|EEXIST|ENOTEMPTY` + 25/50/100/200/400 ms 退避重试。
+- **修法**：把同一条形状搬进 settings 仓（新私有方法 `publishSettingsFile`），重试用尽或非瞬时错误**原样抛出**
+  （调用方仍旧知道没落地），`finally` 里删临时件；真正重试过一次时打一行具名 warn
+  （`settings rename hit a transient lock; retrying`，带 `attempt` / `code` / `delayMs`）。
+  注入缝只有 `renameFile` / `retryDelaysMs` 两个可选构造参数，生产不传、行为与改动前逐字一致。
+- **守卫**：`repository.test.ts` 新增 3 例 —— ① 连续两次 EPERM 后落地（换一个仓库读同一个根，验的是写进文件），
+  ② 锁一直不放 ⇒ 4 次尝试后原样抛出且不留 `.tmp`，③ 非瞬时错误（`EXDEV`）⇒ 只尝试 1 次、不打 warn。
+- **读数**：`src/main/settings/repository.test.ts` **94 passed**（新增 3 例）；
+  `src/main/settings` 整目录 **98 files / 1518 passed / 3 skipped**；`npx eslint --no-cache` 两个改动文件 0 problem；
+  **变异**：把重试档写成 `undefined` ⇒ `2 failed`，把 `finally` 的 `rm` 摘掉 ⇒ `2 failed`，恢复后 94 passed。
+- **一处更深的口径（本轮不做，登记）**：`src/main/compute/ipc.ts:536` 另建了一个 `SettingsRepository(storageRoot)`
+  实例，与主实例**各有各的 saveQueue**，两个队列写同一个 `settings.json`。重试让这条碰撞不再致命，但
+  「一个文件两套写队列」本身是下一步该收的（要么并进主实例，要么那次 legacy 清理只读）。
+
+### 四 边界与具名未办
+
+1. 本轮**不打 tag**：闸门 0/3，且四件套（`README.md:35` / `README.en.md:35` / `CHANGELOG.md` 的 P0 段）
+   仍在会话工作区、写着「本版因 Windows 闸门暂缓」；会话那句自陈现在**需要按 0/3 重写**（不是「已量到绿」）。
+2. settings 这条修法**没有真机读数**：本机是 macOS，Windows 的 `rename` 锁无法在本机复现 ⇒ 完成证据是单测 +
+   变异 + 一份历史真机日志（103/257）。真机验证会在下一次 windows P0 的日志里出现：`[compute] legacy compute
+   grant migration failed` 这条若消失，就是它落地了 —— 下一轮读 windows 日志时顺手核这一条。
+3. 会话在制的 `language-pack-fetch.ts` 当前 `typecheck:node` 红在 `TS2304: Cannot find name 'sha256File'`，
+   `scripts/windows-release-workflows.test.ts` 红在 `TS2551 timeout_minutes`（工作区文件，未提交）⇒ 本地双 typecheck
+   此刻不是这台机器的判据，本轮的类型检查在**自己提交的隔离工作树**里取。
+
+### 五 下一轮第一步
+
+- ① 读 `6491120d` 之后**新一笔提交**的 windows P0 读数（会话把包缓存推上去之后），拿第 1 份「新树」读数；
+  连续数的计数只认读数行，不认作业结论。
+- ② 顺手核 `[compute] legacy compute grant migration failed` 是否从 windows 日志里消失（本轮修法的真机复核）。
+- ③ 闸门 3/3 之前不动 tag；四件套那三句要按当时的真实读数重写（0/3 时不能写「已量到绿」）。
+
 ## 二百一十一、本轮追加（执行器，2026-11-24 01:3x–）—— 闸门拿到第一份读数：`electron P0 reading: passed`（1/3）
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

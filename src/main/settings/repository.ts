@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, normalize, parse } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
@@ -1102,6 +1102,26 @@ const sanitizeRuntimeEnablement = (
   return Object.keys(result).length > 0 ? result : undefined
 }
 
+// Publishing settings.json replaces a destination that another process may hold open — on Windows a
+// real-time scanner, the search indexer, or a second app instance. `rename` then fails with EPERM/EBUSY
+// even though nothing about our write is wrong, and a single unretried attempt turned every such
+// collision into a lost mutation: one Windows P0 run logged
+// `EPERM: operation not permitted, rename '…settings.json.<n>.tmp' -> '…settings.json'` in 103 of its 257
+// spec processes, each leaving its temp file behind. The condition is transient, so retry it with
+// backoff (the shape agent-config-files.ts already uses for the same class of failure) and give up only
+// once the window is exhausted — the caller still sees the original error when it is.
+const SETTINGS_RENAME_RETRY_DELAYS_MS = [25, 50, 100, 200, 400] as const
+const TRANSIENT_RENAME_ERROR_CODES = new Set(['EPERM', 'EBUSY', 'EEXIST', 'ENOTEMPTY'])
+
+// Injection seams for the retry, so tests can drive the transient-failure branches without touching the
+// filesystem's locking. Production passes neither and gets the module-level defaults above.
+type SettingsWriteOptions = {
+  // Narrower than `typeof rename` on purpose: this only ever moves the temp path we just wrote, and the
+  // narrow signature keeps the test seam free of PathLike.
+  renameFile?: (from: string, to: string) => Promise<void>
+  retryDelaysMs?: readonly number[]
+}
+
 // Owns durable reads/writes of the single settings.json document. Writes are serialized through a
 // queue and made atomic (temp + rename); an unreadable file falls back to empty settings so the app
 // still boots into onboarding. All secret handling lives above this layer (crypto.ts / service.ts);
@@ -1110,7 +1130,10 @@ class SettingsRepository {
   private saveQueue: Promise<void> = Promise.resolve()
   private writeSequence = 0
 
-  constructor(private readonly storageDir: string) {}
+  constructor(
+    private readonly storageDir: string,
+    private readonly writeOptions: SettingsWriteOptions = {}
+  ) {}
 
   private get settingsPath(): string {
     return join(this.storageDir, SETTINGS_FILE)
@@ -1931,7 +1954,8 @@ class SettingsRepository {
     return run
   }
 
-  // Writes through a unique temp file, then atomically replaces settings.json.
+  // Writes through a unique temp file, then atomically replaces settings.json. The temp file is removed
+  // whatever happens: a rename that never succeeded used to leave one behind per failed mutation.
   private async writeSettings(settings: StoredSettings): Promise<void> {
     await mkdir(this.storageDir, { recursive: true })
 
@@ -1939,7 +1963,36 @@ class SettingsRepository {
     const temporaryPath = `${this.settingsPath}.${Date.now()}-${this.writeSequence}.tmp`
 
     await writeFile(temporaryPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8')
-    await rename(temporaryPath, this.settingsPath)
+    try {
+      await this.publishSettingsFile(temporaryPath)
+    } finally {
+      await rm(temporaryPath, { force: true }).catch(() => undefined)
+    }
+  }
+
+  // Renames the temp file over settings.json, retrying the transient lock failures described above. A
+  // non-transient error, or a transient one outliving the retry window, is rethrown unchanged so the
+  // caller still learns the write did not land.
+  private async publishSettingsFile(temporaryPath: string): Promise<void> {
+    const renameFile = this.writeOptions.renameFile ?? rename
+    const retryDelaysMs = this.writeOptions.retryDelaysMs ?? SETTINGS_RENAME_RETRY_DELAYS_MS
+
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await renameFile(temporaryPath, this.settingsPath)
+        return
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException | undefined)?.code
+        const retryDelayMs = retryDelaysMs[attempt]
+        if (!TRANSIENT_RENAME_ERROR_CODES.has(code ?? '') || retryDelayMs === undefined) throw error
+        log.warn('settings rename hit a transient lock; retrying', {
+          attempt: attempt + 1,
+          code,
+          delayMs: retryDelayMs
+        })
+        await new Promise<void>((resolve) => setTimeout(resolve, retryDelayMs))
+      }
+    }
   }
 }
 
