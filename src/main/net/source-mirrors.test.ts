@@ -87,6 +87,51 @@ describe('downloadWithMirrorFallback', () => {
     expect(removeFile).toHaveBeenCalledWith('/tmp/x.part')
   })
 
+  it('asks our own host before the origin for the runtime bundle, and never splices its partials', async () => {
+    const runtime =
+      'https://github.com/naiyixi/PureScience/releases/download/runtime-v1/win-64-python-3.12.tar.zst'
+    const download = vi.fn().mockResolvedValue('/tmp/x')
+    const removeFile = vi.fn().mockResolvedValue(undefined)
+
+    const result = await downloadWithMirrorFallback(runtime, '/tmp/x', opts, {
+      download,
+      removeFile
+    })
+
+    expect(download.mock.calls[0]?.[0]).toBe(
+      'https://purescience.work/download/runtime/win-64-python-3.12.tar.zst'
+    )
+    expect(result.via).toBe('purescience.work')
+    // The origin was never asked: a host we publish is the fast hop, not a last resort.
+    expect(download).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls through to the origin when our own host fails, and only then to a third party', async () => {
+    const runtime =
+      'https://github.com/naiyixi/PureScience/releases/download/runtime-v1/win-64-python-3.12.tar.zst'
+    const tried: string[] = []
+    const download = vi.fn(async (url: string) => {
+      tried.push(url)
+      if (url.startsWith('https://purescience.work/')) throw new Error('404')
+      if (url === runtime) throw new Error('Connection timed out')
+      if (url.startsWith('https://gh-proxy.com/')) throw new Error('502')
+      return '/tmp/x'
+    })
+
+    const result = await downloadWithMirrorFallback(runtime, '/tmp/x', opts, {
+      download,
+      removeFile: async () => undefined
+    })
+
+    expect(tried).toEqual([
+      'https://purescience.work/download/runtime/win-64-python-3.12.tar.zst',
+      runtime,
+      `https://gh-proxy.com/${runtime}`,
+      `https://ghfast.top/${runtime}`
+    ])
+    expect(result.via).toBe('ghfast.top')
+  })
+
   it('does not fall back at all without a digest — a loud failure beats quiet wrong data', async () => {
     const download = vi.fn().mockRejectedValue(new Error('Connection timed out'))
 
@@ -131,6 +176,37 @@ describe('the GitHub release-asset rule (measured 2026-10-17)', () => {
         host: 'ghfast.top'
       }
     ])
+  })
+
+  it('puts our own host first for the runtime bundle, ahead of the third-party proxies', () => {
+    // The runtime bundle is the one release we publish twice: byte-identically on our own host. It is
+    // listed first because we can vouch for those bytes, and because a first run in China should not have
+    // to fail against github.com and a proxy before reaching a copy we control.
+    const runtime =
+      'https://github.com/naiyixi/PureScience/releases/download/runtime-v1/osx-arm64-python-3.12.tar.zst'
+    expect(mirrorCandidatesFor(runtime).map((candidate) => candidate.host)).toEqual([
+      'purescience.work',
+      'gh-proxy.com',
+      'ghfast.top'
+    ])
+    expect(mirrorCandidatesFor(runtime)[0].url).toBe(
+      'https://purescience.work/download/runtime/osx-arm64-python-3.12.tar.zst'
+    )
+  })
+
+  it('does not invent a self-host path for a runtime URL it cannot mirror exactly', () => {
+    // Nested paths and query strings have no twin on our host; a guessed URL would 404 and read as an
+    // outage, and a query string could be carrying a token.
+    expect(
+      mirrorCandidatesFor(
+        'https://github.com/naiyixi/PureScience/releases/download/runtime-v1/nested/x.tar.zst'
+      ).map((candidate) => candidate.host)
+    ).toEqual(['gh-proxy.com', 'ghfast.top'])
+    expect(
+      mirrorCandidatesFor(
+        'https://github.com/naiyixi/PureScience/releases/download/runtime-v1/x.tar.zst?token=secret'
+      )
+    ).toEqual([])
   })
 
   it('offers nothing for a GitHub URL that is not a release asset', () => {

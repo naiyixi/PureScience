@@ -62,6 +62,22 @@ const MIRROR_RULES: MirrorRule[] = [
   },
   {
     from: 'github.com',
+    // The notebook runtime bundle, served byte-identically from our own host. Ordered before the
+    // third-party proxies because it is the copy we publish and can vouch for, and it is not rate-limited
+    // by anyone else's policy. Only the exact `runtime-v1` asset path is rewritten: the rest of the
+    // repository's releases have no twin over there, and a 404 from a guessed path would look like an
+    // outage to a first run.
+    rewrite: (url) => {
+      const match = /^\/naiyixi\/PureScience\/releases\/download\/runtime-v1\/([^/]+)$/.exec(
+        url.pathname
+      )
+      if (!match) return []
+      if (url.search !== '' || url.username !== '' || url.password !== '') return []
+      return [`https://purescience.work/download/runtime/${match[1]}`]
+    }
+  },
+  {
+    from: 'github.com',
     // Release assets only. This is the one GitHub URL shape whose bytes the caller can check against a
     // published digest (our weight manifest carries one); a repo page or an API call has nothing to verify
     // against, and a query string could be carrying a token — both are left alone rather than guessed at.
@@ -85,6 +101,23 @@ export const mirrorCandidatesFor = (rawUrl: string): MirrorCandidate[] => {
     .flatMap((rule) => rule.rewrite(url))
     .map((candidate) => ({ url: candidate, host: new URL(candidate).hostname }))
 }
+
+// The one host we publish ourselves. Its bytes are ours, so it may be asked BEFORE the origin: in China the
+// origin is the slow hop (a first run spent 30 s of manifest timeout before reaching a proxy), and a mirror
+// we control carries the same trust as the origin rather than less. Third-party mirrors stay strictly
+// after the origin, because trusting them is exactly what the digest check and the fallback ordering are
+// there to limit.
+export const VENDOR_MIRROR_HOSTS: readonly string[] = ['purescience.work']
+
+export const isVendorMirrorHost = (host: string): boolean => VENDOR_MIRROR_HOSTS.includes(host)
+
+/** Candidates we host, in table order: safe to ask before the origin. */
+export const vendorMirrorCandidatesFor = (rawUrl: string): MirrorCandidate[] =>
+  mirrorCandidatesFor(rawUrl).filter((candidate) => isVendorMirrorHost(candidate.host))
+
+/** Everyone else: only asked after the origin has failed. */
+export const thirdPartyMirrorCandidatesFor = (rawUrl: string): MirrorCandidate[] =>
+  mirrorCandidatesFor(rawUrl).filter((candidate) => !isVendorMirrorHost(candidate.host))
 
 export type MirrorFallbackResult = {
   path: string
@@ -112,10 +145,21 @@ export const downloadWithMirrorFallback = async (
   const download = options.download ?? resilientDownload
   const remove = options.removeFile ?? (async (path: string) => rm(path, { force: true }))
 
+  const vendorFirst = opts.expectedSha256 ? vendorMirrorCandidatesFor(url) : []
+  for (const candidate of vendorFirst) {
+    try {
+      return { path: await download(candidate.url, destPath, opts), via: candidate.host }
+    } catch {
+      // Our own host is allowed to fail like anyone else; the origin is the next thing to ask, and its
+      // answer decides whether a third party is ever involved.
+      await remove(`${destPath}.part`).catch(() => undefined)
+    }
+  }
+
   try {
     return { path: await download(url, destPath, opts), via: 'origin' }
   } catch (originError) {
-    const candidates = opts.expectedSha256 ? mirrorCandidatesFor(url) : []
+    const candidates = opts.expectedSha256 ? thirdPartyMirrorCandidatesFor(url) : []
     if (candidates.length === 0) throw originError
 
     // The failed attempt may have left a partial file for THIS origin's bytes. Resuming it against a

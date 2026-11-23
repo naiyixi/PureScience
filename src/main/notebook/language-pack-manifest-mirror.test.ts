@@ -31,6 +31,29 @@ describe('the runtime manifest walks the same hosts the archive download does', 
     expect(result).toEqual({ text: '{"schema":1}', via: 'github.com' })
   })
 
+  it('asks our own host before the origin, because its bytes are ours and it is the fast hop', async () => {
+    // A China first run used to spend the whole 30 s manifest timeout against github.com before reaching any
+    // mirror. The vendor copy is not a third party: it is the same bytes we publish, so it may be asked
+    // first, and `via` still names it so the progress line says where the document came from.
+    const asked: string[] = []
+    const result = await fetchManifestText(MANIFEST_URL, undefined, {
+      candidates: () => [
+        {
+          url: 'https://purescience.work/download/runtime/osx-arm64-manifest.json',
+          host: 'purescience.work'
+        },
+        { url: PROXY_URL, host: 'gh-proxy.com' }
+      ],
+      fetchStandard: async (url) => {
+        asked.push(url)
+        return { ok: true, status: 200, text: async () => `{"served":"${url}"}` }
+      }
+    })
+
+    expect(asked).toEqual(['https://purescience.work/download/runtime/osx-arm64-manifest.json'])
+    expect(result.via).toBe('purescience.work')
+  })
+
   it('falls back to a mirror when the origin does not answer, and names the host that served it', async () => {
     const asked: string[] = []
     const result = await fetchManifestText(MANIFEST_URL, undefined, {

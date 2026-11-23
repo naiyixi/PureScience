@@ -4,7 +4,11 @@ import { join } from 'node:path'
 
 import type { DownloadProgress } from '../../shared/download-progress'
 import { netFetchStandard } from '../skills/net-fetch'
-import { downloadWithMirrorFallback, mirrorCandidatesFor } from '../net/source-mirrors'
+import {
+  downloadWithMirrorFallback,
+  isVendorMirrorHost,
+  mirrorCandidatesFor
+} from '../net/source-mirrors'
 
 import {
   manifestUrl,
@@ -99,9 +103,16 @@ export const fetchManifestText = async (
   deps: ManifestFetchDeps = {}
 ): Promise<{ text: string; via: string }> => {
   const fetchStandard = deps.fetchStandard ?? netFetchStandard
+  const all = (deps.candidates ?? mirrorCandidatesFor)(url)
+  // Our own host goes FIRST (it carries the same trust as the origin and is the fast hop in China), then the
+  // origin, then third parties. A manifest we serve ourselves must not queue behind a 30 s timeout against a
+  // host that answers nowhere.
+  const vendor = all.filter((candidate) => isVendorMirrorHost(candidate.host))
+  const thirdParty = all.filter((candidate) => !isVendorMirrorHost(candidate.host))
   const candidates: { url: string; host: string }[] = [
+    ...vendor,
     { url, host: new URL(url).hostname },
-    ...(deps.candidates ?? mirrorCandidatesFor)(url)
+    ...thirdParty
   ]
   const failures: string[] = []
   for (const candidate of candidates) {
