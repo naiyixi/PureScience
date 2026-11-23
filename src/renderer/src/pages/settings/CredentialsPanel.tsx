@@ -16,7 +16,7 @@ import {
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { GitHubMark } from '@/components/GitHubStarBadge'
+import { GitHubMark } from '@/components/GitHubMark'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import {
   dialogDescriptionClassName,
@@ -61,7 +61,7 @@ const serviceLabel = (t: (key: TranslationKey) => string, serviceId: CredentialS
 
 // Service identity chips. Built-in scientific services have no bundled brand assets (the app never
 // ships third-party marks it does not own), so each row gets a neutral glyph that reads as the
-// service's kind; GitHub is the one official mark we carry (inline octocat, see GitHubStarBadge).
+// service's kind; GitHub is the one official mark we carry (inline octocat, see GitHubMark).
 const SERVICE_ICONS: Record<CredentialServiceId, React.ComponentType<{ className?: string }>> = {
   aws: Cloud,
   github: GitHubMark,

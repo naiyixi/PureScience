@@ -10,7 +10,6 @@ import { createInitialSessionState, useSessionStore } from '@/stores/session-sto
 import { createInitialSettingsState, useSettingsStore } from '@/stores/settings-store'
 import { HomePage } from './HomePage'
 
-vi.mock('@/components/GitHubStarBadge', () => ({ GitHubStarBadge: () => null }))
 vi.mock('@/components/UpdateCapsule', () => ({ UpdateCapsule: () => null }))
 
 let container: HTMLDivElement
