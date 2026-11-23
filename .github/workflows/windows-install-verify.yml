@@ -4,18 +4,23 @@ name: Windows Install Verify
 # 能不能点名、一键重装、再升级。桌面截图在 CI 上没有意义（服务会话），所以判据是「装完的二进制真的起来」+ 它自己的
 # /api/v1 读数，逐段落 JSON。
 #
-# 只手动触发：这会下载并运行安装包，不该在每次 push 上重复烧分钟数。默认取相邻两个已发布版本，正好试出「升级」。
+# 不在每次 push 上跑：这会下载并运行安装包，重复烧分钟数换不到新信息。但**只手动触发也不行** ——
+# 2026-11-22 回查发现它最后一次运行是 11-19，而且输入默认值还写死在 `v2.29.0 → v2.30.2`：
+# 判据和它的夹具一起过期，谁都看不出来。现在改成每周一次 + 版本留空即自动取**最新两个已发布版本**，
+# 于是「装旧版 → 装机 → 读 readiness → 装坏 → 一键重装 → 升级 → 点名」这条链每周对着真产品重跑一遍。
 on:
+  schedule:
+    - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       old_version:
-        description: '先装的旧版本（含 v 前缀；必须是真存在的 release）'
-        required: true
-        default: 'v2.29.0'
+        description: '先装的旧版本（含 v 前缀）；留空 = 自动取倒数第二个已发布版本'
+        required: false
+        default: ''
       new_version:
-        description: '覆盖升级到的新版本（含 v 前缀，例如 v2.30.2）；build_from_source 为 true 时忽略'
-        required: true
-        default: 'v2.30.2'
+        description: '覆盖升级到的新版本（含 v 前缀）；留空 = 自动取最新已发布版本'
+        required: false
+        default: ''
       build_from_source:
         description: 'true = 当前提交现打一个 Windows 安装包当「新版本」（验证未发布的修复）'
         type: boolean
@@ -52,6 +57,26 @@ jobs:
       OLD_VERSION: ${{ inputs.old_version }}
       NEW_VERSION: ${{ inputs.new_version }}
     steps:
+      # 版本对必须来自仓库状态，不是来自写死的默认值：写死的两个版本在不远的将来会变成
+      # 「装 2.29 → 升 2.30」，而产品早就不在那儿了，跑绿也只能证明历史。
+      - name: Resolve the two versions to drill
+        shell: pwsh
+        run: |
+          if ($env:OLD_VERSION -and $env:NEW_VERSION) {
+            Write-Host "pinned by input: $env:OLD_VERSION -> $env:NEW_VERSION"
+            exit 0
+          }
+          $tags = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=10" |
+            ConvertFrom-Json |
+            Where-Object { -not $_.draft } |
+            ForEach-Object { $_.tag_name }
+          if ($tags.Count -lt 2) { throw "need two published releases to drill an upgrade, found $($tags.Count)" }
+          $new = if ($env:NEW_VERSION) { $env:NEW_VERSION } else { $tags[0] }
+          $old = if ($env:OLD_VERSION) { $env:OLD_VERSION } else { $tags[1] }
+          Write-Host "resolved from the repository: $old -> $new"
+          "OLD_VERSION=$old" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "NEW_VERSION=$new" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
