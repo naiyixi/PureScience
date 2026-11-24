@@ -85,6 +85,39 @@ describe('notebook-env-store', () => {
     expect(api.getStatus).toHaveBeenCalledTimes(1)
   })
 
+  it('does not surface a settling-tick re-read that rejects because the main process is gone', async () => {
+    // The interrupted-run journey quits the app mid-provision, so a 'error' tick lands while main is
+    // already shutting down; the follow-up read then rejects with "No handler registered for
+    // 'notebook-env:status'". That used to be an unhandled rejection — a renderer page error, which the
+    // certification gate counts as a product failure although the state being refreshed no longer
+    // exists. The read stays best-effort: the status a window shows after a restart comes from init().
+    let reads = 0
+    const { emit } = installApi({
+      getStatus: vi.fn(async () => {
+        reads += 1
+        if (reads === 1) return READY
+        throw new Error("Error invoking remote method 'notebook-env:status'")
+      })
+    })
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      await useNotebookEnvStore.getState().init()
+      await emit({ phase: 'error', message: 'Provisioning failed', progress: 0 })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+
+    expect(reads).toBeGreaterThanOrEqual(2)
+    expect(rejections).toEqual([])
+    // The last authoritative read still stands; a dropped refresh must not blank the panel.
+    expect(useNotebookEnvStore.getState().status).toEqual(READY)
+  })
+
   it('treats a re-read of an unchanged status as a no-op (no notification, same state object)', async () => {
     // The real bridge answers every re-read with a fresh object holding the same values, which is what
     // a notification-triggered re-read loop feeds on. Nothing changed ⇒ nothing may be notified.

@@ -292,10 +292,19 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
           // app — where the bridge answers fastest — that overflowed React's update-depth guard (error
           // #185). Progress itself already carries what the banner shows, so nothing is lost in between.
           if (progress.phase === 'done' || progress.phase === 'error') {
-            void bridge.getStatus().then((status) => {
-              applyUi({ status })
-              applyRecoveryBlocks(status)
-            })
+            // Best-effort re-read. A settling tick can arrive while the main process is already gone —
+            // the interrupted-run journey quits the app mid-provision, so 'error' lands during shutdown
+            // and this call rejects with "No handler registered for 'notebook-env:status'". An
+            // unhandled rejection there is a renderer page error, which the certification gate counts as
+            // a product failure even though the state it was refreshing no longer exists. The status a
+            // window shows after a restart comes from init(), so dropping this one read loses nothing.
+            void bridge
+              .getStatus()
+              .then((status) => {
+                applyUi({ status })
+                applyRecoveryBlocks(status)
+              })
+              .catch(() => undefined)
           }
         }
         // Coalesce the main process's broadcast burst into one write per macrotask. The listener must not
