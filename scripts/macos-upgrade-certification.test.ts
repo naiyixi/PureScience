@@ -12,6 +12,8 @@ import {
   parseUpdateConfig,
   archMismatch,
   bundleVersion,
+  CHECK_TIMEOUT_MS,
+  DOWNLOAD_TIMEOUT_MS,
   findBundle,
   normaliseArch,
   normaliseVersionInput,
@@ -19,7 +21,8 @@ import {
   runProcess,
   seedUserDataMarker,
   userDataDir,
-  waitForVersionOnDisk
+  waitForVersionOnDisk,
+  withTimeout
 } from './macos-upgrade-certification.mjs'
 
 // The drill itself needs a real released .app and the network, so what is pinned here is the part that
@@ -323,5 +326,59 @@ describe('waiting for the release to publish', () => {
   it('proceeds on anything that is not "up-to-date" — including a named error', () => {
     expect(feedWaitDecision({ state: 'available', latest: '2.33.3' }, '2.33.3')).toBe('proceed')
     expect(feedWaitDecision({ state: 'error', error: 'timeout' }, '2.33.3')).toBe('proceed')
+  })
+})
+
+// The timeout that gave the wrong reason. On the published v2.33.5 lane both architectures died with
+// "Timed out after 120000 ms: update.download" while the download had actually been given 15 minutes and
+// had used 901 s of them (run 45351488221, jobs 138388881425 / 138388881615). Whoever read that line went
+// after a two-minute slowdown; nothing had run out at two minutes. These tests pin the contract the message
+// has to keep: the budget it names is the budget it used, and a caller can make it say what was seen.
+describe('a timeout names the budget it used', () => {
+  const never = (): Promise<never> => new Promise<never>(() => {})
+
+  it('reports the budget it was given, not a constant from somewhere else', async () => {
+    await expect(withTimeout(never(), 'update.download', { timeoutMs: 40 })).rejects.toThrow(
+      'Timed out after 40 ms (0 s): update.download'
+    )
+  })
+
+  it('keeps the download budget far larger than a check, so the two cannot be confused', () => {
+    // The mislabeled red read 120000 while 900000 was in force — a 7.5× gap is what made the line
+    // believable and wrong. The gap stays, and it is asserted here so a future "tighten the timeout"
+    // edit cannot quietly make a 296 MB transfer fail at two minutes.
+    expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(CHECK_TIMEOUT_MS * 5)
+  })
+
+  it('appends what the app last reported, so a red names bytes instead of only waiting', async () => {
+    const error = await withTimeout(never(), 'update.download', {
+      timeoutMs: 40,
+      describe: async () =>
+        'after 901s the app reported {"state":"downloading","progress":14,"downloadedBytes":41398272}'
+    }).catch((caught: unknown) => caught as Error)
+    expect(error.message).toContain('Timed out after 40 ms (0 s): update.download')
+    expect(error.message).toContain('"progress":14')
+    expect(error.message).toContain('"downloadedBytes":41398272')
+  })
+
+  it('does not lose the timeout when the reading itself fails', async () => {
+    const error = await withTimeout(never(), 'update.download', {
+      timeoutMs: 40,
+      describe: async () => {
+        throw new Error('Target page, context or browser has been closed')
+      }
+    }).catch((caught: unknown) => caught as Error)
+    expect(error.message).toContain('Timed out after 40 ms (0 s): update.download')
+    expect(error.message).toContain('the last reading was unreadable')
+  })
+
+  it('passes a value through untouched and does not fire the timer afterwards', async () => {
+    const value = await withTimeout(Promise.resolve({ state: 'ready' }), 'update.download', {
+      timeoutMs: 40
+    })
+    expect(value).toEqual({ state: 'ready' })
+    // A settled promise that later hits its timer would reject an already-resolved promise, which surfaces
+    // as an unhandled rejection in the lane rather than as a failure with a name.
+    await new Promise((resolveWait) => setTimeout(resolveWait, 80))
   })
 })

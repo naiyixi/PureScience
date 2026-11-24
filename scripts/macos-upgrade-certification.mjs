@@ -24,18 +24,43 @@ const DOWNLOAD_TIMEOUT_MS = 900_000
 const APPLY_TIMEOUT_MS = 240_000
 const HANDOVER_TIMEOUT_MS = 240_000
 
-const withTimeout = (promise, description) =>
+// Every wait names the budget it actually used. This function used to pick the budget from the
+// description (`description.includes('download') ? 900 s : 120 s`) while the message printed
+// `CHECK_TIMEOUT_MS` unconditionally — so a download that ran out of its 15 minutes reported
+// "Timed out after 120000 ms: update.download" (measured on run 45351488221, job 138388881425: the
+// download started 10:53:26 and the drill gave up at 11:08:27, 901 s later). A message that names a
+// budget seven times smaller than the one used sends the reader after a slowdown that never happened.
+// The budget is now an argument, and the caller may hand over a `describe` so the timeout says what
+// the app had reported when it was still waiting (bytes, progress) instead of only that it waited.
+const withTimeout = (promise, description, { timeoutMs = CHECK_TIMEOUT_MS, describe } = {}) =>
   new Promise((resolvePromise, rejectPromise) => {
-    const timer = setTimeout(
-      () => rejectPromise(new Error(`Timed out after ${CHECK_TIMEOUT_MS} ms: ${description}`)),
-      description.includes('download') ? DOWNLOAD_TIMEOUT_MS : CHECK_TIMEOUT_MS
-    )
+    let settled = false
+    const timer = setTimeout(() => {
+      settled = true
+      const detail = describe
+        ? Promise.resolve()
+            .then(() => describe())
+            .catch((error) => `the last reading was unreadable (${String(error).slice(0, 200)})`)
+        : Promise.resolve('')
+      void detail.then((extra) =>
+        rejectPromise(
+          new Error(
+            `Timed out after ${timeoutMs} ms (${Math.round(timeoutMs / 1000)} s): ${description}` +
+              (extra ? ` — ${extra}` : '')
+          )
+        )
+      )
+    }, timeoutMs)
     promise.then(
       (value) => {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
         resolvePromise(value)
       },
       (error) => {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
         rejectPromise(error)
       }
@@ -273,10 +298,38 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
     )
   }
 
+  // The download is the one wait with a budget of its own (15 minutes for ~296 MB), and it is also the
+  // one that failed on the published v2.33.5 lane: both architectures gave up after 901 s with nothing in
+  // the log but "Timed out after 120000 ms" — no byte count, no progress, so the reading could not say
+  // whether the transfer was slow or stopped. The status the app publishes is sampled while it waits
+  // (one line per change) and read once more when the budget runs out, so the next red names the bytes.
+  const downloadStartedAt = Date.now()
+  let lastDownloadState = ''
+  const downloadPoller = setInterval(() => {
+    page
+      .evaluate(() => globalThis.window.api.update.getStatus())
+      .then((status) => {
+        const next = JSON.stringify(status)
+        if (next !== lastDownloadState) {
+          lastDownloadState = next
+          const elapsed = Math.round((Date.now() - downloadStartedAt) / 1000)
+          console.log(`[mac-upgrade] status during download (${elapsed}s): ${next.slice(0, 400)}`)
+        }
+      })
+      .catch(() => undefined)
+  }, 5_000)
   const downloaded = await withTimeout(
     page.evaluate(() => globalThis.window.api.update.download()),
-    'update.download'
-  )
+    'update.download',
+    {
+      timeoutMs: DOWNLOAD_TIMEOUT_MS,
+      describe: async () => {
+        const status = await page.evaluate(() => globalThis.window.api.update.getStatus())
+        const elapsed = Math.round((Date.now() - downloadStartedAt) / 1000)
+        return `after ${elapsed}s the app reported ${JSON.stringify(status).slice(0, 400)}`
+      }
+    }
+  ).finally(() => clearInterval(downloadPoller))
   console.log(`[mac-upgrade] download() -> ${JSON.stringify(downloaded)}`)
   if (downloaded.state !== 'ready') {
     throw new Error(`The download did not reach ready: ${JSON.stringify(downloaded)}`)
@@ -716,6 +769,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 }
 
 export {
+  CHECK_TIMEOUT_MS,
+  DOWNLOAD_TIMEOUT_MS,
+  withTimeout,
   applyDataSabotage,
   compareVersions,
   feedWaitDecision,
