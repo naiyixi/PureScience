@@ -763,9 +763,18 @@ export type ClaudeInstallSource = 'managed' | 'npm' | 'official-script'
 // this fixed allow-list; arbitrary download origins never cross the IPC boundary.
 export type ManagedClaudeRegistry = 'npmjs' | 'npmmirror'
 
+// A framework that installs through a package manager other than npm. Hermes is a Python package and its
+// upstream install path is pipx, so its card must not be forced to offer an npm command it cannot run.
+export type HermesInstallSource = 'pipx'
+
+// Every install source id the framework cards can render. Claude's own set is a subset — the card is
+// written against this union so a new backend adds a source instead of reusing an id that means
+// something else on another framework.
+export type FrameworkInstallSourceId = ClaudeInstallSource | HermesInstallSource
+
 // Static, non-secret description of an install source shown in the UI (command is copyable).
-export type ClaudeInstallSourceInfo = {
-  id: ClaudeInstallSource
+export type FrameworkInstallSourceInfo = {
+  id: FrameworkInstallSourceId
   label: string
   // Human-readable command shown in the UI and safe to copy/paste. Empty for the app-managed source,
   // which has no shell command (the app performs the install itself).
@@ -775,6 +784,8 @@ export type ClaudeInstallSourceInfo = {
   // Optional one-line explanation shown under the picker (used by the app-managed source).
   description?: string
 }
+
+export type ClaudeInstallSourceInfo = FrameworkInstallSourceInfo & { id: ClaudeInstallSource }
 
 // The ordered install sources for a given host platform. The app-managed download is the default and
 // recommended path (self-contained binary, no user Node/npm). npm and the official installer follow as
@@ -874,6 +885,23 @@ export const getCodexInstallSources = (): ClaudeInstallSourceInfo[] => [
 // app-managed bundle yet, so the source list offers npm only (managed exists for claude/opencode/codex).
 export type InstallCodebuddyRequest = {
   source: 'npm'
+}
+
+// Hermes is installed as a Python package. pipx is the upstream path (`pipx install hermes-agent`), and
+// the app runs exactly that — no npm, no managed download: the card reports `requiresNpm: false` and the
+// installer drives pipx, then asks the detector whether anything runnable appeared.
+export const getHermesInstallSources = (): FrameworkInstallSourceInfo[] => [
+  {
+    id: 'pipx',
+    label: 'pipx (PyPI)',
+    displayCommand: 'pipx install hermes-agent',
+    requiresNpm: false,
+    description: 'Installs the official Hermes Agent package into its own isolated environment.'
+  }
+]
+
+export type InstallHermesRequest = {
+  source: HermesInstallSource
 }
 
 export const getCodebuddyInstallSources = (): ClaudeInstallSourceInfo[] => [

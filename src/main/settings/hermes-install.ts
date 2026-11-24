@@ -1,0 +1,131 @@
+import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+
+import type { ClaudeInstallEvent, ClaudeInstallResult } from '../../shared/settings'
+
+// Where pipx lands on the platforms this app ships on. `~/.local/bin` is pipx's own default bin dir, the
+// Homebrew prefixes cover Apple-silicon and Intel macs, and `/usr/local/bin` covers a pip-installed pipx
+// on Linux. A bare `pipx` is tried last only after these, because a GUI app inherits launchd's PATH,
+// which on macOS does not contain `~/.local/bin` at all.
+const PIPX_CANDIDATES = (): string[] => [
+  join(homedir(), '.local', 'bin', 'pipx'),
+  '/opt/homebrew/bin/pipx',
+  '/usr/local/bin/pipx',
+  join(homedir(), '.pyenv', 'shims', 'pipx')
+]
+
+export const resolvePipxPath = (exists: (path: string) => boolean = existsSync): string | null => {
+  return PIPX_CANDIDATES().find((candidate) => exists(candidate)) ?? null
+}
+
+export type HermesPipxInstallOptions = {
+  installId: string
+  onEvent: (event: ClaudeInstallEvent) => void
+  // Injected in tests so a fake pipx can be driven without touching the real environment.
+  pipxPath?: string | null
+  env?: NodeJS.ProcessEnv
+  timeoutMs?: number
+}
+
+const PIPX_TIMEOUT_MS = 15 * 60 * 1000
+
+const log = (
+  options: HermesPipxInstallOptions,
+  stream: 'stdout' | 'stderr' | 'system',
+  chunk: string
+): void => {
+  options.onEvent({ kind: 'log', installId: options.installId, stream, chunk })
+}
+
+/**
+ * Installs Hermes Agent through pipx.
+ *
+ * The exit code from pipx is not the answer to "did this install": pipx reports success for a package
+ * whose console script lands somewhere the app cannot see, and it is the app's own detector that decides
+ * what the card will show. So this returns pipx's outcome and the caller re-detects — a non-zero exit is
+ * reported with pipx's own last lines, never guessed at.
+ */
+export const installHermesWithPipx = async (
+  options: HermesPipxInstallOptions
+): Promise<ClaudeInstallResult> => {
+  const pipxPath = options.pipxPath === undefined ? resolvePipxPath() : options.pipxPath
+
+  if (!pipxPath) {
+    return {
+      installId: options.installId,
+      ok: false,
+      error:
+        'pipx was not found. Hermes is a Python package, so pipx is required: install it with ' +
+        '`brew install pipx` or `python3 -m pip install --user pipx`, then press Install again. ' +
+        'Nothing was changed for you.'
+    }
+  }
+
+  log(options, 'system', `$ ${pipxPath} install hermes-agent\n`)
+  // pipx reports no byte counts, so this is the only progress tick there is: the UI runs an
+  // indeterminate bar for the phase rather than a made-up percentage.
+  options.onEvent({ kind: 'progress', installId: options.installId, phase: 'installing' })
+
+  const tail: string[] = []
+  const timeoutMs = options.timeoutMs ?? PIPX_TIMEOUT_MS
+
+  const outcome = await new Promise<{ code: number | null; timedOut: boolean; error?: string }>(
+    (resolve) => {
+      const child = spawn(pipxPath, ['install', 'hermes-agent'], {
+        env: { ...process.env, ...options.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true
+      })
+
+      const timer = setTimeout(() => {
+        child.kill('SIGKILL')
+        resolve({ code: null, timedOut: true })
+      }, timeoutMs)
+
+      const onChunk = (stream: 'stdout' | 'stderr') => (data: Buffer) => {
+        const text = data.toString()
+        log(options, stream, text)
+        tail.push(text)
+        if (tail.length > 40) tail.shift()
+      }
+
+      child.stdout?.on('data', onChunk('stdout'))
+      child.stderr?.on('data', onChunk('stderr'))
+      child.on('error', (error) => {
+        clearTimeout(timer)
+        resolve({ code: null, timedOut: false, error: error.message })
+      })
+      child.on('close', (code) => {
+        clearTimeout(timer)
+        resolve({ code, timedOut: false })
+      })
+    }
+  )
+
+  if (outcome.timedOut) {
+    return {
+      installId: options.installId,
+      ok: false,
+      timedOut: true,
+      error: `pipx did not finish within ${Math.round(timeoutMs / 60000)} minutes and was stopped.`
+    }
+  }
+
+  if (outcome.error !== undefined) {
+    return { installId: options.installId, ok: false, error: outcome.error }
+  }
+
+  if (outcome.code !== 0) {
+    const detail = tail.join('').trim().split('\n').slice(-6).join('\n')
+    return {
+      installId: options.installId,
+      ok: false,
+      exitCode: outcome.code ?? undefined,
+      error: detail.length > 0 ? detail : `pipx exited with code ${String(outcome.code)}.`
+    }
+  }
+
+  return { installId: options.installId, ok: true, exitCode: 0 }
+}
