@@ -15,6 +15,8 @@ import {
 import {
   createFetchBundleAdapter,
   fetchLanguagePack,
+  RUNTIME_PACK_CACHE_ENV,
+  resolvePackArchiveCacheDir,
   type LanguagePackFetchDeps
 } from './language-pack-fetch'
 import type { ProvisionProgress } from './provisioner'
@@ -167,6 +169,123 @@ describe('fetchLanguagePack', () => {
     await expect(
       fetchLanguagePack(makeDestDir(), 'https://cdn/envs', 1, 'linux-64', 'r', '4.3', deps)
     ).rejects.toThrow(/schema/)
+  })
+
+  // Machine-level archive cache (PURESCIENCE_RUNTIME_PACK_CACHE). The Windows P0 lane re-transferred the
+  // same ~100 MB pack once per spec and lost a spec's whole budget to one slow transfer; these four cases
+  // pin the rules that make reuse safe: the manifest digest decides, a bad cache only costs time, and an
+  // unset cache root changes nothing.
+  const packEntryFor = (
+    language: 'python' | 'r',
+    version: string
+  ): ReturnType<typeof manifest>['packs'][string] => manifest().packs[`${language}-${version}`]
+
+  const seedCachedArchive = async (
+    cacheDir: string,
+    subdir: string,
+    entry: { file: string; size: number }
+  ): Promise<string> => {
+    const path = join(cacheDir, subdir, '1', entry.file)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, Buffer.alloc(entry.size))
+    return path
+  }
+
+  it('reuses a verified archive from the machine cache instead of transferring it again', async () => {
+    const cacheDir = makeDestDir()
+    const entry = packEntryFor('python', '3.12')
+    const cachedPath = await seedCachedArchive(cacheDir, 'osx-arm64', entry)
+    const deps = makeDeps({ cacheDir })
+    const dest = makeDestDir()
+
+    const result = await fetchLanguagePack(
+      dest,
+      'https://cdn.example/envs',
+      1,
+      'osx-arm64',
+      'python',
+      '3.12',
+      deps
+    )
+
+    expect(deps.download).not.toHaveBeenCalled()
+    expect(result.fromCache).toBe(true)
+    expect(result.filePath).toBe(join(dest, entry.file))
+    expect(existsSync(result.filePath)).toBe(true)
+    // The copy is the archive, not a marker: same bytes, same length as the cached one.
+    expect((await readFile(result.filePath)).length).toBe((await readFile(cachedPath)).length)
+  })
+
+  it('ignores a cached archive that fails the digest, and downloads instead', async () => {
+    const cacheDir = makeDestDir()
+    const entry = packEntryFor('python', '3.12')
+    const cachedPath = await seedCachedArchive(cacheDir, 'osx-arm64', entry)
+    const base = makeDeps()
+    const deps: LanguagePackFetchDeps = {
+      ...base,
+      cacheDir,
+      // The cached copy hashes wrong; the freshly downloaded one hashes right. That is what a stale or
+      // truncated cache looks like to this code, and it must not be trusted.
+      sha256: async (path: string) =>
+        path === cachedPath ? 'f'.repeat(64) : ((await base.sha256?.(path)) as string)
+    }
+
+    const result = await fetchLanguagePack(
+      makeDestDir(),
+      'https://cdn.example/envs',
+      1,
+      'osx-arm64',
+      'python',
+      '3.12',
+      deps
+    )
+
+    expect(deps.download).toHaveBeenCalledTimes(1)
+    expect(result.fromCache).toBe(false)
+  })
+
+  it('seeds the machine cache with the verified archive after a transfer', async () => {
+    const cacheDir = makeDestDir()
+    const entry = packEntryFor('python', '3.12')
+    const deps = makeDeps({ cacheDir })
+
+    const result = await fetchLanguagePack(
+      makeDestDir(),
+      'https://cdn.example/envs',
+      1,
+      'osx-arm64',
+      'python',
+      '3.12',
+      deps
+    )
+
+    expect(result.fromCache).toBe(false)
+    const cachePath = join(cacheDir, 'osx-arm64', '1', entry.file)
+    expect(existsSync(cachePath)).toBe(true)
+    expect((await readFile(cachePath)).length).toBe(entry.size)
+  })
+
+  it('keeps the transfer path when no cache root is configured', async () => {
+    const deps = makeDeps()
+    const result = await fetchLanguagePack(
+      makeDestDir(),
+      'https://cdn.example/envs',
+      1,
+      'osx-arm64',
+      'python',
+      '3.12',
+      deps
+    )
+    expect(deps.download).toHaveBeenCalledTimes(1)
+    expect(result.fromCache).toBe(false)
+  })
+
+  it('reads the cache root from the environment, and treats blank as unset', () => {
+    expect(resolvePackArchiveCacheDir({ [RUNTIME_PACK_CACHE_ENV]: '/tmp/pack-cache' })).toBe(
+      '/tmp/pack-cache'
+    )
+    expect(resolvePackArchiveCacheDir({ [RUNTIME_PACK_CACHE_ENV]: '   ' })).toBeUndefined()
+    expect(resolvePackArchiveCacheDir({})).toBeUndefined()
   })
 })
 

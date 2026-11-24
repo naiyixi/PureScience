@@ -183,6 +183,19 @@ describe('post-merge Windows validation', () => {
     // reading the certification step must use.
     expect(p0.run).toContain('$RUNNER_TEMP/p0-exit-code')
     expect(p0.run).toContain('exit "$rc"')
+    // P0 starts one app per spec and each one used to transfer the same ~100 MB runtime pack, which is how
+    // a slow transfer became a notebook timeout. The prewarm step fills a machine cache; the P0 env has to
+    // read THAT directory or the transfer merely happens twice.
+    const prewarm = findStep(job, 'Prewarm the managed runtime pack')
+    expect(prewarm.run).toContain('scripts/ci/prewarm-runtime-pack.mjs')
+    expect(prewarm['timeout-minutes']).toBe(30)
+    expect(prewarm.env?.PURESCIENCE_RUNTIME_PACK_CACHE).toBe(
+      '${{ runner.temp }}/purescience-runtime-pack-cache'
+    )
+    expect(p0.env?.PURESCIENCE_RUNTIME_PACK_CACHE).toBe(
+      prewarm.env?.PURESCIENCE_RUNTIME_PACK_CACHE
+    )
+    expect(prewarm.if).toBe(p0.if)
     // The visual step is `continue-on-error`, so its own outcome cannot say whether the comparison
     // passed. It writes the exit code down for the certification step, and that capture is part of the
     // contract this test pins — not an implementation detail.

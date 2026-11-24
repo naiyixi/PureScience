@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 
 import type { DownloadProgress } from '../../shared/download-progress'
 import { netFetchStandard } from '../skills/net-fetch'
@@ -19,6 +19,7 @@ import {
   parseManifest,
   pathBudgetForPack,
   resolvePack,
+  sha256File,
   SUPPORTED_SCHEMA,
   verifyPackChecksum,
   type BundleManifest,
@@ -37,9 +38,33 @@ import { operationJournalPath, RuntimeOperationJournal } from './operation-journ
 // downloads ONLY that archive, and verifies it against the manifest (fail-closed). It does NOT
 // create/materialize an env — that wiring lives in the provisioner and is added in a later step.
 // Deps are injected so this unit-tests without real network or hashing.
+// Machine-level archive cache. A runner (or a person with several data roots) otherwise re-downloads the
+// same curated pack once per environment: the Windows P0 lane spent 6 x ~100 MB per run that way, and one
+// slow transfer was enough to blow a spec's whole budget (`artifacts:replay-version` reported
+// `durationMs: 565644` with the pack fetch immediately before it — see
+// docs/evidence/2026-11-24-windows-gate-second-reading-and-the-transfer-that-cost-it.md).
+//
+// The env var names the cache root; unset means "no cache", so an ordinary install keeps exactly the
+// behaviour it had. The manifest is still fetched from the network on every attempt, and its sha256 is
+// still the only thing that decides whether cached bytes are accepted: a cache hit that fails the digest
+// is discarded and the download runs as before. So a warm cache removes the transfer, never the check.
+export const RUNTIME_PACK_CACHE_ENV = 'PURESCIENCE_RUNTIME_PACK_CACHE'
+
+export const resolvePackArchiveCacheDir = (
+  env: NodeJS.ProcessEnv = process.env
+): string | undefined => {
+  const value = env[RUNTIME_PACK_CACHE_ENV]?.trim()
+  return value ? value : undefined
+}
+
 export type LanguagePackFetchDeps = {
   // Fetches a URL and returns its body as text (used for manifest.json).
   fetchText: (url: string) => Promise<string>
+  // Where verified archives are reused from / copied to. Undefined disables the cache (the default);
+  // callers that want it pass resolvePackArchiveCacheDir() or a test directory.
+  cacheDir?: string
+  // Injection seam for the copy that seeds / serves the cache; defaults to fs.copyFile.
+  copyArchive?: (from: string, to: string) => Promise<void>
   // Downloads a URL to destPath (the pack archive). `expected` carries the manifest sha256/size so the
   // resilient core can verify inline and resume against the right total. Short-read detection needs a
   // total, so callers must supply `expected.size` when the response may omit Content-Length.
@@ -171,6 +196,46 @@ export type FetchedLanguagePack = {
   manifest: BundleManifest
   /** Where the bytes came from: 'origin', or the mirror host that served them. Always present. */
   via: string
+  /** True when the archive was copied from the machine cache instead of transferred. The digest is the
+   * same either way; this flag only exists so the progress line can say which one happened. */
+  fromCache: boolean
+}
+
+// A cache hit has to pass the very digest the download would have had to pass. `false` means the cached
+// copy is unusable (absent, wrong size, wrong bytes) and the caller downloads instead — so a stale or
+// truncated cache can only cost time, never correctness.
+const cachedArchiveIsIntact = async (
+  cachePath: string,
+  entry: PackEntry,
+  sha256: (path: string) => Promise<string>
+): Promise<boolean> => {
+  try {
+    const info = await stat(cachePath)
+    if (!info.isFile()) return false
+    if (info.size !== entry.size) return false
+    return (await sha256(cachePath)) === entry.sha256
+  } catch {
+    return false
+  }
+}
+
+// Copies an already-verified archive into the machine cache. Best effort by design: a cache that cannot be
+// written must never fail a fetch whose bytes we already hold — the worst case is the next environment
+// transferring them again. Staged under a unique name and renamed, so a half-written cache file can never
+// be mistaken for a complete one.
+const seedArchiveCache = async (
+  cachePath: string,
+  sourcePath: string,
+  copy: (from: string, to: string) => Promise<void>
+): Promise<void> => {
+  const staging = `${cachePath}.${randomUUID()}.part`
+  try {
+    await mkdir(dirname(cachePath), { recursive: true })
+    await copy(sourcePath, staging)
+    await rename(staging, cachePath)
+  } catch {
+    await rm(staging, { force: true }).catch(() => undefined)
+  }
 }
 
 // Fetches + verifies the single pack for (language, version). Throws (fail-closed) when the manifest
@@ -208,23 +273,42 @@ export const fetchLanguagePack = async (
     )
   }
   const filePath = join(destDir, canonicalFile)
-  const via = (await deps.download(
-    packUrl(cdnBase, version, subdir, entry.file),
-    filePath,
-    // Fill in the manifest's pack size when the response omits Content-Length, so the UI still shows
-    // a meaningful total/percent instead of an unknown-size bar.
-    (p) => onDownloadProgress(p.total != null ? p : { ...p, total: entry.size }),
-    { sha256: entry.sha256, size: entry.size }
-  )) as string | undefined
+  const cachePath = deps.cacheDir
+    ? join(deps.cacheDir, subdir, String(version), canonicalFile)
+    : undefined
+  const copyArchive = deps.copyArchive ?? ((from: string, to: string) => copyFile(from, to))
+  const sha256 = deps.sha256 ?? sha256File
+  const fromCache = cachePath ? await cachedArchiveIsIntact(cachePath, entry, sha256) : false
+  let via: string
+  if (fromCache) {
+    await mkdir(destDir, { recursive: true })
+    await copyArchive(cachePath as string, filePath)
+    // No transfer happened, so no progress is invented for one: the caller's line says "from the cache".
+    via = 'archive-cache'
+  } else {
+    via =
+      ((await deps.download(
+        packUrl(cdnBase, version, subdir, entry.file),
+        filePath,
+        // Fill in the manifest's pack size when the response omits Content-Length, so the UI still shows
+        // a meaningful total/percent instead of an unknown-size bar.
+        (p) => onDownloadProgress(p.total != null ? p : { ...p, total: entry.size }),
+        { sha256: entry.sha256, size: entry.size }
+      )) as string | undefined) ?? 'origin'
+  }
   // Defense-in-depth: an independent post-download size+sha256 verification, separate from the inline
   // check the resilient core already performed while streaming. See verifyPackChecksum — this is a
-  // required second integrity gate for a large executed artifact, not redundant work.
+  // required second integrity gate for a large executed artifact, not redundant work. It runs on the
+  // machine-cache hop too: the cache decides nothing, the manifest digest does.
   await verifyPackChecksum(
     filePath,
     { sha256: entry.sha256, size: entry.size },
     { sha256: deps.sha256 }
   )
-  return { id: packId(language, packVersion), entry, filePath, manifest, via: via ?? 'origin' }
+  // Only bytes that just passed the digest are worth keeping: seeding before the check would cache a
+  // corrupt archive behind a name the next attempt would then have to distrust.
+  if (!fromCache && cachePath) await seedArchiveCache(cachePath, filePath, copyArchive)
+  return { id: packId(language, packVersion), entry, filePath, manifest, via, fromCache }
 }
 
 export type FetchBundleAdapterDeps = Partial<LanguagePackFetchDeps> & {
@@ -321,7 +405,12 @@ export const createFetchBundleAdapter = (
           download:
             deps.download ??
             ((url, dest, op, expected) => downloadFile(url, dest, op, signal, expected)),
-          sha256: deps.sha256
+          sha256: deps.sha256,
+          // Resolved once per adapter (one per app session): the env var is a machine-level location, not
+          // a per-fetch one, and re-reading it mid-session would let two environments disagree about where
+          // the cache lives.
+          cacheDir: deps.cacheDir ?? resolvePackArchiveCacheDir(),
+          copyArchive: deps.copyArchive
         },
         (download) => {
           const ratio =
@@ -347,8 +436,11 @@ export const createFetchBundleAdapter = (
         // A mirrored download says so where the user already reads the progress line — the source is part of
         // the fact, not an implementation detail. Origin downloads keep the message they always had. The
         // manifest host is named too, because it is the document the archive's digest was read from.
-        message:
-          fetched.via === 'origin'
+        // A cache hit says so: "Downloaded" would claim a transfer that did not happen, and the operator
+        // reading a slow-Job log needs to know which of the two paths ran.
+        message: fetched.fromCache
+          ? `Installed ${fetched.entry.file} from the verified local cache`
+          : fetched.via === 'origin'
             ? manifestVia && manifestVia !== 'github.com'
               ? `Downloaded ${fetched.entry.file} (manifest from ${manifestVia})`
               : `Downloaded ${fetched.entry.file}`
