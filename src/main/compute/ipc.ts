@@ -526,14 +526,20 @@ const createComputeIpcModule = (
   injectedService?: ComputeService,
   taskNotifications?: Pick<TaskNotificationService, 'handleComputeApproval'>,
   permissionGrantRegistry?: PermissionGrantRegistry,
-  listDeliveries?: (sessionId: string) => Promise<BackgroundDelivery[]>
+  listDeliveries?: (sessionId: string) => Promise<BackgroundDelivery[]>,
+  // `settings.json` keeps one write queue per repository instance, and the legacy Compute grant
+  // import writes to it during startup (`clearComputeGrants`) while the settings service is writing
+  // the same file — two queues over one file means one of the two mutations can be lost, and on
+  // Windows the concurrent rename failed outright (EPERM). The composition root owns a single
+  // repository and passes it here; tests that never touch settings may omit it.
+  sharedSettingsRepository?: SettingsRepository
 ): ComputeIpcModule => {
   const storageRoot = resolveStorageRoot()
   const dataRoot = resolveDataRoot()
 
   // Read the legacy settings repository only for lazy one-way Project grant import. New remembered
-  // approvals are written exclusively through the SQLite PermissionGrant Registry.
-  const settingsRepo = new SettingsRepository(storageRoot)
+  // approvals are written exclusively through the SQLite Permission Grant Registry.
+  const settingsRepo = sharedSettingsRepository ?? new SettingsRepository(storageRoot)
 
   // Broadcast dispatcher status transitions to the renderer, same hook shape as the JobPoller uses.
   const onJobUpdated = createJobUpdatedBroadcaster(repository, dataRoot)

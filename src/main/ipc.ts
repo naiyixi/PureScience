@@ -356,7 +356,8 @@ import {
 } from './knowledge/knowledge-transport-io'
 import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
-import { createDefaultSettingsService } from './settings/service'
+import { SettingsService } from './settings/service'
+import { SettingsRepository } from './settings/repository'
 import { createProbeAnswerStore } from './settings/probe-answer-store'
 import { configureVersionProbeAnswerStore } from './settings/version-probe-cache'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
@@ -648,9 +649,14 @@ const createApplicationModules = async (
     modules.add(installRendererBroadcastEventHub, createApplicationEventModule)
   )
   // One settings service backs both the settings IPC and the ACP spawn config (single source of truth).
+  // Its repository is constructed here, once, and also handed to the Compute module: `settings.json`
+  // has one write queue per repository instance, and the Compute module's legacy grant import writes
+  // that file at startup — a second instance meant two queues (and two whole-file rewrites) racing on
+  // one file, which on Windows surfaced as `EPERM: operation not permitted, rename`.
+  const settingsRepository = new SettingsRepository(resolveStorageRoot())
   const settingsService = await composeSteps.step('settings-service', () =>
     modules.add(undefined, () => ({
-      capability: createDefaultSettingsService()
+      capability: new SettingsService({ repository: settingsRepository })
     }))
   )
   // Probe answers outlive the process. Measured on this host 2026-10-24: `opencode --version` costs
@@ -1507,7 +1513,8 @@ const createApplicationModules = async (
     undefined,
     taskNotifications,
     permissionGrantRegistry,
-    async (sessionId) => (await deliveryLedgerReader.list?.(sessionId)) ?? []
+    async (sessionId) => (await deliveryLedgerReader.list?.(sessionId)) ?? [],
+    settingsRepository
   )
   // Project reference library (v1.51): register its renderer surface alongside compute.
   // Resolves a managed file id to its path on disk. `managedFileId` is either `source:sourceFileId`

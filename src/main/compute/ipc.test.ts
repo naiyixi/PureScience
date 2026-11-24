@@ -24,6 +24,7 @@ import type { ComputeHostRepository } from './repository'
 import { EnabledComputeHostsRegistry } from './enabled-hosts-registry'
 import { addRendererBroadcastSink } from '../renderer-broadcast'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
+import { SettingsRepository } from '../settings/repository'
 
 /**
  * How long a coordination wait may take.
@@ -1372,5 +1373,70 @@ describe('installComputeIpcHandlers — remoteFsError serialization', () => {
     expect(err.message).toBe('boom: plain failure')
     // The marker must not have been injected — the renderer should treat this as a generic error.
     expect(decodeRemoteFsError(err.message)).toBeNull()
+  })
+})
+
+describe('createComputeIpcModule — the settings repository it is handed', () => {
+  let storageRoot: string
+  let legacyRoot: string
+
+  beforeEach(async () => {
+    handlers.clear()
+    storageRoot = await mkdtemp(join(tmpdir(), 'compute-ipc-shared-repo-'))
+    legacyRoot = await mkdtemp(join(tmpdir(), 'compute-ipc-legacy-settings-'))
+    process.env.PURESCIENCE_STORAGE_ROOT = storageRoot
+  })
+
+  afterEach(async () => {
+    delete process.env.PURESCIENCE_STORAGE_ROOT
+    await rm(storageRoot, { recursive: true, force: true })
+    await rm(legacyRoot, { recursive: true, force: true })
+  })
+
+  it('imports and clears legacy grants through the injected instance, not a private second one', async () => {
+    // `legacyRoot` is deliberately NOT the storage root: a repository constructed inside the module
+    // resolves its own path from PURESCIENCE_STORAGE_ROOT and would see no legacy rows at all, so
+    // this test only passes when the module uses the instance the composition root handed it. That
+    // sharing is the fix — two instances mean two write queues and two whole-file rewrites of
+    // settings.json, which is how the startup import's rename ended up racing (EPERM) on Windows.
+    const shared = new SettingsRepository(legacyRoot)
+    await shared.addComputeGrant({
+      projectId: 'project-1',
+      operation: 'submit',
+      providerId: 'ssh:biowulf'
+    })
+
+    const registry = {
+      remember: vi.fn(async () => undefined),
+      resolve: vi.fn(async () => undefined)
+    } as unknown as PermissionGrantRegistry
+
+    createComputeIpcModule(
+      mockRepository({}),
+      mockJobRepo({}),
+      undefined,
+      undefined,
+      undefined,
+      registry,
+      undefined,
+      shared
+    )
+
+    await vi.waitFor(
+      async () => {
+        expect(registry.remember).toHaveBeenCalledWith({
+          capability: {
+            kind: 'execution',
+            key: 'exec:compute/ssh:biowulf/submit',
+            qualifier: { mode: 'any' }
+          },
+          scope: { kind: 'project', projectId: 'project-1' }
+        })
+        // Cleared only after the Registry write succeeded — through the same instance, so the
+        // settings service's queue is the one that sees it.
+        await expect(shared.listComputeGrants()).resolves.toEqual([])
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
   })
 })
