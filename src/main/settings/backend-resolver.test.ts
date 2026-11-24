@@ -233,6 +233,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
   const runtime = {
     resolveClaudeExecutable: vi.fn(async () => '/runtime/claude'),
     resolveCodebuddyExecutable: vi.fn(async () => '/runtime/codebuddy'),
+    resolveHermesExecutable: vi.fn(async () => '/runtime/hermes'),
     resolveOpencodeExecutable: vi.fn(async () => '/runtime/opencode'),
     resolveCodexExecutable: vi.fn(async () => '/runtime/codex-acp'),
     probeCodexNativeVersion: vi.fn(async () => '0.144.6'),

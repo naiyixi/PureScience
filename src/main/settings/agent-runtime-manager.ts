@@ -49,6 +49,7 @@ import {
   detectCodeBuddy,
   type CodeBuddyDetectDeps
 } from './codebuddy-detect'
+import { createDefaultHermesDetectDeps, detectHermes, type HermesDetectDeps } from './hermes-detect'
 import {
   detectCodex,
   parseVersion as parseCodexVersion,
@@ -244,6 +245,7 @@ export type AgentRuntimeManagerOptions = {
   detectDeps?: ClaudeDetectDeps
   opencodeDetectDeps?: OpencodeDetectDeps
   codebuddyDetectDeps?: CodeBuddyDetectDeps
+  hermesDetectDeps?: HermesDetectDeps
   codexDetectDeps?: CodexDetectDeps
   /** Injectable step clock + sink so preflight attribution is testable; production uses the defaults. */
   preflightNow?: () => number
@@ -289,6 +291,7 @@ export class AgentRuntimeManager {
   private readonly detectDeps: ClaudeDetectDeps
   private readonly opencodeDetectDeps: OpencodeDetectDeps
   private readonly codebuddyDetectDeps: CodeBuddyDetectDeps
+  private readonly hermesDetectDeps: HermesDetectDeps
   private readonly codexDetectDeps: CodexDetectDeps
   private readonly allocateOpenCodeUsagePort: () => Promise<number>
   private readonly executeClaudeProbe: ExecuteClaudeProbe
@@ -346,6 +349,8 @@ export class AgentRuntimeManager {
       ]
     }
 
+    this.hermesDetectDeps = options.hermesDetectDeps ?? createDefaultHermesDetectDeps()
+
     const managedAdapterPath = managedCodexAdapterEntry(this.storageRoot)
     const managedNativePath = managedCodexBinary(this.storageRoot)
     this.codexDetectDeps = options.codexDetectDeps ?? {
@@ -399,28 +404,38 @@ export class AgentRuntimeManager {
     })
 
     const settings = await steps.step('settings-read', () => this.repository.getSettings())
-    const [claudePathExists, opencodePathExists, codexPathExists, codebuddyPathExists] =
-      await Promise.all([
-        steps.step('probe-claude', async () =>
-          settings.claude?.resolvedPath
-            ? (await this.detectDeps.getVersion(settings.claude.resolvedPath)) !== undefined
-            : false
-        ),
-        steps.step('probe-opencode', async () =>
-          settings.opencodePath
-            ? (await this.opencodeDetectDeps.getVersion(settings.opencodePath)) !== undefined
-            : false
-        ),
-        steps.step(
-          'probe-codex',
-          async () => (await this.probeCodexRuntime(settings.codex)) !== undefined
-        ),
-        steps.step('probe-codebuddy', async () =>
-          settings.codebuddyPath
-            ? (await this.codebuddyDetectDeps.getVersion(settings.codebuddyPath)) !== undefined
-            : false
-        )
-      ])
+    const [
+      claudePathExists,
+      opencodePathExists,
+      codexPathExists,
+      codebuddyPathExists,
+      hermesPathExists
+    ] = await Promise.all([
+      steps.step('probe-claude', async () =>
+        settings.claude?.resolvedPath
+          ? (await this.detectDeps.getVersion(settings.claude.resolvedPath)) !== undefined
+          : false
+      ),
+      steps.step('probe-opencode', async () =>
+        settings.opencodePath
+          ? (await this.opencodeDetectDeps.getVersion(settings.opencodePath)) !== undefined
+          : false
+      ),
+      steps.step(
+        'probe-codex',
+        async () => (await this.probeCodexRuntime(settings.codex)) !== undefined
+      ),
+      steps.step('probe-codebuddy', async () =>
+        settings.codebuddyPath
+          ? (await this.codebuddyDetectDeps.getVersion(settings.codebuddyPath)) !== undefined
+          : false
+      ),
+      steps.step('probe-hermes', async () =>
+        settings.hermesPath
+          ? (await this.hermesDetectDeps.getVersion(settings.hermesPath)) !== undefined
+          : false
+      )
+    ])
 
     const agentFrameworkId = settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID
     const framework = getAgentFramework(agentFrameworkId)
@@ -454,6 +469,7 @@ export class AgentRuntimeManager {
       opencodePathExists,
       codexPathExists,
       codebuddyPathExists,
+      hermesPathExists,
       agentFrameworkId,
       isProviderKeyUsable: (provider) =>
         provider.id === activeProvider?.id && activeProviderKeyUsable,
@@ -906,6 +922,19 @@ export class AgentRuntimeManager {
   // CodeBuddy's resolved path was stored by `detectCodebuddy` but never read back by the backend
   // resolver, so `framework: 'codebuddy'` silently spawned opencode's binary. Reading it here is what
   // makes "selected framework" and "executable" the same thing.
+  async resolveHermesExecutable(storedPath: string | undefined): Promise<string> {
+    if (storedPath && (await this.pathExists(storedPath))) return storedPath
+
+    const detected = await detectHermes(this.hermesDetectDeps)
+    if (!detected) {
+      throw new Error(
+        'Hermes executable not found. Install Hermes (pipx install hermes-agent) or set its path in settings.'
+      )
+    }
+
+    return detected.resolvedPath
+  }
+
   async resolveCodebuddyExecutable(storedPath: string | undefined): Promise<string> {
     if (storedPath && (await this.pathExists(storedPath))) return storedPath
 

@@ -27,7 +27,7 @@ import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 // The agent frameworks the settings page manages, keyed by their short name (used for the
 // uninstall dialog target and the framework card descriptors).
-type FrameworkKey = 'claude' | 'opencode' | 'codex' | 'codebuddy'
+type FrameworkKey = 'claude' | 'opencode' | 'codex' | 'codebuddy' | 'hermes'
 
 type AgentPanelProps = {
   variant?: 'settings' | 'onboarding'
@@ -61,6 +61,7 @@ const AgentPanel = ({
   const detectOpencode = useSettingsStore((state) => state.detectOpencode)
   const installOpencode = useSettingsStore((state) => state.installOpencode)
   const codebuddy = useSettingsStore((state) => state.codebuddy)
+  const hermes = useSettingsStore((state) => state.hermes)
   const isDetectingCodebuddy = useSettingsStore((state) => state.isDetectingCodebuddy)
   const detectCodebuddy = useSettingsStore((state) => state.detectCodebuddy)
   const codex = useSettingsStore((state) => state.codex)
@@ -72,6 +73,7 @@ const AgentPanel = ({
   const claudeInstall = useSettingsStore((state) => state.installStates['claude-code'])
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
   const codebuddyInstall = useSettingsStore((state) => state.installStates.codebuddy)
+  const hermesInstall = useSettingsStore((state) => state.installStates.hermes)
   const codexInstall = useSettingsStore((state) => state.installStates.codex)
   // Any install running locks the framework selector and every card's uninstall button.
   const anyInstalling = useSettingsStore(selectAnyInstalling)
@@ -155,7 +157,12 @@ const AgentPanel = ({
     try {
       if (pendingUninstall === 'claude') await uninstallClaude()
       else if (pendingUninstall === 'opencode') await uninstallOpencode()
-      else await uninstallCodex()
+      else if (pendingUninstall === 'hermes') {
+        // Detection-only framework: the app never installed it, so there is no managed runtime to remove.
+        // Its card is marked unmanaged and shows the uninstall command instead of this dialog.
+        setPendingUninstall(null)
+        return
+      } else await uninstallCodex()
 
       setPendingUninstall(null)
     } finally {
@@ -265,7 +272,8 @@ const AgentPanel = ({
       'claude-code': preflight.claudeReady,
       opencode: preflight.opencodeReady,
       codex: preflight.codexReady,
-      codebuddy: preflight.codebuddyReady
+      codebuddy: preflight.codebuddyReady,
+      hermes: preflight.hermesReady
     }
     if (readyByFramework[agentFrameworkId]) return
 
@@ -281,6 +289,7 @@ const AgentPanel = ({
     preflight.claudeReady,
     preflight.codebuddyReady,
     preflight.codexReady,
+    preflight.hermesReady,
     preflight.opencodeReady,
     queueOnboardingSwitch
   ])
@@ -439,6 +448,26 @@ const AgentPanel = ({
       // every source that was not the literal 'npm' and the card's button then did nothing — which is what
       // "CodeBuddy can only be installed by hand" looked like from the outside.
       onInstall: () => installCodebuddy()
+    },
+    {
+      key: 'hermes',
+      frameworkId: 'hermes',
+      name: t('settings.agentHermesName'),
+      icon: <AgentFrameworkIcon frameworkId="hermes" size={24} />,
+      description: t('settings.agentHermesDesc'),
+      ready: preflight.hermesReady,
+      version: hermes.version,
+      path: hermes.resolvedPath,
+      sourceLabel: 'pipx / PyPI',
+      sourceUrl: 'https://pypi.org/project/hermes-agent/',
+      notReadyHint: t('settings.agentHermesNotReady'),
+      uninstallCommand: 'pipx uninstall hermes-agent',
+      // Detection-only: the app never installed this one, so it must not claim a managed uninstall.
+      managed: false,
+      installSources: [],
+      install: hermesInstall,
+      // No sources ⇒ this is never reached; kept so the shared card model stays total.
+      onInstall: () => Promise.resolve(undefined)
     }
   ]
 

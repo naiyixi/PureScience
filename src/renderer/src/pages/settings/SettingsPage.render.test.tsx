@@ -2587,7 +2587,8 @@ describe('SettingsPage Codex framework', () => {
     // showed a panel that explained neither the empty half nor where to start.
     expect(document.body.textContent).toContain('No framework is ready yet')
     expect(document.body.textContent).toContain('Install one from the list below')
-    expect(document.body.textContent).toContain('Available · 4')
+    // Five frameworks now: claude, opencode, codex, codebuddy and the detection-only hermes card.
+    expect(document.body.textContent).toContain('Available · 5')
   })
 
   it('groups cards by install state and re-detects every framework from the section action', async () => {
@@ -2628,7 +2629,7 @@ describe('SettingsPage Codex framework', () => {
 
     // Two ready runtimes land in the Installed group; Codex + CodeBuddy (not ready) in Available.
     expect(document.body.textContent).toContain('Installed · 2')
-    expect(document.body.textContent).toContain('Available · 2')
+    expect(document.body.textContent).toContain('Available · 3')
     // Claude is renamed in this panel only.
     expect(document.body.textContent).toContain('Claude Agent')
 

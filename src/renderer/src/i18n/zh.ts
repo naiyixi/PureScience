@@ -2230,6 +2230,11 @@ export const zh = {
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentCodeBuddyDesc': '腾讯的编码智能体，通过 OpenAI 兼容端点连接。',
   'settings.agentCodeBuddyNotReady': '尚未检测到 CodeBuddy。',
+  'settings.agentHermesName': 'Hermes',
+  'settings.agentHermesDesc':
+    'Hermes Agent 通过自带的 ACP 服务接入（`hermes acp`），由 pipx 安装、本应用自动探测。',
+  'settings.agentHermesNotReady':
+    '未检测到 Hermes。运行 `pipx install hermes-agent` 安装后重新检测。',
   'settings.detecting': '正在检测…',
   'settings.redetect': '重新检测',
   'settings.oauthSignInFailed': 'OAuth 登录失败。',

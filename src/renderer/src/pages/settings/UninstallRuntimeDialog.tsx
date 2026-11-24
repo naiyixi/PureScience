@@ -13,7 +13,7 @@ import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type UninstallRuntimeDialogProps = {
   // The framework whose app-managed runtime is being removed; null keeps the dialog closed.
-  framework: 'claude' | 'opencode' | 'codex' | 'codebuddy' | null
+  framework: 'claude' | 'opencode' | 'codex' | 'codebuddy' | 'hermes' | null
   isUninstalling: boolean
   onCancel: () => void
   onConfirm: () => void

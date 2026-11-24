@@ -116,6 +116,7 @@ export type AgentBackendRuntimePort = Pick<
   AgentRuntimeManager,
   | 'resolveClaudeExecutable'
   | 'resolveCodebuddyExecutable'
+  | 'resolveHermesExecutable'
   | 'resolveOpencodeExecutable'
   | 'resolveCodexExecutable'
   | 'probeCodexNativeVersion'
@@ -724,7 +725,9 @@ export class AgentBackendResolver {
           )
         : framework.id === 'codebuddy'
           ? await this.runtime.resolveCodebuddyExecutable(settings.codebuddyPath)
-          : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
+          : framework.id === 'hermes'
+            ? await this.runtime.resolveHermesExecutable(settings.hermesPath)
+            : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
     const codexNativeVersion =
       framework.id === 'codex'
         ? await this.runtime.probeCodexNativeVersion(settings.codex?.nativePath)

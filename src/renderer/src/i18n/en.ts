@@ -2398,6 +2398,11 @@ export const en: Record<ZhKey, string> = {
   'settings.agentCodeBuddyDesc':
     "Tencent's coding agent, connected through an OpenAI-compatible endpoint.",
   'settings.agentCodeBuddyNotReady': 'CodeBuddy was not detected.',
+  'settings.agentHermesName': 'Hermes',
+  'settings.agentHermesDesc':
+    'Hermes Agent connects through its own ACP server (`hermes acp`); install it with pipx and this app detects it.',
+  'settings.agentHermesNotReady':
+    'Hermes was not detected. Install it with `pipx install hermes-agent`, then detect again.',
   'settings.detecting': 'Detecting…',
   'settings.redetect': 'Re-detect',
   'settings.oauthSignInFailed': 'OAuth sign-in failed.',

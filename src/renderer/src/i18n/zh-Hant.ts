@@ -1467,6 +1467,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.agentClaudeNotReady': '請在下方安裝 Claude 智能體，或手動安裝後重新偵測。',
   'settings.agentCodeBuddyNotReady':
     '此框架需要 CodeBuddy。請手動安裝 @tencent-ai/codebuddy-code 後重新偵測。',
+  'settings.agentHermesName': 'Hermes',
+  'settings.agentHermesDesc':
+    'Hermes Agent 透過自帶的 ACP 服務接入（`hermes acp`），由 pipx 安裝、本應用自動偵測。',
+  'settings.agentHermesNotReady':
+    '未偵測到 Hermes。執行 `pipx install hermes-agent` 安裝後重新偵測。',
   'settings.agentCodexNotReady': '此框架需要 Codex ACP。請在下方安裝，或手動安裝後重新偵測。',
   'settings.agentControlsAria': '智能體控制項：{profile}，自動審查 {review}',
   'settings.agentCreated': '由智能體建立',

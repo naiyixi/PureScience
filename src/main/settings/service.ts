@@ -429,6 +429,11 @@ class SettingsService {
         resolvedPath: settings.codebuddyPath,
         version: settings.codebuddyVersion
       },
+      // Detection-only in this version: no managed install path, so there is no `hermesManaged` flag.
+      hermes: {
+        resolvedPath: settings.hermesPath,
+        version: settings.hermesVersion
+      },
       codex: {
         resolvedPath: settings.codex?.resolvedPath,
         version: settings.codex?.version,

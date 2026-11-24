@@ -94,6 +94,7 @@ const snapshot = (providers: SettingsSnapshot['providers']): SettingsSnapshot =>
   agentFrameworks: [{ id: 'claude-code', displayName: 'Claude Code', supportsSkills: true }],
   opencode: {},
   codebuddy: {},
+  hermes: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,

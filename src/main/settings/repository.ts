@@ -1596,6 +1596,27 @@ class SettingsRepository {
     })
   }
 
+  // Records the detected Hermes executable path + version for later spawns + the settings status card.
+  async setHermesInfo(resolvedPath: string, version?: string): Promise<StoredSettings> {
+    return this.mutate((settings) => ({
+      ...settings,
+      hermesPath: resolvedPath,
+      hermesVersion: version
+    }))
+  }
+
+  // Forgets the recorded Hermes executable so the status card reflects an uninstall.
+  async clearHermesInfo(): Promise<StoredSettings> {
+    return this.mutate((settings) => {
+      const { hermesPath, hermesVersion, ...rest } = settings
+
+      void hermesPath
+      void hermesVersion
+
+      return rest
+    })
+  }
+
   async setCodexInfo(codex: StoredCodexInfo): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, codex }))
   }

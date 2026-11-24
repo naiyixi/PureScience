@@ -1617,6 +1617,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Installez Claude Agent ci-dessous, ou installez-le manuellement puis relancez la détection.',
   'settings.agentCodeBuddyNotReady':
     'CodeBuddy est requis pour ce framework. Installez @tencent-ai/codebuddy-code manuellement puis relancez la détection.',
+  'settings.agentHermesName': 'Hermes',
+  'settings.agentHermesDesc':
+    'Hermes Agent se connecte via son propre serveur ACP (`hermes acp`) ; installez-le avec pipx et cette application le détecte.',
+  'settings.agentHermesNotReady':
+    "Hermes n'a pas été détecté. Installez-le avec `pipx install hermes-agent`, puis relancez la détection.",
   'settings.agentCodexNotReady':
     'Codex ACP est requis pour ce framework. Installez-le ci-dessous, ou installez-le manuellement puis relancez la détection.',
   'settings.agentControlsAria': 'Commandes de l’agent : {profile}, revue automatique {review}',

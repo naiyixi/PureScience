@@ -322,13 +322,21 @@ export const providerValidationFailed = (provider: {
 
 // The agent backends the app can drive over ACP. Persisted settings and the UI reference these ids;
 // the main-process AgentFramework registry is keyed by the same union.
-export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex' | 'codebuddy'
+// 'hermes' drives Hermes Agent through its own `hermes acp` server — no community adapter, and a Python
+// package (pipx/pip) rather than an npm CLI, so detection, install locations and version parsing differ.
+export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex' | 'codebuddy' | 'hermes'
 
 // The union above is the source of truth; this list is derived from it at the type level, so adding a
 // framework without listing it here fails to compile instead of silently dropping the id on read.
 // 2026-10-27: two hand-maintained subsets (settings parsing, session persistence) both omitted
 // `codebuddy`, so a codebuddy session and a codebuddy setting were silently rewritten as claude-code.
-export const AGENT_FRAMEWORK_IDS = ['claude-code', 'opencode', 'codex', 'codebuddy'] as const
+export const AGENT_FRAMEWORK_IDS = [
+  'claude-code',
+  'opencode',
+  'codex',
+  'codebuddy',
+  'hermes'
+] as const
 
 const AGENT_FRAMEWORK_ID_SET: ReadonlySet<string> = new Set<string>(AGENT_FRAMEWORK_IDS)
 // Compile-time completeness check: every id in the union must appear in AGENT_FRAMEWORK_IDS.
@@ -336,7 +344,8 @@ const _AGENT_FRAMEWORK_IDS_COVER_THE_UNION: Record<AgentFrameworkId, true> = {
   'claude-code': true,
   opencode: true,
   codex: true,
-  codebuddy: true
+  codebuddy: true,
+  hermes: true
 }
 void _AGENT_FRAMEWORK_IDS_COVER_THE_UNION
 
@@ -498,6 +507,8 @@ export type SettingsSnapshot = {
   opencode: OpencodeInfo
   // Detected CodeBuddy executable, for the framework-aware detection card.
   codebuddy: OpencodeInfo
+  // Detection-only: Hermes has no managed install in this version, so there is no `hermesManaged`.
+  hermes: OpencodeInfo
   // Detected codex-acp adapter and its paired native Codex runtime.
   codex: CodexInfo
   activeProviderId?: string
@@ -632,6 +643,7 @@ export type Preflight = {
   opencodeReady: boolean
   codexReady: boolean
   codebuddyReady: boolean
+  hermesReady: boolean
   // Readiness of the selected agent framework, plus which one it is.
   agentFrameworkId: AgentFrameworkId
   agentReady: boolean

@@ -18,6 +18,8 @@ export type PreflightInput = {
   codexPathExists: boolean
   // Whether the recorded CodeBuddy executable still reports a version.
   codebuddyPathExists: boolean
+  // Whether the recorded Hermes executable still reports a version.
+  hermesPathExists: boolean
   // The selected framework, resolved (default applied) by the caller.
   agentFrameworkId: AgentFrameworkId
   // Whether a provider's credentials are usable (codex subscriptions always; custom must decrypt).
@@ -36,6 +38,7 @@ const computePreflight = ({
   opencodePathExists,
   codexPathExists,
   codebuddyPathExists,
+  hermesPathExists,
   agentFrameworkId,
   isProviderKeyUsable,
   activeProviderCompatible
@@ -44,11 +47,13 @@ const computePreflight = ({
   const opencodeReady = Boolean(settings.opencodePath) && opencodePathExists
   const codexReady = Boolean(settings.codex?.resolvedPath) && codexPathExists
   const codebuddyReady = Boolean(settings.codebuddyPath) && codebuddyPathExists
+  const hermesReady = Boolean(settings.hermesPath) && hermesPathExists
   const readyByFramework: Record<AgentFrameworkId, boolean> = {
     'claude-code': claudeReady,
     opencode: opencodeReady,
     codex: codexReady,
-    codebuddy: codebuddyReady
+    codebuddy: codebuddyReady,
+    hermes: hermesReady
   }
   const agentReady = readyByFramework[agentFrameworkId]
 
@@ -71,6 +76,7 @@ const computePreflight = ({
     opencodeReady,
     codexReady,
     codebuddyReady,
+    hermesReady,
     agentFrameworkId,
     agentReady,
     activeProviderReady

@@ -66,6 +66,7 @@ const snapshot = (
   agentFrameworks: [],
   opencode: {},
   codebuddy: {},
+  hermes: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,

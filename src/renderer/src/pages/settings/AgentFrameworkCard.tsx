@@ -275,7 +275,7 @@ const AgentFrameworkCard = ({
                   promptInFlight={promptInFlight}
                   onUninstall={onUninstall}
                 />
-              ) : (
+              ) : installSources.length === 0 ? null : ( // with zero sources would be a button that cannot do anything. // to offer; the not-ready hint already says how to install it by hand, and an install menu // A detection-only framework (no managed or scripted install this version) has no sources
                 <AgentInstallSourceMenu
                   name={name}
                   label={repair ? t('repair.repairAria') : t('settings.install')}

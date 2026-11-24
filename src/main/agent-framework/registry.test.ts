@@ -8,7 +8,8 @@ describe('agent framework registry', () => {
       'claude-code',
       'opencode',
       'codex',
-      'codebuddy'
+      'codebuddy',
+      'hermes'
     ])
     expect(getAgentFramework('codex')).toMatchObject({
       displayName: 'Codex',
@@ -24,6 +25,18 @@ describe('agent framework registry', () => {
       supportedApiTypes: ['openai'],
       supportsSkills: false,
       acceptsStdioMcp: true
+    })
+  })
+
+  it('registers Hermes as an OpenAI-only framework that owns its own compaction', () => {
+    expect(getAgentFramework('hermes')).toMatchObject({
+      displayName: 'Hermes',
+      supportedApiTypes: ['openai'],
+      supportsSkills: false,
+      // Neither MCP flag is claimed: the measured initialize result carries no mcpCapabilities.
+      acceptsStdioMcp: false,
+      acceptsHttpMcp: false,
+      contextCompaction: { kind: 'framework-managed' }
     })
   })
 

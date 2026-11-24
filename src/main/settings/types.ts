@@ -195,6 +195,10 @@ export type StoredSettings = {
   // Detected CodeBuddy executable path + reported version (for the status card). Absent = detect on PATH.
   codebuddyPath?: string
   codebuddyVersion?: string
+  // Detected Hermes executable path + reported version. Hermes ships its own ACP server, so there is no
+  // adapter to version-gate; the version is shown so a too-old build is visible before a turn fails.
+  hermesPath?: string
+  hermesVersion?: string
   activeProviderId?: string
   // Last explicitly configured Claude subscription mode. Kept separately from activeProviderId so
   // switching to a custom provider does not make the collapsed Claude card fall back to list order.

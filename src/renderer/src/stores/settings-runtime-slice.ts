@@ -120,6 +120,7 @@ const createInitialPreflight = (): Preflight => ({
   opencodeReady: false,
   codexReady: false,
   codebuddyReady: false,
+  hermesReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
   activeProviderReady: false
@@ -141,7 +142,8 @@ export const createInitialRuntimeSetupState = (): RuntimeSetupState => ({
     'claude-code': createInitialRuntimeInstallState(),
     opencode: createInitialRuntimeInstallState(),
     codex: createInitialRuntimeInstallState(),
-    codebuddy: createInitialRuntimeInstallState()
+    codebuddy: createInitialRuntimeInstallState(),
+    hermes: createInitialRuntimeInstallState()
   }
 })
 
@@ -403,6 +405,12 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
       case 'codebuddy':
         throw new Error(
           'CodeBuddy installs from npm and has no managed uninstall; reinstall it from its own card.'
+        )
+      // Hermes is a Python package this version only detects; there is no managed install to repair, so
+      // a repair is refused by name rather than reported as done.
+      case 'hermes':
+        throw new Error(
+          'Hermes is detected from PATH in this version; install or upgrade it with pipx and re-detect.'
         )
     }
   },

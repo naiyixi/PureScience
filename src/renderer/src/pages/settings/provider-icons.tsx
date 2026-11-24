@@ -37,6 +37,23 @@ export const AgentFrameworkIcon = ({
   if (frameworkId === 'opencode') {
     return <OpenCode size={size} className={cn('text-foreground', className)} />
   }
+  if (frameworkId === 'hermes') {
+    // Own minimal mark (a travelling dot on a track), not a borrowed brand logo.
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none">
+        <path
+          d="M3 12h18"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          opacity="0.35"
+        />
+        <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      </svg>
+    )
+  }
+
   if (frameworkId === 'codebuddy') {
     return <Codex size={size} className={cn('text-foreground', className)} />
   }

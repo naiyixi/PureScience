@@ -103,6 +103,9 @@ export const defaultProviderKindKey = (
     case 'codebuddy':
       // CodeBuddy drives OpenAI-compatible endpoints; default to the OpenAI vendor slot.
       return 'official:openai'
+    case 'hermes':
+      // Hermes reaches OpenAI-compatible /v1/chat/completions endpoints (model.provider: 'custom').
+      return 'official:openai'
     default: {
       // The never assignment keeps the switch exhaustive at compile time. Persisted state could
       // still hold a stale value outside the union; this runs during render, so degrade to the

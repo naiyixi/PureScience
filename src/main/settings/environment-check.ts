@@ -28,11 +28,15 @@ const REGISTRY_LABELS: Record<ManagedClaudeRegistry, string> = {
 }
 
 // The npm package path probed per framework to gauge registry reachability for its managed install.
-const REGISTRY_PROBE_PATHS: Record<AgentFrameworkId, string> = {
+// Absent ⇒ this framework is not installed from an npm registry at all, so there is no package path to
+// probe: Hermes is a Python package (pipx/pip). Probing npm for it would report a reachable registry for a
+// download that never happens.
+const REGISTRY_PROBE_PATHS: Record<AgentFrameworkId, string | undefined> = {
   'claude-code': '/@anthropic-ai%2fclaude-code/latest',
   opencode: '/opencode-ai/latest',
   codex: '/@agentclientprotocol%2fcodex-acp/latest',
-  codebuddy: '/@tencent-ai%2fcodebuddy-code/latest'
+  codebuddy: '/@tencent-ai%2fcodebuddy-code/latest',
+  hermes: undefined
 }
 const REGISTRY_PROBE_TIMEOUT_MS = 5_000
 
@@ -284,6 +288,14 @@ const runEnvironmentCheck = async ({
       label: 'Installation network',
       status: 'passed',
       summary: `No download is needed because ${selectedLabel} is already installed.`
+    }
+  } else if (REGISTRY_PROBE_PATHS[agentFrameworkId] === undefined) {
+    // No npm package backs this framework: say so instead of measuring a registry that is not used.
+    networkCheck = {
+      id: 'install-network',
+      label: 'Installation network',
+      status: 'passed',
+      summary: `${selectedLabel} is not installed from an npm registry, so there is no download to check.`
     }
   } else {
     const registryResults = await Promise.all([

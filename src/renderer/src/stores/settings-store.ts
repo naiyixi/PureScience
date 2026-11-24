@@ -101,6 +101,7 @@ type SettingsStoreData = RuntimeSetupState &
     // Detected opencode executable, for the framework-aware detection card.
     opencode: OpencodeInfo
     codebuddy: OpencodeInfo
+    hermes: OpencodeInfo
     codex: CodexInfo
     // Whether each framework's detected runtime is the app-managed install (only these can be uninstalled
     // in-app). Mirrored from the main-process snapshot; a PATH/npm binary reads false.
@@ -171,6 +172,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   agentFrameworks: [],
   opencode: {},
   codebuddy: {},
+  hermes: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
@@ -225,6 +227,7 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   agentFrameworks: snapshot.agentFrameworks ?? [],
   opencode: snapshot.opencode,
   codebuddy: snapshot.codebuddy ?? {},
+  hermes: snapshot.hermes ?? {},
   codex: snapshot.codex ?? {},
   claudeManaged: snapshot.claudeManaged,
   opencodeManaged: snapshot.opencodeManaged,

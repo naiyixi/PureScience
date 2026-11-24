@@ -58,6 +58,7 @@ const snapshot = (patch: Partial<SettingsSnapshot> = {}): SettingsSnapshot => ({
   agentFrameworks: [],
   opencode: {},
   codebuddy: {},
+  hermes: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
