@@ -1,98 +1,59 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import path from 'node:path'
+import { delimiter, join } from 'node:path'
 
 import type { ClaudeInstallEvent, ClaudeInstallResult } from '../../shared/settings'
 
-/**
- * Where pipx's console script lands. The lookup deps are injectable (platform, environment and home
- * included) so the Windows rules stay unit-testable on a macOS runner — the Windows lane is the only
- * place this runs for real, and it has to be right before that lane sees it.
- */
-export type PipxLookupDeps = {
-  platform?: NodeJS.Platform
-  env?: NodeJS.ProcessEnv
-  homePath?: string
-}
+// Where pipx lands on the platforms this app ships on. `~/.local/bin` is pipx's own default bin dir, the
+// Homebrew prefixes cover Apple-silicon and Intel macs, and `/usr/local/bin` covers a pip-installed pipx
+// on Linux. A bare `pipx` is tried last only after these, because a GUI app inherits launchd's PATH,
+// which on macOS does not contain `~/.local/bin` at all.
+// pipx is a launcher, not always a plain binary: on Windows it lands as `pipx.exe` or a `.cmd` shim, so the
+// candidate names have to be per-platform. The PATH scan at the end covers a Python install whose Scripts
+// directory is already on PATH — the case the fixed list cannot know about.
+const PIPX_NAMES = process.platform === 'win32' ? ['pipx.exe', 'pipx.cmd', 'pipx.bat'] : ['pipx']
 
-// Unix: pipx's own default bin dir, the Homebrew prefixes (Apple silicon / Intel), and pyenv's shims.
-// Windows: `pip install --user pipx` puts the console script under `%APPDATA%\Python\Scripts`, and pipx
-// keeps a script of its own under `%LOCALAPPDATA%\pipx\venvs\pipx\Scripts`. The shim spellings are tried
-// by extension because that is how Windows resolves a command (PATHEXT).
-const wellKnownPipxDirs = (deps: {
-  platform: NodeJS.Platform
-  env: NodeJS.ProcessEnv
-  homePath: string
-}): string[] => {
-  const p = deps.platform === 'win32' ? path.win32 : path.posix
-
-  if (deps.platform === 'win32') {
+const PIPX_DIRS = (): string[] => {
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local')
+    const appData = process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming')
     return [
-      deps.env.APPDATA ? p.join(deps.env.APPDATA, 'Python', 'Scripts') : '',
-      deps.env.LOCALAPPDATA ? p.join(deps.env.LOCALAPPDATA, 'pipx', 'venvs', 'pipx', 'Scripts') : ''
-    ].filter((dir) => dir.length > 0)
+      join(homedir(), '.local', 'bin'),
+      join(appData, 'Python', 'Scripts'),
+      join(localAppData, 'Programs', 'pipx', 'bin')
+    ]
   }
-
   return [
-    p.join(deps.homePath, '.local', 'bin'),
+    join(homedir(), '.local', 'bin'),
     '/opt/homebrew/bin',
     '/usr/local/bin',
-    p.join(deps.homePath, '.pyenv', 'shims')
+    join(homedir(), '.pyenv', 'shims')
   ]
 }
 
-const pipxNames = (platform: NodeJS.Platform): string[] =>
-  platform === 'win32' ? ['pipx.exe', 'pipx.cmd', 'pipx.bat', 'pipx'] : ['pipx']
-
-/**
- * Candidate paths in probe order, well-known dirs first. PATH comes last on purpose: a GUI app inherits
- * launchd's PATH (macOS) or a stripped one, so a shell-visible `~/.local/bin` is often not on it.
- */
-export const pipxCandidates = (deps: PipxLookupDeps = {}): string[] => {
-  const platform = deps.platform ?? process.platform
-  const env = deps.env ?? process.env
-  const homePath = deps.homePath ?? homedir()
-  const p = platform === 'win32' ? path.win32 : path.posix
-  const names = pipxNames(platform)
-
-  const wellKnown = wellKnownPipxDirs({ platform, env, homePath }).flatMap((dir) =>
-    names.map((name) => p.join(dir, name))
-  )
-  const onPath = (env.PATH ?? '')
-    .split(p.delimiter)
+const PIPX_CANDIDATES = (): string[] => {
+  const fromDirs = PIPX_DIRS().flatMap((dir) => PIPX_NAMES.map((name) => join(dir, name)))
+  const fromPath = (process.env.PATH ?? '')
+    .split(delimiter)
     .filter((dir) => dir.length > 0)
-    .flatMap((dir) => names.map((name) => p.join(dir, name)))
-
-  return [...wellKnown, ...onPath]
+    .flatMap((dir) => PIPX_NAMES.map((name) => join(dir, name)))
+  // De-duplicated and ordered: the well-known install locations first, PATH last, because a GUI app's PATH
+  // is whatever the desktop session was given.
+  return [...new Set([...fromDirs, ...fromPath])]
 }
 
-export const resolvePipxPath = (
-  exists: (path: string) => boolean = existsSync,
-  deps: PipxLookupDeps = {}
-): string | null => pipxCandidates(deps).find((candidate) => exists(candidate)) ?? null
-
-/** The spawn call shape this module needs. Production uses `spawn`; tests supply a scripted child. */
-export type HermesPipxSpawn = (
-  command: string,
-  args: string[],
-  options: {
-    env: NodeJS.ProcessEnv
-    stdio: ['ignore', 'pipe', 'pipe']
-    windowsHide: boolean
-  }
-) => ChildProcess
+export const resolvePipxPath = (exists: (path: string) => boolean = existsSync): string | null => {
+  return PIPX_CANDIDATES().find((candidate) => exists(candidate)) ?? null
+}
 
 export type HermesPipxInstallOptions = {
   installId: string
   onEvent: (event: ClaudeInstallEvent) => void
-  // Injected in tests so a pipx can be driven without touching the real environment.
+  // Injected in tests so a fake pipx can be driven without touching the real environment.
   pipxPath?: string | null
   env?: NodeJS.ProcessEnv
   timeoutMs?: number
-  // Injected in tests. A POSIX shebang script is not runnable on Windows, so a scripted child is the
-  // only fixture that exercises this code path on both lanes.
-  spawnImpl?: HermesPipxSpawn
 }
 
 const PIPX_TIMEOUT_MS = 15 * 60 * 1000
@@ -136,14 +97,17 @@ export const installHermesWithPipx = async (
 
   const tail: string[] = []
   const timeoutMs = options.timeoutMs ?? PIPX_TIMEOUT_MS
-  const spawnProcess: HermesPipxSpawn = options.spawnImpl ?? spawn
 
   const outcome = await new Promise<{ code: number | null; timedOut: boolean; error?: string }>(
     (resolve) => {
-      const child = spawnProcess(pipxPath, ['install', 'hermes-agent'], {
+      // A .cmd/.bat shim is not an executable on Windows — Node must go through a shell to run it.
+      const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(pipxPath)
+
+      const child = spawn(needsShell ? `"${pipxPath}"` : pipxPath, ['install', 'hermes-agent'], {
         env: { ...process.env, ...options.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' },
         stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true
+        windowsHide: true,
+        shell: needsShell
       })
 
       const timer = setTimeout(() => {
