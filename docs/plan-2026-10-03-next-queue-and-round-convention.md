@@ -1,5 +1,56 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十七、本轮追加（执行器，2026-11-25 02:4x–）—— 分片 4 第三次红在同一处：用例把宿主当 POSIX，实现又不许注入平台；顺带把 2.33.6 的两处叙事收口
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == f38e26f2`（会话的分支 `probe/upgrade-instrument-and-sweep`，与 `origin/main` `977d3f7c` 同内容不同 SHA；
+  远端此后又有 4 笔，最新 `4e679ae1`）。工作树 **30 个改动 + 3 个未跟踪是会话在制**（`ro-crate*`、
+  `shared/citation/*`、`session-persistence/*`、`prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`references/*`），
+  mtime 停在 **11-21/11-22** ⇒ **一个字节没碰**；本轮全部改动落在隔离工作树 `/tmp/ps-r1125`（基于 `origin/main` `4e679ae1`）。
+- `hermes cron list`：执行器自身 `running`（就是本轮），**没有第二个在跑的执行体**；`gh run list` 在飞为 0。
+- `package.json` = **2.33.6**，`v2.33.6` 标签不存在；`gh release list` 的 Latest = **v2.33.5**。
+- Windows 闸门仪器现取 `windows gate streak: 3/3 (satisfied)`（credited `45443818176` / `45436126143` / `45424388471`；
+  跳过 `45433459048` — no windows job）。
+
+### 一 现取读数：`Windows Full Test` @ `4e679ae1` 分片 4/8 又是 `1 failed`
+
+```
+FAIL unit src/main/settings/hermes-install.test.ts > hermes pipx installer > resolves a candidate only when it exists
+AssertionError: the given combination of arguments (null and string) is invalid for this assertion.
+ Test Files  1 failed | 167 passed | 3 skipped (171)
+      Tests  1 failed | 2434 passed | 26 skipped (2461)
+```
+
+归因：`4e679ae1` 为了让产品只认 Windows 的拼写，把查找表改回直读 `process.platform`，**顺手删掉了注入缝**；而那条老用例
+仍按 POSIX 的 `homebrew/bin/pipx` 断言 ⇒ Windows 上谓词恒假、返回 `null`。两件事互为因果：**实现不可注入平台，
+「Windows 拼写对不对」这条规则在 macOS 上就根本没有手段断言** —— 这正是同一处连续三次都在 Windows 车道上才暴露的原因。
+
+### 二 交付（两笔，已在隔离树上绿）
+
+| commit | 内容 |
+| --- | --- |
+| `e7229000` | `hermes-install.ts` 恢复 `PipxLookupDeps`（platform/env/homePath）与导出的 `pipxCandidates(deps)`，生产缺省仍是宿主、行为不变，路径按平台取 `path.win32`/`path.posix`；`hermes-install.test.ts` 正例按本平台字面量断言全等，另加一条**在 macOS 上注入 win32** 的用例，逐字断言 `%APPDATA%\Python\Scripts\pipx.exe`、`%LOCALAPPDATA%\Programs\pipx\bin\pipx.exe`、PATH 扫出的 `pipx.cmd` 都在候选里且 `.cmd` 唯一存在时被选中；证据档补 §七 |
+| `88058cf5` | 2.33.6 叙事收口：CHANGELOG 把「这一版只探测、不托管安装」整段改写为真机制（卡片下载入口跑 `pipx install hermes-agent`、分平台查找、`.cmd` 经 shell、成败由探测器判而不是 pipx 的退出码 —— 真机读数是 `already seems to be installed` 且退出 0），并写明「Windows 上真装一个 pipx 包」仍无读数；新增「视觉模型已配好却显示禁用」一节（`0a6c4019`）；双语 README 的成熟度 ✅ 段与 v2.33.6 横幅同句改写，`check-readme-sync.mjs` ✓ |
+
+判据（隔离工作树现取）：`hermes-install.test.ts` **6 passed**；`src/main/settings` **100 files / 1533 passed / 3 skipped**；
+`typecheck:node` **0**；`eslint --no-cache` 两文件 **0 error / 0 warning**；`brand-patterns.sh` 零命中。
+
+### 三 边界与具名未办
+
+1. **Windows 分片 4/8 的判决还没拿到**：本机只有「注入 win32 后逐字相等」这一条，Windows 车道的判决要等本次推送的分片。
+2. **v2.33.6 未打 tag**：闸门读数已 3/3，但按「主干红先修」的次序，tag 要等分片 4/8 转绿再打（本版不含「真装一个 pipx 包」那条端到端读数，已在 CHANGELOG 里具名）。
+3. 会话在制的 30 个路径不在本版。
+
+### 四 下一轮第一步
+
+- ① 读本次推送那笔的 `Windows Full Test` 分片 4/8：出现 `✓ src/main/settings/hermes-install.test.ts (6 tests)` 即结案；
+  仍红就按真回归当批修，不再猜平台。
+- ② 分片绿 ⇒ `git tag v2.33.6 <该提交>` 并推 tag（**不再推 main**，避免顶掉在飞的车道），盯 Release 的 preflight
+  （闸门需 3/3）→ 四平台 build → publish；页出来后按「发布核验」逐项数资产并比对 `RELEASE-CERTIFICATION.json` 的 `sourceSha`。
+- ③ 发布页正文用 `npm run release:notes -- v2.33.6 --keep-generated --apply` 生成并回读字节数；正文里若还出现
+  「只探测、不托管安装」就是改漏了。
+
 ## 二百一十六、本轮追加（执行器，2026-11-25 00:0x–）—— 主干 Windows 分片红在一个 POSIX 夹具上；顺带把 pipx 的查找表补成 Windows 认得的形状
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
