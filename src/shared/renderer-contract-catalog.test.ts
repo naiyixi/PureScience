@@ -73,7 +73,8 @@ describe('renderer contract catalog', () => {
     // 504 with reading text out of an image (pdf.ocr, LOCAL): one more capability-owned request contract
     // in the pdf group.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, both LOCAL): two more.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(510)
+    // 511 with settings.detectHermes (fifth framework detector, same shape as the other four).
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(511)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -90,7 +91,7 @@ describe('renderer contract catalog', () => {
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke-map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(389)
+    expect(Object.keys(projection.invoke)).toHaveLength(390)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -116,7 +117,7 @@ describe('renderer contract catalog', () => {
     // pdf reads it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(419)
+    ).toHaveLength(420)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

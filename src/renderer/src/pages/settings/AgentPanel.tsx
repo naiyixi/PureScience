@@ -74,6 +74,8 @@ const AgentPanel = ({
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
   const codebuddyInstall = useSettingsStore((state) => state.installStates.codebuddy)
   const hermesInstall = useSettingsStore((state) => state.installStates.hermes)
+  const detectHermes = useSettingsStore((state) => state.detectHermes)
+  const isDetectingHermes = useSettingsStore((state) => state.isDetectingHermes)
   const codexInstall = useSettingsStore((state) => state.installStates.codex)
   // Any install running locks the framework selector and every card's uninstall button.
   const anyInstalling = useSettingsStore(selectAnyInstalling)
@@ -297,7 +299,11 @@ const AgentPanel = ({
   // The section-level Re-detect re-scans all three frameworks at once; the per-card detect buttons
   // were removed in favor of this single action.
   const isDetectingAnyFramework =
-    isDetectingClaude || isDetectingOpencode || isDetectingCodebuddy || isDetectingCodex
+    isDetectingClaude ||
+    isDetectingOpencode ||
+    isDetectingCodebuddy ||
+    isDetectingCodex ||
+    isDetectingHermes
   const handleDetectAllFrameworks = async (): Promise<void> => {
     setFrameworkDetectionError(undefined)
     setInstallActionError(undefined)
@@ -307,7 +313,10 @@ const AgentPanel = ({
       detectClaude(),
       detectOpencode(),
       detectCodebuddy(),
-      detectCodex()
+      detectCodex(),
+      // Hermes is detected from PATH only in this version; including it here is what lets its card ever
+      // leave the not-ready state.
+      detectHermes()
     ])
     await checkEnvironment({ force: true })
 

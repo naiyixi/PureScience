@@ -31,6 +31,7 @@ export type RuntimeSetupState = {
   isDetectingClaude: boolean
   isDetectingOpencode: boolean
   isDetectingCodebuddy: boolean
+  isDetectingHermes: boolean
   isDetectingCodex: boolean
   installStates: Record<AgentFrameworkId, RuntimeInstallState>
 }
@@ -41,6 +42,7 @@ export type RuntimeSetupActions = {
   detectClaude: () => Promise<ClaudeDetectResult>
   detectOpencode: () => Promise<void>
   detectCodebuddy: () => Promise<void>
+  detectHermes: () => Promise<void>
   detectCodex: () => Promise<void>
   installClaude: (
     source: ClaudeInstallSource,
@@ -79,6 +81,7 @@ type RuntimeSetupCommands = Pick<
   | 'detectClaude'
   | 'detectOpencode'
   | 'detectCodebuddy'
+  | 'detectHermes'
   | 'detectCodex'
   | 'installClaude'
   | 'installOpencode'
@@ -137,6 +140,7 @@ export const createInitialRuntimeSetupState = (): RuntimeSetupState => ({
   isDetectingClaude: false,
   isDetectingOpencode: false,
   isDetectingCodebuddy: false,
+  isDetectingHermes: false,
   isDetectingCodex: false,
   installStates: {
     'claude-code': createInitialRuntimeInstallState(),
@@ -353,6 +357,15 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
       reconcileSnapshot(await getCommands().detectCodebuddy())
     } finally {
       patchRuntimeSetupState(set, { isDetectingCodebuddy: false })
+    }
+  },
+
+  detectHermes: async () => {
+    patchRuntimeSetupState(set, { isDetectingHermes: true })
+    try {
+      reconcileSnapshot(await getCommands().detectHermes())
+    } finally {
+      patchRuntimeSetupState(set, { isDetectingHermes: false })
     }
   },
 

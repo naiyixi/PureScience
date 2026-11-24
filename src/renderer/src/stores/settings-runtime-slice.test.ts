@@ -28,6 +28,7 @@ type RuntimeCommands = Pick<
   | 'detectClaude'
   | 'detectOpencode'
   | 'detectCodebuddy'
+  | 'detectHermes'
   | 'detectCodex'
   | 'installClaude'
   | 'installOpencode'
@@ -119,6 +120,7 @@ const createCommands = (): RuntimeCommandMocks => ({
   detectClaude: vi.fn().mockResolvedValue({ found: true, path: '/bin/claude', version: '1.0.0' }),
   detectOpencode: vi.fn().mockResolvedValue(snapshot()),
   detectCodebuddy: vi.fn().mockResolvedValue(snapshot()),
+  detectHermes: vi.fn().mockResolvedValue(snapshot()),
   detectCodex: vi.fn().mockResolvedValue(snapshot()),
   installClaude: vi.fn().mockResolvedValue({ installId: 'claude-1', ok: true }),
   installOpencode: vi.fn().mockResolvedValue({ installId: 'opencode-1', ok: true }),

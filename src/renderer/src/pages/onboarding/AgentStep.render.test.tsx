@@ -675,6 +675,8 @@ describe('AgentStep', () => {
     const detectClaude = vi.fn().mockResolvedValue({ found: false })
     const detectOpencode = vi.fn().mockResolvedValue(undefined)
     const detectCodex = vi.fn().mockResolvedValue(undefined)
+    const detectCodebuddy = vi.fn().mockResolvedValue(undefined)
+    const detectHermes = vi.fn().mockResolvedValue(undefined)
     const checkEnvironment = vi.fn().mockResolvedValue(undefined)
     useSettingsStore.setState({
       agentFrameworkId: 'claude-code',
@@ -682,7 +684,9 @@ describe('AgentStep', () => {
       installClaude,
       detectClaude,
       detectOpencode,
+      detectCodebuddy,
       detectCodex,
+      detectHermes,
       checkEnvironment,
       preflight: {
         claudeReady: false,
@@ -714,6 +718,7 @@ describe('AgentStep', () => {
     const detectOpencode = vi.fn().mockResolvedValue(undefined)
     const detectCodebuddy = vi.fn().mockResolvedValue(undefined)
     const detectCodex = vi.fn().mockResolvedValue(undefined)
+    const detectHermes = vi.fn().mockResolvedValue(undefined)
     const checkEnvironment = vi.fn().mockResolvedValue(undefined)
     useSettingsStore.setState({
       agentFrameworks: threeFrameworks,
@@ -721,6 +726,7 @@ describe('AgentStep', () => {
       detectOpencode,
       detectCodebuddy,
       detectCodex,
+      detectHermes,
       checkEnvironment,
       environmentCheck: environment(false)
     })
@@ -732,6 +738,7 @@ describe('AgentStep', () => {
     expect(detectOpencode).toHaveBeenCalledOnce()
     expect(detectCodebuddy).toHaveBeenCalledOnce()
     expect(detectCodex).toHaveBeenCalledOnce()
+    expect(detectHermes).toHaveBeenCalledOnce()
     expect(checkEnvironment).toHaveBeenCalledOnce()
   })
 

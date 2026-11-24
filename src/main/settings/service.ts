@@ -1392,6 +1392,11 @@ class SettingsService {
     return this.getSettingsView()
   }
 
+  async detectHermes(): Promise<SettingsSnapshot> {
+    await this.runtimeManager.detectHermes()
+    return this.getSettingsView()
+  }
+
   async detectCodebuddy(): Promise<SettingsSnapshot> {
     await this.runtimeManager.detectCodebuddy()
     return this.getSettingsView()

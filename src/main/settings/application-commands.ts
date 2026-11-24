@@ -76,6 +76,7 @@ type CoreSettingsCommandStore = Pick<
   | 'setExportLicense'
   | 'detectClaude'
   | 'detectCodebuddy'
+  | 'detectHermes'
   | 'detectCodex'
   | 'detectOpencode'
   | 'detectFunctionModel'
@@ -182,6 +183,13 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [],
     StoreResult<'detectCodebuddy'>
   >('settings:detect-codebuddy'),
+  // Fifth framework, same detection shape as its four siblings: the card can only become ready once a
+  // path is stored, and detection is the only thing that stores it.
+  detectHermes: defineApplicationCommand<
+    'settings:detect-hermes',
+    readonly [],
+    StoreResult<'detectHermes'>
+  >('settings:detect-hermes'),
   detectOpencode: defineApplicationCommand<
     'settings:detect-opencode',
     readonly [],
@@ -505,6 +513,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectClaude,
   settingsCoreApplicationCommands.detectCodebuddy,
   settingsCoreApplicationCommands.detectCodex,
+  settingsCoreApplicationCommands.detectHermes,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.executionProtection,
   settingsCoreApplicationCommands.skillAvailability,
@@ -604,6 +613,7 @@ const registerCoreSettingsApplicationCommands = (
       'settings:check-environment': () => dependencies.service.checkEnvironment(),
       'settings:detect-claude': () => dependencies.service.detectClaude(),
       'settings:detect-codebuddy': () => dependencies.service.detectCodebuddy(),
+      'settings:detect-hermes': () => dependencies.service.detectHermes(),
       'settings:detect-codex': () => dependencies.service.detectCodex(),
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),
       // One channel, two actions: the panel reads the matrix and writes the remote policy through the

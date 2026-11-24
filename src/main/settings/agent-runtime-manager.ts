@@ -584,6 +584,17 @@ export class AgentRuntimeManager {
     }
   }
 
+  async detectHermes(): Promise<void> {
+    const detected = await detectHermes(this.hermesDetectDeps)
+
+    if (detected) {
+      await this.repository.setHermesInfo(detected.resolvedPath, detected.version)
+    } else {
+      const cached = (await this.repository.getSettings()).hermesPath
+      if (cached && !(await this.pathExists(cached))) await this.repository.clearHermesInfo()
+    }
+  }
+
   async detectCodebuddy(): Promise<void> {
     const detected = await detectCodeBuddy(this.codebuddyDetectDeps)
 
