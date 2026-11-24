@@ -23,14 +23,15 @@ permissions:
 # EVENT, not by the branch alone: a push may cancel another push, but a manually dispatched verification
 # (the only determinate way to ask "verify this head and let it finish", which a release decision needs)
 # must not be cancelled by whatever is pushed while it runs.
-# Keyed by commit, not by event name. The previous key (`nightly-${{ github.event_name }}`) put every
-# push-triggered run in ONE global group, so the next push to main cancelled the in-flight run mid-Verify
-# and the four platform builds were skipped — measured 2026-11-24 on 45385751096 (Verify cancelled ~15 min
-# in, `Build` and `publish` skipped, no Windows job at all). A cancelled run reads as failure and can never
-# credit the Windows gate, so the fix is a key that cannot collide across commits; duplicate dispatches of
-# the same commit still collapse onto one run.
+# Keyed by event AND commit. The previous key was the event name alone, putting every push-triggered run in
+# ONE global group: the next push to main cancelled the in-flight run mid-Verify and all four platform builds
+# were skipped — measured 2026-11-24 on 45385751096 (Verify cancelled ~15 min in, `Build` and `publish`
+# skipped, no Windows job at all), and 45384875974 the same way. A cancelled run reads as failure and can
+# never credit the Windows gate. Adding the commit keeps two separate intents intact: a dispatch stays
+# independent of pushes (its group can never be entered by a push), and a push no longer kills a different
+# commit's run while a re-push of the same commit still collapses onto one.
 concurrency:
-  group: nightly-${{ github.sha }}
+  group: nightly-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
