@@ -221,14 +221,26 @@ describe('hermes pipx lookup', () => {
   })
 
   it('returns the first candidate that exists, and null when none does', () => {
+    // Every assertion below names the platform explicitly: `resolvePipxPath` defaults to the host, so an
+    // assertion against a bare default would be a POSIX-only test (homebrew paths do not exist on Windows).
     expect(resolvePipxPath(() => false)).toBeNull()
-    const found = resolvePipxPath((candidate) => candidate.endsWith('homebrew/bin/pipx'))
-    expect(found).toContain('homebrew/bin/pipx')
+    const posix = { platform: 'darwin' as const, homePath: '/home/tester', env: { PATH: '' } }
+    expect(resolvePipxPath((candidate) => candidate === '/opt/homebrew/bin/pipx', posix)).toBe(
+      '/opt/homebrew/bin/pipx'
+    )
+    // First match wins: the pyenv shim is later in the probe order than `~/.local/bin`.
+    expect(resolvePipxPath((candidate) => candidate.includes('pipx'), posix)).toBe(
+      '/home/tester/.local/bin/pipx'
+    )
     expect(
-      resolvePipxPath((candidate) => candidate.endsWith('pipx.exe'), {
-        platform: 'win32',
-        env: { APPDATA: 'C:\\Users\\tester\\AppData\\Roaming', PATH: '' }
-      })
+      resolvePipxPath(
+        (candidate) =>
+          candidate === 'C:\\Users\\tester\\AppData\\Roaming\\Python\\Scripts\\pipx.exe',
+        {
+          platform: 'win32',
+          env: { APPDATA: 'C:\\Users\\tester\\AppData\\Roaming', PATH: '' }
+        }
+      )
     ).toBe('C:\\Users\\tester\\AppData\\Roaming\\Python\\Scripts\\pipx.exe')
   })
 })

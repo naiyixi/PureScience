@@ -39,6 +39,11 @@ Windows 单元分片那三条。三条的成因与修法、本机复现探针、
 双 typecheck **0 / 0**；`eslint --no-cache` 两文件 **0 error**；变异 ①/②/③ 各 **5 / 2 / 2 failed**，
 还原后 9 passed；旧夹具去 exec 位探针 **3 failed** 且三条断言与 CI 逐字同形。
 
+**第一趟 Windows 读数（`aa8ee62b` 的分片 4/8）**：三条旧红全绿，唯一红是我自己保留的那条老用例
+（`returns the first candidate that exists…`）—— 它把「宿主默认平台」当断言，而 Windows 上候选是反斜杠路径 ⇒
+谓词恒假、返回 `null`。修法是把 `{platform, homePath, env}` 显式写进用例、期望值用该平台自己的字面路径并断言全等
+（不放宽断言）。这一段已写进证据档 §六。
+
 ### 三 v2.33.5 发布核验（现取，逐项）
 
 | 判据 | 读数 |

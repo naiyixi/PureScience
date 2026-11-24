@@ -101,3 +101,20 @@ Test Files  1 failed (1)   Tests  3 failed | 2 passed (5)
    真实 `pipx` 的 stdout 分块行为属 pipx 自己，本模块不解释它的格式。
 4. 缺 pipx 时那句提示仍写着 `brew install pipx` / `python3 -m pip install --user pipx`（Windows 上 `python3`
    不是常用入口）；这是文案取舍，未改，留给会话那批文案一起收。
+
+## 六 这一笔自己的第一趟 Windows 读数：第 9 例红在「把宿主的默认值当断言」
+
+`aa8ee62b` 的 `Windows Full Test` 分片 4/8：`1 failed | 167 passed`，**三条旧红全绿**，唯一红的是我自己保留的
+那条老用例：
+
+```
+FAIL unit src/main/settings/hermes-install.test.ts > hermes pipx lookup > returns the first candidate that exists, and null when none does
+AssertionError: the given combination of arguments (null and string) is invalid for this assertion.
+```
+
+成因：`resolvePipxPath` 的 `deps` 缺省取**宿主平台**，而这条老用例的谓词写的是 `candidate.endsWith('homebrew/bin/pipx')`
+—— 在 Windows 上候选全是反斜杠路径，谓词恒假 ⇒ 返回 `null` ⇒ `toContain` 拿 `null` 报上面那句。**修法不是放宽断言**，
+而是把平台显式写进断言：`{ platform: 'darwin' | 'win32', homePath, env }` 三态各取一条，期望值用该平台自己的字面
+路径并断言**全等**（顺带补一条「先命中者胜」的顺序断言）。教训与 `references/cross-platform-test-assertions.md`
+同一条：**实现平台化之后，用例的默认值不再是常量** —— 任何依赖「宿主默认」的断言都要显式传平台。
+
