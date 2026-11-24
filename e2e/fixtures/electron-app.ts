@@ -217,6 +217,12 @@ const launchEnvironment = (
   // test-results directory so CI's failure artifact carries it: a packaged-app stall is currently
   // indistinguishable between "the prompt never arrived" and "the answer never came back".
   environment.PURESCIENCE_E2E_AGENT_LOG = join(TEST_RESULTS_ROOT, 'fake-agent.log')
+  // One provisioned runtime for the whole certification run. Each spec gets a fresh storage root, so
+  // without this every spec that touches Python re-downloads ~100 MB and re-solves the env (measured
+  // 63.2 s of I/O per install, `no-cpu-in-process`); three P0 specs then blew their own budgets waiting
+  // for installs that were already done elsewhere on the same machine. The first spec pays it, the rest
+  // read the same directory. Kept under test-results so a failed run's artifact shows what was installed.
+  environment.PURESCIENCE_NOTEBOOK_RUNTIME_ROOT = join(TEST_RESULTS_ROOT, 'notebook-runtime')
   if (fakeRemoteItRoot) {
     environment.PURESCIENCE_FAKE_REMOTEIT_STATE = join(storageRoot, 'fake-remoteit-state.json')
     environment.PURESCIENCE_REMOTEIT_BIN = process.execPath

@@ -6,41 +6,42 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
-  assertSafeEnvName,
   DEFAULT_ENV_VERSION,
   DEFAULT_PY_ENV,
   DEFAULT_R_ENV,
-  envPrefix,
+  RUNTIME_ROOT_OVERRIDE_ENV,
+  addRepairRequired,
+  assertSafeEnvName,
+  clearRepairRequired,
+  condaActivatedPath,
   envDirectoryName,
+  envPrefix,
+  isProtectedIdentityRepairRequired,
+  isRepairRequired,
   legacyDefaultEnvPrefix,
   logicalEnvNameFromDirectory,
-  windowsDefaultEnvPrefixReserve,
   needsRepair,
-  pkgsCache,
   pipBin,
+  pkgsCache,
   pythonBin,
   pythonReady,
   rBin,
-  rMaterialized,
   rLibraryDir,
-  resolveEnvName,
+  rMaterialized,
   rReady,
+  rScriptBin,
   readRReadyMarker,
   readReadyMarker,
+  readRepairRequired,
   readyMarkerPath,
-  rScriptBin,
-  writeRReadyMarker,
+  resolveEnvName,
   resolveRuntimeCdnBase,
-  runtimeSubdir,
   runtimePackDir,
   runtimeRoot,
-  writeReadyMarker,
-  addRepairRequired,
-  clearRepairRequired,
-  condaActivatedPath,
-  isProtectedIdentityRepairRequired,
-  isRepairRequired,
-  readRepairRequired
+  runtimeSubdir,
+  windowsDefaultEnvPrefixReserve,
+  writeRReadyMarker,
+  writeReadyMarker
 } from './runtime-paths'
 
 const tmpRoots: string[] = []
@@ -71,7 +72,9 @@ describe('runtime-paths layout', () => {
     // Build expected paths with the host separator + platform-specific interpreter layout so the
     // assertions hold on Windows (Scripts\, python.exe, Lib\R\bin) as well as POSIX.
     const isWin = process.platform === 'win32'
-    expect(runtimeRoot('/store')).toBe(join('/store', 'runtime'))
+    // Pass the environment explicitly: the default argument reads process.env, and a run that happens to
+    // carry the shared-runtime override would otherwise make this assertion depend on the caller's shell.
+    expect(runtimeRoot('/store', {})).toBe(join('/store', 'runtime'))
     const pythonPrefix = envPrefix('/r', DEFAULT_PY_ENV)
     const rPrefix = envPrefix('/r', DEFAULT_R_ENV)
     expect(pythonPrefix).toBe(join('/r', 'envs', envDirectoryName(DEFAULT_PY_ENV)))
@@ -153,6 +156,22 @@ describe('runtime-paths layout', () => {
     expect(condaActivatedPath('/runtime/envs/default-r', '/usr/bin', 'darwin')).toBe(
       '/runtime/envs/default-r/bin:/usr/bin'
     )
+  })
+})
+
+describe('runtime root override', () => {
+  it('honours an explicit runtime root so several runs can share one provisioned bundle', () => {
+    const shared = join('/shared', 'notebook-runtime')
+    expect(runtimeRoot('/store', { [RUNTIME_ROOT_OVERRIDE_ENV]: shared })).toBe(shared)
+  })
+
+  it('treats an empty or blank override as not set, never as a path', () => {
+    for (const value of ['', '   ']) {
+      expect(runtimeRoot('/store', { [RUNTIME_ROOT_OVERRIDE_ENV]: value })).toBe(
+        join('/store', 'runtime')
+      )
+    }
+    expect(runtimeRoot('/store', {})).toBe(join('/store', 'runtime'))
   })
 })
 

@@ -128,7 +128,17 @@ export const assertSafeEnvName = (name: string | undefined): string => {
 }
 
 // <storageRoot>/runtime — the shared runtime root holding envs, the pkgs cache and the ready marker.
-export const runtimeRoot = (storageRoot: string): string => join(storageRoot, 'runtime')
+// Where the notebook runtimes live. Default: under the caller's storage root, so an isolated data root
+// gets its own environments. An explicit override exists because provisioning a ~100 MB bundle per data
+// root is the dominant cost when several runs share one machine (the packaged certification lane installs
+// the same bundle once per spec, 63.2 s each, and each of those installs is what made three P0 specs time
+// out). With the override set, the first run pays the install and the rest reuse it; the default is
+// untouched, so a normal install still keeps its environments inside its own data root.
+export const RUNTIME_ROOT_OVERRIDE_ENV = 'PURESCIENCE_NOTEBOOK_RUNTIME_ROOT'
+export const runtimeRoot = (storageRoot: string, env: NodeJS.ProcessEnv = process.env): string => {
+  const override = String(env?.[RUNTIME_ROOT_OVERRIDE_ENV] ?? '').trim()
+  return override === '' ? join(storageRoot, 'runtime') : override
+}
 
 // A conda environment prefix under the runtime root. Callers use logical names; this is the sole seam
 // that maps them to physical directories. The platform argument keeps the Windows mapping directly
