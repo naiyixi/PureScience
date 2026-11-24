@@ -1,51 +1,76 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import path from 'node:path'
 
 import type { ClaudeInstallEvent, ClaudeInstallResult } from '../../shared/settings'
 
-// Where pipx lands on the platforms this app ships on. `~/.local/bin` is pipx's own default bin dir, the
-// Homebrew prefixes cover Apple-silicon and Intel macs, and `/usr/local/bin` covers a pip-installed pipx
-// on Linux. A bare `pipx` is tried last only after these, because a GUI app inherits launchd's PATH,
-// which on macOS does not contain `~/.local/bin` at all.
-// pipx is a launcher, not always a plain binary: on Windows it lands as `pipx.exe` or a `.cmd` shim, so the
-// candidate names have to be per-platform. The PATH scan at the end covers a Python install whose Scripts
-// directory is already on PATH — the case the fixed list cannot know about.
-const PIPX_NAMES = process.platform === 'win32' ? ['pipx.exe', 'pipx.cmd', 'pipx.bat'] : ['pipx']
+/**
+ * The lookup's inputs are injectable (platform, environment, home) so the Windows spelling rules stay
+ * unit-testable on a macOS runner. The Windows lane is the only place they run for real, and a case that
+ * asserts a POSIX-homed candidate in a host-agnostic way reads `null` there.
+ */
+export type PipxLookupDeps = {
+  platform?: NodeJS.Platform
+  env?: NodeJS.ProcessEnv
+  homePath?: string
+}
 
-const PIPX_DIRS = (): string[] => {
-  if (process.platform === 'win32') {
-    const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local')
-    const appData = process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming')
+// pipx is a launcher, not always a plain binary: on Windows it lands as `pipx.exe` or a `.cmd` shim, so the
+// candidate names are per-platform and tried by extension — that is how Windows resolves a command.
+const pipxNames = (platform: NodeJS.Platform): string[] =>
+  platform === 'win32' ? ['pipx.exe', 'pipx.cmd', 'pipx.bat', 'pipx'] : ['pipx']
+
+// Well-known install locations. `~/.local/bin` is pipx's own default bin dir, the Homebrew prefixes cover
+// Apple-silicon and Intel macs, and `/usr/local/bin` covers a pip-installed pipx on Linux; on Windows
+// `pip install --user pipx` lands under `%APPDATA%\Python\Scripts`. A GUI app inherits launchd's PATH, which
+// holds none of these, so the fixed list comes first and the PATH scan — which covers a Python install this
+// list cannot know about — comes last.
+const wellKnownPipxDirs = (deps: Required<PipxLookupDeps>): string[] => {
+  const p = deps.platform === 'win32' ? path.win32 : path.posix
+
+  if (deps.platform === 'win32') {
+    const localAppData = deps.env.LOCALAPPDATA ?? p.join(deps.homePath, 'AppData', 'Local')
+    const appData = deps.env.APPDATA ?? p.join(deps.homePath, 'AppData', 'Roaming')
     return [
-      join(homedir(), '.local', 'bin'),
-      join(appData, 'Python', 'Scripts'),
-      join(localAppData, 'Programs', 'pipx', 'bin')
+      p.join(deps.homePath, '.local', 'bin'),
+      p.join(appData, 'Python', 'Scripts'),
+      p.join(localAppData, 'Programs', 'pipx', 'bin')
     ]
   }
+
   return [
-    join(homedir(), '.local', 'bin'),
+    p.join(deps.homePath, '.local', 'bin'),
     '/opt/homebrew/bin',
     '/usr/local/bin',
-    join(homedir(), '.pyenv', 'shims')
+    p.join(deps.homePath, '.pyenv', 'shims')
   ]
 }
 
-const PIPX_CANDIDATES = (): string[] => {
-  const fromDirs = PIPX_DIRS().flatMap((dir) => PIPX_NAMES.map((name) => join(dir, name)))
-  const fromPath = (process.env.PATH ?? '')
-    .split(delimiter)
+export const pipxCandidates = (deps: PipxLookupDeps = {}): string[] => {
+  const resolved: Required<PipxLookupDeps> = {
+    platform: deps.platform ?? process.platform,
+    env: deps.env ?? process.env,
+    homePath: deps.homePath ?? homedir()
+  }
+  const p = resolved.platform === 'win32' ? path.win32 : path.posix
+  const names = pipxNames(resolved.platform)
+  const fromDirs = wellKnownPipxDirs(resolved).flatMap((dir) =>
+    names.map((name) => p.join(dir, name))
+  )
+  const fromPath = (resolved.env.PATH ?? '')
+    .split(p.delimiter)
     .filter((dir) => dir.length > 0)
-    .flatMap((dir) => PIPX_NAMES.map((name) => join(dir, name)))
+    .flatMap((dir) => names.map((name) => p.join(dir, name)))
   // De-duplicated and ordered: the well-known install locations first, PATH last, because a GUI app's PATH
   // is whatever the desktop session was given.
   return [...new Set([...fromDirs, ...fromPath])]
 }
 
-export const resolvePipxPath = (exists: (path: string) => boolean = existsSync): string | null => {
-  return PIPX_CANDIDATES().find((candidate) => exists(candidate)) ?? null
-}
+export const resolvePipxPath = (
+  exists: (path: string) => boolean = existsSync,
+  deps: PipxLookupDeps = {}
+): string | null => pipxCandidates(deps).find((candidate) => exists(candidate)) ?? null
 
 export type HermesPipxInstallOptions = {
   installId: string

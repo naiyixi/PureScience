@@ -1,11 +1,11 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { ClaudeInstallEvent } from '../../shared/settings'
-import { installHermesWithPipx, resolvePipxPath } from './hermes-install'
+import { installHermesWithPipx, pipxCandidates, resolvePipxPath } from './hermes-install'
 
 const scratch: string[] = []
 const isWindows = process.platform === 'win32'
@@ -108,9 +108,39 @@ describe('hermes pipx installer', () => {
 
   it('resolves a candidate only when it exists', () => {
     expect(resolvePipxPath(() => false)).toBeNull()
-    const found = resolvePipxPath((candidate) =>
-      candidate.endsWith(join('homebrew', 'bin', 'pipx'))
-    )
-    expect(found).toContain(join('homebrew', 'bin', 'pipx'))
+    // Pinned on this platform's own literal: the earlier shape asserted a POSIX homebrew path in a
+    // host-agnostic way, which read `null` on Windows — no candidate there is spelled that way.
+    const expected = isWindows
+      ? join(
+          process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'),
+          'Python',
+          'Scripts',
+          'pipx.exe'
+        )
+      : '/opt/homebrew/bin/pipx'
+    expect(resolvePipxPath((candidate) => candidate === expected)).toBe(expected)
+  })
+
+  it('spells the Windows candidates the way Windows resolves a command', () => {
+    // Injected because this runner is not Windows, and the Windows spellings are the rules that broke.
+    const deps = {
+      platform: 'win32' as const,
+      env: {
+        APPDATA: 'C:\\Users\\ana\\AppData\\Roaming',
+        LOCALAPPDATA: 'C:\\Users\\ana\\AppData\\Local',
+        PATH: 'C:\\Tools'
+      },
+      homePath: 'C:\\Users\\ana'
+    }
+    const candidates = pipxCandidates(deps)
+
+    expect(candidates).toContain('C:\\Users\\ana\\AppData\\Roaming\\Python\\Scripts\\pipx.exe')
+    expect(candidates).toContain('C:\\Users\\ana\\AppData\\Local\\Programs\\pipx\\bin\\pipx.exe')
+    // PATH is scanned with the platform's own separator and the extension is tried.
+    expect(candidates).toContain('C:\\Tools\\pipx.cmd')
+
+    // A .cmd shim is what pipx actually installs, and the resolver has to pick it when it is the one present.
+    const shim = 'C:\\Users\\ana\\AppData\\Roaming\\Python\\Scripts\\pipx.cmd'
+    expect(resolvePipxPath((candidate) => candidate === shim, deps)).toBe(shim)
   })
 })

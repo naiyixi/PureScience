@@ -118,3 +118,35 @@ AssertionError: the given combination of arguments (null and string) is invalid 
 路径并断言**全等**（顺带补一条「先命中者胜」的顺序断言）。教训与 `references/cross-platform-test-assertions.md`
 同一条：**实现平台化之后，用例的默认值不再是常量** —— 任何依赖「宿主默认」的断言都要显式传平台。
 
+
+## 七 第二趟：这一笔自己又把注入缝拆掉了，于是老断言第三次回来
+
+`4e679ae1`（同一族修复的第二笔）为了让产品侧「只认 Windows 的拼写」，把查找表改回直接读 `process.platform`，
+**注入的 `deps` 一并删掉了**，而那条老用例的谓词仍是 `candidate.endsWith(join('homebrew','bin','pipx'))`。
+`Windows Full Test` @ `4e679ae1` 分片 4/8 逐字：
+
+```
+FAIL unit src/main/settings/hermes-install.test.ts > hermes pipx installer > resolves a candidate only when it exists
+AssertionError: the given combination of arguments (null and string) is invalid for this assertion.
+ Test Files  1 failed | 167 passed | 3 skipped (171)
+      Tests  1 failed | 2434 passed | 26 skipped (2461)
+```
+
+两件事同时错，而且互为因果：
+
+1. **用例**依赖宿主默认（POSIX 路径），在 Windows 上恒假；
+2. **实现**不可注入平台，于是「Windows 的拼写对不对」这条规则在 macOS 上**根本没有手段断言** —— 这正是它连续
+   两次在 Windows 车道上才暴露的原因。
+
+修法（`4e679ae1` 之后的这一笔）：
+
+- `hermes-install.ts`：恢复 `PipxLookupDeps`（`platform` / `env` / `homePath`）与导出的 `pipxCandidates(deps)`，
+  生产缺省值仍是 `process.platform` / `process.env` / `homedir()`，行为不变；路径拼接按平台取
+  `path.win32` / `path.posix`，分隔符取该平台的 `delimiter`。
+- `hermes-install.test.ts`：正例按**本平台自己的字面量**断言全等（`/opt/homebrew/bin/pipx` 对
+  `%APPDATA%\Python\Scripts\pipx.exe`），另加一条**在 macOS 上注入 win32** 的用例，逐字断言
+  `%APPDATA%\Python\Scripts\pipx.exe`、`%LOCALAPPDATA%\Programs\pipx\bin\pipx.exe`、PATH 扫出的 `pipx.cmd`
+  都在候选里，且当只有 `.cmd` 存在时解析器会选中它。
+
+本机读数：该文件 **6 passed**；`src/main/settings` **100 files / 1533 passed / 3 skipped**；
+`typecheck:node` **0**；`eslint --no-cache` 两文件 **0 error / 0 warning**。Windows 侧的判决仍只能由分片 4/8 给出。
