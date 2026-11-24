@@ -388,6 +388,28 @@ jobs:
           executable="$(node -e 'process.stdout.write(require("path").resolve(process.argv[1]))' "$candidate")"
           echo "executable=$executable" >> "$GITHUB_OUTPUT"
 
+      # The managed runtime pack is fetched from the release bundle on demand, and the P0 suite starts one
+      # app per spec — so the same ~100 MB archive was transferred once per spec, six times per run. On
+      # 2026-11-23 that cost was the red: `artifacts:replay-version` reported a 565 s handler whose budget
+      # went to the transfer, and the failure surfaced as a notebook timeout instead of a download one
+      # (docs/evidence/2026-11-24-windows-gate-second-reading-and-the-transfer-that-cost-it.md).
+      #
+      # So the transfer happens here, once, under its own budget, into the machine cache the runtime client
+      # reads. Nothing is skipped: the app still fetches the manifest over the network on every
+      # provisioning attempt and still decides on that manifest's digest — a cache entry that disagrees is
+      # discarded and the download runs as before. This step therefore cannot make a broken product green;
+      # it can only stop a slow transfer from being reported as a product failure.
+      - name: Prewarm the managed runtime pack
+        if: >-
+          ${{ !inputs.skip_verify &&
+              (matrix.name == 'macos-arm64' || matrix.name == 'windows-x64') &&
+              steps.packaged_app.outcome == 'success' }}
+        timeout-minutes: 30
+        shell: bash
+        env:
+          PURESCIENCE_RUNTIME_PACK_CACHE: ${{ runner.temp }}/purescience-runtime-pack-cache
+        run: node scripts/ci/prewarm-runtime-pack.mjs "${{ matrix.subdir }}"
+
       # Run the portable release-critical desktop journeys once against the packaged ARM64 app.
       # Native installer/package behavior remains hard-gated below for every published target.
       - name: Run P0 Electron certification
@@ -404,6 +426,8 @@ jobs:
         shell: bash
         env:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
+          # Same directory the prewarm step filled; see the note there for why this does not weaken P0.
+          PURESCIENCE_RUNTIME_PACK_CACHE: ${{ runner.temp }}/purescience-runtime-pack-cache
         # The journeys are portable; the machine they run on is not. macos-arm64 is the lane that gates a
         # release, windows-x64 runs the same journeys for evidence only — a Windows-only failure (path
         # handling, installer dialogs, the single-instance lock) must be visible in the record instead of
