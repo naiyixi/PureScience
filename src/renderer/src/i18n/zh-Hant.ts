@@ -4527,6 +4527,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': '正在載入產物…',
   'ws.resendOnNewBranch': '在新分支上重送？',
   'ws.enableFullAccessQuestion': '啟用完整存取？',
+  'ws.enableFullAccessDetail':
+    '智能體可以直接執行指令、修改檔案、執行筆記本程式碼、發起網路請求，不再逐次詢問。認證失敗與執行錯誤仍然會中斷這次執行。',
   'ws.createNewSpecialist': '新建…',
   'ws.invalidPlanDocument': '計畫文件無效，無法顯示此預覽。',
   'ws.boundedEvidenceNotice':

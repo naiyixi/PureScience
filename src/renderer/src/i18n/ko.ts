@@ -4812,6 +4812,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': '산출물을 불러오는 중…',
   'ws.resendOnNewBranch': '새 브랜치에서 다시 보낼까요?',
   'ws.enableFullAccessQuestion': '전체 액세스를 사용할까요?',
+  'ws.enableFullAccessDetail':
+    '에이전트가 명령 실행, 파일 변경, 노트북 코드 실행, 네트워크 요청을 매번 묻지 않고 수행할 수 있습니다. 인증 실패와 실행 오류는 그래도 이번 실행을 중단시킵니다.',
   'ws.createNewSpecialist': '새로 만들기…',
   'ws.invalidPlanDocument': '계획 문서가 유효하지 않아 이 미리보기를 표시할 수 없습니다.',
   'ws.boundedEvidenceNotice':

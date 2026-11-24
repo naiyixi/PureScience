@@ -4890,6 +4890,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': '成果物を読み込んでいます…',
   'ws.resendOnNewBranch': '新しいブランチで再送信しますか？',
   'ws.enableFullAccessQuestion': 'フルアクセスを有効にしますか？',
+  'ws.enableFullAccessDetail':
+    'エージェントはコマンドの実行、ファイルの変更、ノートブックコードの実行、ネットワーク要求を、毎回確認せずに行えます。認証の失敗と実行エラーは、それでもこの実行を中断させます。',
   'ws.createNewSpecialist': '新規作成…',
   'ws.invalidPlanDocument': '計画ドキュメントが無効なため、このプレビューを表示できません。',
   'ws.boundedEvidenceNotice':

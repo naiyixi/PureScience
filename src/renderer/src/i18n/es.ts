@@ -4998,6 +4998,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': 'Cargando artefactos…',
   'ws.resendOnNewBranch': '¿Reenviar en una rama nueva?',
   'ws.enableFullAccessQuestion': '¿Activar el acceso completo?',
+  'ws.enableFullAccessDetail':
+    'El agente puede ejecutar comandos, modificar archivos, ejecutar código de cuaderno y hacer peticiones de red sin preguntar cada vez. Los fallos de autenticación y los errores de ejecución siguen pudiendo detener esta ejecución.',
   'ws.createNewSpecialist': 'Crear uno nuevo…',
   'ws.invalidPlanDocument':
     'El documento del plan no es válido. Esta vista previa no se puede mostrar.',

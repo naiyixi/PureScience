@@ -4914,6 +4914,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': 'Загрузка артефактов…',
   'ws.resendOnNewBranch': 'Отправить заново в новой ветке?',
   'ws.enableFullAccessQuestion': 'Включить полный доступ?',
+  'ws.enableFullAccessDetail':
+    'Агент может выполнять команды, изменять файлы, запускать код ноутбука и делать сетевые запросы, не спрашивая каждый раз. Ошибки аутентификации и ошибки выполнения по-прежнему прерывают этот запуск.',
   'ws.createNewSpecialist': 'Создать…',
   'ws.invalidPlanDocument': 'Недопустимый документ плана. Этот предпросмотр нельзя показать.',
   'ws.boundedEvidenceNotice':

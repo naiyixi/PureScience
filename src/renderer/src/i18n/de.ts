@@ -5054,6 +5054,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.loadingArtifacts': 'Artefakte werden geladen…',
   'ws.resendOnNewBranch': 'In einem neuen Zweig erneut senden?',
   'ws.enableFullAccessQuestion': 'Vollzugriff aktivieren?',
+  'ws.enableFullAccessDetail':
+    'Der Agent darf Befehle ausführen, Dateien ändern, Notebook-Code ausführen und Netzwerkanfragen stellen, ohne vorher zu fragen. Anmeldefehler und Ausführungsfehler können den Lauf weiterhin abbrechen.',
   'ws.createNewSpecialist': 'Neu erstellen…',
   'ws.invalidPlanDocument': 'Ungültiges Plan-Dokument. Diese Vorschau kann nicht angezeigt werden.',
   'ws.boundedEvidenceNotice':
