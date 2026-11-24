@@ -185,6 +185,7 @@
         "src/main/settings/codex-auth.ts",
         "src/main/settings/codex-detect.ts",
         "src/main/settings/hermes-detect.ts",
+        "src/main/settings/hermes-install.ts",
         "src/main/settings/environment-check.ts",
         "src/main/settings/managed-claude.ts",
         "src/main/settings/managed-codex.ts",
