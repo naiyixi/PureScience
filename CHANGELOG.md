@@ -26,9 +26,21 @@
 `no-cpu-in-process` —— 时间花在下载与解包上，而 MCP SDK 的默认请求超时是 60 s，于是「装到一半」被读成
 `MCP error -32001: Request timed out`。夹具扮演的是一个愿意等安装的 agent，60 秒等于把能用的安装读成坏软件：
 `callTool` 改成 15 分钟**有界**预算（真挂住仍然红），两条 spec 的 `setTimeout` 提到 600 s，注释里写明它们等的是
-「首次安装一个约 100 MB 的运行时」而不是「以前很快、现在慢了」。这条**还没有一次跑绿的读数**，判据是下一趟
-Nightly 与 Windows P0；三条用例合计会给 P0 增加约 10 分钟，真正的省法是三处共用一份预热好的运行时缓存，
-那是下一件事。
+「首次安装一个约 100 MB 的运行时」而不是「以前很快、现在慢了」。**现在有绿的读数了**：`45329816080` 的 Nightly 七个作业全绿（含 `publish`），
+Windows 全量 `45329815962` 同样全绿；macOS arm64 的 `Run P0 Electron certification`、`Enforce the macOS
+Developer ID signature gate`、`Enforce platform certification` 都是 success。
+
+让这三条转绿的不是再次抬预算，而是把它们等的东西变少、把一次竞态补上：
+
+- **整趟认证共用一份装好的运行时**。每个 spec 拿到新的 storage root，运行时根跟着落在里面，于是同一条
+  约 100 MB 的运行时在一趟里被反复下载+解包（实测每次 63.2 s、`cpuShare 0.071`、`no-cpu-in-process`，
+  时间全在 I/O）。`runtimeRoot` 现在支持一次显式覆盖（`PURESCIENCE_NOTEBOOK_RUNTIME_ROOT`），
+  e2e 夹具把整趟指到同一个目录：第一个 spec 付安装，其余复用。默认行为不变 —— 正常安装的环境仍在
+  自己的 data root 里，覆盖值为空或空白一律视为未设置。
+- **安装收尾的那次复读不再抖成页面错误**。`notebook-interrupted-run` 是在安装中途退出应用，于是
+  `error` 那一帧进度落在一个正在关闭的主进程上，补读 `notebook-env:status` 被拒（`No handler registered`），
+  而那个 `then` 后面没有 catch —— 未处理的拒绝就是一条 renderer pageerror，认证门把它记成产品失败，
+  尽管它想刷新的状态已经不存在。重启后的状态来自 `init()`，丢掉这一次补读不损失读数。
 
 ### 另外两件
 
@@ -45,11 +57,16 @@ Nightly 与 Windows P0；三条用例合计会给 P0 增加约 10 分钟，真�
 
 ### 明确没做 / 边界（具名）
 
-- **P0 三条超时用例尚无绿的读数**：本版把预算改到够装一次运行时，判据是下一趟 Nightly 与 Windows P0。
+- **P0 曾连续两趟红在「安装」上，且原因不是预算**（`45161879456` 的 Windows P0：`123 passed / 2 failed`，
+  一条卡在自己 300 s 的预算上、另一条 600 s 也超时；`45202604327` 的 macOS 则是 600 s 跑满）：镜像把安装这条路
+  真正打通之后，P0 里每条要用运行时的 spec 都各自装一遍约 100 MB。当时的处置是先把预算抬到 600 s —— 实测否掉了
+  这个方向，随后改成**三处共用一份装好的运行时**（见上文），于是 `45329816080` / `45329815962` 两趟全绿。
+  抬预算那次为什么不够，归因留在 `docs/evidence/2026-11-23-v2335-release-blocked-by-windows-gate.md`。
 - **镜像只覆盖首批 24 个文件**（manifest + python 3.11/3.12/3.13 + R 4.3/4.4，四平台）；未镜像的路径在候选链里
   会落空并继续问 origin 与三方代理，所以「部分镜像」是优雅降级，不是错。
-- **`readiness` 闸门此前从未被一次真 tag 推起来过**（本版是第一次）。接线错的表现是 `drill` 直接 skipped，
-  只有真跑看得见。
+- **`readiness` 闸门此前从未被一次真 tag 推起来过**：本版第一次打 tag 时它确实起来了（`45165603871` 的
+  `readiness` 作业开始在 ubuntu 上轮询镜像），但那一趟的 `publish` 根本没发生（preflight 先红了，`drill` 永远不会
+  被唤醒）⇒ 它**仍在等一个真正的样本**。接线错的表现是 `drill` 直接 skipped，只有真跑看得见。
 - 装机版此刻是 2.33.2 ⇒ 用户侧要等更新才走到本版。
 
 ### 质量与证据口径
