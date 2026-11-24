@@ -51,6 +51,7 @@ export type RuntimeSetupActions = {
   installOpencode: (source?: ClaudeInstallSource) => Promise<ClaudeInstallResult>
   installCodex: (source?: CodexInstallSource) => Promise<ClaudeInstallResult>
   installCodebuddy: () => Promise<ClaudeInstallResult>
+  installHermes: () => Promise<ClaudeInstallResult>
   uninstallClaude: () => Promise<void>
   uninstallOpencode: () => Promise<void>
   uninstallCodex: () => Promise<void>
@@ -87,6 +88,7 @@ type RuntimeSetupCommands = Pick<
   | 'installOpencode'
   | 'installCodex'
   | 'installCodebuddy'
+  | 'installHermes'
   | 'uninstallClaude'
   | 'uninstallOpencode'
   | 'uninstallCodex'
@@ -393,6 +395,13 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
   installCodebuddy: () =>
     runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'codebuddy', (commands) =>
       commands.installCodebuddy({ source: 'npm' })
+    ),
+
+  // Hermes publishes to PyPI, so its only source is pipx — there is no npm command to offer and no
+  // app-managed download to orchestrate.
+  installHermes: () =>
+    runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'hermes', (commands) =>
+      commands.installHermes({ source: 'pipx' })
     ),
 
   repairRuntime: async (framework) => {

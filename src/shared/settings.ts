@@ -787,6 +787,18 @@ export type FrameworkInstallSourceInfo = {
 
 export type ClaudeInstallSourceInfo = FrameworkInstallSourceInfo & { id: ClaudeInstallSource }
 
+// Narrows a framework-wide source id back to the ones Claude's installer accepts. Cards pass their own
+// source through, so this is the one place that decides what "a Claude source" means now that the shared
+// union also carries sources belonging to other frameworks.
+const CLAUDE_INSTALL_SOURCE_IDS: readonly FrameworkInstallSourceId[] = [
+  'managed',
+  'npm',
+  'official-script'
+]
+
+export const isClaudeInstallSource = (id: FrameworkInstallSourceId): id is ClaudeInstallSource =>
+  CLAUDE_INSTALL_SOURCE_IDS.includes(id)
+
 // The ordered install sources for a given host platform. The app-managed download is the default and
 // recommended path (self-contained binary, no user Node/npm). npm and the official installer follow as
 // manual fallbacks: the npm command is identical everywhere, while the official installer differs —

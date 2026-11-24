@@ -73,8 +73,8 @@ describe('renderer contract catalog', () => {
     // 504 with reading text out of an image (pdf.ocr, LOCAL): one more capability-owned request contract
     // in the pdf group.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, both LOCAL): two more.
-    // 511 with settings.detectHermes (fifth framework detector, same shape as the other four).
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(511)
+    // 512 with settings.installHermes on top of the five detectors.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(512)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -91,7 +91,7 @@ describe('renderer contract catalog', () => {
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke-map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(390)
+    expect(Object.keys(projection.invoke)).toHaveLength(391)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -112,12 +112,13 @@ describe('renderer contract catalog', () => {
     // channel, callable on the local Web surface like the session reads it sits beside.
     // 407 with the citation walk (references.discoverCitations, LOCAL): installed on the local Web surface
     // like the integrity check it sits beside — LOCAL keeps it off the paired remote surface only.
+    // 421 with settings.installHermes on the local Web surface (installs are LOCAL by construction).
     // 411 with the portable-session package (D1): two more methods installed on the local Web surface.
     // 413 with reading text out of an image (pdf.ocr, LOCAL): installed on the local Web surface, like the
     // pdf reads it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(420)
+    ).toHaveLength(421)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -159,9 +160,10 @@ describe('renderer contract catalog', () => {
     // 135 with the portable-session package pair (D1), same reason.
     // 136 with reading text out of an image (pdf.ocr, LOCAL), same reason.
     // 138 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL), same reason.
+    // 144 with settings.installHermes (LOCAL): it runs pipx on this machine.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(143)
+    ).toHaveLength(144)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

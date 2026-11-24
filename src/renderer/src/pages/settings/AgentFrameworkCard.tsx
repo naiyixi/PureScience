@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils'
 import type {
   ClaudeInstallProgressEvent,
   ClaudeInstallSource,
-  ClaudeInstallSourceInfo
+  FrameworkInstallSourceId,
+  FrameworkInstallSourceInfo
 } from '../../../../shared/settings'
 import { describeInstallProgress } from './claude-install-progress'
 import { AgentInstallSourceMenu } from './AgentInstallSourceMenu'
@@ -57,7 +58,7 @@ type AgentFrameworkCardProps = {
   // Settings-only action.
   showUninstall?: boolean
   // Install menu + progress wiring (only meaningful on not-ready cards).
-  installSources: ClaudeInstallSourceInfo[]
+  installSources: FrameworkInstallSourceInfo[]
   // This runtime's own install slice from the store (progress/logs/error plus whether THIS card's
   // install runs, which flips the button to "Installing…").
   install: {
@@ -71,7 +72,7 @@ type AgentFrameworkCardProps = {
   installRunning: boolean
   npmAvailable: boolean
   blockedInstallSources: Partial<Record<ClaudeInstallSource, string>>
-  onInstall: (source: ClaudeInstallSource) => void
+  onInstall: (source: FrameworkInstallSourceId) => void
 }
 
 // Unified agent-framework card for the settings Model panel. The whole card is the radio option

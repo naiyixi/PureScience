@@ -68,7 +68,8 @@ import type {
   SetCredentialRequest,
   StoredCredential,
   EgressSettings,
-  ExportAuthorKind
+  ExportAuthorKind,
+  InstallHermesRequest
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
@@ -1662,6 +1663,13 @@ class SettingsService {
     onEvent: (event: ClaudeInstallEvent) => void
   ): Promise<ClaudeInstallResult> {
     return this.runtimeManager.installCodex(request, onEvent)
+  }
+
+  async installHermes(
+    request: InstallHermesRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    return this.runtimeManager.installHermes(request, onEvent)
   }
 
   async installCodebuddy(

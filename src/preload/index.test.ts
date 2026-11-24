@@ -72,6 +72,7 @@ type PreloadApi = {
     installOpencode: (request: unknown) => unknown
     installCodebuddy: (request: unknown) => unknown
     installCodex: (request: unknown) => unknown
+    installHermes: (request: unknown) => unknown
     setAgentFramework: (request: unknown) => unknown
     setVisionModel: (request: unknown) => unknown
     setNotificationsEnabled: (request: unknown) => unknown
@@ -586,6 +587,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.installClaude',
       'settings.installCodebuddy',
       'settings.installCodex',
+      'settings.installHermes',
       'settings.installOpencode',
       'settings.isEncryptionAvailable',
       'settings.isNpmAvailable',
@@ -768,7 +770,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 
     // 243 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, one contract.
     // 4.3 追加两条导出署名/许可通道 → 247。
-    expect(runtimeContracts).toHaveLength(248)
+    expect(runtimeContracts).toHaveLength(249)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1342,6 +1344,12 @@ const cases: ForwardingCase[] = [
     invoke: (a) => a.settings.detectHermes(),
     channel: 'settings:detect-hermes',
     args: []
+  },
+  {
+    name: 'settings.installHermes → settings:install-hermes',
+    invoke: (a) => a.settings.installHermes(sampleInstall),
+    channel: 'settings:install-hermes',
+    args: [sampleInstall]
   },
   {
     name: 'settings.installCodex → settings:install-codex',

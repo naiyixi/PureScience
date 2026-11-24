@@ -16,13 +16,15 @@ import type {
   InstallCodexRequest,
   InstallOpencodeRequest,
   Preflight,
-  ValidateProviderResult
+  ValidateProviderResult,
+  InstallHermesRequest
 } from '../../shared/settings'
 import { isProviderUsableByFramework } from '../../shared/settings'
 import { isModelBridgeSupported } from '../../shared/provider-registry'
 import { CLAUDE_EXECUTABLE_MISSING_MESSAGE } from '../../shared/run-error-classification'
 import { skillIdsDisabledForTarget } from '../../shared/skill-availability'
 import { buildAgentSpawnEnv } from '../acp/agent-process'
+import { installHermesWithPipx } from './hermes-install'
 import { withVersionProbeCache } from './version-probe-cache'
 import { createLogger } from '../logger'
 import { createComposeStepRecorder, type ComposeStepLogger } from '../diagnostics/compose-steps'
@@ -767,6 +769,40 @@ export class AgentRuntimeManager {
         }
       }
     }
+    return result
+  }
+
+  async installHermes(
+    request: InstallHermesRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    const installId = `install-hermes-${Date.now()}-${this.allocateSettingsIdSequence()}`
+
+    // Only one source exists, so the request value is checked rather than switched on: a caller that sends
+    // anything else is a programming error, not a user choice to honour.
+    if (request.source !== 'pipx') {
+      return { installId, ok: false, error: `Unsupported Hermes install source: ${request.source}` }
+    }
+
+    const result = await installHermesWithPipx({ installId, onEvent })
+    if (!result.ok) return result
+
+    await this.detectHermes()
+
+    // pipx can exit 0 with the console script in a directory this app does not probe. The card's own state
+    // comes from the detector, so the detector is what decides whether this counts as installed.
+    const detected = await detectHermes(this.hermesDetectDeps)
+    if (!detected) {
+      return {
+        ...result,
+        ok: false,
+        error:
+          'pipx finished, but no runnable hermes was found afterwards. pipx puts console scripts in ' +
+          '~/.local/bin by default (the app probes it, plus the Homebrew prefixes); if you installed into a ' +
+          'custom --bin-dir or with a different HERMES_HOME, point the app at it by hand. Nothing was changed for you.'
+      }
+    }
+
     return result
   }
 

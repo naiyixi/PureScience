@@ -9,18 +9,22 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import type { ClaudeInstallSource, ClaudeInstallSourceInfo } from '../../../../shared/settings'
+import type {
+  ClaudeInstallSource,
+  FrameworkInstallSourceId,
+  FrameworkInstallSourceInfo
+} from '../../../../shared/settings'
 
 type AgentInstallSourceMenuProps = {
   name: string
   label: string
-  sources: ClaudeInstallSourceInfo[]
+  sources: FrameworkInstallSourceInfo[]
   installing: boolean
   disabled: boolean
   npmAvailable: boolean
   blockedInstallSources: Partial<Record<ClaudeInstallSource, string>>
   buttonSize?: React.ComponentProps<typeof Button>['size']
-  onInstall: (source: ClaudeInstallSource) => void
+  onInstall: (source: FrameworkInstallSourceId) => void
 }
 
 // The card action and repair dialog share one source picker so availability rules and installer

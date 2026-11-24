@@ -8,11 +8,14 @@ import type {
   AgentFrameworkId,
   ClaudeInstallResult,
   ClaudeInstallSource,
-  ClaudeInstallSourceInfo
+  FrameworkInstallSourceInfo,
+  FrameworkInstallSourceId
 } from '../../../../shared/settings'
 import {
   getClaudeInstallSources,
   getCodebuddyInstallSources,
+  getHermesInstallSources,
+  isClaudeInstallSource,
   getCodexInstallSources,
   getOpencodeInstallSources
 } from '../../../../shared/settings'
@@ -69,6 +72,7 @@ const AgentPanel = ({
   const detectCodex = useSettingsStore((state) => state.detectCodex)
   const installCodex = useSettingsStore((state) => state.installCodex)
   const installCodebuddy = useSettingsStore((state) => state.installCodebuddy)
+  const installHermes = useSettingsStore((state) => state.installHermes)
   // Per-runtime install slices: each card renders only its own progress/logs/error (issue #278).
   const claudeInstall = useSettingsStore((state) => state.installStates['claude-code'])
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
@@ -353,11 +357,11 @@ const AgentPanel = ({
     notReadyHint: React.ReactNode
     uninstallCommand: string
     managed: boolean
-    installSources: ClaudeInstallSourceInfo[]
+    installSources: FrameworkInstallSourceInfo[]
     // This runtime's own install slice from the store (per-runtime install state, issue #278) —
     // each card renders only its own progress/logs/error.
     install: typeof claudeInstall
-    onInstall: (source: ClaudeInstallSource) => Promise<ClaudeInstallResult | undefined>
+    onInstall: (source: FrameworkInstallSourceId) => Promise<ClaudeInstallResult | undefined>
   }
 
   const frameworkCards: FrameworkCardModel[] = [
@@ -378,12 +382,14 @@ const AgentPanel = ({
       installSources: getClaudeInstallSources(window.api?.platform),
       install: claudeInstall,
       onInstall: (source) =>
-        installClaude(
-          source,
-          isOnboarding && source === 'managed'
-            ? selectedEnvironmentCheck?.recommendedRegistry
-            : undefined
-        )
+        isClaudeInstallSource(source)
+          ? installClaude(
+              source,
+              isOnboarding && source === 'managed'
+                ? selectedEnvironmentCheck?.recommendedRegistry
+                : undefined
+            )
+          : Promise.resolve(undefined)
     },
     {
       key: 'opencode',
@@ -407,7 +413,8 @@ const AgentPanel = ({
       managed: opencodeManaged,
       installSources: getOpencodeInstallSources(window.api?.platform),
       install: opencodeInstall,
-      onInstall: (source) => installOpencode(source)
+      onInstall: (source) =>
+        isClaudeInstallSource(source) ? installOpencode(source) : Promise.resolve(undefined)
     },
     {
       key: 'codex',
@@ -433,7 +440,8 @@ const AgentPanel = ({
       install: codexInstall,
       // Codex has no official-script source; the guard keeps the shared install-source type happy.
       onInstall: (source) => {
-        if (source !== 'official-script') return installCodex(source)
+        if (isClaudeInstallSource(source) && source !== 'official-script')
+          return installCodex(source)
         return Promise.resolve(undefined)
       }
     },
@@ -471,12 +479,14 @@ const AgentPanel = ({
       sourceUrl: 'https://pypi.org/project/hermes-agent/',
       notReadyHint: t('settings.agentHermesNotReady'),
       uninstallCommand: 'pipx uninstall hermes-agent',
-      // Detection-only: the app never installed this one, so it must not claim a managed uninstall.
+      // Installed by pipx, not by the app: there is no app-managed copy to uninstall.
       managed: false,
-      installSources: [],
+      installSources: getHermesInstallSources(),
       install: hermesInstall,
-      // No sources ⇒ this is never reached; kept so the shared card model stays total.
-      onInstall: () => Promise.resolve(undefined)
+      onInstall: (source) => {
+        if (source !== 'pipx') return Promise.resolve(undefined)
+        return installHermes()
+      }
     }
   ]
 
@@ -513,7 +523,7 @@ const AgentPanel = ({
   // environment gate; Settings always follows that non-stealing behavior.
   const installFramework = async (
     card: FrameworkCardModel,
-    source: ClaudeInstallSource
+    source: FrameworkInstallSourceId
   ): Promise<void> => {
     setInstallActionError(undefined)
     setFrameworkDetectionError(undefined)

@@ -229,7 +229,7 @@ describe('renderer argument-shape characterization', () => {
     // paired remote one.
     // 420 with the export attribution pair (4.3: settings.setExportAuthor / settings.setExportLicense): LOCAL
     // settings writes, callable here and refused at dispatch on the paired remote surface.
-    expect(actualPaths).toHaveLength(420)
+    expect(actualPaths).toHaveLength(421)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

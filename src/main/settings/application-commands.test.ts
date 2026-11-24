@@ -43,6 +43,7 @@ const expectedChannels = [
   'settings:install-claude',
   'settings:install-codebuddy',
   'settings:install-codex',
+  'settings:install-hermes',
   'settings:install-opencode',
   'settings:encryption-available',
   'settings:npm-available',
@@ -148,7 +149,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 69-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 70-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

@@ -30,7 +30,8 @@ import type {
   EgressSettings,
   ProxySettings,
   CreateExternalComputeEndpointRequest,
-  ValidateProviderRequest
+  ValidateProviderRequest,
+  InstallHermesRequest
 } from '../../shared/settings'
 import type { EgressApprovalRespondRequest } from '../../shared/egress'
 import type {
@@ -103,6 +104,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getSettingsView'
   | 'getSkillDetail'
   | 'installClaude'
+  | 'installHermes'
   | 'installCodebuddy'
   | 'installCodex'
   | 'installOpencode'
@@ -274,6 +276,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: InstallCodebuddyRequest],
     StoreResult<'installCodebuddy'>
   >('settings:install-codebuddy'),
+  installHermes: defineApplicationCommand<
+    'settings:install-hermes',
+    readonly [request: InstallHermesRequest],
+    StoreResult<'installHermes'>
+  >('settings:install-hermes'),
   installCodex: defineApplicationCommand<
     'settings:install-codex',
     readonly [request: InstallCodexRequest],
@@ -533,6 +540,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.installClaude,
   settingsCoreApplicationCommands.installCodebuddy,
   settingsCoreApplicationCommands.installCodex,
+  settingsCoreApplicationCommands.installHermes,
   settingsCoreApplicationCommands.installOpencode,
   settingsCoreApplicationCommands.isEncryptionAvailable,
   settingsCoreApplicationCommands.isNpmAvailable,
@@ -705,6 +713,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:install-codebuddy': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-codebuddy')
         return dependencies.service.installCodebuddy(args[0], dependencies.emitInstallEvent)
+      },
+      'settings:install-hermes': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:install-hermes')
+        return dependencies.service.installHermes(args[0], dependencies.emitInstallEvent)
       },
       'settings:install-opencode': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-opencode')

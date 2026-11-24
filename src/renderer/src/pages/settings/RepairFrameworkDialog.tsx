@@ -2,7 +2,7 @@ import { AlertDialog } from 'radix-ui'
 
 import { useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
-import type { ClaudeInstallSource } from '../../../../shared/settings'
+import type { FrameworkInstallSourceId } from '../../../../shared/settings'
 import { AgentInstallSourceMenu, type AgentInstallSourceMenuProps } from './AgentInstallSourceMenu'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
@@ -12,7 +12,7 @@ type RepairFrameworkDialogProps = Omit<
 > & {
   name: string | null
   onCancel: () => void
-  onRepair: (source: ClaudeInstallSource) => void
+  onRepair: (source: FrameworkInstallSourceId) => void
 }
 
 // Clicking a broken card explains why it cannot be selected, then exposes the exact same repair
