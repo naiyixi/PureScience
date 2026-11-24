@@ -1181,7 +1181,10 @@ describe('AgentBackendResolver runtime delegation', () => {
     { frameworkId: 'codex' as const, executableMethod: 'resolveCodexExecutable' as const },
     // Regression guard: codebuddy used to fall through the `codex | everything-else` ternary into
     // opencode's resolver, so `framework: 'codebuddy'` spawned the opencode binary with codebuddy argv.
-    { frameworkId: 'codebuddy' as const, executableMethod: 'resolveCodebuddyExecutable' as const }
+    { frameworkId: 'codebuddy' as const, executableMethod: 'resolveCodebuddyExecutable' as const },
+    // Same regression class for the fifth framework: hermes must resolve its own binary, never fall
+    // through to opencode's resolver.
+    { frameworkId: 'hermes' as const, executableMethod: 'resolveHermesExecutable' as const }
   ])('delegates $frameworkId preparation through the S5a runtime port', async (testCase) => {
     const harness = makeHarness()
 
