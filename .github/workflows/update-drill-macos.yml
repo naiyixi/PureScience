@@ -27,6 +27,11 @@ on:
         description: 'Stable tag the drill upgrades TO (e.g. v1.75.0); empty = the newest stable release'
         required: false
         default: ''
+      sweep_only:
+        description: 'Run only the local update-cache sweep (no published installer is downloaded)'
+        required: false
+        type: boolean
+        default: false
 
 # Read-only: the drill only reads published release assets.
 permissions:
@@ -40,6 +45,10 @@ concurrency:
 jobs:
   macos_update_drill:
     name: macOS update drill
+    # `sweep_only` exists so the cheap half of this gate can be dispatched on its own: the sweep needs
+    # no published installer, so a run that only wants that reading must not be forced to download
+    # ~600 MB of releases and perform a real install first.
+    if: ${{ inputs.sweep_only != true }}
     # Apple Silicon: electron-updater's MacUpdater picks the arm64 entry from the feed on an arm64 host,
     # so the published arm64 zip is the artifact this drill must exercise.
     runs-on: macos-15
@@ -187,4 +196,83 @@ jobs:
           path: |
             macos-update-drill.log
             macos-update-drill-observation.json
+          if-no-files-found: warn
+
+  macos_update_sweep:
+    name: macOS update-cache sweep
+    # The same product behaviour the real drill certifies — a landed install purges the downloaded
+    # package, a rollback keeps an installable one — with no download and no install, so it can be
+    # dispatched on its own and repeated after any change to the cache-maintenance code.
+    #
+    # The app under test is this commit's own bundle (`build:e2e`), launched in `dev-app-root` mode.
+    # What makes the in-place path unusable on a developer machine is a locally packaged build being
+    # ad-hoc signed; the sweep does not go through that path, so it needs no signed bundle.
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        # A full install on purpose: the app under test needs the generated Prisma client and the
+        # Electron binary, which `--ignore-scripts` (the real drill's install) would skip.
+        run: npm ci --no-audit --no-fund
+
+      - name: Build the bundles the sweep launches
+        # `build:e2e` is the bundle the packaged lanes run, with the heap ceiling the build needs
+        # (electron-vite build aborts on a V8 heap limit without it).
+        run: npm run build:e2e
+
+      - name: Run the local update-cache sweep
+        id: sweep
+        shell: bash
+        # Bounded independently of the job ceiling so a hung launch fails here, with its log intact.
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          node scripts/macos-update-cache-drill.mjs \
+            --output macos-update-sweep-observation.json 2>&1 | tee macos-update-sweep.log
+
+      - name: Confirm the sweep's success line
+        # The run must not be able to pass without printing its verdict.
+        if: steps.sweep.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'macOS update-cache drill completed successfully.' macos-update-sweep.log
+
+      - name: Record the sweep evidence
+        if: always()
+        shell: bash
+        env:
+          SWEEP_OUTCOME: ${{ steps.sweep.outcome }}
+        run: |
+          {
+            echo "## macOS update-cache sweep"
+            echo
+            echo "- outcome: **${SWEEP_OUTCOME:-unknown}**"
+            echo
+            echo '```'
+            tail -n 40 macos-update-sweep.log 2>/dev/null || echo '(no log was written)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the sweep evidence
+        # Always uploads: on a red run the log is the whole point.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: macos-update-sweep
+          retention-days: 5
+          path: |
+            macos-update-sweep.log
+            macos-update-sweep-observation.json
           if-no-files-found: warn

@@ -6,15 +6,22 @@ import { describe, expect, it } from 'vitest'
 
 type Step = {
   env?: Record<string, string>
+  id?: string
+  if?: unknown
   name?: string
   run?: string
+  uses?: string
+  with?: Record<string, unknown>
+  'timeout-minutes'?: number
+}
+type Job = {
+  env?: Record<string, string>
+  if?: unknown
+  steps?: Step[]
   'timeout-minutes'?: number
 }
 type Workflow = {
-  jobs?: Record<
-    string,
-    { env?: Record<string, string>; steps?: Step[]; 'timeout-minutes'?: number } | undefined
-  >
+  jobs?: Record<string, Job | undefined>
   on?: unknown
 }
 
@@ -30,6 +37,20 @@ const drillJob = (): NonNullable<Workflow['jobs']>[string] => {
   const job = readWorkflow().jobs?.macos_update_drill
   expect(job).toBeDefined()
   return job
+}
+
+const sweepJob = (): Job => {
+  const job = readWorkflow().jobs?.macos_update_sweep
+  expect(job).toBeDefined()
+  return job as Job
+}
+
+const sweepStep = (): Step => {
+  const step = (sweepJob().steps ?? []).find((candidate) =>
+    candidate.run?.includes('scripts/macos-update-cache-drill.mjs')
+  )
+  expect(step).toBeDefined()
+  return step as Step
 }
 
 const drillStep = (): Step => {
@@ -107,5 +128,47 @@ describe('macOS update drill workflow', () => {
     expect(on).toHaveProperty('workflow_dispatch')
     expect(drillJob()?.['timeout-minutes']).toBeGreaterThan(0)
     expect(drillStep()['timeout-minutes']).toBeGreaterThan(0)
+  })
+
+  it('runs the local sweep on this commit own bundle, without the in-place update', () => {
+    // The sweep is the half of this gate that needs no published installer: it launches the bundle
+    // this commit builds (`build:e2e`, the one the packaged lanes run) and checks what the app does
+    // to the downloaded package. Dropping the build step would make it launch a stale or missing
+    // `out/`, and adding `--real-update` would turn it back into the expensive half.
+    const steps = sweepJob().steps ?? []
+    const build = steps.find((step) => step.run?.includes('npm run build:e2e'))
+    expect(build).toBeDefined()
+    expect(sweepStep().run).not.toContain('--real-update')
+    // A bare `electron-vite build` aborts past the default V8 heap limit; the script is the gate.
+    expect(steps.some((step) => step.run?.includes('electron-vite build'))).toBe(false)
+  })
+
+  it('cannot pass the sweep without its own completion line', () => {
+    // Same contract as the real drill: the script prints the verdict, the workflow greps it, so a run
+    // cannot go green on an early return.
+    const steps = sweepJob().steps ?? []
+    const confirm = steps.find((step) =>
+      step.run?.includes('macOS update-cache drill completed successfully.')
+    )
+    expect(confirm).toBeDefined()
+    expect(readDrillScript()).toContain('macOS update-cache drill completed successfully.')
+  })
+
+  it('lets the sweep be dispatched without downloading published installers', () => {
+    // Without this switch, asking for the sweep reading would also pull ~600 MB of releases and
+    // perform a real install — the reading would be correct but the dispatch would be a release-time
+    // exercise. The gate lives on the drill job so the sweep stays unconditional.
+    const inputs = (
+      readWorkflow().on as { workflow_dispatch?: { inputs?: Record<string, unknown> } }
+    ).workflow_dispatch?.inputs
+    expect(inputs?.sweep_only).toMatchObject({ type: 'boolean' })
+    const gate = String(drillJob()?.if ?? '')
+    expect(gate).toContain('inputs.sweep_only')
+    expect(sweepJob().if).toBeUndefined()
+  })
+
+  it('bounds the sweep job and its step', () => {
+    expect(sweepJob()['timeout-minutes']).toBeGreaterThan(0)
+    expect(sweepStep()['timeout-minutes']).toBeGreaterThan(0)
   })
 })
