@@ -58,18 +58,33 @@ const VisionModelSelect = (): React.JSX.Element | null => {
       .map((model) => ({ provider, model }))
   })
 
-  if (options.length === 0) {
+  if (options.length === 0 && !visionModel) {
     // No vision-capable provider is configured: the section keeps its heading/description (owned by
     // the parent) and explains why the picker is absent instead of silently rendering nothing.
     return <p className="text-xs text-muted-foreground">{t('settings.visionModelUnavailable')}</p>
   }
 
-  const current = visionModel
+  const candidate = visionModel
     ? options.find(
         (option) =>
           option.provider.id === visionModel.providerId && option.model === visionModel.model
       )
     : undefined
+
+  // The saved pair wins over the candidate rule. Its owner validates on write and on admission, so a
+  // persisted configuration is the truth about what the relay will use; showing "disabled" here because
+  // this render's candidate list came back empty (a provider whose metadata this window has not
+  // refreshed yet, for instance) would tell the user the opposite of what the settings file says.
+  const savedProvider = visionModel
+    ? providers.find((provider) => provider.id === visionModel.providerId)
+    : undefined
+  const current =
+    candidate ??
+    (visionModel && savedProvider ? { provider: savedProvider, model: visionModel.model } : undefined)
+
+  // A saved configuration with nothing to pick means this window's candidate list is thinner than the
+  // settings file: keep the saved pair on screen and say so, rather than reporting it as disabled.
+  const savedWithoutCandidate = Boolean(visionModel && savedProvider && !candidate)
 
   const groups = providers
     .map((provider) => ({
@@ -142,6 +157,11 @@ const VisionModelSelect = (): React.JSX.Element | null => {
           </button>
         ) : null}
       </div>
+      {savedWithoutCandidate ? (
+        <p className="text-xs text-muted-foreground">
+          {t('settings.visionModelSavedNotOffered')}
+        </p>
+      ) : null}
       <p className="text-xs text-muted-foreground">{t('settings.visionModelHint')}</p>
     </div>
   )

@@ -3260,6 +3260,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': 'Modelo de visión',
   'settings.visionModelClear': 'Borrar',
   'settings.visionModelDisabled': 'Desactivado (las imágenes no se traducen)',
+  'settings.visionModelSavedNotOffered': 'El modelo de visión guardado no está en esta lista (puede que el proveedor aún no se haya actualizado). Al borrarlo se desactiva la traducción de imágenes.',
   'settings.visionModelHint':
     'Cuando el modelo activo no admite entrada de imágenes, este modelo analiza las imágenes adjuntas y las inyecta en la conversación como evidencia textual. Los resultados se guardan en caché, así la misma imagen nunca se analiza dos veces.',
   'settings.waitingForAuthorization': 'Esperando autorización…',

@@ -1647,6 +1647,7 @@ export const en: Record<ZhKey, string> = {
   'settings.activeModelHint': 'The model that drives new agent sessions.',
   'settings.visionModel': 'Vision model',
   'settings.visionModelDisabled': 'Disabled (images are not translated)',
+  'settings.visionModelSavedNotOffered': 'The saved Vision model is not in this list (the provider may not be refreshed yet). Clearing it turns image translation off.',
   'settings.visionModelClear': 'Clear',
   'settings.visionModelHint':
     'When the active model cannot accept image input, attached images are analyzed by this model and injected into the conversation as text evidence. Results are cached so the same image is never analyzed twice.',

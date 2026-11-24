@@ -1549,6 +1549,7 @@ export const zh = {
   'settings.activeModelHint': '驱动新智能体会话的模型。',
   'settings.visionModel': '视觉模型',
   'settings.visionModelDisabled': '禁用（不翻译图片）',
+  'settings.visionModelSavedNotOffered': '已保存的视觉模型不在这次的候选里（供应商信息可能还没刷新）。清空即停止图片翻译。',
   'settings.visionModelClear': '清除',
   'settings.visionModelHint':
     '当主模型不支持图片输入时，附加的图片会交给这个模型分析，并以文本证据的形式注入会话。分析结果会被缓存，同一张图不会重复付费。',

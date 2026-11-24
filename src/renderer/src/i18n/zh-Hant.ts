@@ -2940,6 +2940,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': '視覺模型',
   'settings.visionModelClear': '清除',
   'settings.visionModelDisabled': '已停用（不處理影像）',
+  'settings.visionModelSavedNotOffered': '已儲存的視覺模型不在這次的候選裡（供應商資訊可能還沒重新整理）。清空即停止圖片翻譯。',
   'settings.visionModelHint':
     '當使用中的模型無法接受影像輸入時，附加的影像會交由此模型分析，並以文字證據的形式注入對話。分析結果會快取，同一張影像絕不會被重複分析。',
   'settings.waitingForAuthorization': '等待授權…',
