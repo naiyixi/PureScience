@@ -58,3 +58,72 @@ Hermes ACP check OK          # exit 0
 
 所以这次只钉住第 1 步（服务端确实在、协议版本与能力集可读），`AgentFrameworkId` 的联合类型**没有动** ——
 单变量走完剩下的 3 条，再进代码。
+
+## 追加：真 prompt 跑通了，provider 两条路各自独立可用
+
+用仓库自带的 `evals/acp_empty_session_wire.py`（本地 HTTP 模型夹具，不走付费推理）跑真 ACP 会话：
+`initialize` → `session/new` → `session/prompt` → `session/fork`。prompt 阶段回包：
+
+```
+{"stopReason": "end_turn", "usage": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}}
+```
+
+持久化里读到成对的消息（原始会话与 fork 各一对）：
+
+```
+(local-3c0a…, 'user',      'Reply with a short greeting; do not use tools.')
+(local-3c0a…, 'assistant', 'Local fixture reply.')
+(local-101b…, 'user',      'Reply with a short greeting; do not use tools.')
+(local-101b…, 'assistant', 'Local fixture reply.')
+```
+
+脚本最后一步（`session/load` 之后读 `model_config_json`）在自己的断言上抛了 `TypeError: … not NoneType`，
+那是它针对「已存在的空会话行」的探针断言，与上面这条路径无关 —— 该失败不改变 prompt 已跑通这条读数。
+
+### provider 注入：三条变体各跑一遍（本地夹具，同一台机器）
+
+| config.yaml 里有 `api_key` | 环境里有 `OPENAI_API_KEY/BASE_URL` | prompt 结果 |
+|---|---|---|
+| 有 | 有 | `ok` / `end_turn` |
+| **无** | 有 | **`ok` / `end_turn`** |
+| 有 | **无** | **`ok` / `end_turn`** |
+
+结论：两条路各自都够用，所以应用可以只走环境变量、把明文密钥挡在生成的 `config.yaml` 之外
+（与 CodeBuddy 那条「密钥只进 env」的纪律一致）。配置形状：
+
+```yaml
+model:
+  provider: 'custom'
+  default: '<model>'
+  base_url: '<base>'
+  api_mode: 'chat_completions'
+mcp_servers: {}
+memory: { memory_enabled: false, user_profile_enabled: false }
+```
+
+`agent.system_prompt` **不写** —— 在 Hermes 那里它承载的是渲染后的 personality 文本，且它自己的
+`config_migrations.py` 会在迁移时把这段擦掉；应用侧的指引改走 ACP prompt 前缀（上面已验证的那条路）。
+
+## 这次仍然没有接进应用的代码，原因与剩余面
+
+我把 `AgentFrameworkId` 扩到五个、写了 `hermes.ts` 与它的测试，然后**全部还原**了。原因是编译器把真实
+工作量摊开后，这不是一个「加一个文件」的改动：`contextCompaction` 是必填（Hermes 只能声明
+`framework-managed`）、`REGISTRY_PROBE_PATHS` 是按 npm 包路径探测的（Hermes 是 Python 包，这条路对它
+不成立）、`preflight.ts` 需要一个新的 `hermesPath` 与它自己的探测（`hermes --version` 的输出是
+`Hermes Agent v0.23.3 (2026.9.24) · stable · local caafe5389ae5`，取版本要按段取，不能整段当版本号）。
+
+要把它做成「实机可用」，还差的落点（按依赖顺序）：
+
+1. `src/shared/settings.ts`：`AgentFrameworkId` + `AGENT_FRAMEWORK_IDS` + 完整性映射；
+2. `src/main/settings/types.ts` / `repository.ts`：`hermesPath` / `hermesVersion` 两个字段与读回；
+3. 一个 `hermes --version` 的探测器（取 semver 段）与 `agent-runtime-manager.ts` 的 ready 判定；
+4. `preflight.ts` 的 `hermesReady`、`environment-check.ts` 的注册表探测改成「非 npm 框架跳过」；
+5. `src/main/agent-framework/hermes.ts`（本次已写好骨架：`hermes acp` + `HERMES_HOME` + 生成的
+   `config.yaml` + 密钥只进 env）与 `registry.ts` 注册；
+6. `backend-resolver.ts` 的 `resolveHermesExecutable`（pipx 安装的 `hermes` 在 `~/.local/bin`）；
+7. 渲染层：`provider-icons.tsx` / `provider-form-value.ts` / `AgentPanel.tsx` / `UninstallRuntimeDialog.tsx`
+   与九语种文案；`renderer-contract-catalog.ts` 里那几个 pinned 计数要跟着动；
+8. e2e：一条真跑 `hermes acp` 的认证用例（而不是断言配置文件长得对）。
+
+在没有 5、6、8 之前把它挂进 `AGENT_FRAMEWORK_IDS`，用户看到的就是一个点了会失败的按钮 —— 这是本次
+停在证据、不进代码的唯一理由。
