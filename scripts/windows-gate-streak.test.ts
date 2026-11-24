@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeWindowsStreak, readingOf } from './windows-gate-streak.mjs'
+import { computeWindowsStreak, httpFailureMessage, readingOf } from './windows-gate-streak.mjs'
 
 // The gate's counting rule, pinned. Every case below is one of the shapes this repository actually produced
 // on 2026-11-22, because the rule exists to survive them: runs cancelled by the next push, runs where the
@@ -102,5 +102,21 @@ describe('the windows lane streak', () => {
   it('reports not-satisfied rather than throwing when there is nothing to count', () => {
     const result = computeWindowsStreak([], 3)
     expect(result).toMatchObject({ streak: 0, satisfied: false, credited: [] })
+  })
+
+  it('names the missing token when GitHub refuses an anonymous job-log read', () => {
+    // Measured 2026-11-24: run locally without a token, the gate printed
+    // `windows gate streak: GitHub answered 403 for job 138070446404 logs` — indistinguishable from an
+    // outage or a permissions problem, and the run it was about had the reading the gate wanted.
+    expect(httpFailureMessage(403, 'job 138070446404 logs', false)).toContain(
+      'no GITHUB_TOKEN/--token was supplied'
+    )
+    expect(httpFailureMessage(403, 'job 138070446404 logs', true)).toBe(
+      'GitHub answered 403 for job 138070446404 logs'
+    )
+    // Only the anonymous 403 gets the extra sentence: other statuses keep the plain shape.
+    expect(httpFailureMessage(404, 'job 138070446404 logs', false)).toBe(
+      'GitHub answered 404 for job 138070446404 logs'
+    )
   })
 })

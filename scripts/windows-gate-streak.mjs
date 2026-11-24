@@ -41,9 +41,18 @@ const api = async (path) => {
       ...(token ? { authorization: `Bearer ${token}` } : {})
     }
   })
-  if (!response.ok) throw new Error(`GitHub answered ${response.status} for ${path}`)
+  if (!response.ok) throw new Error(httpFailureMessage(response.status, path, token !== ''))
   return response.json()
 }
+
+// GitHub refuses anonymous reads of job logs, and the refusal is a plain 403 — the same status an
+// outage or a permissions problem gives. Naming the missing token turns that into an instruction
+// instead of a hunt: this script runs locally before a release as often as it runs in CI, and locally
+// there is no GITHUB_TOKEN in the environment (`node scripts/windows-gate-streak.mjs --token "$(gh auth token)"`).
+export const httpFailureMessage = (status, what, hasToken) =>
+  status === 403 && !hasToken
+    ? `GitHub answered 403 for ${what} — no GITHUB_TOKEN/--token was supplied, and anonymous job-log reads are refused`
+    : `GitHub answered ${status} for ${what}`
 
 const jobLog = async (jobId) => {
   const response = await fetch(`https://api.github.com/repos/${repo}/actions/jobs/${jobId}/logs`, {
@@ -53,7 +62,8 @@ const jobLog = async (jobId) => {
     },
     redirect: 'follow'
   })
-  if (!response.ok) throw new Error(`GitHub answered ${response.status} for job ${jobId} logs`)
+  if (!response.ok)
+    throw new Error(httpFailureMessage(response.status, `job ${jobId} logs`, token !== ''))
   return response.text()
 }
 
