@@ -1,5 +1,53 @@
 # PureScience 更新日记
 
+## v2.33.6 — 2026-11-24
+
+### 第五个后端：它自带 ACP 服务，而装法是 Python 包 —— 所以这一条不能照抄前四个
+
+**前四个后端都是「装一个 npm CLI，再按它认的变量喂 provider」。这一个不是。** 它自带 `acp` 子命令，
+`hermes acp --check` 在隔离数据根里回 `check OK`（exit 0），一条标准 `initialize` 在 **7.2 秒**内回来：
+`protocolVersion: 1`、`agentInfo { name: hermes-agent, version: 0.23.3 }`、`loadSession`、
+`promptCapabilities.image`、`sessionCapabilities { fork, list, resume }` —— 同一族能力，但**没有**
+`mcpCapabilities`，所以应用侧的工具面在这一版**不明说可达**：两个 MCP 开关都声明 false，而不是按「大概能」写 true。
+
+**真对话跑通了才敢接。** 用仓库自带的 ACP 演练（本地 HTTP 夹具，不走付费推理）走完
+`initialize → session/new → session/prompt → session/fork`：回包 `stopReason: end_turn`，持久化里
+原始会话与 fork **各落了一对** `user`/`assistant`。脚本最后那条针对「已存在的空会话行」的断言自己抛了
+`TypeError`，与这条路径无关，记录里写明了，没有拿它当挡箭牌。
+
+**provider 怎么进去，是量出来的，不是猜的。** 三种变体各跑一遍：配置里有密钥 + 环境里有（通）、
+**配置里没有 + 环境里有（通）**、配置里有 + 环境里没有（通）。两条路各自都够用，于是应用只走
+`OPENAI_API_KEY`，**生成的 `config.yaml` 里不出现明文密钥**（`mode 0600`，内容里连 `api_key` 这个键都没有）。
+`agent.system_prompt` 一律不写 —— 在它那里这个字段承载的是渲染后的 personality 文本，而且它自己的迁移会
+把这段擦掉；应用侧指引改走 ACP 的 prompt 前缀，也就是上面唯一被验证过的那条路。
+
+**探测这一条，是把它从「只能看」变成「能用」的那一半。** 四兄弟各有一条 `settings:detect-*`，它没有，
+于是 `hermesReady` 恒为 false、卡片永远显示「未检测到 Hermes」。这一版按**完全相同的形状**补第五份：
+主进程探测（PATH + pipx 的 `~/.local/bin` 与 `~/.local/pipx/venvs/hermes-agent/bin`，Windows 走
+`%APPDATA%\Python\Scripts` 与 `%LOCALAPPDATA%\pipx\…`）、落设置、探不到且缓存路径已失效就清掉；
+preload 绑定、`renderer-api.d.ts`、契约目录与 `web-api-map`（用仓里的生成脚本重生成）一起动。
+**版本取的是 `v` 前缀那一段**：`--version` 整行是
+`Hermes Agent v0.23.3 (2026.9.24) · stable · local <sha>`，`2026.9.24` 是构建日期，按「第一个像版本号的 token」
+取会取到它 —— 这正是此前 Windows 那条把整段 `--version` 当版本号的同一类错。
+
+**边界写在卡片上，不藏在代码里。** 这一版只探测、不托管安装：没有安装源时**整块安装菜单不渲染**
+（而不是给一个点不动的按钮），`managed: false` 时显示 `pipx uninstall hermes-agent` 而不是托管卸载对话框；
+repair 遇到它按名字拒绝并说明原因；环境检查对非 npm 框架不再去探 npm 注册表，直接说明没有下载可查。
+
+**认证不是断言配置文件长得对。** `hermes-certification` 用例拿 `prepareModelConfig` 生成的那份
+`config.yaml` 与 `spawn` 的那套 env/argv 起**真的** `hermes acp`，回包 `protocolVersion 1`、
+`agentInfo hermes-agent`、`stopReason end_turn`，并且本地夹具**确实收到了一次 POST** —— 有终止回复却没有任何
+请求，说明应用指去了别处。机器上没有它时整组 skip 并打印原因，而不是静默通过。
+
+### Nightly 的并发组按 commit 分键 —— 全局分键会把在跑的 Verify 顶掉
+
+`45385751096`（`f8b494be`）的 `Verify` 在开跑约 15 分钟后被 **cancelled**，随后 `Build` 与 `publish`
+全部 skipped，连一个 Windows 作业都没有；`45384875974` 同样 cancelled。原因是
+`group: nightly-${{ github.event_name }}` 把所有 push 触发的 run 塞进同一个全局组，又开着
+`cancel-in-progress` —— main 上再来一笔推送，这一趟就作废。作废的 run 在 API 里读作 failure，
+永远攒不上 Windows 闸门的连续三趟。改成 `nightly-${{ github.sha }}` 之后，不同 commit 之间不可能互相取消，
+同一 commit 的重复触发仍会合并成一趟。
+
 ## v2.33.5 — 2026-11-23
 
 ### 笔记本的 Python 运行时也先问自家的主机 —— 墙内首启量到 421 KB/s，而这条路第一次真的被走通
