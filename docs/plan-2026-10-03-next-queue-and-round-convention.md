@@ -1,5 +1,65 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十五、本轮追加（执行器，2026-11-24 14:4x–）—— 闸门攒到 3/3（三份 passed）；先改正文里那条被撤回的机制，再把 tag 改指到改对的那一笔
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == 8a047e04`（会话 14:26），`package.json` = **2.33.5**，`tag v2.33.5` 已打（指向
+  `1034c8c7`）但 **Release 页不存在**（`Release preflight` `45339548687` 红在 `windows gate streak: 1/3`）。
+  工作树 30 个改动 + 3 个未跟踪仍是会话在制（`ro-crate*`、`shared/citation/*`、`session-persistence/*`、
+  `prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`notebook/mcp-server`、`RoCrateExportDialog*` …，
+  mtime 停在 10:28）⇒ **一个字节没碰**；本轮只动发版正文那三个文件与 `docs/**`。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；本轮的活是**解开挡在版本发布前面的那道闸门**。
+
+### 一 读数：三份 `electron P0 reading: passed`，闸门 3/3
+
+| # | run | 事件 | head | 套件 | P0 用时 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `45329816080` | push | `aedb1337` | 125 passed | 43.2m |
+| 2 | `45340316786` | push | `e94664cf` | 124 passed | 45.2m |
+| 3 | `45343138992` | workflow_dispatch | `8a047e04` | 125 passed | 29.3m |
+
+仪器现取 `windows gate streak: 3/3 (satisfied)`（`--token "$(gh auth token)"`；匿名读作业日志是 403）。
+第 3 份用 `workflow_dispatch`：`nightly.yml` 的并发组按事件分，文件注释写明这是发版判据要的确定性取证；
+代价是 **#2 与 #3 是同一条应用树**（#3 只多一个 `docs/**` 文件）⇒ 跨树稳定性只证了一次，读数里写明。
+另：首趟 tag 带起的 `macOS Upgrade Smoke`（`45339548572`）在等一个永远不会发生的 publish（240 分钟后才红），
+已取消。
+
+### 二 交付甲：正文里那句话说的是**已被撤回**的机制（`e668b405`）
+
+`1034c8c7` 的 CHANGELOG 与双语横幅把「整趟认证共用一份装好的运行时」写成三条用例转绿的原因，而那一笔
+`38d8c336` 在 `533f80bd` 已整笔撤回（它把四条 spec 的前提换掉：闸门、重试、下载明细、「应用自己装一遍」只在
+机器上没有可用运行时时才出现；`60d4a558` 那趟 `4 failed / 121 passed` 就是它）。判据：
+`git grep PURESCIENCE_NOTEBOOK_RUNTIME_ROOT` 在 `src/`、`scripts/` 零命中，只剩正文里那两句。
+改法：写上真机制（`Prewarm the managed runtime pack` 先把三个归档取一次、逐个核 sha256，spec 从本机缓存
+复制；P0 1.0 小时 → 43.2/45.2/29.3 分钟），并把「试过又撤回」具名留下；两份 README 横幅逐字同步
+（`check-readme-sync.mjs` ✓），`pre-push-checks.sh` 全过。
+
+### 三 交付乙：tag 改指 `1034c8c7` → `e668b405`，Release 车道起跑
+
+Release 正文由 tag 指向的那棵树生成 ⇒ 正文错了就让 tag 指到改对的那一笔（该 tag **没有页**，按「有页才不许
+删/移」的口径可以改指；`merge-base --is-ancestor` 确认在 main 上；`package.json`/`package-lock` 均 2.33.5；
+自 `v2.33.4` 起 55 笔）。tag 事件带起 `45351423917`（preflight success，随后被同 tag 的新事件按
+`release-<ref>` 顶掉）与 `45351488445`（preflight success，build 在跑）。
+
+### 四 边界与具名未办
+
+1. **发布尚未落地**：只看得到 preflight success 与 build 起跑；页与资产要按「发布核验」口径复核
+   （四平台产物 + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` 的 `sourceSha` 与 `v2.33.5^{commit}` 逐字符比对）。
+2. **#2 与 #3 同树**（见上），别把 3/3 读成「三条独立的树都绿」。
+3. 预热让 P0 不再覆盖「从公开主机下载归档」那一段（manifest 仍由应用自己取、摘要不符仍拒）。
+4. 会话在制的 30 个路径**不在本版**（本版仍只含已提交的那 55 笔）。
+
+### 五 下一轮第一步
+
+- ① 读 `45351488445` 的终态与 `publish`：页出来了就按「发布核验」逐项数资产（四平台 + `SHA256SUMS.txt` +
+  `RELEASE-CERTIFICATION.json` + `version.json` + `latest*.yml` + 每架构 `*-mac.yml`），并比对 `sourceSha`；
+  页没出来、`publish` skip 了，再按「该 tag 无页 ⇒ 删 tag 重建」处置（**别重跑单个 job**）。
+- ② 发布页正文用 `npm run release:notes -- v2.33.5 --keep-generated --apply` 从那一棵树的 CHANGELOG 生成，
+  回读字节数；只要正文里还出现「共用一份装好的运行时」就是改漏了。
+- ③ 之后回到 B/大件：下一件候选是 `docs/plan-…` 里 §三百六十 §四① 的 sweep 诊断路径交叉核对（需要先造一条
+  可驱动的读数），或把 M2 的产品决定摆到台面上（它是 B 段唯一剩下的阻塞项）。
+
 ## 二百一十四、本轮追加（执行器，2026-11-24 11:0x–12:4x）—— 主干红是「预热只落了断言」；第三份读数红在一条被换掉的前提上，已撤回那一笔
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
