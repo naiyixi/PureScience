@@ -1,5 +1,112 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十四、本轮追加（执行器，2026-11-24 11:0x–12:4x）—— 主干红是「预热只落了断言」；第三份读数红在一条被换掉的前提上，已撤回那一笔
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == c70c494b`（会话 10:19 / 10:28 两笔），`package.json` = **2.33.5**，
+  `gh release list` 的 Latest 仍是 **v2.33.4**，`git tag -l 'v2.33*'` 无 `v2.33.5`。
+- 工作树 36 个改动 + 4 个未跟踪仍是会话在制（四件套 `CHANGELOG.md`/`README.md`/`README.en.md`、`ro-crate*`、
+  `shared/citation/*`、`session-persistence/*`、`prisma/schema.prisma`、`logger*`、`crash-diagnostics`、
+  `RoCrateExportDialog*`、`diagnostics/module-load*` …），mtime 停在 10:28 ⇒ **一个字节没碰**，会话本轮没有新动作。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽 ⇒ 本轮先收主干红（红挡所有人）。
+
+### 一 现取读数：主干红不是 flake，是「断言进了提交、实现还在工作区」
+
+`Windows Full Test` @ `c70c494b`（run `45312719156`）分片 **8/8**（job `138172143431`）`failure`，日志逐字：
+
+```
+FAIL  unit  scripts/windows-release-workflows.test.ts > post-merge Windows validation >
+      runs one canonical packaged P0 and visual gate plus native package smoke on every target
+Test Files  1 failed | 188 passed | 16 skipped (205)
+##[error]Error: Missing workflow step: Prewarm the managed runtime pack
+```
+
+`c70c494b` 只提交了这条断言（+13 行），被它断言的三处仍在共享工作区：`.github/workflows/build.yml` 的
+`Prewarm the managed runtime pack` 步骤（+24）、`scripts/ci/prewarm-runtime-pack.mjs`（新文件）、
+`scripts/verify-runtime-bundle.mjs` 的 `prewarmRuntimePack` / `runtimePackUrl`（+119）与其用例（+109）。
+同一形状在 §一百八十九 §四 记过一次。
+
+### 二 交付甲：把实现与断言放进同一笔（`60d4a558`）
+
+| 文件 | 内容 |
+| --- | --- |
+| `.github/workflows/build.yml` | 新增 `Prewarm the managed runtime pack`（`timeout-minutes: 30`，`PURESCIENCE_RUNTIME_PACK_CACHE: ${{ runner.temp }}/purescience-runtime-pack-cache`，`if` 与 P0 逐字相同），同一目录写进 P0 的 `env` |
+| `scripts/ci/prewarm-runtime-pack.mjs`（新） | 读 manifest → 按 `VERSIONS` 取 packId → 下到 `<cache>/<subdir>/<envVersion>/<file>`，先 `.part` 再校验 sha256 再 `rename`；缺缓存根或参数时**具名失败** |
+| `scripts/verify-runtime-bundle.mjs` | `runtimePackUrl`（与 `bundle-manifest.ts` 的 `packUrl` 同形）+ `prewarmRuntimePack`（3 次尝试、每次清 `.part`、摘要不符即拒、取不到就抛） |
+| `scripts/verify-runtime-bundle.test.ts` | 一组用例：URL 与缓存布局和客户端一致、摘要不符拒、完整件不重下 |
+
+判据（本机现取）：`scripts/ci` + `windows-release-workflows` + `verify-runtime-bundle` = **23 files / 272 passed**；
+`src/main/notebook` + `scripts` = **150 files / 2181 passed / 0 failed**；`typecheck:node` **0**；
+`eslint --no-cache` 四文件 **0 error**；`pre-push-checks.sh` 全过。推送 `c70c494b..60d4a558` 顶掉了
+`c70c494b` 的 Nightly（它刚 `in_progress`）—— 那一条本来就过不了 `Verify`（同一条断言），没有丢读数。
+
+### 三 现取读数：预热在真机上真的跑了，第三份 windows 读数却是 `failed`
+
+`Nightly` @ `60d4a558`（run `45318235934`）`build / Verify` **success**；
+`build / Build windows-x64`（job `138196913313`）先 `Prewarm…` **completed / success**（日志逐字：
+
+```
+prewarm: fetched python-3.11.tar.zst (102391991 bytes, sha256 ok)
+prewarm: fetched python-3.12.tar.zst (99085435 bytes, sha256 ok)
+prewarm: fetched python-3.13.tar.zst (99166845 bytes, sha256 ok)
+prewarm: 3 archive(s) ready in D:\a\_temp/purescience-runtime-pack-cache
+```
+
+），再跑 P0，用时 **40.7 分钟**（前一份不带预热是 1.0 小时），但读数是 **`failed`**：
+
+```
+4 failed
+  env-provision-cancel.spec.ts:126 › cancels a first-time environment provision …, and leaves nothing half-installed
+  notebook-python-provisioned-runtime.spec.ts:34 › runs a python cell on a runtime the app provisions itself
+  notebook-rerun.spec.ts:16 › re-runs a recorded notebook cell from the pane, and says why when it cannot
+  settings-download-detail.spec.ts:119 › the Settings setup card shows the same live download detail …
+14 skipped
+121 passed (40.7m)
+electron P0 reading: failed
+```
+
+四个失败点各自逐字：`:167` 找不到 `notebook-env-gate`；`:60` 15 秒就 `The Notebook did not run the python cell`；
+`:52` 点重跑后没有 `Re-ran this cell`；`:119` Settings 的 setup 卡片上没有 retry 按钮。
+
+### 四 定因：不是产品变坏，是 `38d8c336` 把四条 spec 的前提换掉了
+
+`38d8c336`（会话 10:19，「整趟认证共用一份装好的运行时」）把 `PURESCIENCE_NOTEBOOK_RUNTIME_ROOT` 指向
+`test-results/notebook-runtime`，于是**整趟只装一次运行时**。而这四条 spec 的前提都是「这台机器上没有可用的
+python 运行时」：闸门、`retry`、下载明细、以及「应用自己装一遍」那条 lane，只有在那时候才出现。第一条 spec
+跑过之后它们全部成立不了 —— 其中 `notebook-python-provisioned-runtime` 在 15 秒内失败（正常要 40 秒以上：
+manifest + 安装），与「已就绪」的形状一致；`settings-download-detail` 的第一条断言是「点 Download and set up
+后第一次 manifest 失败 ⇒ 出现 retry」，运行时已就绪时点这个按钮什么都不发生。
+
+**判据的措辞**：这是「测量前提被换掉」，不是「产品回归」；两者都算红，但只修其中一种才是对的。
+
+### 五 交付乙：撤回 `38d8c336`（`533f80bd`，已推）
+
+撤回整笔：`e2e/fixtures/electron-app.ts` 那行覆盖、`runtime-paths.ts` 的 `RUNTIME_ROOT_OVERRIDE_ENV` 缝
+（撤回后它没有生产消费方，只剩自己的用例 ⇒ 按仓规不留死代码）、以及它的用例。**机器级包预热保留**
+（判据一条没改），所以 P0 仍然只付一次归档传输、安装照旧。判据（本机现取）：`typecheck:node` **0**；
+`runtime-paths` **36 passed**；`eslint` 三文件 **0 problem**；`pre-push-checks.sh` 全过。
+
+### 六 边界与具名未办
+
+1. **包预热让 P0 不再覆盖「从公开主机下载归档」那一段**：应用每次仍取 manifest、仍按它的摘要决定用不用缓存
+   （这条没变），但归档从本机缓存复制 ⇒ 带宽/断流那类缺陷在 P0 里不会再暴露（2026-11-23 的
+   `net::ERR_CONNECTION_TIMED_OUT` 就是这一类），只由单测与真机更新日志覆盖。**这是本改动换来的东西**，
+   读数旁边必须写着，不许说成「什么都没少」。
+2. **第二份读数（`b437800c`，run `45301311417`）现取**：`125 passed (1.0h)` / `14 skipped`，`electron P0 reading: passed`；
+   仪器 `node scripts/windows-gate-streak.mjs --limit 10` 当时是 **2/3**。本轮这份 `failed` 把连续数打回 **0/3**
+   ⇒ 之后要重新攒三趟。
+3. **没有打 tag**：四件套仍在会话工作区，且其中两句（`That reading is not green yet` /「第一份真读数已经是红，
+   本版因此暂缓发布」）此刻既不成立也没被改写；替它落笔会把它那份未提交的横幅顶到主干（§二百一十一 §五 同一条判据）。
+4. **没有在国内容量下重跑那条 100 MB 下载**：预热在 runner 上已验证（三行 `fetched … sha256 ok`），本机重跑只会白等。
+
+### 七 下一轮第一步
+
+- ① 读 `533f80bd` 的 `Nightly` 里 `electron P0 reading`（这是撤回后的第一份，连续数从它起算）；
+  判据是四条 spec 是否回到 passed，以及 P0 用时是否仍在 40–60 分钟量级。
+- ② 若仍红在同四条 ⇒ 那时才怀疑包预热（把它的环境变量从 P0 步骤摘掉再量一次），不要同时改两处。
+- ③ 3/3 之前不动 tag；四件套那三句按落地时的真实读数重写。
+
 ## 二百一十三、本轮追加（执行器，2026-11-24 08:4x–）—— 闸门重新攒到 1/3（`passed`，45 分钟）；把 settings.json 的第二条写队列收掉
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
