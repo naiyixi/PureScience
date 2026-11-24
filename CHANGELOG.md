@@ -32,11 +32,14 @@ Developer ID signature gate`、`Enforce platform certification` 都是 success�
 
 让这三条转绿的不是再次抬预算，而是把它们等的东西变少、把一次竞态补上：
 
-- **整趟认证共用一份装好的运行时**。每个 spec 拿到新的 storage root，运行时根跟着落在里面，于是同一条
-  约 100 MB 的运行时在一趟里被反复下载+解包（实测每次 63.2 s、`cpuShare 0.071`、`no-cpu-in-process`，
-  时间全在 I/O）。`runtimeRoot` 现在支持一次显式覆盖（`PURESCIENCE_NOTEBOOK_RUNTIME_ROOT`），
-  e2e 夹具把整趟指到同一个目录：第一个 spec 付安装，其余复用。默认行为不变 —— 正常安装的环境仍在
-  自己的 data root 里，覆盖值为空或空白一律视为未设置。
+- **同一台 runner 上，三个 Python 归档只在 P0 之前取一次**。每个 spec 拿到新的 storage root，运行时根跟着
+  落在里面，于是同一条约 100 MB 的运行时在一趟里被反复下载+解包（实测每次 63.2 s、`cpuShare 0.071`、
+  `no-cpu-in-process`，时间全在 I/O）。现在 `Prewarm the managed runtime pack` 先把 `python-3.11/3.12/3.13.tar.zst`
+  取进 `runner.temp` 下的缓存根、逐个核对 sha256，P0 里的 spec 从本机缓存复制而不是各自再问一遍公网
+  （三个归档各约 1 亿字节，取齐只花 2 秒）；P0 用时从 1.0 小时降到 43.2 分钟。缓存只省传输 —— manifest 仍由
+  应用自己取、摘要不符仍然拒。**试过又撤回的一条**：把整趟认证指向同一份已装好的运行时根确实能省掉重复安装，
+  但它把四条 spec 的前提换掉了 —— 环境闸门、重试、下载明细、以及「应用自己装一遍」那条路径，都只在**这台机器
+  没有可用运行时**时才出现；四条在共用根那一趟同时变红、撤回之后回到绿，所以省传输改由预热承担，那四条留在原位。
 - **安装收尾的那次复读不再抖成页面错误**。`notebook-interrupted-run` 是在安装中途退出应用，于是
   `error` 那一帧进度落在一个正在关闭的主进程上，补读 `notebook-env:status` 被拒（`No handler registered`），
   而那个 `then` 后面没有 catch —— 未处理的拒绝就是一条 renderer pageerror，认证门把它记成产品失败，
@@ -60,7 +63,8 @@ Developer ID signature gate`、`Enforce platform certification` 都是 success�
 - **P0 曾连续两趟红在「安装」上，且原因不是预算**（`45161879456` 的 Windows P0：`123 passed / 2 failed`，
   一条卡在自己 300 s 的预算上、另一条 600 s 也超时；`45202604327` 的 macOS 则是 600 s 跑满）：镜像把安装这条路
   真正打通之后，P0 里每条要用运行时的 spec 都各自装一遍约 100 MB。当时的处置是先把预算抬到 600 s —— 实测否掉了
-  这个方向，随后改成**三处共用一份装好的运行时**（见上文），于是 `45329816080` / `45329815962` 两趟全绿。
+  这个方向，随后改成**同一台 runner 上把三个归档预热一次**（见上文），于是 `45329816080` / `45329815962` 两趟全绿；
+  「整趟共用一份已装好的运行时」那条路试过并撤回 —— 它把四条 spec 的前提换掉了（同上）。
   抬预算那次为什么不够，归因留在 `docs/evidence/2026-11-23-v2335-release-blocked-by-windows-gate.md`。
 - **镜像只覆盖首批 24 个文件**（manifest + python 3.11/3.12/3.13 + R 4.3/4.4，四平台）；未镜像的路径在候选链里
   会落空并继续问 origin 与三方代理，所以「部分镜像」是优雅降级，不是错。
