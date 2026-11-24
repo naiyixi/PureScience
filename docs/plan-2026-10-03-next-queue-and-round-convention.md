@@ -1,5 +1,73 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十六、本轮追加（执行器，2026-11-25 00:0x–）—— 主干 Windows 分片红在一个 POSIX 夹具上；顺带把 pipx 的查找表补成 Windows 认得的形状
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == f38e26f2`（在会话的分支 `probe/upgrade-instrument-and-sweep` 上，**与 `origin/main` `977d3f7c`
+  同内容但不同 SHA**：那一批 4 笔在远端被重写过，只有 `src/shared/settings.ts` 差 2 行），本地 `main` 停在
+  `ac149f57`（落后 4 笔）。工作树 **33 个改动 + 3 个未跟踪是会话在制**（`ro-crate*`、`shared/citation/*`、
+  `session-persistence/*`、`prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`references/*`、
+  `diagnostics/module-load*` …）⇒ **一个字节没碰**，本轮全部改动落在隔离工作树 `/tmp/ps-fix-pipx`
+  （基于 `origin/main` 977d3f7c），从那里推 `HEAD:main`。
+- `package.json` = **2.33.6**（`09f6ecbc chore(release): 2.33.6` 已在 main 上），但 **`v2.33.6` 标签不存在**
+  （本地与远端均无）⇒ 2.33.6 处于「四件套已提交、未打 tag」；发版口径见 §四。
+- `gh release list`：**v2.33.5 = Latest**（`draft=false`、`isPrerelease=false`）。本轮把它核完（下一节）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽 ⇒ 取「主干红挡所有人」这一条：Windows 单元车道连红三笔。
+
+### 一 现取读数：两处红，一处已自愈，一处仍开
+
+| run | head | 车道 | 结论 | 内容 |
+| --- | --- | --- | --- | --- |
+| `45424125237` | `35c81794` | Nightly 的 `Verify` | failure | `scripts/ci/classify-pr-changes` 报新文件带 Windows 信号未登记 |
+| `45424389489` | `490f8fe1` | `Windows Full Test` | failure | 分片 4/8：`hermes-install.test.ts` **3 failed / 2432 passed** |
+| `45424388471` | `490f8fe1` | Nightly | 本轮推送前 `in_progress` | `Verify` success；`Build windows-x64` / `macos-arm64` 在跑 |
+
+`Verify` 那条已由 `490f8fe1`（「新的 pipx 执行器也带 Windows 信号，该进敏感清单」）自己修掉 ⇒ 本轮只剩
+Windows 单元分片那三条。三条的成因与修法、本机复现探针、变异读数全部落在
+`docs/evidence/2026-11-24-windows-pipx-fixture-and-platform-lookup.md`。
+
+### 二 交付（一笔，代码 + 证据档 + 本档）
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/main/settings/hermes-install.ts` | 新增可选 `spawnImpl`（生产缺省仍是 `spawn`，行为不变）；`PIPX_CANDIDATES` 换成平台可注入的 `pipxCandidates(deps)`：Windows 查 `%APPDATA%\Python\Scripts` 与 `%LOCALAPPDATA%\pipx\venvs\pipx\Scripts`、名字按 PATHEXT 试 `pipx.exe/.cmd/.bat/pipx`、PATH 用该平台分隔符兜底；`resolvePipxPath(exists, deps)` 首参不变 |
+| `src/main/settings/hermes-install.test.ts` | 夹具改成脚本化子进程（同仓 `claude-install.test.ts` 先例）；断言只增不减：逐字钉 `pipx install hermes-agent`、env 透传、`kill('SIGKILL')`、以及「起不来」这条具名分支 |
+| `docs/evidence/…-windows-pipx-fixture-and-platform-lookup.md` | 现象、定因（含本机去 exec 位的复现探针）、修法、四张读数表、四条边界 |
+
+判据（本机隔离工作树现取）：该文件 **9 passed**；`src/main/settings` **100 files / 1536 passed / 3 skipped**；
+双 typecheck **0 / 0**；`eslint --no-cache` 两文件 **0 error**；变异 ①/②/③ 各 **5 / 2 / 2 failed**，
+还原后 9 passed；旧夹具去 exec 位探针 **3 failed** 且三条断言与 CI 逐字同形。
+
+### 三 v2.33.5 发布核验（现取，逐项）
+
+| 判据 | 读数 |
+| --- | --- |
+| 页状态 | `PureScience v2.33.5`，`draft=false`、`isPrerelease=false`，`gh release list` 显示 **Latest** |
+| 资产 | **17 件**：`arm64-mac.yml` / `x64-mac.yml` / `latest.yml` / `latest-mac.yml` / `latest-linux.yml` / `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / mac arm64+x64 的 dmg+zip / linux AppImage+deb / win setup.exe+blockmap+zip |
+| 与提交绑死 | `RELEASE-CERTIFICATION.json` 的 `sourceSha` = `e668b405c7e9acc503c71f244428fc1b6b8c8966` = `git rev-parse 'v2.33.5^{commit}'` |
+| 正文 | 87,947 字节；已被撤回的那条机制（「共用一份装好的运行时」作为**生效原因**）**0 命中**，正文写的是 `Prewarm the managed runtime pack` 与「试过又撤回」的具名叙述 ⇒ **不需要**再 `release:notes --apply` 重发 |
+
+### 四 边界与具名未办
+
+1. **没有 Windows 真机读数**：判据是下一次 `Windows Full Test` 的分片 4/8 出现
+   `✓ src/main/settings/hermes-install.test.ts (9 tests)`。本机只有「去 exec 位」的机制复现。
+2. **Windows 上装了真 pipx 时 Install 是否真能装上，仍无人覆盖**：查找表只证明「会去那几个位置找」；
+   Windows 的 P0 认证 spec 不点这个按钮。
+3. **v2.33.6 没有打 tag**：四件套已在 main 上、版本号已是 2.33.6，但 tag 不存在。本轮不动它 —— 打 tag 之前
+   要先让 Windows 单元车道回到绿（本轮这一笔就是为了这个），且发版窗口不许有并发推送（会话此刻每十几分钟一笔）。
+4. 本轮推送会取消 `490f8fe1` 的 `Nightly`（`Build windows-x64` / `macos-arm64` 正在跑 P0）—— 那一趟的树带着
+   上面那条红的分片，且新提交会重置连续数，所以不为此等它落定；汇报里点名。
+
+### 五 下一轮第一步
+
+- ① 读本轮这笔的 `Windows Full Test` 分片 4/8 与 `Nightly` 的 `Verify`（完整 40 位 SHA）；
+- ② Windows 单元车道绿了之后，发 v2.33.6：`git tag v2.33.6 <该笔>` + `git push origin v2.33.6`
+  （先 `hermes cron pause 2be4405e5dc6` 冻结并发推送，再看会话是否仍在推），按「发布核验」数 17 件资产与
+  `sourceSha`；
+- ③ 仍开着的候选：Windows 上真装 pipx 的 Install 真机读数（需要一条 Windows 认证 spec 或人工一次），
+  以及 §二百一十五 §四 的 M2 产品决定。
+
 ## 二百一十五、本轮追加（执行器，2026-11-24 14:4x–）—— 闸门攒到 3/3（三份 passed）；先改正文里那条被撤回的机制，再把 tag 改指到改对的那一笔
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

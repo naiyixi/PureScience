@@ -764,7 +764,7 @@ export type ClaudeInstallSource = 'managed' | 'npm' | 'official-script'
 export type ManagedClaudeRegistry = 'npmjs' | 'npmmirror'
 
 // A framework that installs through a package manager other than npm. Hermes is a Python package and its
-// upstream install path is pipx, so its card must not be forced to offer an npm command it cannot run.
+// documented install path is pipx, so its card must not be forced to offer an npm command it cannot run.
 export type HermesInstallSource = 'pipx'
 
 // Every install source id the framework cards can render. Claude's own set is a subset — the card is
@@ -899,7 +899,7 @@ export type InstallCodebuddyRequest = {
   source: 'npm'
 }
 
-// Hermes is installed as a Python package. pipx is the upstream path (`pipx install hermes-agent`), and
+// Hermes is installed as a Python package. pipx is the documented path (`pipx install hermes-agent`), and
 // the app runs exactly that — no npm, no managed download: the card reports `requiresNpm: false` and the
 // installer drives pipx, then asks the detector whether anything runnable appeared.
 export const getHermesInstallSources = (): FrameworkInstallSourceInfo[] => [
