@@ -1,5 +1,80 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十三、本轮追加（执行器，2026-11-24 08:4x–）—— 闸门重新攒到 1/3（`passed`，45 分钟）；把 settings.json 的第二条写队列收掉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == origin/main == f85903fe`（上一轮的 settings 重试那笔），`package.json` = **2.33.5**，
+  `gh release list` 的 Latest 仍是 **v2.33.4**，`git tag -l 'v2.33*'` 无 `v2.33.5`。
+- 工作树 **42 个改动 + 未跟踪**仍是会话在制（`ro-crate*`、`shared/citation/*`、`session-persistence/*`、
+  `prisma/schema.prisma`、`logger*`、`crash-diagnostics`、`notebook/language-pack-fetch*`、`notebook/mcp-server`、
+  `RoCrateExportDialog*`、九份 i18n、`scripts/ci/prewarm-runtime-pack.mjs` …）⇒ **一个字节没碰**。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍是「已耗尽」，本轮不重复判它 ⇒ 取 §二百一十二 §三 ④
+  自己登记的那条更深的口径（`src/main/compute/ipc.ts` 的第二个 `SettingsRepository`）。
+
+### 一 现取读数：windows 车道重新回到 `passed`，连续数 1/3
+
+run **`45278188820`**（`Nightly` @ `f85903fe`），作业 `build / Build windows-x64`（`138070446404`）
+`completed / success`（2026-11-23T23:37:26Z），日志逐字：
+
+```
+2026-11-23T23:37:10.5536870Z electron P0 reading: passed
+2026-11-23T23:36:38.8919560Z   125 passed (45.0m)
+2026-11-23T23:36:38.8919380Z   14 skipped
+```
+
+仓里自己的仪器现取（**本机必须带 token**，否则 GitHub 对匿名取作业日志回 403）：
+
+```
+windows gate streak: 1/3 (not yet)
+  credited: 45278188820
+  skipped: 45228614662 — reading=failed
+```
+
+耗时口径：上一轮那两处 600 s 超时的 spec 这一趟是 `artifact-replay.spec.ts (5.6m)` /
+`notebook-run-risk-receipt.spec.ts (5.1m)`，加上 `notebook-python-provisioned-runtime.spec.ts (5.0m)`
+—— 同一支 spec 从「顶到 600 s 被收尾打断」变成 5.5 分钟跑完。**但这一趟跑的是 `f85903fe`，不含会话
+工作区里那份机器级包缓存**（`notebook/language-pack-fetch.ts` 仍未被提交）⇒ 这条差别只能说
+「这一趟机器/网络没重现传输成本」，**不能**当成「缓存修法有效」的证据。
+
+### 二 本轮交付：settings.json 只留一个写队列
+
+- **现状读数**：`src/main/compute/ipc.ts:536` 自建 `new SettingsRepository(storageRoot)`，与
+  `src/main/settings/service.ts:303` 那条各有一条 `saveQueue`；而启动期 `migrateLegacy()` 的收尾
+  `legacy.clearComputeGrants()` **整份重写 settings.json**，与 settings 服务的写入撞在同一个文件上。
+  两条队列之间没有互斥 ⇒ 一次 mutation 可能被另一条队列的旧读取覆盖（丢更新），Windows 上并发
+  `rename` 直接 EPERM（§二百一十二 §三 的 103/257 份 spec 日志就是这条线的症状）。
+- **修法**：组合根（`src/main/ipc.ts`）构造唯一实例，交给 `new SettingsService({ repository })`，
+  并作为 `createComputeIpcModule` 的**末位实参**传下去；`compute/ipc.ts` 新增末位可选参
+  `sharedSettingsRepository`（缺省仍自建，供不碰 settings 的测试用）；不再使用
+  `createDefaultSettingsService()`（它自建仓，正是这条竞态的入口）。
+- **守卫**（两条，都不是「看一下代码就完事」）：
+  1. `ipc.test.ts`：注入一个**不在存储根上**的仓（里面有 legacy grant），断言模块确实读它并清它 ——
+     自建实例会按 `PURESCIENCE_STORAGE_ROOT` 解析、什么都读不到，所以这条用例只在注入生效时通过；
+  2. `settings-repository-wiring.test.ts`：扫组合根源码，钉「只构造一次」「settings 服务拿到的是它」
+     「compute 调用的末位实参是它」「不再调 `createDefaultSettingsService()`」。
+- **读数**：`src/main/compute` + `src/main/settings` **127 files / 2104 passed / 8 skipped**；
+  `eslint --no-cache` 四个文件 0 problem；**变异**：把 `sharedSettingsRepository ?? ...` 改回无条件自建
+  ⇒ 新用例当场红（`expected "vi.fn()" to be called`），恢复后 56 passed；
+  隔离工作树（`/tmp/gate213` @ 本笔提交）`typecheck:node` / `typecheck:web` 双双 0。
+
+### 三 边界与具名未办
+
+1. **不打 tag**：闸门 1/3（且本笔提交改了生产代码 ⇒ 连续数从这一笔重新起算）。
+2. **EPERM 那处的真机复核这趟做不了**：passing run 只上传安装包（`windows-x64` 570 MB / `macos-x64` /
+   `linux-x64`），没有 P0 的结果附件；作业日志里也没有应用侧日志（`[compute]` 0 行、`settings.json` 0 行）。
+   ⇒ 记「**未复核**」，不记 0、不推断。复核会在下一次 **failed** 的 P0 附件里自然出现
+   （`[compute] legacy compute grant migration failed` 若消失即落地）。
+3. 会话仍在制 `language-pack-fetch.ts` 机器级缓存；它一推上来，连续数又从新树重新起算 —— 这是
+   「等会话落定再攒 3 次」的理由，不是跳过闸门的理由。
+
+### 四 下一轮第一步
+
+- ① 在本轮提交的新树上派发一次 `Nightly`（`workflow_dispatch`），拿第 2 份读数（连续数 2/3）；
+- ② 顺手看一眼会话有没有把包缓存推上来；推了就以那一笔为新起点重攒；
+- ③ 3/3 之前不动 tag；四件套（`README.md:35` / `README.en.md:35` / `CHANGELOG.md` 的 P0 段）里
+  「因 Windows 闸门暂缓」那三句按落地时的真实读数重写，0/3 或 1/3 时不能写「已量到绿」。
+
 ## 二百一十二、本轮追加（执行器，2026-11-24 05:3x–06:3x）—— 第二份读数 `failed`：两处 600 s 都停在同一个运行时包传输上；顺手补掉 settings.json 在 Windows 的瞬时锁
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
