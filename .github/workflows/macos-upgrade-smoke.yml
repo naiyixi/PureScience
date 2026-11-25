@@ -9,14 +9,16 @@ name: macOS Upgrade Smoke
 #
 # Two ways to run it, and the difference between them is the whole point of the current phase:
 #
-#   * push a `v*` tag  -> it runs by itself against the release just tagged, on BOTH architectures.
+#   * a release is published -> it runs by itself against that release, on BOTH architectures.
 #   * workflow_dispatch -> run it by hand with any pair, one architecture.
 #
-# The tag lane waits for the mirror before it spends a macOS runner: a tag push starts the release build at
-# the same second, the assets take ~80 minutes to publish, and the mirror this build polls is fed by a cron
-# afterwards — so the first version of this lane asked for a version nobody served yet and reddened on a
-# healthy release (run 45090413547: 45 minutes of waiting, then a sentence about the feed). A `readiness`
-# job on ubuntu now holds that wait and the drill starts when the feed actually offers the version.
+# The lane starts at `release: published`, not at a `v*` tag push. A tag push starts the release build at
+# the same second, and how long the build takes is not the drill's to decide: measured on v2.33.6 the tag
+# was pushed at 19:32Z and the assets were published at 23:41Z — 4 h 09, of which 2 h 32 was the Release
+# run waiting for its first runner — so the readiness budget of 240 minutes gave up nine minutes before
+# the assets existed and reddened this lane on a healthy release (run 45471232479). Raising the budget
+# again would only move the loss to the next slow queue; the drill now starts when the thing it measures
+# exists, and waits for the mirror that is fed by a cron afterwards.
 #
 # The tag lane is OBSERVATION, not a gate. It is a separate workflow, so nothing it says can hold back
 # `publish` in release.yml; a red run here shows up in the Actions list, leaves its log, and blocks nothing.
@@ -110,53 +112,65 @@ on:
         # the fallback is dead code. Measured on run 45029743779 — the reading still said
         # `userData:skipped (real HOME, pass --seed-user-data)` with the new fallback in place.
         default: '--keep-home --seed-user-data'
-  push:
-    tags:
-      - 'v*'
+  # The assets exist from the moment this fires, so the lane's remaining wait is only the mirror sync
+  # (a cron, then the transfer). A pre-release such as the nightly channel fires `published` too, and its
+  # tag is not an x.y.z version — the resolver skips it by name instead of drilling it.
+  release:
+    types: [published]
 
 permissions:
   contents: read
 
 jobs:
-  # The two clocks this drill depends on are not the drill's: the release a tag starts takes about 80 minutes
-  # to publish its assets, and the mirror this build polls is fed by a server-side cron afterwards. A drill
-  # that starts at tag time therefore asks for a version nobody serves yet — measured on run 45090413547,
-  # which burned its whole 45-minute budget waiting and then failed with a sentence about the feed instead of
-  # about the upgrade. An ubuntu runner waiting costs a tenth of a macOS runner, so the wait lives here and
-  # the drill starts when the thing it measures exists. This gate decides *when*, never *what*: the drill
+  # The clock this drill depends on is not the drill's: the mirror it polls is fed by a server-side cron
+  # after the assets exist. Waiting for the *build* as well is what broke this lane twice — measured on
+  # run 45090413547 (a 45-minute budget against a tag→assets gap of 80 minutes) and again on run
+  # 45471232479 (240 minutes against 4 h 09). The lane now starts at `release: published`, so the only
+  # wait left is the mirror sync, and it still lives on ubuntu — a macOS runner minute costs ten ubuntu
+  # ones and has nothing to measure while it waits. This gate decides *when*, never *what*: the drill
   # still asks the installed bundle's own updater and still fails if the answer disagrees.
   readiness:
     name: Wait for the mirror to serve the release
-    # 240 minutes of waiting plus room for the resolve step: publishing measured ~80 minutes on v2.33.4 (tag
-    # 00:43Z -> assets 02:03Z), and the mirror's last-modified stamp for 2.33.4 was 03:11Z, i.e. up to one
-    # hourly sync after the assets. 240 leaves margin on both without turning this into a half-day job.
+    # 240 minutes of waiting plus room for the resolve step. The wait now covers only the mirror: the
+    # assets exist when this job starts, and the server-side sync runs every 30 minutes (v2.33.6's assets
+    # landed 23:41Z and the mirror began fetching at 00:00Z). 240 is margin, not a build budget.
     runs-on: ubuntu-latest
     timeout-minutes: 280
     outputs:
       previous_tag: ${{ steps.resolve.outputs.previous_tag }}
       next_version: ${{ steps.resolve.outputs.next_version }}
     steps:
-      # Which pair is under test. On a tag push the answer has to come from the repository, not from a
-      # human: `next_version` is the tag being published, and `previous_tag` is the newest published release
-      # older than it. The search is by version order, not by date, and a tag that is not a plain x.y.z is
-      # ignored rather than guessed at.
+      # Which pair is under test. On a release event the answer has to come from the repository, not from
+      # a human: `next_version` is the tag being published, and `previous_tag` is the newest published
+      # release older than it. The search is by version order, not by date, and a tag that is not a plain
+      # x.y.z is skipped by name rather than guessed at — the nightly channel publishes a pre-release,
+      # which fires the same `published` event.
       #
-      # Two things make this honest when it finds nothing: the release for the tag being pushed usually does
-      # not exist yet, so a missing entry is expected (the newest published release is then the previous
-      # one), and a repository with no older release at all sets PREVIOUS_TAG empty, which skips the drill
-      # with a notice instead of failing a release for a run that had nothing to measure.
+      # Two things make this honest when it finds nothing: a repository with no older release at all
+      # leaves PREVIOUS_TAG empty, which skips the drill with a notice instead of failing a release for a
+      # run that had nothing to measure; and a tag that is not a plain x.y.z is named and skipped before
+      # anything is downloaded.
       - name: Resolve the pair under test
         id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ inputs.simulate_tag != '' && 'push' || github.event_name }}
-          REF_NAME: ${{ inputs.simulate_tag != '' && inputs.simulate_tag || github.ref_name }}
+          REF_NAME: ${{ inputs.simulate_tag != '' && inputs.simulate_tag || github.event.release.tag_name || github.ref_name }}
           INPUT_PREVIOUS_TAG: ${{ inputs.previous_tag }}
           INPUT_NEXT_VERSION: ${{ inputs.next_version }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "release" ]; then
             NEXT_VERSION="${REF_NAME#v}"
+            # A pre-release publishes the same event: the nightly channel's tag is not a version, and
+            # drilling it would ask the feed for something no release carries. Skip it by name, before any
+            # runner is spent.
+            if ! printf '%s' "$NEXT_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::notice::Nothing to drill: '${REF_NAME}' is not an x.y.z release tag"
+              echo "previous_tag=" >> "$GITHUB_OUTPUT"
+              echo "next_version=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             # The TAG is what `gh release download` takes, the VERSION is what the updater reports — they
             # differ by the leading `v`, and stripping it for comparison while handing the stripped string
             # to `gh` is exactly how the first rehearsal failed with "release not found" for `2.33.1`.
@@ -179,10 +193,11 @@ jobs:
 
           # Outputs, not $GITHUB_ENV: the `env` context in a step's `if:` does not carry variables written
           # to $GITHUB_ENV, so gating on env.PREVIOUS_TAG would silently run the drill with an empty tag.
-          # The resolver falls back to the newest published release when the version being tagged is not in
-          # the list yet (the usual case at push time). That fallback is only valid while the tag being pushed
-          # is NEWER than everything: backfilling an old patch would otherwise drill "2.33.2 -> 1.0.0", which
-          # is not an upgrade anybody performs. Compare, and skip by name when the order is the other way.
+          # The resolver falls back to the newest published release when the version being drilled is not in
+          # the list yet (that is the `simulate_tag` rehearsal, where the tag does not exist). That fallback
+          # is only valid while the tag being drilled is NEWER than everything: backfilling an old patch
+          # would otherwise drill "2.33.2 -> 1.0.0", which is not an upgrade anybody performs. Compare, and
+          # skip by name when the order is the other way.
           PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
           NEWEST_ORDER=""
           if [ -n "$PREVIOUS_VERSION" ]; then
@@ -203,16 +218,17 @@ jobs:
       # installed app's feed (a generic provider pointing at the mirror) to offer the target version. Both mac
       # zips are required because the tag lane drills both architectures off this one wait.
       #
-      # Whether to wait is the difference between the tag lane and a rehearsal: a tag push has nothing to
-      # measure until the mirror catches up (wait), while a dispatch usually drills an already-published pair
-      # and should start at once (the drill names the feed it got if that assumption is wrong).
+      # Whether to wait is the difference between the release lane and a rehearsal: a release event has
+      # nothing to measure until the mirror catches up (wait), while a dispatch usually drills an
+      # already-published pair and should start at once (the drill names the feed it got if that
+      # assumption is wrong).
       - name: Wait until the mirror offers it
         if: ${{ steps.resolve.outputs.previous_tag != '' }}
         env:
           NEXT_VERSION: ${{ steps.resolve.outputs.next_version }}
           # `inputs.require_feed_version` is a boolean, and `false || 'true'` would read as 'true' — so the
           # event decides first, and the input can only ever add a wait, never remove the tag lane's.
-          WAIT_FOR_FEED: ${{ (github.event_name == 'push' || inputs.simulate_tag != '') && 'true' || (inputs.require_feed_version && 'true' || 'false') }}
+          WAIT_FOR_FEED: ${{ (github.event_name == 'push' || github.event_name == 'release' || inputs.simulate_tag != '') && 'true' || (inputs.require_feed_version && 'true' || 'false') }}
           EXPECT_FEED_URL: ${{ inputs.expect_feed_url || 'https://purescience.work/download/feed/' }}
           BUDGET_MINUTES: '240'
         run: |
@@ -281,8 +297,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A tag push drills both halves; a manual dispatch drills the one you asked for.
-        arch: ${{ fromJSON((github.event_name == 'push' || inputs.simulate_tag != '') && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
+        # A release event drills both halves; a manual dispatch drills the one you asked for.
+        arch: ${{ fromJSON((github.event_name == 'push' || github.event_name == 'release' || inputs.simulate_tag != '') && '["arm64","x64"]' || format('["{0}"]', inputs.arch || 'arm64')) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

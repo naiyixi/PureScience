@@ -69,14 +69,38 @@ describe('macOS upgrade smoke workflow', () => {
     )
   })
 
-  it('waits on the tag lane without anyone ticking a box', () => {
+  it('starts when the release is published, not when the tag is pushed', () => {
+    // Measured on v2.33.6: tag pushed 19:32Z, assets published 23:41Z — 4 h 09, of which 2 h 32 was the
+    // Release run queued for its first runner. The readiness job's 240-minute budget therefore gave up
+    // nine minutes before the assets existed and reddened this lane on a healthy release (run
+    // 45471232479). A budget cannot cover a queue delay nobody controls, so the lane starts at the event
+    // that means "the assets are here".
+    const triggers = readWorkflow().on as Record<string, unknown>
+    expect(triggers).toHaveProperty('release')
+    expect(JSON.stringify(triggers.release)).toContain('published')
+    expect(triggers).not.toHaveProperty('push')
+  })
+
+  it('skips a pre-release tag by name instead of drilling it', () => {
+    // `release: published` also fires for the nightly pre-release, whose tag is not a version. Without a
+    // named skip the resolver would look for a previous release older than "nightly" and the drill would
+    // ask the feed for a version nothing publishes.
+    const resolve = stepNamed(jobOf(readWorkflow(), 'readiness'), 'Resolve the pair under test')
+    const script = resolve.run ?? ''
+    expect(resolve.env?.REF_NAME).toContain('github.event.release.tag_name')
+    expect(script).toContain('"$EVENT_NAME" = "release"')
+    expect(script).toContain("'${REF_NAME}' is not an x.y.z release tag")
+  })
+
+  it('waits on the release lane without anyone ticking a box', () => {
     // `inputs.require_feed_version` is a boolean, and `false || 'true'` evaluates to `'true'` — writing the
     // fallback that way would make the dispatch lane wait even when the operator turned it off, and make it
-    // impossible to tell a deliberate opt-out from the tag lane's default. The event has to decide first.
+    // impossible to tell a deliberate opt-out from the automatic lane's default. The event decides first.
     const readiness = jobOf(readWorkflow(), 'readiness')
     const wait = stepNamed(readiness, 'Wait until the mirror offers it')
     const expression = wait.env?.WAIT_FOR_FEED ?? ''
     expect(expression).toContain("github.event_name == 'push'")
+    expect(expression).toContain("github.event_name == 'release'")
     expect(expression).toContain('inputs.require_feed_version')
     expect(expression).not.toContain("inputs.require_feed_version || 'true'")
   })
