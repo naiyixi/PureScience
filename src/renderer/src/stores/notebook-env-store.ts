@@ -319,9 +319,20 @@ export const useNotebookEnvStore = create<NotebookEnvStore>((set, get) => {
           progressFlush ??= setTimeout(flushProgress, 0)
         })
       }
-      const status = await bridge.getStatus()
-      applyUi({ status })
-      applyRecoveryBlocks(status)
+      // A window boundary, not a broken status: main answers a status read only while the window that
+      // asked is still its own, so a launch-time read can land with "No handler registered for
+      // 'notebook-env:status'". Unhandled, that rejection is a renderer page error and the
+      // certification gate counts it as a product failure — measured on three P0 journeys (lock import,
+      // interrupted run, packages dialog) that each retried green, all ending on this one line. The
+      // status a window shows comes from a read that succeeded; a lost first read claims nothing and
+      // the next launch re-reads, while the cards keep the baseline instead of a fabricated one.
+      try {
+        const status = await bridge.getStatus()
+        applyUi({ status })
+        applyRecoveryBlocks(status)
+      } catch {
+        // Left at the initial state on purpose: "main never answered" is a reading, not an error to show.
+      }
     },
 
     provision: async (lang) => {

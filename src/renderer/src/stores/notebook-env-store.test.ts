@@ -118,6 +118,36 @@ describe('notebook-env-store', () => {
     expect(useNotebookEnvStore.getState().status).toEqual(READY)
   })
 
+  it('does not reject when the window boundary eats the launch-time read', async () => {
+    // Same window boundary as above, one step earlier: the launch read itself lands after main has
+    // released that window's handlers. App.tsx fires init() with `void`, so a rejection here is an
+    // unhandled rejection — a renderer page error the certification gate counts as a product failure.
+    // Three P0 journeys measured exactly this line (lock import, interrupted run, packages dialog).
+    const { api } = installApi({
+      getStatus: vi.fn(async () => {
+        throw new Error(
+          "Error invoking remote method 'notebook-env:status': Error: No handler registered for 'notebook-env:status'"
+        )
+      })
+    })
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      await expect(useNotebookEnvStore.getState().init()).resolves.toBeUndefined()
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+
+    expect(api.getStatus).toHaveBeenCalledTimes(1)
+    expect(rejections).toEqual([])
+    // Nothing answered, so nothing may be claimed: the baseline stays, rather than a made-up status.
+    expect(useNotebookEnvStore.getState().status).toEqual(createInitialNotebookEnvState().status)
+  })
+
   it('treats a re-read of an unchanged status as a no-op (no notification, same state object)', async () => {
     // The real bridge answers every re-read with a fresh object holding the same values, which is what
     // a notification-triggered re-read loop feeds on. Nothing changed ⇒ nothing may be notified.
