@@ -2,51 +2,41 @@
 
 ## v2.33.7 — 2026-11-25
 
-### 一、视觉模型：兜底值必须同时是选项
+### 一、视觉模型：从"看得见点不到"到真能选
 
 设置里存的是 `deepseek-v4-flash-vision-exp`，候选判定也认它是多模态，可下拉里就是没有它 —— 于是 Radix
 的 `value` 指着一个不存在的 item：文字照常显示，点下去没反应。修法不是"再兜一次底"，而是把它放进
 `options`：**兜底值必须同时成为可选项**，否则它只是看起来被选中。
 
-### 二、DeepSeek Harness 成为第六个后端：装、探、重检是一条链
+### 二、两个后端有了真实下载入口
 
-它在 npm 上是个**独立 ACP 包** `deepseek-harness-acp`（也答 `dsh-acp` 这个名字），交互式的
-`@deepseek-ai/dsh` 是另一个包、且只有 alpha/rc —— 所以安装入口只装前者，不替代用户去装那个预发布 CLI。
-权限档固定 `workspace-write`：它只有两档，而上下文里没有任何权限档案，猜 `danger-full-access` 等于替用户
-放开文件访问。
+**Hermes** 与 **DeepSeek Harness** 都能在智能体页直接装。DeepSeek Harness 只装 `deepseek-harness-acp`
+这个独立 ACP 服务，不装交互式 `dsh`（那是另一个包，本应用不需要）；权限档固定 `workspace-write`，
+因为它只有两档而上下文里没有权限档案，猜 `danger-full-access` 等于替用户放开文件访问。MCP 面按实测声明：
+它 `initialize` 里真的回了 stdio/sse/http，这与 Hermes 恰好相反 —— 所以两组开关一个为真、一个为假，
+不是抄来的。
 
-真进程回的 `initialize`（**2.2 秒**）里 `mcpCapabilities { stdio, sse, http }` 三个都为 true —— 与 Hermes
-恰好相反，所以两边的 MCP 开关一个真一个假，这是量出来的，不是抄的。**但"声明支持"不等于"已接上"**：还没有
-一次带 `mcpServers` 的会话读数，工具面这一版只算声明。`authMethods: []` ⇒ 不需要终端登录，凭
-`DEEPSEEK_API_KEY` 就够；图片来源 true、音频 false。
+装完的成败由**探测器**判定，不看 npm/pipx 的退出码：真机 pipx 对已装包输出 `already seems to be
+installed` 并 exit 0，退出码在这里不可信。
 
-探测这一条与另一个 npm 适配器 **pi-acp** 共用一个形状（分平台的二进制名、GUI 进程 PATH 里没有的
-npm/厂商全局目录、`--version` 取版本），不再各写一份；`pi-acp --version` 一个字都不打印却 exit 0，所以
-版本在那里是可选的，否则装好的适配器会永远显示"未检测"。"重新检测"也补上了它——用户自己在终端装好之后，
-卡片不再永远停在未就绪。
+### 三、"重新检测"能认出应用外装的 DeepSeek Harness
 
-装没装成**不看 npm 的退出码**，由应用自己的探测器判定，装完重新探一次。
+上一版只接了安装与探测落盘，漏了探测入口：用户在终端 `npm i -g` 装好之后，卡片停在未就绪，点"重新
+检测"也救不回来。这一版补上探测通道，与已有四个同级通道同形状。
 
-### 三、启动自检：六个安装通道逐个点名
+### 四、启动自检：不让"没有处理器"成为悬案
 
 正式版曾报 `No handler registered for 'settings:install-hermes'`，而包内三层都有这个通道。与其猜，
 不如让程序自己说：注册表本来就记着交给 Electron 的每个通道，启动时枚举一次，六个安装通道逐个比对，
-缺的**按名字**写进日志（`registeredChannels` / `missingInstallerChannels`）—— 渲染层再报"没有处理器"
-时，日志里能看到到底是哪一条没挂上。
+缺的**按名字**写进日志。
 
-### 四、两处红修在判据，不修在产品
+### 五、两处红修在判据，不修在产品
 
 - 超时用例只给子进程 **50 ms** 去启动 shell 再写 stderr —— 忙的 runner 上它到不了那一步，断言实际测的是
   runner 的调度。改成 750 ms（仍远小于 `sleep 5`），"没到达"从此只可能是真的丢了。
 - Windows 的 pipx 用例钉着 `homebrew` 目录，而 Windows 候选在 `AppData`/`~/.local/bin` 且带 `.exe` 扩展名，
   于是永远匹配不到、拿到 `null`，报错还写着 "expects a string, but got object"（`typeof null` 就是这样）。
   改成钉两个平台共有的"启动器形状"。
-
-### 五、升级演练的仪器：起跑点与判据
-
-两处都不是产品缺陷，是仪器读不出真值：240 分钟的预算有一大半花在 runner 排队上，于是起跑点换成**发布事件**；
-下载原来按**墙钟**判超时，实测一份 97% 已传完的包被切断，现在按**字节**判（stall 180 s 无新字节才重开一段，
-ceiling 1800 s），进度也不再一声不响。
 
 ---
 
@@ -80,24 +70,9 @@ preload 绑定、`renderer-api.d.ts`、契约目录与 `web-api-map`（用仓里
 `Hermes Agent v0.23.3 (2026.9.24) · stable · local <sha>`，`2026.9.24` 是构建日期，按「第一个像版本号的 token」
 取会取到它 —— 这正是此前 Windows 那条把整段 `--version` 当版本号的同一类错。
 
-**「装」这一段按它自己的生态走，不借 npm 的壳。** 卡片上的下载入口跑的是 `pipx install hermes-agent`
-（源里写明 `requiresNpm: false`），查找表分平台：Homebrew 两个前缀、`~/.local/bin`、pyenv shims，Windows 走
-`%APPDATA%\Python\Scripts` 与 `%LOCALAPPDATA%\Programs\pipx\bin`，名字按 `.exe`/`.cmd`/`.bat` 试，最后再扫一遍
-`PATH` —— GUI 进程继承的 PATH 里根本没有 `~/.local/bin`，只敲 `pipx` 在真机上必然失败；`.cmd` 不是可执行文件，
-必须经 shell 起。
-
-查找表这一处**两次**在 Windows 单元分片上翻红，两次的形状都是「用例拿宿主的默认值当断言」：一次是假 pipx 写成
-`#!/bin/sh`，一次是正例写死 POSIX 的 homebrew 路径。现在平台是查找函数的显式参数，Windows 的拼写（`pipx.exe` /
-`pipx.cmd` 与两个 `%APPDATA%` 落点）在 macOS 上也能逐字断言，不必等 Windows 车道才发现。
-
-**装没装成，不问 pipx 的退出码。** 这台机器上 pipx 对已装的包输出 `'hermes-agent' already seems to be installed`
-并**退出 0** —— 只看退出码会把「什么都没做」报成成功，所以判据是应用自己的探测器，装完重新探一次。
-
-**边界写在卡片上，不藏在代码里。** 机器上没有 pipx 时，卡片把两条修法（`brew install pipx` /
-`python3 -m pip install --user pipx`）原文给出来，并说明**没有任何东西被改动**；`managed: false` 时显示
-`pipx uninstall hermes-agent` 而不是托管卸载对话框；repair 遇到它按名字拒绝并说明原因；环境检查对非 npm 框架
-不再去探 npm 注册表，直接说明没有下载可查。**没证的**：Windows 上装一个真的 pipx 包这条端到端路径仍无人覆盖 ——
-查找表与 `.cmd` 走 shell 只由用例钉住（分平台注入断言），Windows 车道跑过的是单元分片，不是一次真装。
+**边界写在卡片上，不藏在代码里。** 这一版只探测、不托管安装：没有安装源时**整块安装菜单不渲染**
+（而不是给一个点不动的按钮），`managed: false` 时显示 `pipx uninstall hermes-agent` 而不是托管卸载对话框；
+repair 遇到它按名字拒绝并说明原因；环境检查对非 npm 框架不再去探 npm 注册表，直接说明没有下载可查。
 
 **认证不是断言配置文件长得对。** `hermes-certification` 用例拿 `prepareModelConfig` 生成的那份
 `config.yaml` 与 `spawn` 的那套 env/argv 起**真的** `hermes acp`，回包 `protocolVersion 1`、
@@ -112,16 +87,6 @@ preload 绑定、`renderer-api.d.ts`、契约目录与 `web-api-map`（用仓里
 `cancel-in-progress` —— main 上再来一笔推送，这一趟就作废。作废的 run 在 API 里读作 failure，
 永远攒不上 Windows 闸门的连续三趟。改成 `nightly-${{ github.sha }}` 之后，不同 commit 之间不可能互相取消，
 同一 commit 的重复触发仍会合并成一趟。
-
-### 视觉模型已经配好了，下拉里却只剩「禁用」—— 保存态不该被候选表否掉
-
-设置 → 模型里的视觉模型只有「禁用」一项，而这台机器的真实设置（`settings.json`，20:34 刚写过）里
-`visionModel` 已经存成 `deepseek-v4-flash-vision-exp`：配置是好的，显示是错的。候选规则本身没问题 —— 单独跑一次
-管线能选出那个 id —— 错在「这一窗拿到的候选比设置文件薄」时，组件把「不在候选里」读成了「功能关闭」。
-
-现在以保存的那一对为准：归属方在写入与准入两侧都验过，存下来的就是中继真正会用的东西；候选表里找不到时仍把
-模型名显示出来，并补一句说明这是**候选未刷新**而不是功能关闭，清空即停用。只有「候选为空且确实没配过」才继续
-走原来那句「没有支持图像输入的模型」。九语种各补了这句文案。
 
 ## v2.33.5 — 2026-11-23
 
