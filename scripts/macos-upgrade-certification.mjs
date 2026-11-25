@@ -20,7 +20,15 @@ import { pathToFileURL } from 'node:url'
 import { _electron as electron } from 'playwright'
 
 const CHECK_TIMEOUT_MS = 120_000
-const DOWNLOAD_TIMEOUT_MS = 900_000
+// The download is judged by *progress*, not by a wall clock: a 312 MB transfer over the project's own mirror
+// measured 337 KB/s on the x64 runner (303,103,964 of 312,507,252 bytes at 901 s, run 45521816671) — 97 %
+// done and still moving when the old flat 900 s budget cut it off. So a flat budget either fails a transfer
+// that was working (it did) or has to be padded until it stops meaning anything. Two numbers replace it:
+// a stall (no new byte for this long) is a red, and a ceiling bounds a transfer that trickles just enough to
+// keep the stall timer happy. 3 minutes of silence is well past the 5 s sampling interval, so ordinary jitter
+// does not trip it; 30 minutes is ~1.7x the slowest observed rate for the largest asset.
+const DOWNLOAD_STALL_MS = 180_000
+const DOWNLOAD_TIMEOUT_MS = 1_800_000
 const APPLY_TIMEOUT_MS = 240_000
 const HANDOVER_TIMEOUT_MS = 240_000
 
@@ -66,6 +74,124 @@ const withTimeout = (promise, description, { timeoutMs = CHECK_TIMEOUT_MS, descr
       }
     )
   })
+
+// A download that is still moving must not be killed by a clock. `downloadWatchStep` is the whole decision:
+// given the app's own status sample and the moment it was taken, it says whether to keep waiting, and if not,
+// why — naming the bytes, the rate and the quiet period, so a red is a measurement rather than "it waited".
+// The two ways out are deliberately different: `stalled` means no byte arrived for DOWNLOAD_STALL_MS (the
+// transfer is dead, whatever the app says about its state), `ceiling` means it moved for 30 minutes and did
+// not finish (the mirror is too slow to drill against, which is worth seeing separately from a hang).
+const rateBytesPerSecond = (bytes, elapsedMs) =>
+  elapsedMs > 0 && bytes > 0 ? Math.round((bytes / elapsedMs) * 1000) : null
+
+const describeDownloadReading = (watch, elapsedMs) => {
+  const rate = rateBytesPerSecond(watch.bestBytes, elapsedMs)
+  const bytes =
+    watch.bestBytes >= 0
+      ? `${watch.bestBytes}${watch.totalBytes > 0 ? ` of ${watch.totalBytes}` : ''} bytes` +
+        (rate === null ? '' : ` at ~${Math.round(rate / 1024)} KB/s`)
+      : 'no byte count in the app status'
+  return { bytes, rate, line: `${bytes} after ${Math.round(elapsedMs / 1000)}s` }
+}
+
+const downloadWatchStep = (
+  watch,
+  sample,
+  now,
+  { stallMs = DOWNLOAD_STALL_MS, ceilingMs = DOWNLOAD_TIMEOUT_MS } = {}
+) => {
+  const bytes = Number(sample?.downloadedBytes)
+  const total = Number(sample?.totalBytes)
+  // Monotone on purpose: a resumed or restarted transfer that reports fewer bytes than before is not
+  // progress, and treating it as such would let a transfer that keeps restarting extend forever.
+  const advanced = Number.isFinite(bytes) && bytes > watch.bestBytes
+  const nextWatch = {
+    startedAt: watch.startedAt,
+    lastAdvanceAt: advanced ? now : watch.lastAdvanceAt,
+    bestBytes: advanced ? bytes : watch.bestBytes,
+    totalBytes: Number.isFinite(total) && total > 0 ? total : watch.totalBytes,
+    lastSample: sample ?? null
+  }
+  const elapsedMs = now - nextWatch.startedAt
+  const quietMs = now - nextWatch.lastAdvanceAt
+  const reading = describeDownloadReading(nextWatch, elapsedMs)
+  if (elapsedMs >= ceilingMs) {
+    return {
+      watch: nextWatch,
+      verdict: 'ceiling',
+      advanced,
+      message:
+        `update.download did not finish within ${Math.round(ceilingMs / 1000)} s: ${reading.line}` +
+        ` — the transfer was still moving, so this is the mirror's rate, not a hang ` +
+        `(last status: ${JSON.stringify(nextWatch.lastSample)?.slice(0, 300) ?? 'none'})`
+    }
+  }
+  if (quietMs >= stallMs) {
+    return {
+      watch: nextWatch,
+      verdict: 'stalled',
+      advanced,
+      message:
+        `update.download made no progress for ${Math.round(quietMs / 1000)} s: ${reading.line}` +
+        ` (last status: ${JSON.stringify(nextWatch.lastSample)?.slice(0, 300) ?? 'none'})`
+    }
+  }
+  return { watch: nextWatch, verdict: 'wait', advanced, message: reading.line }
+}
+
+// The wait itself. Sampling lives here rather than in a `setInterval` beside a `withTimeout`, because the
+// interval could observe progress but had no way to act on it: the budget had already been fixed when the
+// transfer started. `readStatus` failing (page closed, channel unavailable) is not progress — it neither
+// extends the stall timer nor ends the wait, and the ceiling still bounds it.
+const awaitDownloadWithProgress = async ({
+  download,
+  readStatus,
+  startedAt = Date.now(),
+  pollMs = 5_000,
+  stallMs = DOWNLOAD_STALL_MS,
+  ceilingMs = DOWNLOAD_TIMEOUT_MS,
+  log = (line) => console.log(line)
+}) => {
+  let watch = {
+    startedAt,
+    lastAdvanceAt: startedAt,
+    bestBytes: -1,
+    totalBytes: 0,
+    lastSample: null
+  }
+  let lastLogged = ''
+  const settled = download.then(
+    (value) => ({ kind: 'done', value }),
+    (error) => ({ kind: 'failed', error })
+  )
+  // Resolves to null on a tick, so the loop can look at the app's status without blocking on the download.
+  const tick = () =>
+    new Promise((resolveTick) => {
+      const timer = setTimeout(() => resolveTick(null), pollMs)
+      timer.unref?.()
+    })
+  for (;;) {
+    const outcome = await Promise.race([settled, tick()])
+    if (outcome) {
+      if (outcome.kind === 'failed') throw outcome.error
+      return outcome.value
+    }
+    let sample = null
+    try {
+      sample = await readStatus()
+    } catch {
+      sample = null
+    }
+    const step = downloadWatchStep(watch, sample, Date.now(), { stallMs, ceilingMs })
+    watch = step.watch
+    if (step.verdict !== 'wait') throw new Error(step.message)
+    const line = `[mac-upgrade] status during download (${Math.round((Date.now() - startedAt) / 1000)}s): ${step.message}`
+    if (line !== lastLogged) {
+      lastLogged = line
+      log(line)
+    }
+  }
+}
 
 const runProcess = (executable, args, { timeoutMs = 120_000 } = {}) =>
   new Promise((resolvePromise, rejectPromise) => {
@@ -298,38 +424,17 @@ const driveUpdate = async ({ executable, env, nextVersion }) => {
     )
   }
 
-  // The download is the one wait with a budget of its own (15 minutes for ~296 MB), and it is also the
-  // one that failed on the published v2.33.5 lane: both architectures gave up after 901 s with nothing in
-  // the log but "Timed out after 120000 ms" — no byte count, no progress, so the reading could not say
-  // whether the transfer was slow or stopped. The status the app publishes is sampled while it waits
-  // (one line per change) and read once more when the budget runs out, so the next red names the bytes.
+  // The download is the one wait judged by its own movement rather than by a clock (see DOWNLOAD_STALL_MS).
+  // The app's status is sampled here (one line per change) and read again by the watch when it decides, so a
+  // red names the bytes and the rate — the v2.33.5 lane died at 97 % with nothing in the log but
+  // "Timed out after 120000 ms", which pointed the reader at a slowdown that never happened.
   const downloadStartedAt = Date.now()
-  let lastDownloadState = ''
-  const downloadPoller = setInterval(() => {
-    page
-      .evaluate(() => globalThis.window.api.update.getStatus())
-      .then((status) => {
-        const next = JSON.stringify(status)
-        if (next !== lastDownloadState) {
-          lastDownloadState = next
-          const elapsed = Math.round((Date.now() - downloadStartedAt) / 1000)
-          console.log(`[mac-upgrade] status during download (${elapsed}s): ${next.slice(0, 400)}`)
-        }
-      })
-      .catch(() => undefined)
-  }, 5_000)
-  const downloaded = await withTimeout(
-    page.evaluate(() => globalThis.window.api.update.download()),
-    'update.download',
-    {
-      timeoutMs: DOWNLOAD_TIMEOUT_MS,
-      describe: async () => {
-        const status = await page.evaluate(() => globalThis.window.api.update.getStatus())
-        const elapsed = Math.round((Date.now() - downloadStartedAt) / 1000)
-        return `after ${elapsed}s the app reported ${JSON.stringify(status).slice(0, 400)}`
-      }
-    }
-  ).finally(() => clearInterval(downloadPoller))
+  const readDownloadStatus = () => page.evaluate(() => globalThis.window.api.update.getStatus())
+  const downloaded = await awaitDownloadWithProgress({
+    download: page.evaluate(() => globalThis.window.api.update.download()),
+    readStatus: readDownloadStatus,
+    startedAt: downloadStartedAt
+  })
   console.log(`[mac-upgrade] download() -> ${JSON.stringify(downloaded)}`)
   if (downloaded.state !== 'ready') {
     throw new Error(`The download did not reach ready: ${JSON.stringify(downloaded)}`)
@@ -770,7 +875,10 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 
 export {
   CHECK_TIMEOUT_MS,
+  DOWNLOAD_STALL_MS,
   DOWNLOAD_TIMEOUT_MS,
+  awaitDownloadWithProgress,
+  downloadWatchStep,
   withTimeout,
   applyDataSabotage,
   compareVersions,

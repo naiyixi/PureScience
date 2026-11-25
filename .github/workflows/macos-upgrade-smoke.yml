@@ -293,7 +293,9 @@ jobs:
     # x64 half of this drill is possible at all — for a while the roadmap recorded x64 as "no runner
     # available", which was wrong.
     runs-on: ${{ matrix.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
-    timeout-minutes: 90
+    # 120, not 90: the drill's download wait is now judged by progress (3 minutes of silence is a red, 30
+    # minutes of movement is the ceiling), so the job bound must stay above the wait plus unpack/install.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:

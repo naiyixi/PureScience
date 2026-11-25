@@ -13,7 +13,10 @@ import {
   archMismatch,
   bundleVersion,
   CHECK_TIMEOUT_MS,
+  DOWNLOAD_STALL_MS,
   DOWNLOAD_TIMEOUT_MS,
+  awaitDownloadWithProgress,
+  downloadWatchStep,
   findBundle,
   normaliseArch,
   normaliseVersionInput,
@@ -350,6 +353,15 @@ describe('a timeout names the budget it used', () => {
     expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(CHECK_TIMEOUT_MS * 5)
   })
 
+  it('separates a stall from a ceiling, and puts the stall well outside the sampling interval', () => {
+    // A stall shorter than a couple of samples would fire on ordinary jitter; a ceiling at or below the
+    // observed 900 s is what cut a working 97 % transfer off. Both relations are asserted so neither can
+    // be "tightened" back into the shape that failed.
+    expect(DOWNLOAD_STALL_MS).toBeGreaterThan(CHECK_TIMEOUT_MS)
+    expect(DOWNLOAD_STALL_MS).toBeLessThan(DOWNLOAD_TIMEOUT_MS)
+    expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(900_000)
+  })
+
   it('appends what the app last reported, so a red names bytes instead of only waiting', async () => {
     const error = await withTimeout(never(), 'update.download', {
       timeoutMs: 40,
@@ -380,5 +392,130 @@ describe('a timeout names the budget it used', () => {
     // A settled promise that later hits its timer would reject an already-resolved promise, which surfaces
     // as an unhandled rejection in the lane rather than as a failure with a name.
     await new Promise((resolveWait) => setTimeout(resolveWait, 80))
+  })
+})
+
+// The download is the one wait that used to be judged by a clock, and the clock was wrong in the direction
+// that matters: on the x64 runner a 312 MB transfer was 303,103,964 of 312,507,252 bytes (97 %) and still
+// moving when a flat 900 s budget cut it off (run 45521816671, job 138895353020). A flat budget cannot tell
+// "slow" from "dead", so the replacement decides on bytes. These pin the three outcomes apart, because
+// "it waited a long time" is not one of them.
+describe('the download wait follows bytes, not the clock', () => {
+  const T0 = 1_000_000
+  const fresh = (): {
+    startedAt: number
+    lastAdvanceAt: number
+    bestBytes: number
+    totalBytes: number
+    lastSample: unknown
+  } => ({ startedAt: T0, lastAdvanceAt: T0, bestBytes: -1, totalBytes: 0, lastSample: null })
+  const sample = (
+    downloadedBytes: number,
+    totalBytes = 312_507_252
+  ): { state: string; downloadedBytes: number; totalBytes: number } => ({
+    state: 'downloading',
+    downloadedBytes,
+    totalBytes
+  })
+
+  it('keeps waiting while bytes arrive, even past the stall budget in total', () => {
+    let watch = fresh()
+    let now = T0
+    for (const bytes of [1_000_000, 50_000_000, 303_103_964]) {
+      now += 170_000
+      const step = downloadWatchStep(watch, sample(bytes), now)
+      expect(step.verdict).toBe('wait')
+      watch = step.watch
+    }
+    // 510 s of waiting with no stall budget on a wall clock: this is exactly the transfer that failed.
+    expect(now - T0).toBeGreaterThan(DOWNLOAD_STALL_MS)
+    expect(watch.bestBytes).toBe(303_103_964)
+  })
+
+  it('fails as stalled, naming bytes and rate, when no byte arrives for the stall budget', () => {
+    const first = downloadWatchStep(fresh(), sample(10_000_000), T0 + 5_000)
+    const stalled = downloadWatchStep(
+      first.watch,
+      sample(10_000_000),
+      T0 + 5_000 + DOWNLOAD_STALL_MS
+    )
+    expect(stalled.verdict).toBe('stalled')
+    expect(stalled.message).toContain(`no progress for ${Math.round(DOWNLOAD_STALL_MS / 1000)} s`)
+    expect(stalled.message).toContain('10000000 of 312507252 bytes')
+    expect(stalled.message).toMatch(/KB\/s/)
+  })
+
+  it('does not read a restarted transfer as progress', () => {
+    // A resumed or re-issued download that reports fewer bytes than before has not moved forward; if that
+    // counted, a transfer that kept restarting could extend itself forever.
+    const first = downloadWatchStep(fresh(), sample(200_000_000), T0 + 5_000)
+    const restarted = downloadWatchStep(
+      first.watch,
+      sample(1_000_000),
+      T0 + 5_000 + DOWNLOAD_STALL_MS
+    )
+    expect(restarted.verdict).toBe('stalled')
+    expect(restarted.watch.bestBytes).toBe(200_000_000)
+    expect(restarted.message).toContain('200000000 of 312507252 bytes')
+  })
+
+  it('names a ceiling as the mirror rate, not a hang, when it moved all the way', () => {
+    const watch = {
+      ...fresh(),
+      bestBytes: 300_000_000,
+      lastAdvanceAt: T0 + DOWNLOAD_TIMEOUT_MS - 5_000
+    }
+    const capped = downloadWatchStep(watch, sample(300_000_000), T0 + DOWNLOAD_TIMEOUT_MS)
+    expect(capped.verdict).toBe('ceiling')
+    expect(capped.message).toContain('mirror')
+    expect(capped.message).toContain('not a hang')
+  })
+
+  it('lets an unreadable status neither advance the wait nor end it early', () => {
+    const watch = { ...fresh(), bestBytes: 5_000_000, lastAdvanceAt: T0 }
+    expect(downloadWatchStep(watch, null, T0 + 60_000).verdict).toBe('wait')
+    expect(downloadWatchStep(watch, null, T0 + DOWNLOAD_STALL_MS + 1).verdict).toBe('stalled')
+  })
+})
+
+describe('awaitDownloadWithProgress', () => {
+  it('returns the download value and does not wait for a sample', async () => {
+    const value = await awaitDownloadWithProgress({
+      download: Promise.resolve({ state: 'ready' }),
+      readStatus: async () => ({ downloadedBytes: 1 }),
+      pollMs: 50,
+      log: () => undefined
+    })
+    expect(value).toEqual({ state: 'ready' })
+  })
+
+  it('survives a transfer that outlasts the stall budget as long as bytes keep arriving', async () => {
+    // The regression: 120 ms of transfer against a 60 ms stall budget. A wall-clock budget rejects here; a
+    // progress watch must not, because every sample is larger than the last.
+    let bytes = 0
+    const download = new Promise<{ state: string }>((resolveDone) =>
+      setTimeout(() => resolveDone({ state: 'ready' }), 120)
+    )
+    const value = await awaitDownloadWithProgress({
+      download,
+      readStatus: async () => ({ downloadedBytes: (bytes += 10_000), totalBytes: 200_000 }),
+      pollMs: 5,
+      stallMs: 60,
+      log: () => undefined
+    })
+    expect(value).toEqual({ state: 'ready' })
+    expect(bytes).toBeGreaterThan(10_000)
+  })
+
+  it('rejects with the stall reading when the status stops moving', async () => {
+    const error = await awaitDownloadWithProgress({
+      download: new Promise(() => undefined),
+      readStatus: async () => ({ downloadedBytes: 7_000, totalBytes: 312_507_252 }),
+      pollMs: 5,
+      stallMs: 30,
+      log: () => undefined
+    }).catch((caught: unknown) => caught as Error)
+    expect(error.message).toContain('update.download made no progress')
+    expect(error.message).toContain('7000 of 312507252 bytes')
   })
 })

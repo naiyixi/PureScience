@@ -117,6 +117,20 @@ describe('macOS upgrade smoke workflow', () => {
     expect((readiness['timeout-minutes'] ?? 0) * 60).toBeGreaterThanOrEqual(budgetMinutes + 15)
   })
 
+  it('keeps the drill job above the download ceiling it now allows', () => {
+    // Measured on run 45521816671: the x64 drill was 97 % through the 312 MB transfer when a flat 900 s
+    // budget cut it off. The wait is judged by progress now — 30 minutes of *movement* is the ceiling — so
+    // the job bound has to stay above that ceiling plus unpack/install/relaunch, or the outer number comes
+    // back as the thing that decides.
+    const drill = jobOf(readWorkflow(), 'drill')
+    const script = readDrillScript()
+    const declared = /const DOWNLOAD_TIMEOUT_MS = ([\d_]+)/.exec(script)?.[1]
+    expect(declared, 'the drill script no longer declares DOWNLOAD_TIMEOUT_MS').toBeDefined()
+    const ceilingSeconds = Number(String(declared).replace(/_/g, '')) / 1000
+    expect(ceilingSeconds).toBeGreaterThan(900)
+    expect((drill['timeout-minutes'] ?? 0) * 60).toBeGreaterThan(ceilingSeconds + 45 * 60)
+  })
+
   it('names a feed that is ahead instead of waiting for it to go backwards', () => {
     const wait = stepNamed(jobOf(readWorkflow(), 'readiness'), 'Wait until the mirror offers it')
     const script = wait.run ?? ''

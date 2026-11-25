@@ -1,5 +1,67 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十八、本轮追加（执行器，2026-11-25 11:4x–）—— 升级演练的下载按字节判：97 % 的传输不该被墙钟切断；顺带把 v2.33.6 的发布核验做完
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `HEAD == f38e26f2`（会话的分支 `probe/upgrade-instrument-and-sweep`，与 `origin/main` 同内容不同 SHA）；
+  `origin/main` = **`42bb03f6`**（会话 11:42 刚推的「两个 npm 型后端的探测器」）。工作树 **32 个改动仍是会话在制**
+  （`ro-crate*`、`shared/citation/*`、`session-persistence/*`、`prisma/schema.prisma`、`logger*`、`crash-diagnostics`、
+  `references/*`、`hermes-install*`）⇒ **一个字节没碰**；本轮全部改动落在隔离工作树 `/tmp/ps-dlwatch`（基于 `42bb03f6`），
+  从那里推 `HEAD:main`。
+- **v2.33.6 发布核验（先核完，`v2.33.6` 已结案）**：页 `PureScience v2.33.6`，`draft=false`、`isPrerelease=false`，
+  `gh release list` 显示 **Latest**；资产 **17 件**（四平台 dmg/zip、AppImage、deb、setup.exe+blockmap、`SHA256SUMS.txt`、
+  `RELEASE-CERTIFICATION.json`、`version.json`、`latest*.yml`、`arm64-mac.yml`/`x64-mac.yml`，与 v2.33.5 逐名同形）；
+  `RELEASE-CERTIFICATION.json` 的 `sourceSha` = `3f654a7ebb4d8f130398fae38b081bb6f957e1f9` = `git rev-parse 'v2.33.6^{commit}'`；
+  正文 **87,941 字节**，「只探测 / 不托管安装」**0 命中**、`pipx` 24 处、视觉模型 2 处 ⇒ **不需要**再 `release:notes --apply`。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽 ⇒ 取上一版证据档 `2026-11-25-macos-upgrade-lane-starts-at-publish.md`
+  §四.2 自己写下的那条：`update.download` 的 900 秒墙钟。
+
+### 一 现取读数：红的是「慢」，不是「死」
+
+`macOS Upgrade Smoke` run `45521816671`（`workflow_dispatch`，head `13fe02db`）的 x64 半场 job `138895353020` 红在
+`Drive the upgrade`，日志逐字：
+
+```
+[mac-upgrade] Error: Timed out after 900000 ms (900 s): update.download — after 900s the app reported
+{"state":"downloading","latest":"2.33.6","totalBytes":312507252,"current":"2.33.5","applyKind":"restart",
+ "progress":97,"downloadedBytes":303103964}
+```
+
+同一天 00:34Z 的 arm64 半场（run `45519152395`，job `138886340992`）**success**，18 分 28 秒走完 ⇒ 升级机制可用；
+这一次是 312,507,252 字节里到 303,103,964（97 %）、平均约 **337 KB/s**，900 秒不够。旧实现只有
+`DOWNLOAD_TIMEOUT_MS = 900_000` 一个数字，同时承担「判死」和「判慢」⇒ 镜像一慢，还在前进的传输就被当死处理。
+上一轮修的是**文案**（让超时消息带字节与进度），判据仍是墙钟，所以同一个红换了个说法又来一次。
+
+### 二 交付（一笔，代码 + 工作流 + 两支用例 + 证据档）
+
+| 文件 | 内容 |
+| --- | --- |
+| `scripts/macos-upgrade-certification.mjs` | 新增纯函数 `downloadWatchStep(watch, sample, now, {stallMs, ceilingMs})`：只有 `downloadedBytes` **单调递增**才算进度（重启后字节变少不算，免得永远延长）；三档判决 `wait` / `stalled`（`DOWNLOAD_STALL_MS = 180_000`）/ `ceiling`（`DOWNLOAD_TIMEOUT_MS` 900 s → **1_800_000**，消息点名「这是镜像速率，不是挂住」），失败消息带字节、总量、速率与最后一条状态。新增 `awaitDownloadWithProgress({download, readStatus, …})` 取代「`setInterval` 观察 + `withTimeout` 判死」那对：观察与判决在同一条循环里，进度才能真的延长等待；`readStatus` 抛错既不算进度也不提前结束，天花板仍兜底 |
+| `.github/workflows/macos-upgrade-smoke.yml` | drill 作业 `timeout-minutes: 90 → 120`：内层等待上限从 15 分钟变 30 分钟，外层数字必须继续压在上面 |
+| `scripts/macos-upgrade-certification.test.ts` | 9 条新用例：三档判决各自可分辨、重启不算进度、读不到状态不推进也不早停；`awaitDownloadWithProgress` 三条（正常返回 / 传输 120 ms 而静默预算只有 60 ms **仍须成功**（就是本轮那个红的形状）/ 状态不动时带字节拒绝）；常量关系一条（`stall > 检查超时`、`stall < ceiling`、`ceiling > 900 s`） |
+| `scripts/ci/macos-upgrade-smoke-workflow.test.ts` | 一条：drill 作业 `timeout-minutes` 必须大于**从脚本里读出**的 `DOWNLOAD_TIMEOUT_MS` 加 45 分钟（数字不手抄） |
+| `docs/evidence/2026-11-25-macos-upgrade-download-follows-bytes.md` | 现象、定因、改法、读数（含两条变异）、四条边界 |
+| `src/main/settings/agent-cli-detect.ts` | **不属于本单元**，是 `42bb03f6`（会话）新带进来的 `TS6133`：`createAgentCliDetectDeps(spec)` 的 `spec` 没被读 ⇒ `typecheck:node` 在 main 上就是红的（现取：唯一一条 error）。改成 `_spec` 并写明「按调用方形状保留位置参数」——**不删参数**（删了对将来按位置传参的调用点就是 `TS2554`），也不替它编一段用法 |
+
+判据（隔离工作树现取）：两支套件 **2 files / 48 passed**；`--reporter=verbose` 逐条命中 9 条新用例；
+变异 ①（`advanced` 写死 `false`）**5 failed / 34 passed**、变异 ②（天花板乘 1000）**1 failed / 38 passed**，还原后 **39 passed**；
+`eslint --no-cache` 三文件 **0 error / 0 warning**；`typecheck:web` **0**；`typecheck:node` 修掉上面那条 `TS6133` 后 **0**；
+`src/main/settings/agent-cli-detect.test.ts` **6 passed**。
+
+### 三 边界与具名未办
+
+1. **没有新的真机升级读数**：判据只到「本机套件绿 + 变异能红」。下一次 `release: published` 才有：`Upgrade macOS app in place (x64)` 在 >900 s 传输下仍给出 `macOS upgrade reading:`，或真挂住时红在 `made no progress for 180 s` 并点名字节。
+2. **337 KB/s 是 runner 到镜像那一段的速率**，本仓不测也不控制；30 分钟天花板是按这一次留 ~1.7 倍余量，不是承诺镜像够快。
+3. **arm64 半场没有新读数**（同一份脚本对两架构都生效，但 00:34Z 那趟成功的是旧判据）。
+4. 本轮没有动 `scripts/macos-update-cache-drill.mjs`（另一条演练线，自带预算），也没有改工作流触发方式。
+
+### 四 下一轮第一步
+
+- ① 读本轮推送那笔的 `Nightly` + `Windows Full Test`（完整 40 位 SHA）：本轮只改 `scripts/**` 一支 `.mjs` 与工作流 YAML，Windows 车道若红先按「失败文件是否本批碰过」逐次归因。
+- ② 下一次发版后读 `macOS Upgrade Smoke` 的 drill 作业：出现 `macOS upgrade reading:` 即这条改法拿到真读数；仍撞天花板就会看到「镜像速率」那句而不是墙钟。
+- ③ 仍开着的候选：Windows 上真装 pipx 的 Install 真机读数（需一条 Windows 认证 spec 或人工一次），以及 M2 的产品决定（B 段唯一阻塞项，需用户拍板）。
+
 ## 二百一十七、本轮追加（执行器，2026-11-25 02:4x–）—— 分片 4 第三次红在同一处：用例把宿主当 POSIX，实现又不许注入平台；顺带把 2.33.6 的两处叙事收口
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
