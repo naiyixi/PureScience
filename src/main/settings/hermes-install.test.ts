@@ -108,9 +108,12 @@ describe('hermes pipx installer', () => {
 
   it('resolves a candidate only when it exists', () => {
     expect(resolvePipxPath(() => false)).toBeNull()
+    // Windows candidates carry a console-script extension (pipx.exe/.cmd/.bat), so an exact
+    // `endsWith(join('homebrew','bin','pipx'))` can never match there — which is what the Windows shard
+    // caught. Match the segment structure instead, then assert the resolved basename is a pipx script.
     const found = resolvePipxPath((candidate) =>
-      candidate.endsWith(join('homebrew', 'bin', 'pipx'))
+      /homebrew[\\/]+bin[\\/]+pipx(\\.(exe|cmd|bat))?$/i.test(candidate)
     )
-    expect(found).toContain(join('homebrew', 'bin', 'pipx'))
+    expect(found).toMatch(/homebrew[\\/]+bin[\\/]+pipx/i)
   })
 })

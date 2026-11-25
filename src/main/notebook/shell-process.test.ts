@@ -226,9 +226,13 @@ describe('notebook shell process behavior', () => {
     })
 
     it('classifies a timeout with a null exit code and appends its diagnostic after stderr', async () => {
-      await expect(execute("printf 'before timeout' >&2; sleep 5", 50)).resolves.toEqual({
+      // 750 ms, not 50: at 50 ms the shell had to finish starting AND reach `printf` before the deadline,
+      // which a loaded CI runner does not guarantee — the assertion then measured the runner, not the
+      // product. This budget is still far below `sleep 5`, so the timeout is what ends the run, and it is
+      // long enough that "the bytes never arrived" can only mean they were dropped.
+      await expect(execute("printf 'before timeout' >&2; sleep 5", 750)).resolves.toEqual({
         stdout: '',
-        stderr: 'before timeout\nShell command timed out after 50ms and was killed.',
+        stderr: 'before timeout\nShell command timed out after 750ms and was killed.',
         exitCode: null
       })
     })
