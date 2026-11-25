@@ -22846,3 +22846,73 @@ AssertionError: expected 45410861056 to be 45410869248
 - ② 确认 Nightly `44772409549` 的判决，然后把 `probe/drill-cache-dir-cross-check` 并入 main（一次推送），
   读 `1efea1ae` 并入后那笔的 Nightly + Windows 判决（完整 40 位 SHA）。
 - ③ 下一个候选：§四① 的 sweep 诊断路径交叉核对（需要先造一条可驱动的读数）。
+
+## 三百六十一、本轮追加（执行器，2026-11-26 02:1x–04:0x）—— 点击后立刻回读：P0 里那条 flaky 是取样早了 50 毫秒
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 16e58032`
+  **互不为祖先**），工作树 102 个改动 + 8 个未跟踪**全是会话在制**（`settings/**`、九语 i18n、`ro-crate*`、
+  `shared/citation/*`、`vision-model-options`、`agent-cli-detect`、`deepseek-harness`、`diagnostics/module-load`）
+  ⇒ 一个字节没碰。本轮在 `git worktree add --detach /tmp/ps-p0-poll-20261126 origin/main` 的隔离树里做，
+  只 add 两个 spec 文件。
+- `package.json` = **2.33.8**，`gh release list` 的 Latest = **v2.33.8**（17:53Z，17 资产）；`16e58032` 的
+  Nightly / Windows 双绿（P0 摘要 `1 flaky / 126 passed`）。
+- 上一轮记事本写的下一单元（`update-store.ts` 那两处启动读）**已由会话交付**（`f9b9b4ee` 更新读、`16e58032`
+  App 里三条 fire-and-forget）⇒ 不重做。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；C 段外部阻塞 ⇒ 取缺陷队列。
+
+### 一 读数：那条 flaky 不是产品没写进去，是回读太早
+
+`Nightly 45651334823`（head `16e58032`）的 P0 日志逐字：
+
+```
+[ic19] permission control options: Always allow | Require approval | Block      (…:41.519)
+[ic19] probe_alpha permission after the click: allow                            (…:41.571)   ← 第 1 次尝试
+[ic19] probe_alpha permission after the click: block                            (…:51.650)   ← retry #1
+1 flaky / 126 passed
+```
+
+点击只**发起**写入，面板要等写入落地才回显（`ConnectorDetailView` 里 `void handleToolChange(...)`，
+`setToolPermission(...).then(setDetail)`）⇒ 同一拍经主进程回读拿到的是写入前的值。同一族在
+`connector-custom-sign-out.spec.ts` 早前已用 `expect.poll` 修过（它自己的注释写着「the first attempt read
+`hasTokens: true`, the retry read `false`」），这两处是未跟上的兄弟。
+
+### 二 交付（`82064383`）
+
+| 文件 | 改动 |
+| --- | --- |
+| `e2e/certification/connector-custom-detail.spec.ts` | 逐工具权限（末段 = Block）点击后的回读改成 `expect.poll(readPermission, { timeout: 30_000 }).toBe('block')` |
+| `e2e/certification/connector-custom-skip-approvals.spec.ts` | 「跳过审批」开关点击后的 `detail.autoAllow` 同样改 `expect.poll(..., 30_000).toBe(true)` |
+
+断言强度**不变**（持久值仍必须是目标值）：写入始终不落地时 poll 会超时失败，不会把缺陷藏起来；改的只是取样时机。
+
+### 三 读数
+
+| 项 | 读数 |
+| --- | --- |
+| 本机 `typecheck:node`（`--composite false`，8192 堆） | **EXIT=0** |
+| 本机 `typecheck:web` | **EXIT=0** |
+| 本机 `eslint --no-cache`（两个改动文件） | **EXIT=0**（0 problems） |
+| 用例收集 | `playwright test --list` ⇒ 2 tests / 2 files |
+| 真窗口（CI `macos-arm64`，`Nightly 45673395862`，head `82064383`） | `[ic19] … after the click: **block**`（首跑，无 retry）、`[ic20] detail.autoAllow after the click: **true**`；摘要 `12 skipped / **127 passed** (48.9m)` —— **无 flaky 行**；`electron P0 reading: passed` |
+| 其余车道 | `Windows Full Test 45673395584`：**8/8 分片 success**；Nightly 七作业（含 `publish`）全 success；macos-x64 / linux-x64 / windows-x64 全 success |
+
+### 四 边界与具名未办
+
+1. **本机没有跑 e2e**：内存闸现取 —— 空闲页 4,249（≈66 MB）、`swap 11,715.94M / 12,288M`、launchd 的无头实例常驻
+   ⇒ 按规矩不 build、不起实例，真窗口读数取 CI 的 `macos-arm64` 车道（跑的是 `build:e2e` 产物），本机只做静态门禁。
+   这条读数覆盖的是**这一台 runner 上的一次首跑**，不是「抖动已绝迹」的证明；判据仍按 issue #13 的三连绿。
+2. `issue #13` 列的两条（安装包冒烟 60s 窗口、`session-fork` 计数竞态）**不是**这条；这条是同一形状的第三处，
+   就地修掉。60s 冒烟那条要在 Windows 侧分段计时，本轮不动。
+3. 官网镜像本轮现取已翻版（见 §五①），与代码无关，不占补丁号。
+
+### 五 下一轮第一步
+
+- ① **镜像结案**：`https://purescience.work/download/versions.json` 现取 `latest=v2.33.8`（`generatedAt`
+  18:33Z），六个资产 HEAD 全 200，`mac-arm64.dmg` 294,451,222 B、`win-x64-setup.exe` 244,940,902 B 与清单逐字节相同
+  ⇒ 上一轮记事本那条 pending 结案。
+- ② **60s 冒烟窗口**：先给 `scripts/windows-installer-smoke.mjs` 的等待加**分段计时**（阶段名 + 毫秒，失败行带上停在
+  哪一段），让下一次超时自己说清是「合成运行时太慢」还是「端点没起」；判据落在 Windows 车道，不加超时。
+- ③ 共享树会话那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同一批文件；动之前先 `git status --short`
+  认领，别把 102 个在制路径卷进提交。
