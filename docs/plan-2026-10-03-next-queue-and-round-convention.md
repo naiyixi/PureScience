@@ -1,5 +1,78 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百一十九、本轮追加（执行器，2026-11-25 21:0x–）—— v2.33.7 发布核验结案；P0 三支 flaky 的根因是渲染层对同一条通道最后一次没接住的 await
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `origin/main == 48ca13ce`，Latest 页 = **v2.33.7**；该提交上三条主干车道都是 `success`
+  （`Release` / `Nightly` / `Windows Full Test`），**无在飞车道** ⇒ 本次推送不取消任何人的判决。
+- 工作树 101 个改动 + 若干未跟踪**仍是会话在制**（含 `CHANGELOG.md` / `README.md` / `README.en.md` /
+  `package*.json` 的 v2.33.7 副本、`agent-framework/*`、`settings/*`、`shared/citation/*`、`ro-crate*`、
+  `i18n/*`、`session-persistence/*` …），mtime 停在 16:41 ⇒ **一个字节没碰**；本轮改动全部落在隔离
+  工作树 `/tmp/ps-exec-nbstatus`（基于 `48ca13ce`），从那里推 `HEAD:main`。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽。上一轮 §二百一十八 §五 列的候选 `UpdateDialog` 原样
+  上屏 `net::ERR_*` **已交付**（`UpdateDialog.tsx:197` 走 `dialogStatus.errorReason` + 九语
+  `FAILURE_KEYS`，渲染用例断言 `net::ERR_*` 不上屏）⇒ 按「先确认缺口还在不在」结案，不重做。
+
+### 一、v2.33.7 发布核验（结案，逐项按「发布核验」口径）
+
+| 项 | 读数 |
+| --- | --- |
+| 发布页 | `PureScience v2.33.7`，Latest，`draft=false`、`isPrerelease=false`，`publishedAt 2026-11-25T12:41:15Z` |
+| 资产 | **17 项**：四平台（mac-arm64 dmg+zip、mac-x64 dmg+zip、win setup.exe+blockmap+zip、linux AppImage+deb）+ `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest.yml` / `latest-linux.yml` / `latest-mac.yml` / `arm64-mac.yml` / `x64-mac.yml` |
+| 页与提交的链 | `RELEASE-CERTIFICATION.json` 的 `sourceSha = 48ca13cef5188056b7af29ee7170f149f13933a1`，与 `git rev-parse 'v2.33.7^{commit}'` **逐字符相同** |
+| Release run `45592230446` | preflight / Verify / 四平台构建 **全 success**；`notarize-mac` 双架构 **success**（不是 skipped）；`publish` **success**；`windows-upgrade-smoke` **success** |
+| 正文 | **82,643 字节**，含成熟度块三态（✅ / 🚧 / 🗺️）与 v2.33.7 技术记录段 |
+| 同提交 `Nightly` `45592089343` | 七作业全 success；`macos-arm64` 的 P0 汇总 `3 flaky / 9 skipped / 127 passed (1.0h)`，步骤读数 `electron P0 reading: passed` |
+
+### 二、官网与自更新 feed 仍在 2.33.6（具名待复核，不是缺陷判决）
+
+21:1x 现取：`https://purescience.work/download/versions.json` 的 `latest` 仍是 `v2.33.6`；
+三份 feed（`latest-mac.yml` / `latest.yml` / `latest-linux.yml`）的 `version` 都是 `2.33.6`。
+服务器侧是 `*/30` 的 cron（`scripts/website/sync.sh`：查最新 tag → 按 `SHA256SUMS.txt` 逐条校验拉取 →
+重算清单），而 2.33.7 的资产 20:41 CST 才发布、整包约 1.9 GB ⇒ **它可能只是还在拉**。
+判据（下一轮第一步复核）：`versions.json` 的 `latest` 变成 `v2.33.7` 且三份 feed 同版；
+若仍是 2.33.6 再查服务器 cron 的日志，不先当产品缺陷。
+
+### 三、交付：P0 三支 flaky 的同一个根因（渲染层最后一次没接住的 await）
+
+三支认证旅程（`lock-import.spec.ts:92`、`notebook-interrupted-run.spec.ts:112`、
+`packages-mutation.spec.ts:195`）在同一趟 P0 里各失败一次、重试转绿，失败行逐字相同：
+
+```
+Error: [renderer pageerror] Error invoking remote method 'notebook-env:status':
+       Error: No handler registered for 'notebook-env:status'
+```
+
+判据链（不猜）：那句消息点名了通道 ⇒ 只可能由渲染层对该通道的 `invoke` 产生；全树该通道的调用点
+只有 `src/renderer/src/stores/notebook-env-store.ts` 五处 —— 结算 tick 的回读有 `.catch`、
+`provision`/`cancel`/`reset` 三处都在 try/catch 里，**只有 `init()` 末尾那次 `await bridge.getStatus()`
+没接住**，而 `App.tsx:319` 是用 `void initEnv()` 起它的 ⇒ 拒绝即未处理 rejection ⇒ pageerror ⇒
+`RendererFailureGate` 计入失败。同一文件往下三行，`storage:get-info` 的启动探测早就为同一形状修过
+（注释里记着 `lock-import` 与 run `44902338624`），这次补的是同族里最后一个。
+
+修法：`init()` 末尾那次读包 try/catch，答不上来就保持初始态（「主进程没有回答」是读数，不是要上屏的
+错误；下一次启动会重读）；新增用例钉住「`init()` resolve、无 `unhandledRejection`、状态仍是初始态」。
+证据与变异证明：`docs/evidence/2026-11-25-notebook-env-status-window-boundary.md`。
+
+### 四、门禁读数（本机，隔离工作树 @ `48ca13ce` + 本笔）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/renderer/src/stores/notebook-env-store.test.ts` | **38 passed**（新增 1 例） |
+| 变异（回退实现、只留用例） | **1 failed / 37 passed** —— 断言真的在守这条 |
+| `eslint --no-cache`（两个改动文件） | **0 error**（EXIT=0） |
+| `typecheck:web` | **EXIT=0**（`tsc --noEmit -p tsconfig.web.json --composite false`，无诊断；本机内存压力下耗时约 13 分钟） |
+| `typecheck:node` | 本笔不触 node 工程（只改 `src/renderer/**`）；本机在内存压力下超时未取到读数 ⇒ **记为未取**，CI 的 `Verify → Typecheck` 会跑它 |
+
+### 五、下一轮第一步
+
+- ① 复核官网落地：`versions.json` 的 `latest` 与三份 feed 是否都到 `v2.33.7`；不到就查服务器 sync 日志（见上一节判据）。
+- ② 读本笔推送后那趟 `macos-arm64` 的 P0：`grep -c "No handler registered for 'notebook-env:status'"` 必须为 **0**，
+  且三支 spec 不再进 flaky 名单（这是「修好」的唯一判据，单测不算）。
+- ③ B 段仍耗尽（M2 卡产品决定）⇒ 继续取自己具名未闭项；候选：官网/自更新 feed 的落地复核 +
+  「装机版 2.33.2 → 当前版」那一次真实升级读数（后者需要动用户机器上的打包版，先立案不擅动）。
+
 ## 二百一十八、本轮追加（执行器，2026-11-25 11:4x–）—— 升级演练的下载按字节判：97 % 的传输不该被墙钟切断；顺带把 v2.33.6 的发布核验做完
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
