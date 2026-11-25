@@ -9,6 +9,7 @@ import {
   assertUpgradeProfilePreserved,
   buildSmokePlan,
   cleanupSmokeRoot,
+  createStartupPhaseTracker,
   createUpgradeProfileGuard,
   executeSmokePlan,
   fetchWithTimeout,
@@ -21,6 +22,7 @@ import {
   requestPackagedAppShutdown,
   runProcess,
   terminateProcessTree,
+  waitFor,
   waitForShutdownExit,
   windowsProfileEnvironment,
   writeUpgradeSentinel
@@ -319,5 +321,51 @@ PureScience Web: http://127.0.0.1:52378/?token=iUFHGSACwBz2k1kSJfPixHbclDywVg0Cr
     )
 
     warning.mockRestore()
+  })
+
+  it('names how far startup got when the health wait expires', async () => {
+    let now = 0
+    const tracker = createStartupPhaseTracker(() => now)
+
+    now = 242
+    tracker.observe("     phase: 'load-application-modules'\r\n")
+    // A chunk boundary inside the next phase line must not lose it: the tail is carried into the next chunk.
+    now = 1_483
+    tracker.observe("     phase: 'compose-run")
+    expect(tracker.describe()).toBe(
+      "Startup had reached phase 'load-application-modules' at +242ms."
+    )
+    expect(tracker.observe("time'\n     other: 'noise'\n")).toEqual([
+      { name: 'compose-runtime', elapsedMs: 1_483 }
+    ])
+
+    await expect(
+      waitFor(
+        'the installed app web service',
+        async () => undefined,
+        5,
+        () => tracker.describe()
+      )
+    ).rejects.toThrow(
+      "Timed out waiting for the installed app web service. Startup had reached phase 'compose-runtime' at +1483ms."
+    )
+  })
+
+  it('says no phase was logged when startup never reached one', async () => {
+    const tracker = createStartupPhaseTracker(() => 0)
+
+    expect(tracker.observe('the app is doing something else entirely\n')).toEqual([])
+    expect(tracker.describe()).toBe('No startup phase was logged before the wait expired.')
+
+    await expect(
+      waitFor(
+        'the process-lock app web service',
+        async () => undefined,
+        5,
+        () => tracker.describe()
+      )
+    ).rejects.toThrow(
+      'Timed out waiting for the process-lock app web service. No startup phase was logged before the wait expired.'
+    )
   })
 })

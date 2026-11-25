@@ -268,7 +268,7 @@ const runProcess = (executable, args, options = {}, terminate = terminateProcess
     })
   })
 
-const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS) => {
+const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS, describeProgress) => {
   const deadline = Date.now() + timeoutMs
   let lastError
   while (Date.now() < deadline) {
@@ -280,10 +280,50 @@ const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS) => {
     }
     await delay(250)
   }
+  // The failure line has to say where the wait stopped, not only that it stopped: whoever reads a red
+  // step sees this message and the dump that follows it, not the live timeline above.
+  const progress = describeProgress?.()
   throw new Error(
-    `Timed out waiting for ${description}.${lastError instanceof Error ? ` ${lastError.message}` : ''}`
+    `Timed out waiting for ${description}.${progress ? ` ${progress}` : ''}${lastError instanceof Error ? ` ${lastError.message}` : ''}`
   )
 }
+
+// The app logs a startup phase as a block: `[main] operation phase {`, then its keys, one of which is
+// `phase: '<name>'`. Only that key is matched, so the timeline stays one line per phase.
+const STARTUP_PHASE_PATTERN = /^\s*phase: '([^']+)'/
+
+// Tracks how far startup got, so an expired wait can name the phase it expired in. A wait that expires
+// with no phase at all is its own reading: the process never reached the first logged phase, which is a
+// different defect from stopping inside one — the two must not be reported as the same sentence.
+export const createStartupPhaseTracker = (clock = Date.now) => {
+  const launchedAt = clock()
+  // A chunk boundary can land in the middle of a phase line, so the unterminated tail is carried into the
+  // next chunk rather than dropped: a missing phase would make the timeout line name the phase before it.
+  let pending = ''
+  let last
+  return {
+    observe(chunk) {
+      const reached = []
+      const lines = (pending + String(chunk)).split('\n')
+      pending = lines.pop() ?? ''
+      for (const line of lines) {
+        const name = STARTUP_PHASE_PATTERN.exec(line)?.[1]
+        if (!name) continue
+        last = { name, elapsedMs: clock() - launchedAt }
+        reached.push(last)
+      }
+      return reached
+    },
+    describe() {
+      return last
+        ? `Startup had reached phase '${last.name}' at +${last.elapsedMs}ms.`
+        : 'No startup phase was logged before the wait expired.'
+    }
+  }
+}
+
+const printStartupPhase = ({ name, elapsedMs }) =>
+  console.log(`[app +${elapsedMs}ms] phase=${name}`)
 
 const observeChildExit = (child) =>
   new Promise((resolveExit, rejectExit) => {
@@ -688,19 +728,14 @@ const launchAndProbe = async ({ installDirectory, expectedVersion, env, legacyCo
   let stderr = ''
   child.stdout?.setEncoding('utf8')
   child.stderr?.setEncoding('utf8')
-  const launchedAt = Date.now()
+  const phaseTracker = createStartupPhaseTracker(() => Date.now())
   child.stdout?.on('data', (chunk) => {
     stdout += chunk
     // Print the app's startup phases with elapsed time as they arrive. The captured dump alone cannot say
     // which phase was slow: every line in it carries the dump's timestamp. When the health wait times out,
     // these lines are the measurement — that is what tells apart "still composing the runtime" from
-    // "never started", before any budget is changed.
-    for (const line of String(chunk).split('\n')) {
-      // The app logs a startup phase as a block: `[main] operation phase {`, then its keys, one of which is
-      // `phase: '<name>'`. Only that key is reprinted, so the timeline stays one line per phase.
-      const phase = /^\s*phase: '([^']+)'/.exec(line)?.[1]
-      if (phase) console.log(`[app +${Date.now() - launchedAt}ms] phase=${phase}`)
-    }
+    // "never started", before any budget is changed. The same tracker names the last phase in the error.
+    phaseTracker.observe(chunk).forEach(printStartupPhase)
   })
   child.stderr?.on('data', (chunk) => {
     stderr += chunk
@@ -710,11 +745,18 @@ const launchAndProbe = async ({ installDirectory, expectedVersion, env, legacyCo
 
   try {
     const { endpoint, auth } = await Promise.race([
-      waitFor('the installed app web service', async () => {
-        return parsePackagedAppEndpoint(output())
-      }),
+      waitFor(
+        'the installed app web service',
+        async () => {
+          return parsePackagedAppEndpoint(output())
+        },
+        STARTUP_TIMEOUT_MS,
+        () => phaseTracker.describe()
+      ),
       exit.then((code) => {
-        throw new Error(`Installed app exited before becoming healthy (${code}).\n${output()}`)
+        throw new Error(
+          `Installed app exited before becoming healthy (${code}). ${phaseTracker.describe()}\n${output()}`
+        )
       })
     ])
     const response = await fetchWithTimeout(`${endpoint}/api/bootstrap?${auth}`)
@@ -752,15 +794,26 @@ const launchForProcessLock = async ({ installDirectory, expectedVersion, env }) 
   let stderr = ''
   child.stdout?.setEncoding('utf8')
   child.stderr?.setEncoding('utf8')
-  child.stdout?.on('data', (chunk) => (stdout += chunk))
+  const phaseTracker = createStartupPhaseTracker(() => Date.now())
+  child.stdout?.on('data', (chunk) => {
+    stdout += chunk
+    phaseTracker.observe(chunk).forEach(printStartupPhase)
+  })
   child.stderr?.on('data', (chunk) => (stderr += chunk))
   const output = () => `${stdout}${stderr ? `\n${stderr}` : ''}`
   const exit = observeChildExit(child)
   try {
     const { endpoint, auth } = await Promise.race([
-      waitFor('the process-lock app web service', async () => parsePackagedAppEndpoint(output())),
+      waitFor(
+        'the process-lock app web service',
+        async () => parsePackagedAppEndpoint(output()),
+        STARTUP_TIMEOUT_MS,
+        () => phaseTracker.describe()
+      ),
       exit.then((code) => {
-        throw new Error(`Process-lock app exited before becoming healthy (${code}).\n${output()}`)
+        throw new Error(
+          `Process-lock app exited before becoming healthy (${code}). ${phaseTracker.describe()}\n${output()}`
+        )
       })
     ])
     const response = await fetchWithTimeout(`${endpoint}/api/bootstrap?${auth}`)

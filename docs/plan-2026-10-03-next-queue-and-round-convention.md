@@ -22916,3 +22916,76 @@ AssertionError: expected 45410861056 to be 45410869248
   哪一段），让下一次超时自己说清是「合成运行时太慢」还是「端点没起」；判据落在 Windows 车道，不加超时。
 - ③ 共享树会话那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同一批文件；动之前先 `git status --short`
   认领，别把 102 个在制路径卷进提交。
+
+## 三百六十二、本轮追加（执行器，2026-11-26 05:5x–）—— 60 秒窗口先量出来是 3.0 秒，再让失败行点名停在哪一段
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 09ee816b` **互不为祖先**），
+  工作树 102 个改动 + 8 个未跟踪**全是会话在制**（`settings/**`、九语 i18n、`ro-crate*`、`shared/citation/*`、
+  `vision-model-options`、`agent-cli-detect`、`deepseek-harness`、`diagnostics/module-load`）⇒ 一个字节没碰。
+  本轮在 `git worktree add --detach /tmp/ps-win-smoke origin/main` 的隔离树里做，只 add 三个路径。
+- 上一轮记事本那条「60 秒分段计时」**机仪已在**（`4711c3e3`，2026-09-28 落地：阶段行按到达顺序带相对毫秒打印），
+  但**从来没有人把它读成读数**，而且**失败行本身不带阶段** ⇒ 本单元补的是「读数」+「失败句」，不重建仪表、不动超时。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；C 段外部阻塞 ⇒ 取缺陷队列（issue #13 第一条）。
+- `package.json` = **2.33.8**，`gh release list` 的 Latest = **v2.33.8**（17:53Z）。`82064383` 的 Nightly / Windows 双绿。
+
+### 一 读数：健康端点 3.0 秒出现，预算 60 秒
+
+来源 `Nightly 45673395862` 的 `build / Build windows-x64`（job `139427502633`，head `82064383`，
+产物 `…-2.33.8-nightly.g8206438-win-x64-setup.exe`）。冒烟跑在**隔离配置档案**里（`windowsProfileEnvironment`），
+所以这就是「首次运行」的读数 —— 恰好是 issue 里被怀疑「合成运行时太慢」的那一段。
+
+| 阶段 | 相对启动 |
+| --- | --- |
+| load-bootstrap-modules / single-instance-lock / prepare-runtime | +207 → +214 ms |
+| crash-reporting / load-application-modules | +242 ms |
+| electron-ready | +1,301 ms |
+| compose-runtime | +1,483 ms |
+| rewrite-paths | +2,151 ms |
+| persist-marker → read-index | +2,156 → +2,928 ms |
+| ipc-handlers-registered → external-mcp-started | +2,961 → +2,993 ms |
+| **web-service-started** | **+3,004 ms** |
+| 收尾到 completed | +3,133 ms |
+
+最大单段间隔：`load-application-modules → electron-ready` 1,059 ms、`persist-marker → read-index` 772 ms、
+`compose-runtime → rewrite-paths` 668 ms。脚本自身从执行到结束 36.7 秒（含安装与卸载）。
+
+**算术结论**：3,004 ms / 60,000 ms = **5%**，余量 20 倍 ⇒「60 秒对首次运行不够」在这条读数上不成立；
+历史上那次超时只能是进程在窗口内没有继续输出（停摆或被 runner 压住），不是某个阶段慢。**超时预算一个数没改。**
+
+### 二 交付（`scripts/windows-installer-smoke.mjs`）
+
+| 改动 | 为什么 |
+| --- | --- |
+| `createStartupPhaseTracker(clock)`：记阶段名 + 相对毫秒，`describe()` 给一句结论 | 时间轴是实时打印的，看红步骤的人先看到的是错误句 |
+| `waitFor(description, check, timeoutMs, describeProgress)` 的第 4 参数（可选） | 既有调用与既有消息**逐字不变** |
+| 两处等待都接上：安装后探测、进程锁探测 | 同一个 60 秒形状，只修一处等于留一处盲区 |
+| 「退出早于健康」的消息也带阶段 | 启动中途退出时，最后阶段就是崩溃现场 |
+| 分块边界保留半行（`pending` 挂到下一块） | 块边界切在阶段行中间时，旧写法会漏这一段，错误句就点名**前一个**阶段 —— 那是错读数 |
+| 没有阶段时给另一句：「No startup phase was logged before the wait expired.」 | 「一个阶段都没到」与「停在某个阶段」是两种缺陷，不能同形 |
+| 第三处 `waitFor`（卸载后等文件消失）**不接** | 那时应用已不在，没有阶段可言 |
+
+### 三 门禁（本机，隔离工作树）
+
+| 项 | 读数 |
+| --- | --- |
+| `vitest run scripts/windows-installer-smoke.test.ts` | **21 passed**（新增 2 例：阶段名 + 毫秒进超时行；无阶段时说另一句） |
+| `vitest run` 三个 scripts 文件（+ `windows-release-workflows`、`ci/classify-pr-changes`） | **75 passed / 3 files** |
+| `npx eslint --no-cache`（两个改动文件） | **0 errors / 0 warnings** |
+| `npm run typecheck:node`（8192 堆） | **EXIT=0** |
+| `bash scripts/pre-push-checks.sh` | 见提交前读数（品牌零痕迹 / README 同步） |
+
+### 四 边界与具名未办
+
+1. **判据落在 Windows 车道**：新错误行的形状只有下一次冒烟（成功或失败）才会出现在车道日志里；本机没有
+   Windows 产物，**不伪造**该读数。成功路径行为不变（阶段仍逐行实时打印）。
+2. 一条读数＝一台 runner 的一次启动。要判「慢 runner 上够不够」得等复发时的读数 —— 现在复发时失败行直接给
+   阶段名与毫秒，不必回翻 dump。这也是本单元真正的产出：**下一次**超时会自己说清。
+3. issue #13 的「三连绿」判据不受本条影响；60 秒预算未动。
+
+### 五 下一轮第一步
+
+- ① issue #13 的第二条（`session-fork` 的 `Messages: 2`）按**三连绿**结案：数 `8cf5c9f` 之后每一次
+  `macos-arm64` 的 P0 里该 spec 的结果，够三条就给结论、不够就写明还差几条 —— 纯读数工作，不改代码。
+- ② 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同批文件。
