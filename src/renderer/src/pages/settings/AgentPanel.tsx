@@ -84,6 +84,8 @@ const AgentPanel = ({
   const deepseekHarnessInstall = useSettingsStore(
     (state) => state.installStates['deepseek-harness']
   )
+  const detectDeepSeekHarness = useSettingsStore((state) => state.detectDeepSeekHarness)
+  const isDetectingDeepSeekHarness = useSettingsStore((state) => state.isDetectingDeepSeekHarness)
   const detectHermes = useSettingsStore((state) => state.detectHermes)
   const isDetectingHermes = useSettingsStore((state) => state.isDetectingHermes)
   const codexInstall = useSettingsStore((state) => state.installStates.codex)
@@ -315,7 +317,8 @@ const AgentPanel = ({
     isDetectingOpencode ||
     isDetectingCodebuddy ||
     isDetectingCodex ||
-    isDetectingHermes
+    isDetectingHermes ||
+    isDetectingDeepSeekHarness
   const handleDetectAllFrameworks = async (): Promise<void> => {
     setFrameworkDetectionError(undefined)
     setInstallActionError(undefined)
@@ -328,7 +331,10 @@ const AgentPanel = ({
       detectCodex(),
       // Hermes is detected from PATH only in this version; including it here is what lets its card ever
       // leave the not-ready state.
-      detectHermes()
+      detectHermes(),
+      // Sixth framework: without this the DeepSeek Harness card could never leave "not ready" when the
+      // server was installed outside the app.
+      detectDeepSeekHarness()
     ])
     await checkEnvironment({ force: true })
 

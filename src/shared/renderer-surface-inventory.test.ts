@@ -361,7 +361,7 @@ describe('renderer surface inventory', () => {
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL): two preload methods
     // for two contracts, so the inventory and the catalog move together.
     // 512: 511 for settings.detectHermes, plus settings.installHermes (its own installer, pipx — no npm).
-    expect(electronPaths).toHaveLength(513)
+    expect(electronPaths).toHaveLength(514)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -382,7 +382,7 @@ describe('renderer surface inventory', () => {
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke entry in the generated map.
     // 391 with settings.installHermes — the fifth framework also installs, through pipx rather than npm.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(392)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(393)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

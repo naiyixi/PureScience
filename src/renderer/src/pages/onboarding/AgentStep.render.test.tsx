@@ -687,6 +687,7 @@ describe('AgentStep', () => {
       detectCodebuddy,
       detectCodex,
       detectHermes,
+      detectDeepSeekHarness: vi.fn().mockResolvedValue(undefined),
       checkEnvironment,
       preflight: {
         claudeReady: false,
@@ -727,6 +728,7 @@ describe('AgentStep', () => {
       detectCodebuddy,
       detectCodex,
       detectHermes,
+      detectDeepSeekHarness: vi.fn().mockResolvedValue(undefined),
       checkEnvironment,
       environmentCheck: environment(false)
     })

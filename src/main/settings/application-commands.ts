@@ -79,6 +79,7 @@ type CoreSettingsCommandStore = Pick<
   | 'detectClaude'
   | 'detectCodebuddy'
   | 'detectHermes'
+  | 'detectDeepSeekHarness'
   | 'detectCodex'
   | 'detectOpencode'
   | 'detectFunctionModel'
@@ -189,6 +190,11 @@ const settingsCoreApplicationCommands = Object.freeze({
   >('settings:detect-codebuddy'),
   // Fifth framework, same detection shape as its four siblings: the card can only become ready once a
   // path is stored, and detection is the only thing that stores it.
+  detectDeepSeekHarness: defineApplicationCommand<
+    'settings:detect-deepseek-harness',
+    readonly [],
+    StoreResult<'detectDeepSeekHarness'>
+  >('settings:detect-deepseek-harness'),
   detectHermes: defineApplicationCommand<
     'settings:detect-hermes',
     readonly [],
@@ -527,6 +533,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.detectClaude,
   settingsCoreApplicationCommands.detectCodebuddy,
   settingsCoreApplicationCommands.detectCodex,
+  settingsCoreApplicationCommands.detectDeepSeekHarness,
   settingsCoreApplicationCommands.detectHermes,
   settingsCoreApplicationCommands.detectOpencode,
   settingsCoreApplicationCommands.executionProtection,
@@ -629,6 +636,7 @@ const registerCoreSettingsApplicationCommands = (
       'settings:check-environment': () => dependencies.service.checkEnvironment(),
       'settings:detect-claude': () => dependencies.service.detectClaude(),
       'settings:detect-codebuddy': () => dependencies.service.detectCodebuddy(),
+      'settings:detect-deepseek-harness': () => dependencies.service.detectDeepSeekHarness(),
       'settings:detect-hermes': () => dependencies.service.detectHermes(),
       'settings:detect-codex': () => dependencies.service.detectCodex(),
       'settings:detect-opencode': () => dependencies.service.detectOpencode(),

@@ -31,6 +31,7 @@ export type RuntimeSetupState = {
   isDetectingClaude: boolean
   isDetectingOpencode: boolean
   isDetectingCodebuddy: boolean
+  isDetectingDeepSeekHarness: boolean
   isDetectingHermes: boolean
   isDetectingCodex: boolean
   installStates: Record<AgentFrameworkId, RuntimeInstallState>
@@ -42,6 +43,7 @@ export type RuntimeSetupActions = {
   detectClaude: () => Promise<ClaudeDetectResult>
   detectOpencode: () => Promise<void>
   detectCodebuddy: () => Promise<void>
+  detectDeepSeekHarness: () => Promise<void>
   detectHermes: () => Promise<void>
   detectCodex: () => Promise<void>
   installClaude: (
@@ -83,6 +85,7 @@ type RuntimeSetupCommands = Pick<
   | 'detectClaude'
   | 'detectOpencode'
   | 'detectCodebuddy'
+  | 'detectDeepSeekHarness'
   | 'detectHermes'
   | 'detectCodex'
   | 'installClaude'
@@ -145,6 +148,7 @@ export const createInitialRuntimeSetupState = (): RuntimeSetupState => ({
   isDetectingClaude: false,
   isDetectingOpencode: false,
   isDetectingCodebuddy: false,
+  isDetectingDeepSeekHarness: false,
   isDetectingHermes: false,
   isDetectingCodex: false,
   installStates: {
@@ -363,6 +367,15 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
       reconcileSnapshot(await getCommands().detectCodebuddy())
     } finally {
       patchRuntimeSetupState(set, { isDetectingCodebuddy: false })
+    }
+  },
+
+  detectDeepSeekHarness: async () => {
+    patchRuntimeSetupState(set, { isDetectingDeepSeekHarness: true })
+    try {
+      reconcileSnapshot(await getCommands().detectDeepSeekHarness())
+    } finally {
+      patchRuntimeSetupState(set, { isDetectingDeepSeekHarness: false })
     }
   },
 

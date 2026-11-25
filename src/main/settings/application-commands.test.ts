@@ -23,6 +23,7 @@ const expectedChannels = [
   'settings:detect-claude',
   'settings:detect-codebuddy',
   'settings:detect-codex',
+  'settings:detect-deepseek-harness',
   'settings:detect-hermes',
   'settings:detect-opencode',
   'settings:execution-protection',
@@ -150,7 +151,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings core application commands', () => {
-  it('installs the exact 71-command inventory and dispatches a remote-safe preflight query', async () => {
+  it('installs the exact 72-command inventory and dispatches a remote-safe preflight query', async () => {
     const { dependencies, serviceMethod } = createDependencies()
     const preflight = { agentReady: true }
     serviceMethod('getPreflight').mockResolvedValue(preflight)

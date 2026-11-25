@@ -254,6 +254,7 @@ const api: PureScienceAPI = {
     detectClaude: () => electronRendererContracts.invoke('settings.detectClaude'),
     detectOpencode: () => electronRendererContracts.invoke('settings.detectOpencode'),
     detectCodebuddy: () => electronRendererContracts.invoke('settings.detectCodebuddy'),
+    detectDeepSeekHarness: () => electronRendererContracts.invoke('settings.detectDeepSeekHarness'),
     detectHermes: () => electronRendererContracts.invoke('settings.detectHermes'),
     detectCodex: () => electronRendererContracts.invoke('settings.detectCodex'),
     installClaude: (request) => electronRendererContracts.invoke('settings.installClaude', request),

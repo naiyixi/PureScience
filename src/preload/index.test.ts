@@ -67,6 +67,7 @@ type PreloadApi = {
   settings: {
     detectOpencode: () => unknown
     detectCodebuddy: () => unknown
+    detectDeepSeekHarness: () => unknown
     detectHermes: () => unknown
     detectCodex: () => unknown
     installOpencode: (request: unknown) => unknown
@@ -557,6 +558,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.detectClaude',
       'settings.detectCodebuddy',
       'settings.detectCodex',
+      'settings.detectDeepSeekHarness',
       'settings.detectHermes',
       'settings.detectOpencode',
       'settings.downloadLocalParsingModel',
@@ -771,7 +773,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 
     // 243 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, one contract.
     // 4.3 追加两条导出署名/许可通道 → 247。
-    expect(runtimeContracts).toHaveLength(250)
+    expect(runtimeContracts).toHaveLength(251)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1338,6 +1340,12 @@ const cases: ForwardingCase[] = [
     name: 'settings.detectCodebuddy → settings:detect-codebuddy (no args)',
     invoke: (a) => a.settings.detectCodebuddy(),
     channel: 'settings:detect-codebuddy',
+    args: []
+  },
+  {
+    name: 'settings.detectDeepSeekHarness → settings:detect-deepseek-harness (no args)',
+    invoke: (a) => a.settings.detectDeepSeekHarness(),
+    channel: 'settings:detect-deepseek-harness',
     args: []
   },
   {

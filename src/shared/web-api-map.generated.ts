@@ -262,6 +262,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.detectClaude': 'settings:detect-claude',
   'settings.detectCodebuddy': 'settings:detect-codebuddy',
   'settings.detectCodex': 'settings:detect-codex',
+  'settings.detectDeepSeekHarness': 'settings:detect-deepseek-harness',
   'settings.detectHermes': 'settings:detect-hermes',
   'settings.detectOpencode': 'settings:detect-opencode',
   'settings.downloadLocalParsingModel': 'settings:download-local-parsing-model',
