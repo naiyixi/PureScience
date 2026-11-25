@@ -19,7 +19,11 @@ import {
   type WebContents
 } from 'electron'
 
-import { createIpcHandlerInstallationScope, ipcMainHandle } from './ipc-handler-registry'
+import {
+  createIpcHandlerInstallationScope,
+  ipcMainHandle,
+  listRegisteredIpcChannels
+} from './ipc-handler-registry'
 import {
   annotationSavePanelOptions,
   connectorConfigOpenPanelOptions,
@@ -4335,6 +4339,27 @@ const createApplicationModules = async (
       }
     }
   )
+
+  // Nothing in the type system proves a catalogued channel reached `ipcMain.handle`. When one does not,
+  // the renderer sees Electron's "No handler registered for …" and the reason dies with the process. This
+  // runs once at boot and names the installer channels that are missing, so the next report from a user's
+  // machine carries the answer instead of a guess.
+  {
+    const installed = new Set(listRegisteredIpcChannels())
+    const installerChannels = [
+      'settings:install-claude',
+      'settings:install-opencode',
+      'settings:install-codex',
+      'settings:install-codebuddy',
+      'settings:install-hermes',
+      'settings:install-deepseek-harness'
+    ]
+    const missing = installerChannels.filter((channel) => !installed.has(channel))
+    createLogger('ipc').info('ipc handler inventory', {
+      registeredChannels: installed.size,
+      missingInstallerChannels: missing
+    })
+  }
 
   // Assemble the delegate sub-agent executor now that the task command surface exists. Delegate
   // runs auto-create the 'delegate-tasks' project on first use and accumulate task sessions under

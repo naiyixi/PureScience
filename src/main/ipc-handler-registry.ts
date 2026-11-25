@@ -23,6 +23,10 @@ type IpcHandlerInstallationScope = {
 
 type IpcHandlerRegistry = {
   ipcMainHandle: IpcMain['handle']
+  // Every channel this registry has actually handed to Electron, in registration order. The boot-time
+  // self-check compares the installer channels against this list: a channel that exists in the command
+  // catalogue but never reached `handle()` shows up as a named gap instead of a runtime "no handler".
+  listRegisteredChannels(): readonly string[]
   createInstallationScope(): IpcHandlerInstallationScope
   dispose(): void
 }
@@ -141,6 +145,7 @@ const createIpcHandlerRegistry = (
 
   return {
     ipcMainHandle,
+    listRegisteredChannels: () => Object.freeze([...registeredChannels]),
     createInstallationScope: () => {
       const before = new Set(registeredChannels)
       let settled = false
@@ -181,6 +186,7 @@ const createIpcHandlerRegistry = (
 const defaultRegistry = createIpcHandlerRegistry(ipcMain)
 
 const ipcMainHandle = defaultRegistry.ipcMainHandle
+const listRegisteredIpcChannels = (): readonly string[] => defaultRegistry.listRegisteredChannels()
 const disposeIpcHandlerRegistry = (): void => defaultRegistry.dispose()
 const createIpcHandlerInstallationScope = (): IpcHandlerInstallationScope =>
   defaultRegistry.createInstallationScope()
@@ -189,6 +195,7 @@ export {
   createIpcHandlerInstallationScope,
   createIpcHandlerRegistry,
   disposeIpcHandlerRegistry,
-  ipcMainHandle
+  ipcMainHandle,
+  listRegisteredIpcChannels
 }
 export type { IpcHandlerInstallation, IpcHandlerInstallationScope, IpcHandlerRegistryDiagnostics }

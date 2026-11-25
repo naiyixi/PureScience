@@ -215,4 +215,31 @@ describe('createIpcHandlerRegistry', () => {
     expect(JSON.stringify(warn.mock.calls)).not.toContain('private native failure')
     expect(JSON.stringify(warn.mock.calls)).not.toContain('42')
   })
+
+  it('lists the channels it actually handed to Electron, and forgets uninstalled ones', () => {
+    const removed: string[] = []
+    const registry = createIpcHandlerRegistry({
+      handle: () => undefined,
+      removeHandler: (channel: string) => removed.push(channel)
+    } as never)
+
+    expect(registry.listRegisteredChannels()).toEqual([])
+
+    const scope = registry.createInstallationScope()
+    registry.ipcMainHandle('settings:install-hermes', () => undefined)
+    registry.ipcMainHandle('settings:detect-hermes', () => undefined)
+    expect(registry.listRegisteredChannels()).toEqual([
+      'settings:install-hermes',
+      'settings:detect-hermes'
+    ])
+
+    // A scoped installation that is uninstalled must drop out of the list: the self-check reads this list
+    // as "what the renderer can reach right now", not "what was once registered".
+    const uninstall = scope.complete().uninstall
+    registry.ipcMainHandle('settings:install-deepseek-harness', () => undefined)
+    uninstall()
+
+    expect(removed.sort()).toEqual(['settings:detect-hermes', 'settings:install-hermes'])
+    expect(registry.listRegisteredChannels()).toEqual(['settings:install-deepseek-harness'])
+  })
 })
