@@ -362,7 +362,13 @@ const App = (): React.JSX.Element | null => {
   // listeners are attached so a recreated window can recover requests emitted while no renderer
   // existed; duplicate delivery is harmless because the renderer queue is keyed by request id.
   useEffect(() => {
-    void window.api.settings.replayPendingSkillImportApprovals()
+    // Same window boundary as the storage probe above: main releases a closing window's handlers, so
+    // this replay can land with "No handler registered for 'settings:replay-pending-skill-import-approvals'".
+    // Nothing was replayed and main still holds the payloads, so the only thing a rejection would buy
+    // is a renderer page error the certification gate counts as a failure.
+    void window.api.settings.replayPendingSkillImportApprovals().catch((error: unknown) => {
+      console.warn('[settings] skill import replay skipped', error)
+    })
   }, [])
 
   // Clicking a desktop notification opens the conversation the finished/failed task belongs to.
@@ -425,7 +431,14 @@ const App = (): React.JSX.Element | null => {
         attempt,
         attempt
       )
-      return pendingNotificationOpenQueue.current
+      // The peek/take calls inside `attempt` sit on the same window boundary as every other launch
+      // read: at startup the window can already be on its way out, so main answers with "No handler
+      // registered". Nothing is consumed in that case (main keeps the target for the next window), but
+      // the rejected queue link must not escape through a `void` caller as an unhandled rejection —
+      // the certification gate counts those as renderer page errors.
+      return pendingNotificationOpenQueue.current.catch((error: unknown) => {
+        console.warn('[notifications] pending open skipped', error)
+      })
     },
     [isSessionPersistenceHydrated, isSessionPersistenceReady]
   )
@@ -442,7 +455,13 @@ const App = (): React.JSX.Element | null => {
         if (!deferred) return
 
         deferredNotification.current = undefined
-        void window.api.notifications.takePendingOpenSession(deferred.token)
+        // Fire-and-forget by design (the navigation store subscription cannot await), but a closing
+        // window's released handlers would otherwise turn the rejection into a renderer page error.
+        void window.api.notifications
+          .takePendingOpenSession(deferred.token)
+          .catch((error: unknown) =>
+            console.warn('[notifications] deferred target not consumed', error)
+          )
       }),
     []
   )

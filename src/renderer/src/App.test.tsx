@@ -989,6 +989,66 @@ describe('App startup routing', () => {
     expect(mocks.openSessionById).toHaveBeenCalledWith('s-9', 'notification')
   })
 
+  it('survives a launch-time notification peek that lands on a released window boundary', async () => {
+    mocks.settings.isLoaded = true
+    // Main has already released the closing window's handlers: the certification gate sees the
+    // resulting rejection as an unhandled one (a renderer page error), not as a broken queue.
+    mocks.notifications.peekPendingOpenSession.mockRejectedValue(
+      new Error(
+        "Error invoking remote method 'notifications.peekPendingOpenSession': Error: No handler registered for 'notifications.peekPendingOpenSession'"
+      )
+    )
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      await render()
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+
+    expect(mocks.notifications.peekPendingOpenSession).toHaveBeenCalled()
+    expect(rejections).toEqual([])
+    // Nothing was consumed and nothing was opened: main still owns the target for the next window.
+    expect(mocks.notifications.takePendingOpenSession).not.toHaveBeenCalled()
+    expect(mocks.openSessionById).not.toHaveBeenCalled()
+  })
+
+  it('survives a launch-time skill import replay that lands on a released window boundary', async () => {
+    // Not a vi.fn: the mock's own result tracking attaches a handler to the returned promise, which
+    // would mark this rejection as handled and hide exactly what the test is looking for.
+    let replayCalls = 0
+    window.api.settings.replayPendingSkillImportApprovals = (): Promise<never> => {
+      replayCalls += 1
+      return Promise.reject(
+        new Error(
+          "Error invoking remote method 'settings.replayPendingSkillImportApprovals': Error: No handler registered for 'settings.replayPendingSkillImportApprovals'"
+        )
+      )
+    }
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      await render()
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+
+    expect(replayCalls).toBeGreaterThan(0)
+    expect(rejections).toEqual([])
+  })
+
   it('opens an already-hydrated notification target during partial recovery', async () => {
     mocks.settings.isLoaded = true
     mocks.sessionPersistence.isReady = false
@@ -1240,6 +1300,53 @@ describe('App startup routing', () => {
     })
 
     expect(mocks.openSessionById).not.toHaveBeenCalled()
+  })
+
+  it('survives a deferred target release that lands on a released window boundary', async () => {
+    let takeCalls = 0
+    mocks.settings.isLoaded = true
+    mocks.sessionPersistence.isReady = false
+    mocks.notifications.peekPendingOpenSession.mockImplementation(async () => ({
+      sessionId: 's-3',
+      token: 3
+    }))
+    const originalTake = mocks.notifications.takePendingOpenSession
+    // Plain function, not vi.fn: a mock's own result tracking attaches a handler to the returned
+    // promise, which would mark this rejection as handled and hide it from the test.
+    mocks.notifications.takePendingOpenSession = ((_token: number): Promise<never> => {
+      takeCalls += 1
+      return Promise.reject(
+        new Error(
+          "Error invoking remote method 'notifications.takePendingOpenSession': Error: No handler registered for 'notifications.takePendingOpenSession'"
+        )
+      )
+    }) as unknown as typeof mocks.notifications.takePendingOpenSession
+
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      await render()
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+      await act(async () => {
+        const previousNavigation = { ...mocks.navigation }
+        mocks.navigation.userNavigationRevision += 1
+        for (const listener of mocks.navigationListeners) {
+          listener(mocks.navigation, previousNavigation)
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+    } finally {
+      process.off('unhandledRejection', onRejection)
+      mocks.notifications.takePendingOpenSession = originalTake
+    }
+
+    expect(takeCalls).toBeGreaterThan(0)
+    expect(rejections).toEqual([])
   })
 
   it('does not consume a newer same-session click while clearing a deferred target', async () => {
