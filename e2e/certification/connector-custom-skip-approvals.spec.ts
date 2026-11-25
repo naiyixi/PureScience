@@ -56,12 +56,17 @@ test('the skip-approvals switch on a user-added server persists and reads back',
 
   // Read the setting the same way the panel does — through the detail — and confirm it is the server's id
   // the approval gate matches on (a server's own aliases include its id).
-  const persisted = await page.evaluate(async (id: string): Promise<boolean> => {
-    const detail = await window.api.settings.getConnectorDetail(id)
-    return detail.autoAllow
-  }, added)
-  console.log(`[ic20] detail.autoAllow after the click: ${persisted}`)
-  expect(persisted).toBe(true)
+  //
+  // Same window as the per-tool permission beside it: the click starts the write and the panel re-reads
+  // when it lands, so a read issued in the same tick answers the value from before it. Wait for the write
+  // rather than sampling once; the assertion (the detail must report `true`) is unchanged.
+  const readAutoAllow = (): Promise<boolean> =>
+    page.evaluate(async (id: string): Promise<boolean> => {
+      const detail = await window.api.settings.getConnectorDetail(id)
+      return detail.autoAllow
+    }, added)
+  await expect.poll(readAutoAllow, { timeout: 30_000 }).toBe(true)
+  console.log(`[ic20] detail.autoAllow after the click: ${await readAutoAllow()}`)
 
   // And the switch must still read ON after the page re-reads its state — this is what was broken.
   await settings.getByRole('button', { name: 'Back to connectors' }).first().click()

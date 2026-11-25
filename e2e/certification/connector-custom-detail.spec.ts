@@ -70,10 +70,18 @@ test('a user-added MCP server opens its detail with the tools the server adverti
   await buttons.nth(labels.length - 1).click() // last = block
 
   // Read back through the main process: the choice must have been persisted for THIS server's tool.
-  const permission = await page.evaluate(async (id: string): Promise<string> => {
-    const detail = await window.api.settings.getConnectorDetail(id)
-    return detail.tools.find((tool) => tool.method === 'probe_alpha')?.permission ?? ''
-  }, added)
-  console.log(`[ic19] probe_alpha permission after the click: ${permission}`)
-  expect(permission).toBe('block')
+  //
+  // The press only starts the write — the panel re-reads the detail when it lands — so a read issued in
+  // the same tick answers the value from before it. Measured on the macos-arm64 lane (2026-11-25, run
+  // 45651334823): the first attempt read `allow` about 50 ms after pressing `block`, and the retry that
+  // let the write land read `block`. The assertion is unchanged — the persisted value still has to be
+  // `block` — only its timing is: wait for the write instead of sampling once. The sibling spec
+  // `connector-custom-sign-out.spec.ts` carries the same wait for the same reason.
+  const readPermission = (): Promise<string> =>
+    page.evaluate(async (id: string): Promise<string> => {
+      const detail = await window.api.settings.getConnectorDetail(id)
+      return detail.tools.find((tool) => tool.method === 'probe_alpha')?.permission ?? ''
+    }, added)
+  await expect.poll(readPermission, { timeout: 30_000 }).toBe('block')
+  console.log(`[ic19] probe_alpha permission after the click: ${await readPermission()}`)
 })
