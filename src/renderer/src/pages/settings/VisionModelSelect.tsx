@@ -8,6 +8,7 @@ import {
   SelectTrigger
 } from '@/components/ui/select'
 import { useSettingsStore } from '@/stores/settings-store'
+import { selectableVisionOptions } from './vision-model-options'
 import {
   getOfficialVendorModelIds,
   isOfficialVendorId,
@@ -80,18 +81,26 @@ const VisionModelSelect = (): React.JSX.Element | null => {
     : undefined
   const current =
     candidate ??
-    (visionModel && savedProvider ? { provider: savedProvider, model: visionModel.model } : undefined)
+    (visionModel && savedProvider
+      ? { provider: savedProvider, model: visionModel.model }
+      : undefined)
 
   // A saved configuration with nothing to pick means this window's candidate list is thinner than the
   // settings file: keep the saved pair on screen and say so, rather than reporting it as disabled.
   const savedWithoutCandidate = Boolean(visionModel && savedProvider && !candidate)
 
+  // A saved pair that the candidate rule does not produce still has to be *selectable*: keeping it on
+  // screen while leaving it out of the list is what makes the control look stuck — the value is shown, but
+  // the list has no row to pick, so choosing anything is impossible and nothing can be re-confirmed.
+  const selectable = selectableVisionOptions(current, options)
+
   const groups = providers
     .map((provider) => ({
       provider,
-      options: options.filter((option) => option.provider.id === provider.id)
+      options: selectable.filter((option) => option.provider.id === provider.id)
     }))
-    .filter((group) => group.options.length > 0)
+    // A provider that only appears through the saved pair still needs its group rendered.
+    .filter((group) => group.options.length > 0 || group.provider.id === current?.provider.id)
 
   const change = (value: string): void => {
     if (value === '__clear__') {
@@ -158,9 +167,7 @@ const VisionModelSelect = (): React.JSX.Element | null => {
         ) : null}
       </div>
       {savedWithoutCandidate ? (
-        <p className="text-xs text-muted-foreground">
-          {t('settings.visionModelSavedNotOffered')}
-        </p>
+        <p className="text-xs text-muted-foreground">{t('settings.visionModelSavedNotOffered')}</p>
       ) : null}
       <p className="text-xs text-muted-foreground">{t('settings.visionModelHint')}</p>
     </div>
