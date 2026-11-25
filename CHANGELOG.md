@@ -1,5 +1,40 @@
 # PureScience 更新日记
 
+## v2.33.8 — 2026-11-25
+
+### 一、安装按钮后面的条理：命令表 ≠ 桥
+
+上一版点「安装」会报 `No handler registered for 'settings:install-hermes'`。我先前查了打包三层，确认
+命令定义、处理器、组清单都在，于是把结论停在"材料齐全"。这个结论是错的：settings 这一族走的是**另一条
+桥** —— 逐个通道显式挂到 Electron 上，命令表里写了处理器，桥上未必有通道。
+
+实机读数（隔离数据根跑上一版构建，启动后枚举真实注册的通道，一共 455 条）：
+
+| 通道 | 上一版 |
+|---|---|
+| `settings:install-claude` / `opencode` / `codex` / `codebuddy` | 在 |
+| `settings:detect-*`（四个） | 在 |
+| `settings:install-hermes`、`settings:detect-hermes` | **不在** |
+| `settings:install-deepseek-harness`、`settings:detect-deepseek-harness` | **不在** |
+
+### 二、所以「重新检测」也一直是空转
+
+同一个缺口：Hermes 卡的「重新检测」按下去，调的就是 `settings:detect-hermes` —— 那条通道从来没挂上。
+卡片因此永远停在未就绪，而按钮看起来是好的。四条通道这次一起补进桥里，按 `install-claude` 的形状。
+
+### 三、防止再漏：让框架清单来提要求
+
+新增用例遍历 `AGENT_FRAMEWORK_IDS`，**每个后端都必须有 detect 与 install 一对通道**；后缀映射写成
+`Record<AgentFrameworkId, string>` 穷举，少写一个 id，TypeScript 先报错。删掉任意一条通道，用例红在
+具名的那一条上 —— 而不是等人去点按钮才发现。
+
+### 四、启动自检挪到收尾之后
+
+自检原来在组合安装完成时就枚举，那时只注册了 53 条，把"还没轮到"报成"缺失"，这样的日志比没有更糟。
+改到启动收尾后 5 秒再看。修复后的实机读数：**459 条，缺失 0**；点「重新检测」无报错。
+
+---
+
 ## v2.33.7 — 2026-11-25
 
 ### 一、视觉模型：从"看得见点不到"到真能选
