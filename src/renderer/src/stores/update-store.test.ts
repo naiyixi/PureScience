@@ -44,6 +44,53 @@ describe('useUpdateStore', () => {
     expect(onProgress).toHaveBeenCalled()
   })
 
+  it('does not reject when the window boundary eats the launch-time reads', async () => {
+    // Same boundary as the notebook env store: main answers a read only while the window that asked
+    // is still its own, so a launch-time invoke can land as "No handler registered for
+    // 'update.getStatus'". App.tsx starts init() with `void`, so an unhandled rejection here is a
+    // renderer page error — the certification gate counts that as a product failure. Both launch
+    // reads must survive it, not just the one that happened to be wrapped.
+    const missingHandler = (channel: string): Error =>
+      new Error(
+        `Error invoking remote method '${channel}': Error: No handler registered for '${channel}'`
+      )
+    const getAppInfo = vi.fn((): Promise<never> =>
+      Promise.reject(missingHandler('update.getAppInfo'))
+    )
+    const getStatus = vi.fn((): Promise<never> =>
+      Promise.reject(missingHandler('update.getStatus'))
+    )
+    ;(window as unknown as { api: unknown }).api = {
+      update: {
+        getAppInfo,
+        getStatus,
+        onStatus: vi.fn(),
+        onProgress: vi.fn(),
+        check: vi.fn(),
+        download: vi.fn(),
+        apply: vi.fn()
+      }
+    }
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      useUpdateStore.getState().init()
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+
+    expect(getAppInfo).toHaveBeenCalledTimes(1)
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    expect(rejections).toEqual([])
+    // Nothing answered, so nothing may be claimed: the baseline stays rather than a made-up status.
+    expect(useUpdateStore.getState().appInfo).toBeNull()
+    expect(useUpdateStore.getState().status).toEqual({ state: 'idle', current: '' })
+  })
+
   it('init hydrates from getStatus when the store is still idle', async () => {
     ;(window as unknown as { api: unknown }).api = {
       update: {

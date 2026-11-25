@@ -35,6 +35,12 @@ export const useUpdateStore = create<UpdateStore>((set, get) => ({
       .then((info) =>
         set((s) => ({ appInfo: info, status: { ...s.status, current: info.version } }))
       )
+      // A window boundary, not a broken read: main answers only while the window that asked is
+      // still its own, so a launch-time invoke can land as "No handler registered for
+      // 'update.getAppInfo'". App.tsx fires init() with `void`, so an unhandled rejection here is a
+      // renderer page error and the certification gate counts it as a product failure. Nothing is
+      // claimed when main never answers: appInfo stays null and the next launch re-reads.
+      .catch(() => undefined)
     // Status events don't carry downloadProgress. A strategy that emits progress (with speed) then
     // immediately a status (electron-updater does on every tick) would otherwise wipe the speed the
     // progress event just set. Preserve downloadProgress across a status update while downloading so
@@ -61,10 +67,15 @@ export const useUpdateStore = create<UpdateStore>((set, get) => ({
         }
       }))
     )
-    void api.getStatus().then((status) => {
-      // Only apply the startup snapshot if no live broadcast has updated us yet.
-      if (get().status.state === 'idle') set({ status })
-    })
+    void api
+      .getStatus()
+      .then((status) => {
+        // Only apply the startup snapshot if no live broadcast has updated us yet.
+        if (get().status.state === 'idle') set({ status })
+      })
+      // Same boundary as getAppInfo above: a lost first read claims nothing, so the store keeps its
+      // idle baseline instead of a fabricated status, and no rejection escapes into a page error.
+      .catch(() => undefined)
   },
 
   check: async () => {
