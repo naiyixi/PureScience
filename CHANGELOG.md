@@ -1,5 +1,55 @@
 # PureScience 更新日记
 
+## v2.33.7 — 2026-11-25
+
+### 一、视觉模型：兜底值必须同时是选项
+
+设置里存的是 `deepseek-v4-flash-vision-exp`，候选判定也认它是多模态，可下拉里就是没有它 —— 于是 Radix
+的 `value` 指着一个不存在的 item：文字照常显示，点下去没反应。修法不是"再兜一次底"，而是把它放进
+`options`：**兜底值必须同时成为可选项**，否则它只是看起来被选中。
+
+### 二、DeepSeek Harness 成为第六个后端：装、探、重检是一条链
+
+它在 npm 上是个**独立 ACP 包** `deepseek-harness-acp`（也答 `dsh-acp` 这个名字），交互式的
+`@deepseek-ai/dsh` 是另一个包、且只有 alpha/rc —— 所以安装入口只装前者，不替代用户去装那个预发布 CLI。
+权限档固定 `workspace-write`：它只有两档，而上下文里没有任何权限档案，猜 `danger-full-access` 等于替用户
+放开文件访问。
+
+真进程回的 `initialize`（**2.2 秒**）里 `mcpCapabilities { stdio, sse, http }` 三个都为 true —— 与 Hermes
+恰好相反，所以两边的 MCP 开关一个真一个假，这是量出来的，不是抄的。**但"声明支持"不等于"已接上"**：还没有
+一次带 `mcpServers` 的会话读数，工具面这一版只算声明。`authMethods: []` ⇒ 不需要终端登录，凭
+`DEEPSEEK_API_KEY` 就够；图片来源 true、音频 false。
+
+探测这一条与另一个 npm 适配器 **pi-acp** 共用一个形状（分平台的二进制名、GUI 进程 PATH 里没有的
+npm/厂商全局目录、`--version` 取版本），不再各写一份；`pi-acp --version` 一个字都不打印却 exit 0，所以
+版本在那里是可选的，否则装好的适配器会永远显示"未检测"。"重新检测"也补上了它——用户自己在终端装好之后，
+卡片不再永远停在未就绪。
+
+装没装成**不看 npm 的退出码**，由应用自己的探测器判定，装完重新探一次。
+
+### 三、启动自检：六个安装通道逐个点名
+
+正式版曾报 `No handler registered for 'settings:install-hermes'`，而包内三层都有这个通道。与其猜，
+不如让程序自己说：注册表本来就记着交给 Electron 的每个通道，启动时枚举一次，六个安装通道逐个比对，
+缺的**按名字**写进日志（`registeredChannels` / `missingInstallerChannels`）—— 渲染层再报"没有处理器"
+时，日志里能看到到底是哪一条没挂上。
+
+### 四、两处红修在判据，不修在产品
+
+- 超时用例只给子进程 **50 ms** 去启动 shell 再写 stderr —— 忙的 runner 上它到不了那一步，断言实际测的是
+  runner 的调度。改成 750 ms（仍远小于 `sleep 5`），"没到达"从此只可能是真的丢了。
+- Windows 的 pipx 用例钉着 `homebrew` 目录，而 Windows 候选在 `AppData`/`~/.local/bin` 且带 `.exe` 扩展名，
+  于是永远匹配不到、拿到 `null`，报错还写着 "expects a string, but got object"（`typeof null` 就是这样）。
+  改成钉两个平台共有的"启动器形状"。
+
+### 五、升级演练的仪器：起跑点与判据
+
+两处都不是产品缺陷，是仪器读不出真值：240 分钟的预算有一大半花在 runner 排队上，于是起跑点换成**发布事件**；
+下载原来按**墙钟**判超时，实测一份 97% 已传完的包被切断，现在按**字节**判（stall 180 s 无新字节才重开一段，
+ceiling 1800 s），进度也不再一声不响。
+
+---
+
 ## v2.33.6 — 2026-11-24
 
 ### 第五个后端：它自带 ACP 服务，而装法是 Python 包 —— 所以这一条不能照抄前四个
