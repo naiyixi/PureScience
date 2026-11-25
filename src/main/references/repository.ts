@@ -56,7 +56,6 @@ const mapReference = (row: {
   issue: string | null
   pages: string | null
   publisher: string | null
-  edition: string | null
   itemType: string | null
   doi: string | null
   pmid: string | null
@@ -88,7 +87,6 @@ const mapReference = (row: {
   issue: row.issue ?? undefined,
   pages: row.pages ?? undefined,
   publisher: row.publisher ?? undefined,
-  edition: row.edition ?? undefined,
   itemType: (row.itemType as Reference['itemType']) ?? undefined,
   doi: row.doi ?? undefined,
   pmid: row.pmid ?? undefined,
@@ -158,7 +156,6 @@ export const referenceColumns = {
   issue: true,
   pages: true,
   publisher: true,
-  edition: true,
   itemType: true,
   doi: true,
   pmid: true,
@@ -459,7 +456,6 @@ export class ReferenceRepository {
         issue: input.issue?.trim() || null,
         pages: input.pages?.trim() || null,
         publisher: input.publisher?.trim() || null,
-        edition: input.edition?.trim() || null,
         itemType: input.itemType ?? null,
         doi: input.doi?.trim() || null,
         pmid: input.pmid?.trim() || null,

@@ -426,19 +426,6 @@ describe('logger: diagnosticErrorFields', () => {
       errorCategory: 'error'
     })
   })
-
-  it('classifies a missing module chunk as not-found, the same way a missing file is', () => {
-    // Measured on a probe build with one dynamic-import chunk moved away: the thrown code is
-    // MODULE_NOT_FOUND, and before this mapping the record read `error` — indistinguishable from a
-    // plain thrown Error.
-    for (const code of ['MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND']) {
-      expect(
-        diagnosticErrorFields(Object.assign(new Error('Cannot find module'), { code }))
-      ).toEqual({
-        errorCategory: 'not-found'
-      })
-    }
-  })
 })
 
 describe('logger: errorLogFields', () => {

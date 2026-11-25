@@ -142,8 +142,6 @@ const toRecord = (
     doiTags: readonly string[]
     urlTags: readonly string[]
     publisherTags: readonly string[]
-    /** Edition statement (`%7` in EndNote). Optional: a dialect with no such tag simply has none. */
-    editionTags?: readonly string[]
     volumeTags: readonly string[]
     issueTags: readonly string[]
     pageTags: readonly string[]
@@ -167,7 +165,6 @@ const toRecord = (
       options.doiTags.includes(tag) ||
       options.urlTags.includes(tag) ||
       options.publisherTags.includes(tag) ||
-      (options.editionTags?.includes(tag) ?? false) ||
       options.volumeTags.includes(tag) ||
       options.issueTags.includes(tag) ||
       options.pageTags.includes(tag) ||
@@ -207,9 +204,6 @@ const toRecord = (
     ...(firstOf(record, options.publisherTags) === undefined
       ? {}
       : { publisher: clean(firstOf(record, options.publisherTags) as string) }),
-    ...(firstOf(record, options.editionTags ?? []) === undefined
-      ? {}
-      : { edition: clean(firstOf(record, options.editionTags ?? []) as string) }),
     ...(doiFrom(record, options.doiTags) === undefined
       ? {}
       : { doi: doiFrom(record, options.doiTags) }),
@@ -297,7 +291,6 @@ export const parseEndNoteTagged = (text: string): RisImportResult => {
       doiTags: ['R'],
       urlTags: ['U'],
       publisherTags: ['I'],
-      editionTags: ['7'],
       volumeTags: ['V'],
       issueTags: ['N'],
       pageTags: ['P'],

@@ -41,9 +41,6 @@ const TITLE_TAGS = ['TI', 'T1', 'CT', 'BT'] as const
 const AUTHOR_TAGS = ['AU', 'A1'] as const
 const CONTAINER_TAGS = ['JO', 'JF', 'T2', 'JA'] as const
 const YEAR_TAGS = ['PY', 'Y1', 'DA'] as const
-// `ET` is RIS's edition statement (EndNote's own RIS export writes it for a book). Kept as text: an
-// exporter may say "2", "2nd" or "修订版", and normalizing would be a guess.
-const EDITION_TAGS = ['ET'] as const
 const ABSTRACT_TAGS = ['AB', 'N2'] as const
 const KEYWORD_TAGS = ['KW'] as const
 
@@ -56,7 +53,6 @@ const KNOWN_TAGS: ReadonlySet<string> = new Set([
   ...AUTHOR_TAGS,
   ...CONTAINER_TAGS,
   ...YEAR_TAGS,
-  ...EDITION_TAGS,
   ...ABSTRACT_TAGS,
   ...KEYWORD_TAGS,
   'DO',
@@ -201,7 +197,6 @@ const toRecord = (
     ...optional('issue', trimmed(firstTag(record, ['IS']))),
     ...optional('pages', pagesOf(firstTag(record, ['SP']))),
     ...optional('publisher', trimmed(firstTag(record, ['PB']))),
-    ...optional('edition', trimmed(firstTag(record, EDITION_TAGS))),
     ...optional('doi', doi),
     ...optional('url', trimmed(firstTag(record, ['UR', 'L1']))),
     ...optional('itemType', itemType)

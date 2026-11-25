@@ -5,10 +5,6 @@ import { z } from 'zod'
 
 import { NOTEBOOK_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
-import {
-  NOTEBOOK_TOOL_DEFAULT_TIMEOUT_MS,
-  NOTEBOOK_TOOL_MAX_TIMEOUT_MS
-} from '../../shared/agent-tool-budget'
 
 // Hyphen-free on purpose: a framework namespaces this into the tool the model calls
 // (mcp__purescience_notebook__notebook_execute), and a hyphen would be escaped differently by different
@@ -51,7 +47,7 @@ type NotebookMcpServerConfigRequest = NotebookMcpEnvironment & {
 
 const executeToolSchema = {
   code: z.string(),
-  timeoutMs: z.number().int().positive().max(NOTEBOOK_TOOL_MAX_TIMEOUT_MS).optional(),
+  timeoutMs: z.number().int().positive().optional(),
   cellId: z.string().min(1).optional(),
   language: z.enum(['python', 'r']).optional()
   // No `environment`: the env is the session's bound runtime (notebook_bind_runtime), not a per-call
@@ -60,12 +56,12 @@ const executeToolSchema = {
 
 const replExecuteToolSchema = {
   code: z.string(),
-  timeoutMs: z.number().int().positive().max(NOTEBOOK_TOOL_MAX_TIMEOUT_MS).optional()
+  timeoutMs: z.number().int().positive().optional()
 }
 
 const bashExecuteToolSchema = {
   command: z.string(),
-  timeoutMs: z.number().int().positive().max(NOTEBOOK_TOOL_MAX_TIMEOUT_MS).optional()
+  timeoutMs: z.number().int().positive().optional()
 }
 
 const managePackagesToolSchema = {
@@ -144,7 +140,6 @@ const SWITCH_RUNTIME_DOC = [
 const REPL_EXECUTE_DOC = [
   'Run JavaScript in the persistent control-plane REPL, separate from notebook_execute Python/R data kernels.',
   'Only this kernel can call connectors (`await host.mcp(server, method, args)`) and remote compute (`host.compute`; load its skill for the API).',
-  `A call is killed at its deadline — ${NOTEBOOK_TOOL_DEFAULT_TIMEOUT_MS}ms by default — and the run reports the deadline it hit; pass timeoutMs (up to ${NOTEBOOK_TOOL_MAX_TIMEOUT_MS}ms) for a longer one.`,
   'Globals persist and a trailing expression is returned. Return results directly when they are for Agent inspection. To hand off large data from the REPL to Python/R, write it under process.env.PURESCIENCE_HANDOFF_DIR; Python/R reads the same PURESCIENCE_HANDOFF_DIR path. Use notebook_execute for analysis code.'
 ].join('\n')
 
@@ -170,11 +165,6 @@ const buildShellExecuteDoc = (platform: NodeJS.Platform = process.platform): str
     shellDescription,
     ...(platformContract ? [platformContract] : []),
     `Stateless: each call is a fresh process, so cwd, variables, jobs, and functions do not persist. It starts in the data-kernel workspace and shares the handoff directory exposed as ${handoffVariable}; do not resolve handoff relative to cwd.`,
-    // The agent has no other way to learn that this knob exists: a command killed at the default
-    // deadline and a command the client gave up on look the same from the outside (see
-    // `shared/agent-tool-budget.ts` for that measurement), so the deadline and the knob are stated
-    // here, with the bound, instead of being discovered by timing out.
-    `A call is killed at its deadline — ${NOTEBOOK_TOOL_DEFAULT_TIMEOUT_MS}ms by default, and the output collected so far comes back with a line naming it. Pass timeoutMs (up to ${NOTEBOOK_TOOL_MAX_TIMEOUT_MS}ms) when a command legitimately needs longer.`,
     exitCodeContract,
     'Do NOT copy a generated notebook output into the workspace with this tool. For a final chart, image, report, CSV, or other user-facing file, call `write_artifact_file` with the same relative filename you saved with (it resolves against the notebook session data dir); it copies the file safely on every platform.',
     'Use only for one-off command inspection. Run Python/R with notebook_execute, JavaScript with repl_execute, and installs with manage_packages; never execute analysis scripts, inline code, or installers here.'
@@ -888,7 +878,8 @@ const NOTEBOOK_RPC_TOOLS: NotebookRpcToolDefinition[] = [
   {
     name: 'notebook_execute',
     title: 'Execute notebook code',
-    description: `Write and run one persistent Python/R cell; reuse cellId to rerun it. The session binding selects the runtime (no per-call runtime/environment). Keep runId as producerRunId when this run last writes a final artifact. A cell is killed at its deadline — ${NOTEBOOK_TOOL_DEFAULT_TIMEOUT_MS}ms by default — and the run reports the deadline it hit; pass timeoutMs (up to ${NOTEBOOK_TOOL_MAX_TIMEOUT_MS}ms) for a longer one.`,
+    description:
+      'Write and run one persistent Python/R cell; reuse cellId to rerun it. The session binding selects the runtime (no per-call runtime/environment). Keep runId as producerRunId when this run last writes a final artifact.',
     method: 'execute',
     inputSchema: executeToolSchema,
     mapResult: compactNotebookExecutionResult,

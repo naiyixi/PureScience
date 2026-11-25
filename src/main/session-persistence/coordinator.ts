@@ -26,7 +26,6 @@ import type {
   ProjectSessionDeletionState,
   RuntimeContextIndexLookup,
   SaveAuthorityLookup,
-  SaveAuthorityRejection,
   SessionWritePhases
 } from './repository'
 import {
@@ -1340,12 +1339,6 @@ class SessionPersistenceCoordinator {
       const authoritative = await this.repository.loadSaveAuthority(session.projectId, session.id)
       const readAt = Date.now()
       const authoritySource = authoritative.status === 'found' ? authoritative.source : undefined
-      // Named only when the document answered: `document` alone cannot say whether the index was absent,
-      // stale, from an older build, or refused a field — and each of those points at a different writer.
-      const authorityRejection =
-        authoritative.status === 'found' && authoritative.source === 'document'
-          ? authoritative.rejection
-          : undefined
       if (authoritative.status === 'unreadable') {
         throw new Error(
           'Cannot save Session projection because main-owned runtime context is unreadable.'
@@ -1471,7 +1464,6 @@ class SessionPersistenceCoordinator {
         startedAt,
         readAt,
         authoritySource,
-        authorityRejection,
         preparedAt,
         writtenAt,
         peerFsOperations,
@@ -1498,8 +1490,6 @@ class SessionPersistenceCoordinator {
     readAt: number
     /** Which side answered the authority question: the list-tier index or the document. */
     authoritySource?: 'index' | 'document'
-    /** Why the index could not answer, when the document did. Named, never inferred from `authoritySource`. */
-    authorityRejection?: SaveAuthorityRejection
     preparedAt: number
     writtenAt: number
     /**
@@ -1533,7 +1523,6 @@ class SessionPersistenceCoordinator {
         // Said next to the number it explains: the same `authorityMs` means different things when the
         // index answered (nothing was parsed) and when the document did (that save's own work).
         ...(times.authoritySource ? { authoritySource: times.authoritySource } : {}),
-        ...(times.authorityRejection ? { authorityRejection: times.authorityRejection } : {}),
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
         // Printed next to the write because it is the half the disk numbers cannot say: `writeDiskMs` is a wall

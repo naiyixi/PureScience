@@ -1306,8 +1306,8 @@ describe('SpecialistsPanel Chat with agent', () => {
     id: string
     name: string
     description: string
-    caseTitle: ''
-    caseSummary: ''
+    caseTitle: '',
+    caseSummary: '',
     isExample: boolean
     createdAt: number
     updatedAt: number

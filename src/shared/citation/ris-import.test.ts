@@ -99,31 +99,6 @@ describe('parseRis — Chinese database exports', () => {
     expect(result.records).toHaveLength(1)
     expect(result.skipped).toEqual([])
   })
-
-  it('reads the edition statement `ET` as text, and does not count it as an unmapped tag', () => {
-    const result = parseRis(
-      [
-        'TY  - BOOK',
-        'TI  - 机器学习方法',
-        'AU  - 李航',
-        'PB  - 清华大学出版社',
-        'ET  - 2',
-        'PY  - 2012',
-        'ER  - '
-      ].join('\n')
-    )
-
-    expect(result.records[0]?.item.edition).toBe('2')
-    expect(result.records[0]?.item.itemType).toBe('book')
-    // `ET` is a field the importer now keeps, so it must not be reported as a dialect we do not read.
-    expect(result.unmappedTags).toEqual({})
-  })
-
-  it('leaves the edition absent when the export states none', () => {
-    const result = parseRis(cnkiStyle)
-
-    expect(result.records[0]?.item.edition).toBeUndefined()
-  })
 })
 
 describe('parseRis — what it refuses, and says so', () => {

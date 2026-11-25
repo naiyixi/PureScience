@@ -30,7 +30,6 @@ export type ZoteroImportRecord = {
     issue: string | undefined
     pages: string | undefined
     publisher: string | undefined
-    edition: string | undefined
     itemType: ReferenceItemType | undefined
     doi: string | undefined
     pmid: string | undefined
@@ -207,7 +206,6 @@ export const planZoteroImport = (
         issue: asText(item.issue),
         pages: asText(item.page),
         publisher: publisher,
-        edition: asText(item.edition),
         itemType: typeRaw ? CSL_ITEM_TYPES[typeRaw] : undefined,
         doi: asText(item.DOI),
         pmid: asText(item.PMID),

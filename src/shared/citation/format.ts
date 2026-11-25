@@ -21,7 +21,6 @@ export type CitationSourceRecord = {
   issue?: string | undefined
   pages?: string | undefined
   publisher?: string | undefined
-  edition?: string | undefined
   itemType?: string | undefined
   doi?: string | undefined
   arxivId?: string | undefined
@@ -66,7 +65,6 @@ export const citationItemFromReference = (reference: CitationSourceRecord): Cita
   issue: reference.issue?.trim() || undefined,
   pages: reference.pages?.trim() || undefined,
   publisher: reference.publisher?.trim() || undefined,
-  edition: reference.edition?.trim() || undefined,
   doi: reference.doi?.trim() || undefined,
   arxivId: reference.arxivId?.trim() || undefined,
   pmid: reference.pmid?.trim() || undefined,
@@ -170,13 +168,7 @@ const formatWithStyle = (
 }
 
 export const hasRichBibliographicFields = (item: CitationItem): boolean =>
-  Boolean(
-    item.volume?.trim() ||
-    item.issue?.trim() ||
-    item.pages?.trim() ||
-    item.publisher?.trim() ||
-    item.edition?.trim()
-  )
+  Boolean(item.volume?.trim() || item.issue?.trim() || item.pages?.trim() || item.publisher?.trim())
 
 // Formats one record in several styles at once — the comparison view's data source.
 export const compareCitationStyles = (

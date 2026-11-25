@@ -462,68 +462,6 @@ describe('validateRoCrate', () => {
     expect(refused).toContain('context-references-ro-crate-profile')
   })
 
-  it('reports which declared profile the assertions actually judge', () => {
-    // The report already says "every check this app can apply passed". A crate can declare a profile on
-    // top of the base spec, and each profile brings its own REQUIRED shapes — so the report has to name
-    // what it judged, or the passing count reads as coverage it never claimed.
-    const withRun = validateRoCrate({ document, payloadPaths, payloadDigests })
-    expect(withRun.declaredProfiles).toEqual([
-      { id: RO_CRATE_PROFILE_URL, checkedAgainst: 'ro-crate-1.1' },
-      // Declared by our writer when a crate records runs, and judged by nobody here: this app's
-      // assertions quote RO-Crate 1.1 only.
-      { id: RO_CRATE_PROCESS_PROFILE_URL, checkedAgainst: null }
-    ])
-
-    const withoutRun = validateRoCrate({ document: buildFor([]) })
-    expect(withoutRun.declaredProfiles).toEqual([
-      { id: RO_CRATE_PROFILE_URL, checkedAgainst: 'ro-crate-1.1' }
-    ])
-  })
-
-  it('names a later 1.x profile as declared but not judged, rather than silently covering it', () => {
-    // Readable is not the same as judged: we accept 1.2/1.3 crates (see the test above), but the assertions
-    // implement 1.1's clauses, so the report must not imply the newer edition was checked.
-    const laterProfile: RoCrateMetadataDocument = {
-      ...document,
-      '@graph': document['@graph'].map((entity) =>
-        entity['@id'] === RO_CRATE_ROOT_DATASET_ID
-          ? { ...entity, conformsTo: { '@id': 'https://w3id.org/ro/crate/1.3' } }
-          : entity
-      )
-    }
-    const report = validateRoCrate({ document: laterProfile, payloadPaths, payloadDigests })
-    expect(report.declaredProfiles).toEqual([
-      { id: 'https://w3id.org/ro/crate/1.3', checkedAgainst: null }
-    ])
-  })
-
-  it('reports an empty declaration as empty, and never repeats a permalink', () => {
-    const undeclared: RoCrateMetadataDocument = {
-      ...document,
-      '@graph': document['@graph'].map((entity) => {
-        if (entity['@id'] !== RO_CRATE_ROOT_DATASET_ID) return entity
-        const { conformsTo: _conformsTo, ...rest } = entity
-        return rest
-      })
-    }
-    expect(validateRoCrate({ document: undeclared }).declaredProfiles).toEqual([])
-
-    const twice: RoCrateMetadataDocument = {
-      ...document,
-      '@graph': document['@graph'].map((entity) =>
-        entity['@id'] === RO_CRATE_ROOT_DATASET_ID
-          ? {
-              ...entity,
-              conformsTo: [{ '@id': RO_CRATE_PROFILE_URL }, { '@id': RO_CRATE_PROFILE_URL }]
-            }
-          : entity
-      )
-    }
-    expect(validateRoCrate({ document: twice }).declaredProfiles).toEqual([
-      { id: RO_CRATE_PROFILE_URL, checkedAgainst: 'ro-crate-1.1' }
-    ])
-  })
-
   it('does not read a record with no sha256 as a mismatch', () => {
     // "Nothing was compared" and "the bytes disagree" are different answers, and only the first is true
     // when no checksum was recorded. `file-sha256-recorded` names that absence on its own.

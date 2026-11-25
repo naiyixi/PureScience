@@ -678,30 +678,11 @@ export type RoCrateAssertion = {
   detail?: string
 }
 
-/**
- * One profile permalink the crate's Root Data Entity declares, together with how much of it this app
- * actually judges.
- *
- * A crate can declare several profiles at once (our own export declares the base spec plus the process
- * profile whenever it records runs), and a profile brings its own REQUIRED shapes. The assertions in
- * `RO_CRATE_REQUIREMENTS` quote RO-Crate 1.1 clause by clause and nothing else, so a report that said
- * "every check passed" without naming the profiles it did NOT judge would let a reader conclude that a
- * workflow-profile crate satisfies its own profile. It does not follow, so the report says which is which:
- * the permalink verbatim (a reader must see what is claimed, not a normalized guess) plus the spec these
- * assertions implement for it, or `null` when this app judges none of it.
- */
-export type RoCrateDeclaredProfile = {
-  id: string
-  checkedAgainst: 'ro-crate-1.1' | null
-}
-
 export type RoCrateValidationReport = {
   ok: boolean
   passed: number
   failed: number
   assertions: RoCrateAssertion[]
-  /** In the order the crate names them, de-duplicated. Empty when the Root Data Entity declares none. */
-  declaredProfiles: RoCrateDeclaredProfile[]
 }
 
 export type RoCratePayloadDigest = { sizeBytes: number; sha256: string }
@@ -1247,23 +1228,11 @@ export const validateRoCrate = (input: RoCrateValidationInput): RoCrateValidatio
   )
 
   const failed = assertions.filter((assertion) => !assertion.ok).length
-  // The profiles the crate claims, de-duplicated in declaration order. `checkedAgainst` is the spec the
-  // assertions above implement — 1.1 and only 1.1, so a crate declaring 1.3 (the python reference writer
-  // does) or a workflow profile is read, not judged, and the report says so instead of implying coverage.
-  const declaredProfiles: RoCrateDeclaredProfile[] = []
-  for (const id of root ? referencesOf(root['conformsTo']) : []) {
-    if (declaredProfiles.some((profile) => profile.id === id)) continue
-    declaredProfiles.push({
-      id,
-      checkedAgainst: id === RO_CRATE_PROFILE_URL ? 'ro-crate-1.1' : null
-    })
-  }
   return {
     ok: failed === 0,
     passed: assertions.length - failed,
     failed,
-    assertions,
-    declaredProfiles
+    assertions
   }
 }
 

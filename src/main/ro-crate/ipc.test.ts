@@ -5,8 +5,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import type { WebContents } from 'electron'
 
-import { RO_CRATE_PROCESS_PROFILE_URL, RO_CRATE_PROFILE_URL } from '../../shared/ro-crate'
-
 import { RoCrateExportError } from './export'
 import { createRoCrateExportOwner, type RoCrateExportOwnerDeps } from './ipc'
 import { writeDurableVersion } from './export-test-fixtures'
@@ -74,17 +72,7 @@ describe('RO-Crate export IPC owner', () => {
     // (root-named-profiles-described); each move is a rule added by the validator, and the shared suite
     // pins what each rule means. Kept as a literal on purpose: a wrong count here means a rule silently
     // stopped running.
-    expect(result.validation).toEqual({
-      passed: 33,
-      failed: 0,
-      // The crate records a run, so it declares the process profile beside the base spec — and these 33
-      // assertions implement RO-Crate 1.1 only. The wire carries both permalinks so the panel can say
-      // which one was judged instead of letting the count read as coverage of both.
-      declaredProfiles: [
-        { id: RO_CRATE_PROFILE_URL, checkedAgainst: 'ro-crate-1.1' },
-        { id: RO_CRATE_PROCESS_PROFILE_URL, checkedAgainst: null }
-      ]
-    })
+    expect(result.validation).toEqual({ passed: 33, failed: 0 })
     expect(result.refusedCount).toBe(0)
     // The crate is really on disk, and the payload is the stored bytes rather than a re-encoding.
     expect(await readFile(join(outputDir, 'files/assay.csv'), 'utf8')).toBe('a,b\n1,2\n')
@@ -254,7 +242,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
@@ -293,7 +281,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
@@ -332,7 +320,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
@@ -373,7 +361,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
@@ -407,7 +395,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
@@ -440,7 +428,7 @@ describe('RO-Crate export IPC owner', () => {
           outputDir: String(input.outputDir),
           metadataPath: join(String(input.outputDir), 'ro-crate-metadata.json'),
           files: [],
-          validation: { passed: [], failed: [], declaredProfiles: [] },
+          validation: { passed: [], failed: [] },
           skipped: []
         }
       }) as never
