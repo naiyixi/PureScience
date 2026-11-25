@@ -39,6 +39,8 @@ import {
   type ScanRepoRequest,
   type InstallClaudeRequest,
   type InstallCodebuddyRequest,
+  type InstallDeepSeekHarnessRequest,
+  type InstallHermesRequest,
   type InstallCodexRequest,
   type InstallOpencodeRequest,
   type ClaudeInstallEvent,
@@ -150,6 +152,8 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:detect-opencode', () => service.detectOpencode())
   ipcMainHandle('settings:detect-codebuddy', () => service.detectCodebuddy())
   ipcMainHandle('settings:detect-codex', () => service.detectCodex())
+  ipcMainHandle('settings:detect-hermes', () => service.detectHermes())
+  ipcMainHandle('settings:detect-deepseek-harness', () => service.detectDeepSeekHarness())
   ipcMainHandle('settings:install-opencode', (_event, request: InstallOpencodeRequest) =>
     service.installOpencode(request, broadcastInstallEvent)
   )
@@ -162,6 +166,19 @@ const registerSettingsIpcHandlers = ({
 
   ipcMainHandle('settings:install-claude', (_event, request: InstallClaudeRequest) =>
     service.installClaude(request, broadcastInstallEvent)
+  )
+
+  // 五、六两个后端: 命令表里早有定义, 但 Electron 这条桥是逐个通道显式挂的 —— 漏了这一处, 渲染层点
+  // "安装"就只会拿到 "No handler registered for 'settings:install-hermes'"。安装通道必须在这里,
+  // 不在命令表里。
+  ipcMainHandle('settings:install-hermes', (_event, request: InstallHermesRequest) =>
+    service.installHermes(request, broadcastInstallEvent)
+  )
+
+  ipcMainHandle(
+    'settings:install-deepseek-harness',
+    (_event, request: InstallDeepSeekHarnessRequest) =>
+      service.installDeepSeekHarness(request, broadcastInstallEvent)
   )
 
   ipcMainHandle('settings:uninstall-claude', () =>

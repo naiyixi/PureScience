@@ -43,6 +43,7 @@ import {
   reportApplicationStartupFailure
 } from './diagnostics/startup'
 import { startEventLoopStallWatchdog } from './diagnostics/event-loop-stall-watchdog'
+import { createApplicationModuleLoader } from './diagnostics/module-load'
 import { createLogger, diagnosticErrorFields, flushLogs, suppressConsoleMirror } from './logger'
 import { createProcessFailureCapture } from './crash-diagnostics'
 import { createConsolePipeGuard } from './console-pipe-guard'
@@ -315,6 +316,11 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
   )
 
   startupDiagnostics.phase('load-bootstrap-modules')
+  // A failure here and at `load-application-modules` below names its module: the phase record alone
+  // could only say that "somewhere in this Promise.all" a module threw (see diagnostics/module-load.ts).
+  const loadBootstrapModule = createApplicationModuleLoader({
+    onFailure: (failure) => startupDiagnostics?.phase('load-bootstrap-module-failed', failure)
+  })
   const [
     { electronApp },
     { default: icon },
@@ -326,15 +332,24 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
     { default: trayDarkWindows },
     { default: trayLinux }
   ] = await Promise.all([
-    import('@electron-toolkit/utils'),
-    import('../../resources/icon.png?asset'),
-    import('../../resources/icon-dark.png?asset'),
-    import('../../resources/icon-light.ico?asset'),
-    import('../../resources/icon-dark.ico?asset'),
-    import('../../resources/trayTemplate.png?asset'),
-    import('../../resources/tray-light.ico?asset'),
-    import('../../resources/tray-dark.ico?asset'),
-    import('../../resources/tray.png?asset')
+    loadBootstrapModule.load('@electron-toolkit/utils', () => import('@electron-toolkit/utils')),
+    loadBootstrapModule.load('icon.png', () => import('../../resources/icon.png?asset')),
+    loadBootstrapModule.load('icon-dark.png', () => import('../../resources/icon-dark.png?asset')),
+    loadBootstrapModule.load(
+      'icon-light.ico',
+      () => import('../../resources/icon-light.ico?asset')
+    ),
+    loadBootstrapModule.load('icon-dark.ico', () => import('../../resources/icon-dark.ico?asset')),
+    loadBootstrapModule.load(
+      'trayTemplate.png',
+      () => import('../../resources/trayTemplate.png?asset')
+    ),
+    loadBootstrapModule.load(
+      'tray-light.ico',
+      () => import('../../resources/tray-light.ico?asset')
+    ),
+    loadBootstrapModule.load('tray-dark.ico', () => import('../../resources/tray-dark.ico?asset')),
+    loadBootstrapModule.load('tray.png', () => import('../../resources/tray.png?asset'))
   ])
 
   // Windows gets multi-resolution ICOs for title-bar and Alt-Tab fidelity; the macOS runtime Dock
@@ -383,6 +398,9 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       startupDiagnostics?.phase('crash-reporting', { enabled: crashReporting.enabled })
 
       startupDiagnostics?.phase('load-application-modules')
+      const loadApplicationModule = createApplicationModuleLoader({
+        onFailure: (failure) => startupDiagnostics?.phase('load-application-module-failed', failure)
+      })
       const [
         { registerIpcHandlers },
         { createMainWindow },
@@ -409,30 +427,66 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         { resolveStorageRoot, resolveDataRoot, resolveConfigRoot },
         { startExternalMcpServer }
       ] = await Promise.all([
-        import('./ipc'),
-        import('./windows'),
-        import('./managed-preview-resources'),
-        import('./office-preview/office-preview-runtime-protocol'),
-        import('./storage/migration-state'),
-        import('./tray'),
-        import('./app-lifecycle'),
-        import('./ipc-handler-registry'),
-        import('./web-service'),
-        import('./second-instance-router'),
-        import('./window-close-confirm'),
-        import('./session-persistence/renderer-flush'),
-        import('./window-shortcuts'),
-        import('./app-icon'),
-        import('./remote-access'),
-        import('./notifications/desktop-attention'),
-        import('./notifications/desktop-badge'),
-        import('./notifications/unread-task-repository'),
-        import('./notifications/unread-task-controller'),
-        import('./notifications/task-notification-runtime'),
-        import('./notifications/unread-task-ipc'),
-        import('./projects/prisma-client'),
-        import('./storage-root'),
-        import('./external-mcp')
+        loadApplicationModule.load('ipc', () => import('./ipc')),
+        loadApplicationModule.load('windows', () => import('./windows')),
+        loadApplicationModule.load(
+          'managed-preview-resources',
+          () => import('./managed-preview-resources')
+        ),
+        loadApplicationModule.load(
+          'office-preview/office-preview-runtime-protocol',
+          () => import('./office-preview/office-preview-runtime-protocol')
+        ),
+        loadApplicationModule.load(
+          'storage/migration-state',
+          () => import('./storage/migration-state')
+        ),
+        loadApplicationModule.load('tray', () => import('./tray')),
+        loadApplicationModule.load('app-lifecycle', () => import('./app-lifecycle')),
+        loadApplicationModule.load('ipc-handler-registry', () => import('./ipc-handler-registry')),
+        loadApplicationModule.load('web-service', () => import('./web-service')),
+        loadApplicationModule.load(
+          'second-instance-router',
+          () => import('./second-instance-router')
+        ),
+        loadApplicationModule.load('window-close-confirm', () => import('./window-close-confirm')),
+        loadApplicationModule.load(
+          'session-persistence/renderer-flush',
+          () => import('./session-persistence/renderer-flush')
+        ),
+        loadApplicationModule.load('window-shortcuts', () => import('./window-shortcuts')),
+        loadApplicationModule.load('app-icon', () => import('./app-icon')),
+        loadApplicationModule.load('remote-access', () => import('./remote-access')),
+        loadApplicationModule.load(
+          'notifications/desktop-attention',
+          () => import('./notifications/desktop-attention')
+        ),
+        loadApplicationModule.load(
+          'notifications/desktop-badge',
+          () => import('./notifications/desktop-badge')
+        ),
+        loadApplicationModule.load(
+          'notifications/unread-task-repository',
+          () => import('./notifications/unread-task-repository')
+        ),
+        loadApplicationModule.load(
+          'notifications/unread-task-controller',
+          () => import('./notifications/unread-task-controller')
+        ),
+        loadApplicationModule.load(
+          'notifications/task-notification-runtime',
+          () => import('./notifications/task-notification-runtime')
+        ),
+        loadApplicationModule.load(
+          'notifications/unread-task-ipc',
+          () => import('./notifications/unread-task-ipc')
+        ),
+        loadApplicationModule.load(
+          'projects/prisma-client',
+          () => import('./projects/prisma-client')
+        ),
+        loadApplicationModule.load('storage-root', () => import('./storage-root')),
+        loadApplicationModule.load('external-mcp', () => import('./external-mcp'))
       ])
 
       protocol.registerSchemesAsPrivileged([
@@ -882,6 +936,28 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       return { onSecondInstance }
     }
   })
+
+  // 通道挂没挂上, 类型系统证明不了。放到启动收尾之后再看: 早一步读, 只看到一半的注册(实测 53 条),
+  // 会把"还没轮到"报成"缺失", 这样的日志比没有更糟。
+  setTimeout(() => {
+    import('./ipc-handler-registry')
+      .then(({ listRegisteredIpcChannels }) => {
+        const installed = new Set(listRegisteredIpcChannels())
+        const installerChannels = [
+          'settings:install-claude',
+          'settings:install-opencode',
+          'settings:install-codex',
+          'settings:install-codebuddy',
+          'settings:install-hermes',
+          'settings:install-deepseek-harness'
+        ]
+        createLogger('ipc').info('ipc handler inventory', {
+          registeredChannels: installed.size,
+          missingInstallerChannels: installerChannels.filter((channel) => !installed.has(channel))
+        })
+      })
+      .catch(() => undefined)
+  }, 5_000)
 }
 
 // In this file you can include the rest of your app's specific main process

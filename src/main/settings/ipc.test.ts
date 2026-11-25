@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { AGENT_FRAMEWORK_IDS, type AgentFrameworkId } from '../../shared/settings'
+
 import {
   CLAUDE_ISOLATED_PROVIDER_ID,
   CLAUDE_SHARED_PROVIDER_ID,
@@ -315,6 +317,31 @@ describe('settings IPC handlers', () => {
     ]) {
       expect(handlers.has(channel)).toBe(true)
     }
+  })
+
+  // 这条是给"新加一个后端"设的闸: 框架清单里每多一个 id, 这里就多要求一对通道 —— 命令表里定义了
+  // 处理器不代表 Electron 桥上挂上了。Hermes 与 DeepSeek Harness 就是这样漏掉的: 卡片有按钮, 点下去
+  // 只有 "No handler registered for 'settings:install-hermes'"。
+  it('registers a detect and an install channel for every agent framework', () => {
+    handlers.clear()
+    registerTestSettingsIpcHandlers({ service: asService(createFakeService()) })
+
+    // 通道后缀不是 id 的一比一投影(claude 的 id 是 claude-code), 所以用穷举映射: 少写一个 id,
+    // TypeScript 先报错, 不必等运行时才发现。
+    const suffix: Record<AgentFrameworkId, string> = {
+      'claude-code': 'claude',
+      opencode: 'opencode',
+      codex: 'codex',
+      codebuddy: 'codebuddy',
+      hermes: 'hermes',
+      'deepseek-harness': 'deepseek-harness'
+    }
+    const missing = AGENT_FRAMEWORK_IDS.flatMap((id) => [
+      `settings:detect-${suffix[id]}`,
+      `settings:install-${suffix[id]}`
+    ]).filter((channel) => !handlers.has(channel))
+
+    expect(missing).toEqual([])
   })
 
   it('validates selected Connector files and saves only the previewed export', async () => {
