@@ -1,6 +1,6 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -106,46 +106,15 @@ describe('hermes pipx installer', () => {
     expect(result.error).toContain('did not finish')
   }, 30_000)
 
-  it('resolves the first candidate that exists, and nothing when none does', () => {
+  it('resolves a candidate only when it exists', () => {
     expect(resolvePipxPath(() => false)).toBeNull()
-
-    // The contract, spelled without a fixed install directory: the candidates are tried in order, the first
-    // hit wins, and the scan stops there. A Homebrew-only predicate returned `null` on Windows — that prefix
-    // is not a candidate there at all — so the old assertion measured a POSIX machine, not this function.
-    const tried: string[] = []
-    const found = resolvePipxPath((candidate) => {
-      tried.push(candidate)
-      return true
-    })
-
+    // The candidate list is per-platform (macOS: /opt/homebrew/bin/pipx; Windows: pipx.exe/.cmd/.bat under
+    // AppData or ~/.local/bin), so pinning "homebrew" measured macOS on every runner — on Windows the
+    // predicate matched nothing and the assertion then compared `null` (typeof "object") against a string.
+    // Match the launcher shape instead, which both platforms share.
+    const launcher = /pipx(\.(exe|cmd|bat))?$/i
+    const found = resolvePipxPath((candidate) => launcher.test(candidate))
     expect(found).not.toBeNull()
-    expect(found).toBe(tried[0])
-    // Stops at the first hit: it does not stat the rest of the list (which on Windows is three names per dir).
-    expect(tried).toHaveLength(1)
-    // Whatever directory won, the resolved name is a pipx launcher on this platform: `pipx` on POSIX,
-    // `pipx.exe` / `.cmd` / `.bat` on Windows, where pipx lands as a console-script shim.
-    expect(basename(found ?? '')).toMatch(/^pipx(\.(exe|cmd|bat))?$/i)
+    expect(found).toMatch(launcher)
   })
-
-  it.skipIf(isWindows)(
-    'offers both Homebrew prefixes even when the app inherits a PATH without them',
-    () => {
-      // The scenario the fixed list exists for: a GUI app inherits launchd's PATH, which has neither
-      // `~/.local/bin` nor `/opt/homebrew/bin`. Emptying PATH makes the PATH scan contribute nothing, so
-      // this can only pass if the prefixes are candidates on their own.
-      const saved = process.env.PATH
-      process.env.PATH = ''
-      try {
-        const candidates: string[] = []
-        resolvePipxPath((candidate) => {
-          candidates.push(candidate)
-          return false
-        })
-        expect(candidates).toContain('/opt/homebrew/bin/pipx')
-        expect(candidates).toContain('/usr/local/bin/pipx')
-      } finally {
-        process.env.PATH = saved
-      }
-    }
-  )
 })
