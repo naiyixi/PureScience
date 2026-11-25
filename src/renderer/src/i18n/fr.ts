@@ -1617,6 +1617,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Installez Claude Agent ci-dessous, ou installez-le manuellement puis relancez la détection.',
   'settings.agentCodeBuddyNotReady':
     'CodeBuddy est requis pour ce framework. Installez @tencent-ai/codebuddy-code manuellement puis relancez la détection.',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    "se connecte via son serveur ACP autonome (paquet npm deepseek-harness-acp) ; la CLI dsh interactive n'est pas nécessaire.",
+  'settings.agentDeepSeekHarnessNotReady':
+    'Aucun serveur DeepSeek Harness détecté. Installez-le puis relancez la détection.',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent se connecte via son propre serveur ACP (`hermes acp`) ; installez-le avec pipx et cette application le détecte.',
@@ -3280,7 +3285,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': 'Modèle de vision',
   'settings.visionModelClear': 'Effacer',
   'settings.visionModelDisabled': 'Désactivé (les images ne sont pas analysées)',
-  'settings.visionModelSavedNotOffered': 'Le modèle de vision enregistré n’est pas dans cette liste (le fournisseur n’est peut-être pas encore actualisé). Le vider désactive la traduction des images.',
+  'settings.visionModelSavedNotOffered':
+    'Le modèle de vision enregistré n’est pas dans cette liste (le fournisseur n’est peut-être pas encore actualisé). Le vider désactive la traduction des images.',
   'settings.visionModelHint':
     'Lorsque le modèle actif ne peut pas accepter d’image en entrée, les images jointes sont analysées par ce modèle et injectées dans la conversation comme preuves textuelles. Les résultats sont mis en cache pour qu’une même image ne soit jamais analysée deux fois.',
   'settings.waitingForAuthorization': 'En attente d’autorisation…',

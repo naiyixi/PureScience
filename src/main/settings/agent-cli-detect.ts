@@ -151,12 +151,7 @@ const runVersionProbe =
     }
   }
 
-// `spec` is what the caller resolves a backend from — this factory only builds the probing deps (env, home,
-// platform, executable test, version probe), so it is accepted for the caller shape and not read here. Kept
-// as `_spec` rather than dropped: the call sites pass it positionally, and a silent parameter removal is a
-// `TS2554` for every one of them the day they land.
 export const createAgentCliDetectDeps = (
-  _spec: AgentCliSpec,
   overrides?: Partial<AgentCliDetectDeps>
 ): AgentCliDetectDeps => {
   const platform = process.platform

@@ -14,6 +14,7 @@ import type {
 import {
   getClaudeInstallSources,
   getCodebuddyInstallSources,
+  getDeepSeekHarnessInstallSources,
   getHermesInstallSources,
   isClaudeInstallSource,
   getCodexInstallSources,
@@ -30,7 +31,7 @@ import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 // The agent frameworks the settings page manages, keyed by their short name (used for the
 // uninstall dialog target and the framework card descriptors).
-type FrameworkKey = 'claude' | 'opencode' | 'codex' | 'codebuddy' | 'hermes'
+type FrameworkKey = 'claude' | 'opencode' | 'codex' | 'codebuddy' | 'hermes' | 'deepseek-harness'
 
 type AgentPanelProps = {
   variant?: 'settings' | 'onboarding'
@@ -65,6 +66,7 @@ const AgentPanel = ({
   const installOpencode = useSettingsStore((state) => state.installOpencode)
   const codebuddy = useSettingsStore((state) => state.codebuddy)
   const hermes = useSettingsStore((state) => state.hermes)
+  const deepseekHarness = useSettingsStore((state) => state.deepseekHarness)
   const isDetectingCodebuddy = useSettingsStore((state) => state.isDetectingCodebuddy)
   const detectCodebuddy = useSettingsStore((state) => state.detectCodebuddy)
   const codex = useSettingsStore((state) => state.codex)
@@ -73,11 +75,15 @@ const AgentPanel = ({
   const installCodex = useSettingsStore((state) => state.installCodex)
   const installCodebuddy = useSettingsStore((state) => state.installCodebuddy)
   const installHermes = useSettingsStore((state) => state.installHermes)
+  const installDeepSeekHarness = useSettingsStore((state) => state.installDeepSeekHarness)
   // Per-runtime install slices: each card renders only its own progress/logs/error (issue #278).
   const claudeInstall = useSettingsStore((state) => state.installStates['claude-code'])
   const opencodeInstall = useSettingsStore((state) => state.installStates.opencode)
   const codebuddyInstall = useSettingsStore((state) => state.installStates.codebuddy)
   const hermesInstall = useSettingsStore((state) => state.installStates.hermes)
+  const deepseekHarnessInstall = useSettingsStore(
+    (state) => state.installStates['deepseek-harness']
+  )
   const detectHermes = useSettingsStore((state) => state.detectHermes)
   const isDetectingHermes = useSettingsStore((state) => state.isDetectingHermes)
   const codexInstall = useSettingsStore((state) => state.installStates.codex)
@@ -279,7 +285,8 @@ const AgentPanel = ({
       opencode: preflight.opencodeReady,
       codex: preflight.codexReady,
       codebuddy: preflight.codebuddyReady,
-      hermes: preflight.hermesReady
+      hermes: preflight.hermesReady,
+      'deepseek-harness': preflight.deepseekHarnessReady
     }
     if (readyByFramework[agentFrameworkId]) return
 
@@ -296,6 +303,7 @@ const AgentPanel = ({
     preflight.codebuddyReady,
     preflight.codexReady,
     preflight.hermesReady,
+    preflight.deepseekHarnessReady,
     preflight.opencodeReady,
     queueOnboardingSwitch
   ])
@@ -486,6 +494,28 @@ const AgentPanel = ({
       onInstall: (source) => {
         if (source !== 'pipx') return Promise.resolve(undefined)
         return installHermes()
+      }
+    },
+    {
+      key: 'deepseek-harness',
+      frameworkId: 'deepseek-harness',
+      name: t('settings.agentDeepSeekHarnessName'),
+      icon: <AgentFrameworkIcon frameworkId="deepseek-harness" size={24} />,
+      description: t('settings.agentDeepSeekHarnessDesc'),
+      ready: preflight.deepseekHarnessReady,
+      version: deepseekHarness.version,
+      path: deepseekHarness.resolvedPath,
+      sourceLabel: 'npm / ACP',
+      sourceUrl: 'https://www.npmjs.com/package/deepseek-harness-acp',
+      notReadyHint: t('settings.agentDeepSeekHarnessNotReady'),
+      uninstallCommand: 'npm uninstall -g deepseek-harness-acp',
+      // Installed by npm, not copied into app storage, so there is no managed copy to remove.
+      managed: false,
+      installSources: getDeepSeekHarnessInstallSources(),
+      install: deepseekHarnessInstall,
+      onInstall: (source) => {
+        if (source !== 'npm') return Promise.resolve(undefined)
+        return installDeepSeekHarness()
       }
     }
   ]

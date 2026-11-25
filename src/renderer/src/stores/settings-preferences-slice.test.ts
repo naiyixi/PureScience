@@ -59,6 +59,7 @@ const snapshot = (patch: Partial<SettingsSnapshot> = {}): SettingsSnapshot => ({
   opencode: {},
   codebuddy: {},
   hermes: {},
+  deepseekHarness: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,

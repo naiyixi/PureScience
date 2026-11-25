@@ -18,7 +18,11 @@ import type {
   RoCrateExportRefusedVersion,
   RoCrateExportSuccess
 } from '../../../../shared/ro-crate-export'
-import { failedRoCrateAssertions, type RoCrateAssertion } from '../../../../shared/ro-crate'
+import {
+  failedRoCrateAssertions,
+  type RoCrateAssertion,
+  type RoCrateDeclaredProfile
+} from '../../../../shared/ro-crate'
 import type {
   ExternalRoCrateRefusal,
   RoCrateInspectResult
@@ -125,6 +129,44 @@ const FailedChecks = ({
       </li>
     ))}
   </ul>
+)
+
+/**
+ * The profiles the crate itself claims, and which of them this app judged.
+ *
+ * A crate can declare more than one profile, and each profile brings its own REQUIRED shapes. This app
+ * implements RO-Crate 1.1's clauses and nothing else, so "every check passed" above says nothing about a
+ * workflow profile the crate also declares. Naming both, with the permalink verbatim, is the difference
+ * between a partial check and a claim of coverage.
+ */
+const DeclaredProfiles = ({
+  profiles,
+  t,
+  testId
+}: {
+  profiles: readonly RoCrateDeclaredProfile[]
+  t: (key: TranslationKey) => string
+  testId: string
+}): React.JSX.Element => (
+  <div data-testid={testId} className="mt-1 space-y-0.5">
+    <p className="font-medium text-foreground">{t('roCrate.profiles.heading')}</p>
+    {profiles.length === 0 ? (
+      <p>{t('roCrate.profiles.none')}</p>
+    ) : (
+      <ul className="space-y-0.5">
+        {profiles.map((profile) => (
+          <li key={profile.id} className="break-words">
+            <span className="font-mono text-[0.7rem] text-foreground">{profile.id}</span>
+            <span className="ml-1">
+              {profile.checkedAgainst === null
+                ? t('roCrate.profiles.unchecked')
+                : t('roCrate.profiles.checked')}
+            </span>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
 )
 
 const RoCrateExportDialog = ({
@@ -257,6 +299,11 @@ const RoCrateExportDialog = ({
             <p data-testid="ro-crate-export-validation">
               {t('roCrate.export.validated').replace('{passed}', String(written.validation.passed))}
             </p>
+            <DeclaredProfiles
+              profiles={written.validation.declaredProfiles}
+              t={t}
+              testId="ro-crate-export-declared-profiles"
+            />
             {written.refused.length > 0 ? (
               <>
                 <p data-testid="ro-crate-export-refused">
@@ -344,6 +391,11 @@ const RoCrateExportDialog = ({
                 >
                   {inspection.metadataPath}
                 </p>
+                <DeclaredProfiles
+                  profiles={inspection.report.declaredProfiles}
+                  t={t}
+                  testId="ro-crate-inspect-declared-profiles"
+                />
                 {inspection.report.failed > 0 ? (
                   <>
                     <p className="mt-1 font-medium text-foreground">

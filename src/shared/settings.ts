@@ -324,7 +324,13 @@ export const providerValidationFailed = (provider: {
 // the main-process AgentFramework registry is keyed by the same union.
 // 'hermes' drives Hermes Agent through its own `hermes acp` server — no community adapter, and a Python
 // package (pipx/pip) rather than an npm CLI, so detection, install locations and version parsing differ.
-export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex' | 'codebuddy' | 'hermes'
+export type AgentFrameworkId =
+  | 'claude-code'
+  | 'opencode'
+  | 'codex'
+  | 'codebuddy'
+  | 'hermes'
+  | 'deepseek-harness'
 
 // The union above is the source of truth; this list is derived from it at the type level, so adding a
 // framework without listing it here fails to compile instead of silently dropping the id on read.
@@ -335,7 +341,8 @@ export const AGENT_FRAMEWORK_IDS = [
   'opencode',
   'codex',
   'codebuddy',
-  'hermes'
+  'hermes',
+  'deepseek-harness'
 ] as const
 
 const AGENT_FRAMEWORK_ID_SET: ReadonlySet<string> = new Set<string>(AGENT_FRAMEWORK_IDS)
@@ -345,7 +352,8 @@ const _AGENT_FRAMEWORK_IDS_COVER_THE_UNION: Record<AgentFrameworkId, true> = {
   opencode: true,
   codex: true,
   codebuddy: true,
-  hermes: true
+  hermes: true,
+  'deepseek-harness': true
 }
 void _AGENT_FRAMEWORK_IDS_COVER_THE_UNION
 
@@ -509,6 +517,8 @@ export type SettingsSnapshot = {
   codebuddy: OpencodeInfo
   // Detection-only: Hermes has no managed install in this version, so there is no `hermesManaged`.
   hermes: OpencodeInfo
+  // Detected DeepSeek Harness ACP server (`deepseek-harness-acp`, or its `dsh-acp` alias).
+  deepseekHarness: OpencodeInfo
   // Detected codex-acp adapter and its paired native Codex runtime.
   codex: CodexInfo
   activeProviderId?: string
@@ -644,6 +654,7 @@ export type Preflight = {
   codexReady: boolean
   codebuddyReady: boolean
   hermesReady: boolean
+  deepseekHarnessReady: boolean
   // Readiness of the selected agent framework, plus which one it is.
   agentFrameworkId: AgentFrameworkId
   agentReady: boolean
@@ -899,7 +910,7 @@ export type InstallCodebuddyRequest = {
   source: 'npm'
 }
 
-// Hermes is installed as a Python package. pipx is the documented path (`pipx install hermes-agent`), and
+// Hermes is installed as a Python package. pipx is its own path (`pipx install hermes-agent`), and
 // the app runs exactly that — no npm, no managed download: the card reports `requiresNpm: false` and the
 // installer drives pipx, then asks the detector whether anything runnable appeared.
 export const getHermesInstallSources = (): FrameworkInstallSourceInfo[] => [
@@ -915,6 +926,23 @@ export const getHermesInstallSources = (): FrameworkInstallSourceInfo[] => [
 export type InstallHermesRequest = {
   source: HermesInstallSource
 }
+
+// DeepSeek Harness is distributed on npm as its standalone ACP server. The interactive `dsh` CLI lives in a
+// different package (`@deepseek-ai/dsh`, published only as alpha/rc) and is not needed to drive this one.
+export type InstallDeepSeekHarnessRequest = {
+  source: 'npm'
+}
+
+export const getDeepSeekHarnessInstallSources = (): ClaudeInstallSourceInfo[] => [
+  {
+    id: 'npm',
+    label: 'npm (global install)',
+    displayCommand: 'npm i -g deepseek-harness-acp',
+    requiresNpm: true,
+    description:
+      'Installs the standalone DeepSeek Harness ACP server from the npm registry. The interactive dsh CLI is a separate package and is not required.'
+  }
+]
 
 export const getCodebuddyInstallSources = (): ClaudeInstallSourceInfo[] => [
   {

@@ -587,6 +587,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.installClaude',
       'settings.installCodebuddy',
       'settings.installCodex',
+      'settings.installDeepSeekHarness',
       'settings.installHermes',
       'settings.installOpencode',
       'settings.isEncryptionAvailable',
@@ -770,7 +771,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 
     // 243 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, one contract.
     // 4.3 追加两条导出署名/许可通道 → 247。
-    expect(runtimeContracts).toHaveLength(249)
+    expect(runtimeContracts).toHaveLength(250)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -251,9 +251,21 @@ export type SessionSaveAuthority = {
 // narrow path was taken at all. Without it a smaller `authorityMs` and an index that was never consulted
 // look the same from the outside.
 export type SaveAuthorityLookup =
-  | { status: 'found'; authority: SessionSaveAuthority; source: 'index' | 'document' }
+  | {
+      status: 'found'
+      authority: SessionSaveAuthority
+      source: 'index' | 'document'
+      rejection?: SaveAuthorityRejection
+    }
   | { status: 'missing' }
   | { status: 'unreadable' }
+
+// Why the list-tier index could not answer a save's authority question. Named instead of a single `document`
+// source, because that field reads the same whether the entry was absent, written by an older build, or
+// describing bytes that have since been replaced — and those point at different callers to fix.
+export type SessionSummaryRejection =
+  'summary-missing' | 'summary-unreadable' | 'version-mismatch' | 'size-mismatch' | 'mtime-mismatch'
+export type SaveAuthorityRejection = SessionSummaryRejection | 'catalog-invalid'
 
 const SESSION_STATUSES: readonly PersistedSessionStatus[] = [
   'idle',
@@ -413,8 +425,9 @@ class SessionRepository {
       assertSafeSegment(projectId),
       assertSafeSegment(sessionId)
     )
-    const summary = await this.tryReadSessionSummary(filePath)
-    if (!summary) return { status: 'unavailable' }
+    const read = await this.readSessionSummary(filePath)
+    if ('rejection' in read) return { status: 'unavailable' }
+    const summary = read.catalog
     if (summary.runtimeContext === undefined) return { status: 'answered' }
     const runtimeContext = sanitizeSessionRuntimeContext(summary.runtimeContext)
     if (!runtimeContext) return { status: 'unavailable' }
@@ -442,11 +455,11 @@ class SessionRepository {
     // Both reads report themselves to the shared file-system probe: `authorityMs` is the save's largest
     // segment, and until now the stall verdict could only see the preview acquire path's reads, so for this
     // one it always answered "nothing of ours was queueing" — a blind spot, not a calm pool.
-    const summary = await this.reportFsOperation(() =>
-      this.tryReadSessionSummary(this.sessionFilePath(safeProjectId, safeSessionId))
+    const read = await this.reportFsOperation(() =>
+      this.readSessionSummary(this.sessionFilePath(safeProjectId, safeSessionId))
     )
-    if (summary) {
-      const fromIndex = saveAuthorityFromCatalog(summary)
+    if ('catalog' in read) {
+      const fromIndex = saveAuthorityFromCatalog(read.catalog)
       if (fromIndex) return { status: 'found', authority: fromIndex, source: 'index' }
     }
 
@@ -457,7 +470,8 @@ class SessionRepository {
     return {
       status: 'found',
       authority: saveAuthorityFromSession(document.session),
-      source: 'document'
+      source: 'document',
+      rejection: 'catalog' in read ? 'catalog-invalid' : read.rejection
     }
   }
 
@@ -1052,9 +1066,10 @@ class SessionRepository {
     for (const fileName of sessionFiles.names) {
       const filePath = join(projectDir, fileName)
       const indexStartedAt = Date.now()
-      const cached = await this.tryReadSessionSummary(filePath)
+      const indexRead = await this.readSessionSummary(filePath)
       stageMs.indexMs += Date.now() - indexStartedAt
-      if (cached) {
+      if ('catalog' in indexRead) {
+        const cached = indexRead.catalog
         // Served from the index: this document is never opened. The directory owns the project id, as
         // it does on the full scan, so the entry travels with the authoritative one.
         indexHits += 1
@@ -1085,30 +1100,36 @@ class SessionRepository {
     return `${filePath}.summary.json`
   }
 
-  // The index entry for one session file, or undefined when the index cannot answer for it: absent,
-  // unreadable, written by an older format, or describing a different version of the file than the
-  // one on disk now (which is how an external edit invalidates it).
-  private async tryReadSessionSummary(
+  // The index entry for one session file, or the named reason it cannot answer for it: absent, unreadable,
+  // written by an older format, or describing a different version of the file than the one on disk now
+  // (which is how an external edit invalidates it).
+  private async readSessionSummary(
     filePath: string
-  ): Promise<SessionCatalogSummary | undefined> {
+  ): Promise<{ catalog: SessionCatalogSummary } | { rejection: SessionSummaryRejection }> {
+    let fingerprint: { size: number; mtimeMs: number }
     try {
-      const [fingerprint, rawSummary] = await Promise.all([
-        this.dependencies.statFile(filePath),
-        this.dependencies.readSessionFile(this.summaryPathFor(filePath)).catch(() => undefined)
-      ])
-      if (!rawSummary) return undefined
-      const summary = JSON.parse(rawSummary) as SessionSummaryFile
-      if (
-        summary.version !== SUMMARY_FILE_VERSION ||
-        summary.fingerprint.size !== fingerprint.size ||
-        summary.fingerprint.mtimeMs !== fingerprint.mtimeMs
-      ) {
-        return undefined
-      }
-      return summary.catalog
+      fingerprint = await this.dependencies.statFile(filePath)
     } catch {
-      return undefined
+      // No document to describe. The save's own document read is what reports `missing`; this only refuses
+      // to answer from an entry that cannot be checked against the bytes it claims to describe.
+      return { rejection: 'summary-missing' }
     }
+    let rawSummary: string
+    try {
+      rawSummary = await this.dependencies.readSessionFile(this.summaryPathFor(filePath))
+    } catch {
+      return { rejection: 'summary-missing' }
+    }
+    let summary: SessionSummaryFile
+    try {
+      summary = JSON.parse(rawSummary) as SessionSummaryFile
+    } catch {
+      return { rejection: 'summary-unreadable' }
+    }
+    if (summary.version !== SUMMARY_FILE_VERSION) return { rejection: 'version-mismatch' }
+    if (summary.fingerprint?.size !== fingerprint.size) return { rejection: 'size-mismatch' }
+    if (summary.fingerprint?.mtimeMs !== fingerprint.mtimeMs) return { rejection: 'mtime-mismatch' }
+    return { catalog: summary.catalog }
   }
 
   // Writes the list-tier index entry next to the session file. Best-effort: a failed summary write
@@ -1154,9 +1175,9 @@ class SessionRepository {
     // Summary-first: only the startup list path opts in; full-parse callers (recovery, exports)
     // keep seeing the authoritative file.
     if (options.useSummary) {
-      const cached = await this.tryReadSessionSummary(filePath)
-      if (cached) {
-        return { session: sessionSliceFromCatalog(cached, projectId), isComplete: true }
+      const indexRead = await this.readSessionSummary(filePath)
+      if ('catalog' in indexRead) {
+        return { session: sessionSliceFromCatalog(indexRead.catalog, projectId), isComplete: true }
       }
     }
 

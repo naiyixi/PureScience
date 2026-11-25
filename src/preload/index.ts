@@ -30,6 +30,7 @@ import type {
   ImportSkillZipBatchRequest,
   ImportSkillZipRequest,
   InstallCodebuddyRequest,
+  InstallDeepSeekHarnessRequest,
   InstallHermesRequest,
   InstallCodexRequest,
   PreviewAgentHomeSkillRequest,
@@ -258,6 +259,8 @@ const api: PureScienceAPI = {
     installClaude: (request) => electronRendererContracts.invoke('settings.installClaude', request),
     installOpencode: (request) =>
       electronRendererContracts.invoke('settings.installOpencode', request),
+    installDeepSeekHarness: (request: InstallDeepSeekHarnessRequest) =>
+      electronRendererContracts.invoke('settings.installDeepSeekHarness', request),
     installHermes: (request: InstallHermesRequest) =>
       electronRendererContracts.invoke('settings.installHermes', request),
     installCodex: (request: InstallCodexRequest) =>

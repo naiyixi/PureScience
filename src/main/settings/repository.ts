@@ -1617,6 +1617,26 @@ class SettingsRepository {
     })
   }
 
+  async setDeepSeekHarnessInfo(resolvedPath: string, version?: string): Promise<StoredSettings> {
+    return this.mutate((settings) => ({
+      ...settings,
+      deepseekHarnessPath: resolvedPath,
+      deepseekHarnessVersion: version
+    }))
+  }
+
+  // Forgets the recorded DeepSeek Harness server so the card reflects an uninstall.
+  async clearDeepSeekHarnessInfo(): Promise<StoredSettings> {
+    return this.mutate((settings) => {
+      const { deepseekHarnessPath, deepseekHarnessVersion, ...rest } = settings
+
+      void deepseekHarnessPath
+      void deepseekHarnessVersion
+
+      return rest
+    })
+  }
+
   async setCodexInfo(codex: StoredCodexInfo): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, codex }))
   }

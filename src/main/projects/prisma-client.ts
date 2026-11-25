@@ -681,6 +681,7 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "issue" TEXT,
     "pages" TEXT,
     "publisher" TEXT,
+    "edition" TEXT,
     "itemType" TEXT,
     "doi" TEXT,
     "pmid" TEXT,
@@ -721,6 +722,9 @@ const REFERENCE_ADD_VOLUME_DDL = `ALTER TABLE "Reference" ADD COLUMN "volume" TE
 const REFERENCE_ADD_ISSUE_DDL = `ALTER TABLE "Reference" ADD COLUMN "issue" TEXT`
 const REFERENCE_ADD_PAGES_DDL = `ALTER TABLE "Reference" ADD COLUMN "pages" TEXT`
 const REFERENCE_ADD_PUBLISHER_DDL = `ALTER TABLE "Reference" ADD COLUMN "publisher" TEXT`
+// The edition statement an imported book carries (`ET` in RIS). Kept as text so "2" stays "2" and a
+// Chinese "修订版" is not turned into a number the source never wrote.
+const REFERENCE_ADD_EDITION_DDL = `ALTER TABLE "Reference" ADD COLUMN "edition" TEXT`
 const REFERENCE_ADD_ITEM_TYPE_DDL = `ALTER TABLE "Reference" ADD COLUMN "itemType" TEXT`
 // v2.6.0 A2: a citation mark — when the record was declared cited, and by which session — added
 // to existing databases too, because a citation recorded on one machine has to read back on the
@@ -1139,6 +1143,7 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
   column('Reference', 'issue', REFERENCE_ADD_ISSUE_DDL),
   column('Reference', 'pages', REFERENCE_ADD_PAGES_DDL),
   column('Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL),
+  column('Reference', 'edition', REFERENCE_ADD_EDITION_DDL),
   column('Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL),
   column('Reference', 'citedAt', REFERENCE_ADD_CITED_AT_DDL),
   column('Reference', 'citedSessionId', REFERENCE_ADD_CITED_SESSION_ID_DDL),

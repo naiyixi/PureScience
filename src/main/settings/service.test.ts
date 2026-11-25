@@ -1795,6 +1795,7 @@ describe('SettingsService: preflight & spawn config', () => {
       codexReady: false,
       codebuddyReady: false,
       hermesReady: false,
+      deepseekHarnessReady: false,
       agentFrameworkId: 'claude-code',
       agentReady: true,
       activeProviderReady: true

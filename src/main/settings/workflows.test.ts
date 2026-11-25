@@ -63,6 +63,7 @@ const snapshot = (overrides: Partial<SettingsSnapshot> = {}): SettingsSnapshot =
   opencode: {},
   codebuddy: {},
   hermes: {},
+  deepseekHarness: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,

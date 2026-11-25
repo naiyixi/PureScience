@@ -213,12 +213,40 @@ const firstApplicationFrame = (stack: unknown): string => {
   return 'unavailable'
 }
 
+/**
+ * The privacy projection a failure can be located with: its category, its class name, and two
+ * basename-only stack frames. It deliberately carries NO free text, so it is safe on any surface the
+ * message itself is not allowed on (diagnostic operations keep a category-only contract).
+ *
+ * `frame` names the first frame at all; `origin` is the first frame in this product's own code. Both
+ * drop every directory component, so a record can say `open (prisma-client.js:12:3)` without naming a
+ * path on the user's disk.
+ */
+export type FailureLocation = {
+  errorCategory: string
+  errorName: string
+  frame: string
+  origin: string
+}
+
+export const describeFailureLocation = (failure: unknown): FailureLocation => {
+  const isObject = typeof failure === 'object' && failure !== null
+  const rawName = isObject ? safeRead(failure, 'name') : undefined
+  const stack = isObject ? safeRead(failure, 'stack') : undefined
+
+  return {
+    errorCategory: diagnosticErrorFields(failure).errorCategory,
+    errorName: typeof rawName === 'string' && rawName !== '' ? rawName : 'Unknown',
+    frame: firstStackFrame(stack),
+    origin: firstApplicationFrame(stack)
+  }
+}
+
 const normalizeFailure = (
   failure: unknown,
   source: ProcessFailureSource,
   maxMessageChars: number
 ): FailureSignatureCore => {
-  const fields = diagnosticErrorFields(failure)
   const isObject = typeof failure === 'object' && failure !== null
 
   const rawMessage = isObject
@@ -231,17 +259,10 @@ const normalizeFailure = (
       ? redactFailureText(rawMessage, maxMessageChars)
       : '(no message)'
 
-  const rawName = isObject ? safeRead(failure, 'name') : undefined
-  const errorName = typeof rawName === 'string' && rawName !== '' ? rawName : 'Unknown'
-  const stack = isObject ? safeRead(failure, 'stack') : undefined
-
   return {
     failureSource: source,
-    errorCategory: fields.errorCategory,
-    errorName,
-    message,
-    frame: firstStackFrame(stack),
-    origin: firstApplicationFrame(stack)
+    ...describeFailureLocation(failure),
+    message
   }
 }
 

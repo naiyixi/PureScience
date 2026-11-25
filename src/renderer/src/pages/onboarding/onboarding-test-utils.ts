@@ -53,7 +53,7 @@ const readyClaudeState = (): void => {
       opencodeReady: false,
       codexReady: false,
       codebuddyReady: false,
-      hermesReady: false,
+      hermesReady: false, deepseekHarnessReady: false,
       agentFrameworkId: 'claude-code',
       agentReady: true,
       activeProviderReady: false
@@ -71,7 +71,7 @@ const codexReadyState = (): Partial<ReturnType<typeof createInitialSettingsState
     opencodeReady: false,
     codexReady: true,
     codebuddyReady: false,
-    hermesReady: false,
+    hermesReady: false, deepseekHarnessReady: false,
     agentFrameworkId: 'codex' as const,
     agentReady: true,
     activeProviderReady: false

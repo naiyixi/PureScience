@@ -1617,6 +1617,11 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Installieren Sie unten Claude Agent oder installieren Sie es manuell und erkennen Sie es erneut.',
   'settings.agentCodeBuddyNotReady':
     'Für dieses Framework ist CodeBuddy erforderlich. Installieren Sie @tencent-ai/codebuddy-code manuell und erkennen Sie es erneut.',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    'verbindet sich über seinen eigenständigen ACP-Server (npm-Paket deepseek-harness-acp); die interaktive dsh-CLI ist nicht nötig.',
+  'settings.agentDeepSeekHarnessNotReady':
+    'Kein DeepSeek-Harness-Server gefunden. Nach der Installation erneut suchen.',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent verbindet sich über seinen eigenen ACP-Server (`hermes acp`); mit pipx installiert, erkennt diese App ihn automatisch.',
@@ -3290,7 +3295,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': 'Vision-Modell',
   'settings.visionModelClear': 'Leeren',
   'settings.visionModelDisabled': 'Deaktiviert (Bilder werden nicht übersetzt)',
-  'settings.visionModelSavedNotOffered': 'Das gespeicherte Vision-Modell steht nicht in dieser Liste (der Anbieter ist womöglich noch nicht aktualisiert). Leeren schaltet die Bildübersetzung ab.',
+  'settings.visionModelSavedNotOffered':
+    'Das gespeicherte Vision-Modell steht nicht in dieser Liste (der Anbieter ist womöglich noch nicht aktualisiert). Leeren schaltet die Bildübersetzung ab.',
   'settings.visionModelHint':
     'Wenn das aktive Modell keine Bildeingaben akzeptiert, werden angehängte Bilder von diesem Modell analysiert und als Textbelege in die Konversation eingefügt. Ergebnisse werden zwischengespeichert, sodass dasselbe Bild nie zweimal analysiert wird.',
   'settings.waitingForAuthorization': 'Warte auf Autorisierung…',

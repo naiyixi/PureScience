@@ -1551,6 +1551,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '아래에서 Claude 에이전트를 설치하거나, 직접 설치한 후 다시 감지하세요.',
   'settings.agentCodeBuddyNotReady':
     '이 프레임워크에는 CodeBuddy가 필요합니다. @tencent-ai/codebuddy-code를 직접 설치한 후 다시 감지하세요.',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    '독립 ACP 서버(npm 패키지 deepseek-harness-acp)로 연결됩니다. 대화형 dsh는 필요 없습니다.',
+  'settings.agentDeepSeekHarnessNotReady':
+    'DeepSeek Harness 서버를 찾지 못했습니다. 설치 후 다시 감지하세요.',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent는 자체 ACP 서버(`hermes acp`)로 연결됩니다. pipx로 설치하면 이 앱이 자동으로 감지합니다.',
@@ -3135,7 +3140,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': '비전 모델',
   'settings.visionModelClear': '지우기',
   'settings.visionModelDisabled': '비활성화됨(이미지가 변환되지 않음)',
-  'settings.visionModelSavedNotOffered': '저장된 비전 모델이 이번 후보에 없습니다(공급자 정보가 아직 갱신되지 않았을 수 있습니다). 지우면 이미지 변환이 중지됩니다.',
+  'settings.visionModelSavedNotOffered':
+    '저장된 비전 모델이 이번 후보에 없습니다(공급자 정보가 아직 갱신되지 않았을 수 있습니다). 지우면 이미지 변환이 중지됩니다.',
   'settings.visionModelHint':
     '활성 모델이 이미지 입력을 받아들일 수 없을 때, 첨부된 이미지는 이 모델이 분석하여 대화에 텍스트 증거로 주입합니다. 결과는 캐시되므로 같은 이미지를 두 번 분석하지 않습니다.',
   'settings.waitingForAuthorization': '승인 대기 중…',

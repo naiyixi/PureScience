@@ -117,6 +117,7 @@ export type AgentBackendRuntimePort = Pick<
   | 'resolveClaudeExecutable'
   | 'resolveCodebuddyExecutable'
   | 'resolveHermesExecutable'
+  | 'resolveDeepSeekHarnessExecutable'
   | 'resolveOpencodeExecutable'
   | 'resolveCodexExecutable'
   | 'probeCodexNativeVersion'
@@ -727,7 +728,9 @@ export class AgentBackendResolver {
           ? await this.runtime.resolveCodebuddyExecutable(settings.codebuddyPath)
           : framework.id === 'hermes'
             ? await this.runtime.resolveHermesExecutable(settings.hermesPath)
-            : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
+            : framework.id === 'deepseek-harness'
+              ? await this.runtime.resolveDeepSeekHarnessExecutable(settings.deepseekHarnessPath)
+              : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
     const codexNativeVersion =
       framework.id === 'codex'
         ? await this.runtime.probeCodexNativeVersion(settings.codex?.nativePath)

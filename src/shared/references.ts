@@ -64,6 +64,10 @@ export type Reference = {
   issue?: string | undefined
   pages?: string | undefined
   publisher?: string | undefined
+  // The edition statement as the source wrote it ("2", "2nd", "修订版"). A style prints it as its own
+  // edition label (AMA `2nd ed.`, GB/T `2 版`), so it is kept verbatim rather than normalized to a
+  // number: an importer that only knows "2" must not turn "第二版" into a guess.
+  edition?: string | undefined
   itemType?: ReferenceItemType | undefined
   doi: string | undefined
   pmid: string | undefined
@@ -131,6 +135,7 @@ export type CreateReferenceInput = {
   issue?: string
   pages?: string
   publisher?: string
+  edition?: string
   itemType?: ReferenceItemType
   doi?: string
   pmid?: string

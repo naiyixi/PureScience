@@ -9,7 +9,8 @@ describe('agent framework registry', () => {
       'opencode',
       'codex',
       'codebuddy',
-      'hermes'
+      'hermes',
+      'deepseek-harness'
     ])
     expect(getAgentFramework('codex')).toMatchObject({
       displayName: 'Codex',

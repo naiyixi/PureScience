@@ -17,7 +17,8 @@ import type {
   InstallOpencodeRequest,
   Preflight,
   ValidateProviderResult,
-  InstallHermesRequest
+  InstallHermesRequest,
+  InstallDeepSeekHarnessRequest
 } from '../../shared/settings'
 import { isProviderUsableByFramework } from '../../shared/settings'
 import { isModelBridgeSupported } from '../../shared/provider-registry'
@@ -51,6 +52,7 @@ import {
   detectCodeBuddy,
   type CodeBuddyDetectDeps
 } from './codebuddy-detect'
+import { DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps, detectAgentCli } from './agent-cli-detect'
 import { createDefaultHermesDetectDeps, detectHermes, type HermesDetectDeps } from './hermes-detect'
 import {
   detectCodex,
@@ -108,6 +110,12 @@ const PREFLIGHT_SLOW_STEP_MS = 250
 const CODEX_INSTALL_TARGET: InstallTarget = {
   npmPackage: '@agentclientprotocol/codex-acp',
   // Codex exposes no supported shell installer; InstallCodexRequest cannot select this branch.
+  scriptUnix: ''
+}
+
+const DEEPSEEK_HARNESS_INSTALL_TARGET: InstallTarget = {
+  npmPackage: 'deepseek-harness-acp',
+  // npm-global only: the package is the server, there is no shell installer.
   scriptUnix: ''
 }
 
@@ -411,7 +419,8 @@ export class AgentRuntimeManager {
       opencodePathExists,
       codexPathExists,
       codebuddyPathExists,
-      hermesPathExists
+      hermesPathExists,
+      deepseekHarnessPathExists
     ] = await Promise.all([
       steps.step('probe-claude', async () =>
         settings.claude?.resolvedPath
@@ -436,6 +445,10 @@ export class AgentRuntimeManager {
         settings.hermesPath
           ? (await this.hermesDetectDeps.getVersion(settings.hermesPath)) !== undefined
           : false
+      ),
+      // pi-acp prints no version at all, so this one asks "is it still there" rather than "does it answer".
+      steps.step('probe-deepseek-harness', async () =>
+        settings.deepseekHarnessPath ? await this.pathExists(settings.deepseekHarnessPath) : false
       )
     ])
 
@@ -472,6 +485,7 @@ export class AgentRuntimeManager {
       codexPathExists,
       codebuddyPathExists,
       hermesPathExists,
+      deepseekHarnessPathExists,
       agentFrameworkId,
       isProviderKeyUsable: (provider) =>
         provider.id === activeProvider?.id && activeProviderKeyUsable,
@@ -594,6 +608,19 @@ export class AgentRuntimeManager {
     } else {
       const cached = (await this.repository.getSettings()).hermesPath
       if (cached && !(await this.pathExists(cached))) await this.repository.clearHermesInfo()
+    }
+  }
+
+  async detectDeepSeekHarness(): Promise<void> {
+    const detected = await detectAgentCli(DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps())
+
+    if (detected) {
+      await this.repository.setDeepSeekHarnessInfo(detected.resolvedPath, detected.version)
+    } else {
+      const cached = (await this.repository.getSettings()).deepseekHarnessPath
+      if (cached && !(await this.pathExists(cached))) {
+        await this.repository.clearDeepSeekHarnessInfo()
+      }
     }
   }
 
@@ -769,6 +796,47 @@ export class AgentRuntimeManager {
         }
       }
     }
+    return result
+  }
+
+  async installDeepSeekHarness(
+    request: InstallDeepSeekHarnessRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    const installId = `install-deepseek-harness-${Date.now()}-${this.allocateSettingsIdSequence()}`
+
+    // One source only, so the value is checked rather than switched on: anything else is a caller bug.
+    if (request.source !== 'npm') {
+      return {
+        installId,
+        ok: false,
+        error: `Unsupported DeepSeek Harness install source: ${request.source}`
+      }
+    }
+
+    const result = await runInstallWithFallback({
+      source: request.source,
+      installId,
+      onEvent,
+      installTarget: DEEPSEEK_HARNESS_INSTALL_TARGET,
+      // Same reasoning as CodeBuddy: the package is fetched from npm, and a blocked registry reads as
+      // "cannot download" rather than "slow" here.
+      registries: DEFAULT_REGISTRIES
+    })
+    if (result.ok) {
+      await this.detectDeepSeekHarness()
+      // npm can exit 0 and leave nothing runnable; the detector's answer is what the card will show anyway.
+      const detected = await detectAgentCli(DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps())
+      if (!detected) {
+        return {
+          ...result,
+          ok: false,
+          error:
+            "npm finished, but no runnable DeepSeek Harness ACP server was found afterwards. The install went to npm's global prefix (run `npm prefix -g` to see it) and the app probes that prefix, ~/.npm-global/bin, /opt/homebrew/bin and /usr/local/bin. Nothing was changed for you."
+        }
+      }
+    }
+
     return result
   }
 
@@ -976,6 +1044,19 @@ export class AgentRuntimeManager {
     if (!detected) {
       throw new Error(
         'Hermes executable not found. Install Hermes (pipx install hermes-agent) or set its path in settings.'
+      )
+    }
+
+    return detected.resolvedPath
+  }
+
+  async resolveDeepSeekHarnessExecutable(storedPath: string | undefined): Promise<string> {
+    if (storedPath && (await this.pathExists(storedPath))) return storedPath
+
+    const detected = await detectAgentCli(DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps())
+    if (!detected) {
+      throw new Error(
+        'DeepSeek Harness ACP server not found. Install it (npm i -g deepseek-harness-acp) or set its path in settings.'
       )
     }
 

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
@@ -1006,6 +1006,8 @@ describe('session persistence repository (per-session files)', () => {
     await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
       status: 'found',
       source: 'document',
+      // The extra byte is a size drift, and the line has to say so rather than only "document".
+      rejection: 'size-mismatch',
       authority: {
         updatedAt: 1_710_000_000_100,
         runtimeContext: { version: 1, revision: 3 },
@@ -1057,6 +1059,8 @@ describe('session persistence repository (per-session files)', () => {
     await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
       status: 'found',
       source: 'document',
+      // The entry's fingerprint matched but a field it carries failed the validators.
+      rejection: 'catalog-invalid',
       authority: {
         updatedAt: 1_710_000_000_100,
         runtimeContext: { version: 1, revision: 2 },
@@ -1064,6 +1068,73 @@ describe('session persistence repository (per-session files)', () => {
       }
     })
     expect(reads).toContain(documentPath)
+  })
+
+  // The slow-save line reports which side answered the authority question. `document` on its own cannot say
+  // whether the entry was absent, unreadable, from an older format, or describing bytes that were replaced —
+  // so each cause is named here, one test per state, and the line carries the name.
+  it('names an absent index entry instead of only reporting the document', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const summaryPath = join(root, 'sessions', 'project-a', 'session-1.json.summary.json')
+    await rm(summaryPath)
+
+    const lookup = await repository.loadSaveAuthority('project-a', 'session-1')
+    expect(lookup).toMatchObject({
+      status: 'found',
+      source: 'document',
+      rejection: 'summary-missing'
+    })
+  })
+
+  it('names an index entry it cannot parse instead of silently treating it as absent', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const summaryPath = join(root, 'sessions', 'project-a', 'session-1.json.summary.json')
+    await writeFile(summaryPath, '{"version":2,"catalog":', 'utf8')
+
+    const lookup = await repository.loadSaveAuthority('project-a', 'session-1')
+    expect(lookup).toMatchObject({
+      status: 'found',
+      source: 'document',
+      rejection: 'summary-unreadable'
+    })
+  })
+
+  it('names an index entry from an older format as a version mismatch', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const summaryPath = join(root, 'sessions', 'project-a', 'session-1.json.summary.json')
+    const summary = JSON.parse(await readFile(summaryPath, 'utf8')) as { version: number }
+    summary.version = 1
+    await writeFile(summaryPath, JSON.stringify(summary), 'utf8')
+
+    const lookup = await repository.loadSaveAuthority('project-a', 'session-1')
+    expect(lookup).toMatchObject({
+      status: 'found',
+      source: 'document',
+      rejection: 'version-mismatch'
+    })
+  })
+
+  it('names a document rewritten in place as an mtime mismatch, not a size one', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    // Same bytes, different stamp: the entry still describes the file's length but not its identity.
+    const stamp = new Date(Date.now() + 5_000)
+    await utimes(documentPath, stamp, stamp)
+
+    const lookup = await repository.loadSaveAuthority('project-a', 'session-1')
+    expect(lookup).toMatchObject({
+      status: 'found',
+      source: 'document',
+      rejection: 'mtime-mismatch'
+    })
   })
 
   it('carries no runtime context when the durable record has none', async () => {

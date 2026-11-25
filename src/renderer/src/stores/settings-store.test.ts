@@ -95,6 +95,7 @@ const snapshot = (providers: SettingsSnapshot['providers']): SettingsSnapshot =>
   opencode: {},
   codebuddy: {},
   hermes: {},
+  deepseekHarness: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,

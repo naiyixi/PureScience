@@ -290,6 +290,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.installClaude': 'settings:install-claude',
   'settings.installCodebuddy': 'settings:install-codebuddy',
   'settings.installCodex': 'settings:install-codex',
+  'settings.installDeepSeekHarness': 'settings:install-deepseek-harness',
   'settings.installHermes': 'settings:install-hermes',
   'settings.installOpencode': 'settings:install-opencode',
   'settings.isEncryptionAvailable': 'settings:encryption-available',

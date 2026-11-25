@@ -1569,6 +1569,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'Claude Agent を以下でインストールするか、手動でインストールして再検出してください。',
   'settings.agentCodeBuddyNotReady':
     'このフレームワークには CodeBuddy が必要です。@tencent-ai/codebuddy-code を手動でインストールして再検出してください。',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    '独立した ACP サーバー（npm パッケージ deepseek-harness-acp）経由で接続します。対話型 dsh は不要です。',
+  'settings.agentDeepSeekHarnessNotReady':
+    'DeepSeek Harness サーバーが見つかりません。インストール後に再検出してください。',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent は同梱の ACP サーバー（`hermes acp`）経由で接続します。pipx で導入すると本アプリが自動検出します。',
@@ -3195,7 +3200,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': 'ビジョンモデル',
   'settings.visionModelClear': 'クリア',
   'settings.visionModelDisabled': '無効（画像は変換されません）',
-  'settings.visionModelSavedNotOffered': '保存済みの視覚モデルは今回の候補にありません（プロバイダー情報が未更新の可能性があります）。クリアすると画像の翻訳は停止します。',
+  'settings.visionModelSavedNotOffered':
+    '保存済みの視覚モデルは今回の候補にありません（プロバイダー情報が未更新の可能性があります）。クリアすると画像の翻訳は停止します。',
   'settings.visionModelHint':
     'アクティブモデルが画像入力に対応していない場合、添付画像はこのモデルで解析され、テキストの証拠として会話に挿入されます。結果はキャッシュされるため、同じ画像が 2 回解析されることはありません。',
   'settings.waitingForAuthorization': '認可を待機中…',

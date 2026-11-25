@@ -1574,6 +1574,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Установите Claude Agent ниже либо установите его вручную и повторите обнаружение.',
   'settings.agentCodeBuddyNotReady':
     'Для этого фреймворка требуется CodeBuddy. Установите @tencent-ai/codebuddy-code вручную и повторите обнаружение.',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    'подключается через собственный ACP-сервер (npm-пакет deepseek-harness-acp); интерактивный dsh не нужен.',
+  'settings.agentDeepSeekHarnessNotReady':
+    'ACP-сервер DeepSeek Harness не найден. Установите его и повторите поиск.',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent подключается через собственный ACP-сервер (`hermes acp`); установите его через pipx, и приложение найдёт его автоматически.',
@@ -3198,7 +3203,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.visionModel': 'Модель для изображений',
   'settings.visionModelClear': 'Очистить',
   'settings.visionModelDisabled': 'Отключено (изображения не переводятся)',
-  'settings.visionModelSavedNotOffered': 'Сохранённая модель зрения отсутствует в этом списке (возможно, данные поставщика ещё не обновлены). Очистка отключает перевод изображений.',
+  'settings.visionModelSavedNotOffered':
+    'Сохранённая модель зрения отсутствует в этом списке (возможно, данные поставщика ещё не обновлены). Очистка отключает перевод изображений.',
   'settings.visionModelHint':
     'Когда активная модель не принимает изображения, прикреплённые изображения анализирует эта модель, а результат вставляется в диалог как текстовое свидетельство. Результаты кэшируются, поэтому одно и то же изображение не анализируется дважды.',
   'settings.waitingForAuthorization': 'Ожидание авторизации…',

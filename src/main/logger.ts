@@ -600,6 +600,13 @@ const diagnosticErrorFields = (error: unknown): { errorCategory: string } => {
     }
     if (typeof code === 'string') {
       if (code === 'ENOENT' || code === 'ENOTDIR') return { errorCategory: 'not-found' }
+      // A dynamic import whose chunk file is gone (packaged build with a missing/partial artifact set)
+      // reports MODULE_NOT_FOUND, not ENOENT — measured on a probe build with one chunk moved away.
+      // Without this the record reads `error`, which is the same category as a plain thrown Error and
+      // hides the one fact that names the cause.
+      if (code === 'MODULE_NOT_FOUND' || code === 'ERR_MODULE_NOT_FOUND') {
+        return { errorCategory: 'not-found' }
+      }
       if (code === 'EACCES' || code === 'EPERM') return { errorCategory: 'permission' }
       if (code === 'ETIMEDOUT' || code === 'ESOCKETTIMEDOUT') {
         return { errorCategory: 'timeout' }

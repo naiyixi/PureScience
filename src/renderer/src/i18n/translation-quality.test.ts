@@ -58,6 +58,8 @@ const KEPT_IN_ENGLISH = new Set<string>([
   'Qwen',
   'Kimi',
   'CodeBuddy',
+  // 2026-11：框架卡片名与 Hermes 同类（产品名，逐语种保持同一写法）
+  'DeepSeek Harness',
   // 产品名：Hermes Agent 经自带 ACP 服务接入，名字就是产品名，不译
   'Hermes',
   // 技术/格式名

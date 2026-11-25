@@ -52,6 +52,7 @@ export type RuntimeSetupActions = {
   installCodex: (source?: CodexInstallSource) => Promise<ClaudeInstallResult>
   installCodebuddy: () => Promise<ClaudeInstallResult>
   installHermes: () => Promise<ClaudeInstallResult>
+  installDeepSeekHarness: () => Promise<ClaudeInstallResult>
   uninstallClaude: () => Promise<void>
   uninstallOpencode: () => Promise<void>
   uninstallCodex: () => Promise<void>
@@ -89,6 +90,7 @@ type RuntimeSetupCommands = Pick<
   | 'installCodex'
   | 'installCodebuddy'
   | 'installHermes'
+  | 'installDeepSeekHarness'
   | 'uninstallClaude'
   | 'uninstallOpencode'
   | 'uninstallCodex'
@@ -126,6 +128,7 @@ const createInitialPreflight = (): Preflight => ({
   codexReady: false,
   codebuddyReady: false,
   hermesReady: false,
+  deepseekHarnessReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
   activeProviderReady: false
@@ -149,7 +152,8 @@ export const createInitialRuntimeSetupState = (): RuntimeSetupState => ({
     opencode: createInitialRuntimeInstallState(),
     codex: createInitialRuntimeInstallState(),
     codebuddy: createInitialRuntimeInstallState(),
-    hermes: createInitialRuntimeInstallState()
+    hermes: createInitialRuntimeInstallState(),
+    'deepseek-harness': createInitialRuntimeInstallState()
   }
 })
 
@@ -404,6 +408,13 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
       commands.installHermes({ source: 'pipx' })
     ),
 
+  // DeepSeek Harness ships its ACP server on npm; the interactive dsh CLI is a different package and is not
+  // needed to drive it.
+  installDeepSeekHarness: () =>
+    runRuntimeInstall(set, get, getCommands, reconcileSnapshot, 'deepseek-harness', (commands) =>
+      commands.installDeepSeekHarness({ source: 'npm' })
+    ),
+
   repairRuntime: async (framework) => {
     const commands = getCommands()
     switch (framework) {
@@ -430,6 +441,17 @@ export const createRuntimeSetupSlice = <Store extends RuntimeSetupHost>({
         )
       // Hermes is a Python package this version only detects; there is no managed install to repair, so
       // a repair is refused by name rather than reported as done.
+      case 'deepseek-harness':
+        // No uninstall channel exists for it, so repair means re-running the install and letting the
+        // detector decide what is really there afterwards.
+        return runRuntimeInstall(
+          set,
+          get,
+          getCommands,
+          reconcileSnapshot,
+          'deepseek-harness',
+          (port) => port.installDeepSeekHarness({ source: 'npm' })
+        )
       case 'hermes':
         throw new Error(
           'Hermes is detected from PATH in this version; install or upgrade it with pipx and re-detect.'

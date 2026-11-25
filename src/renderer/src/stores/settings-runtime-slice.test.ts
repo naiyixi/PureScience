@@ -34,6 +34,7 @@ type RuntimeCommands = Pick<
   | 'installOpencode'
   | 'installCodebuddy'
   | 'installHermes'
+  | 'installDeepSeekHarness'
   | 'installCodex'
   | 'uninstallClaude'
   | 'uninstallOpencode'
@@ -63,6 +64,7 @@ const snapshot = (): SettingsSnapshot => ({
   opencode: {},
   codebuddy: {},
   hermes: {},
+  deepseekHarness: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
@@ -78,7 +80,7 @@ const preflight = (): Preflight => ({
   claudeReady: false,
   opencodeReady: false,
   codebuddyReady: false,
-  hermesReady: false,
+  hermesReady: false, deepseekHarnessReady: false,
   codexReady: false,
   agentFrameworkId: 'claude-code',
   agentReady: false,
@@ -128,6 +130,7 @@ const createCommands = (): RuntimeCommandMocks => ({
   installCodex: vi.fn().mockResolvedValue({ installId: 'codex-1', ok: true }),
   installCodebuddy: vi.fn().mockResolvedValue({ installId: 'codebuddy-1', ok: true }),
   installHermes: vi.fn(),
+  installDeepSeekHarness: vi.fn(),
   uninstallClaude: vi.fn().mockResolvedValue(snapshot()),
   uninstallOpencode: vi.fn().mockResolvedValue(snapshot()),
   uninstallCodex: vi.fn().mockResolvedValue(snapshot()),

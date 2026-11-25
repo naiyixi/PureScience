@@ -30,6 +30,7 @@ const run = (overrides: Partial<PreflightInput> = {}): ReturnType<typeof compute
     codexPathExists: false,
     codebuddyPathExists: false,
     hermesPathExists: false,
+    deepseekHarnessPathExists: false,
     agentFrameworkId: 'claude-code',
     isProviderKeyUsable: alwaysUsable,
     activeProviderCompatible: true,
@@ -44,6 +45,7 @@ describe('computePreflight', () => {
       codexReady: false,
       codebuddyReady: false,
       hermesReady: false,
+      deepseekHarnessReady: false,
       agentFrameworkId: 'claude-code',
       agentReady: true,
       activeProviderReady: true

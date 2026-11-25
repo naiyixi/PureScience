@@ -234,6 +234,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
     resolveClaudeExecutable: vi.fn(async () => '/runtime/claude'),
     resolveCodebuddyExecutable: vi.fn(async () => '/runtime/codebuddy'),
     resolveHermesExecutable: vi.fn(async () => '/runtime/hermes'),
+  resolveDeepSeekHarnessExecutable: vi.fn(async () => '/runtime/deepseek-harness'),
     resolveOpencodeExecutable: vi.fn(async () => '/runtime/opencode'),
     resolveCodexExecutable: vi.fn(async () => '/runtime/codex-acp'),
     probeCodexNativeVersion: vi.fn(async () => '0.144.6'),
@@ -1184,7 +1185,11 @@ describe('AgentBackendResolver runtime delegation', () => {
     { frameworkId: 'codebuddy' as const, executableMethod: 'resolveCodebuddyExecutable' as const },
     // Same regression class for the fifth framework: hermes must resolve its own binary, never fall
     // through to opencode's resolver.
-    { frameworkId: 'hermes' as const, executableMethod: 'resolveHermesExecutable' as const }
+    { frameworkId: 'hermes' as const, executableMethod: 'resolveHermesExecutable' as const },
+    {
+      frameworkId: 'deepseek-harness' as const,
+      executableMethod: 'resolveDeepSeekHarnessExecutable' as const
+    }
   ])('delegates $frameworkId preparation through the S5a runtime port', async (testCase) => {
     const harness = makeHarness()
 

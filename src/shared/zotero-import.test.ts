@@ -33,10 +33,7 @@ const exportText = JSON.stringify([
     id: 'ABCD1234',
     type: 'article-journal',
     title: 'Biased agonism at the GPCR interface',
-    author: [
-      { family: 'Chen', given: 'Wei' },
-      { literal: 'The Consortium' }
-    ],
+    author: [{ family: 'Chen', given: 'Wei' }, { literal: 'The Consortium' }],
     'container-title': 'Nature',
     issued: { 'date-parts': [[2023, 4, 2]] },
     volume: '615',
@@ -53,6 +50,7 @@ const exportText = JSON.stringify([
     title: 'Statistical mechanics of binding',
     author: [{ family: 'Park', given: 'Min' }],
     publisher: 'Cold Spring Harbor Press',
+    edition: '2nd',
     issued: { literal: '2019' }
   },
   { id: 'MISSING', type: 'article-journal', DOI: '10.1000/no-title' },
@@ -93,6 +91,8 @@ describe('planZoteroImport', () => {
     expect(book?.input.venue).toBe('Cold Spring Harbor Press')
     expect(book?.input.year).toBe(2019)
     expect(book?.input.itemType).toBe('book')
+    // The edition is kept exactly as the export wrote it: "2nd" stays "2nd", never normalized to "2".
+    expect(book?.input.edition).toBe('2nd')
   })
 
   it('refuses rather than repairs: no title, not an item, and the duplicate inside the export itself', () => {
@@ -108,9 +108,7 @@ describe('planZoteroImport', () => {
   })
 
   it('treats a DOI the project already holds as a duplicate, whatever the URL prefix or case', () => {
-    const plan = planZoteroImport(exportText, [
-      existing({ doi: '10.1038/s41586-023-0001-2' })
-    ])
+    const plan = planZoteroImport(exportText, [existing({ doi: '10.1038/s41586-023-0001-2' })])
     if ('error' in plan) throw new Error(plan.error)
 
     expect(plan.records.map((record) => record.input.title)).toEqual([

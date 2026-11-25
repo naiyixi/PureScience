@@ -574,6 +574,48 @@ describe('SessionPersistenceCoordinator', () => {
     const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, unknown>]
     expect(message).toBe('session save was slow')
     expect(fields.authoritySource).toBe('index')
+    // Nothing was refused, so no reason is printed: an absent field must not read as a cause.
+    expect(fields.authorityRejection).toBeUndefined()
+  })
+
+  it('names why the index could not answer when the document had to', async () => {
+    const repository = createSessionRepository({
+      loadSaveAuthority: vi.fn(async () => ({
+        status: 'found' as const,
+        source: 'document' as const,
+        rejection: 'mtime-mismatch' as const,
+        authority: { updatedAt: 1 }
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+    const clock = vi.spyOn(Date, 'now')
+    try {
+      let now = 2_000_000
+      clock.mockImplementation(() => now)
+      const pending = coordinator.saveSession(createSession({ title: 'Slow document' }))
+      now += 5_000
+      await pending
+    } finally {
+      clock.mockRestore()
+    }
+
+    // `document` alone reads the same for five different causes; the name is what tells the next installed
+    // reading which one to fix.
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, unknown>]
+    expect(message).toBe('session save was slow')
+    expect(fields.authoritySource).toBe('document')
+    expect(fields.authorityRejection).toBe('mtime-mismatch')
   })
 
   it('preserves main-owned archive state on a stale whole-session save', async () => {

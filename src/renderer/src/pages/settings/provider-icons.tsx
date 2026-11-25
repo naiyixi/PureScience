@@ -37,6 +37,20 @@ export const AgentFrameworkIcon = ({
   if (frameworkId === 'opencode') {
     return <OpenCode size={size} className={cn('text-foreground', className)} />
   }
+  if (frameworkId === 'deepseek-harness') {
+    // Own mark: two stacked bars feeding a single node — a harness, not a brand logo.
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none">
+        <path
+          d="M6 6h6M6 11h6M6 16h4"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <circle cx="17" cy="11" r="3" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    )
+  }
   if (frameworkId === 'hermes') {
     // Own minimal mark (a travelling dot on a track), not a borrowed brand logo.
     return (

@@ -69,7 +69,8 @@ import type {
   StoredCredential,
   EgressSettings,
   ExportAuthorKind,
-  InstallHermesRequest
+  InstallHermesRequest,
+  InstallDeepSeekHarnessRequest
 } from '../../shared/settings'
 // A value, not a type: it decides whether a provider may be used at all.
 import { providerValidationFailed } from '../../shared/settings'
@@ -434,6 +435,10 @@ class SettingsService {
       hermes: {
         resolvedPath: settings.hermesPath,
         version: settings.hermesVersion
+      },
+      deepseekHarness: {
+        resolvedPath: settings.deepseekHarnessPath,
+        version: settings.deepseekHarnessVersion
       },
       codex: {
         resolvedPath: settings.codex?.resolvedPath,
@@ -1398,6 +1403,11 @@ class SettingsService {
     return this.getSettingsView()
   }
 
+  async detectDeepSeekHarness(): Promise<SettingsSnapshot> {
+    await this.runtimeManager.detectDeepSeekHarness()
+    return this.getSettingsView()
+  }
+
   async detectCodebuddy(): Promise<SettingsSnapshot> {
     await this.runtimeManager.detectCodebuddy()
     return this.getSettingsView()
@@ -1670,6 +1680,13 @@ class SettingsService {
     onEvent: (event: ClaudeInstallEvent) => void
   ): Promise<ClaudeInstallResult> {
     return this.runtimeManager.installHermes(request, onEvent)
+  }
+
+  async installDeepSeekHarness(
+    request: InstallDeepSeekHarnessRequest,
+    onEvent: (event: ClaudeInstallEvent) => void
+  ): Promise<ClaudeInstallResult> {
+    return this.runtimeManager.installDeepSeekHarness(request, onEvent)
   }
 
   async installCodebuddy(

@@ -102,6 +102,7 @@ type SettingsStoreData = RuntimeSetupState &
     opencode: OpencodeInfo
     codebuddy: OpencodeInfo
     hermes: OpencodeInfo
+    deepseekHarness: OpencodeInfo
     codex: CodexInfo
     // Whether each framework's detected runtime is the app-managed install (only these can be uninstalled
     // in-app). Mirrored from the main-process snapshot; a PATH/npm binary reads false.
@@ -173,6 +174,7 @@ export const createInitialSettingsState = (): SettingsStoreData => ({
   opencode: {},
   codebuddy: {},
   hermes: {},
+  deepseekHarness: {},
   codex: {},
   claudeManaged: false,
   opencodeManaged: false,
@@ -228,6 +230,7 @@ const applySnapshot = (snapshot: SettingsSnapshot): Partial<SettingsStoreData> =
   opencode: snapshot.opencode,
   codebuddy: snapshot.codebuddy ?? {},
   hermes: snapshot.hermes ?? {},
+  deepseekHarness: snapshot.deepseekHarness ?? {},
   codex: snapshot.codex ?? {},
   claudeManaged: snapshot.claudeManaged,
   opencodeManaged: snapshot.opencodeManaged,

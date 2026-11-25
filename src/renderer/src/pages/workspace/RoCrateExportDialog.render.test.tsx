@@ -85,7 +85,14 @@ describe('RoCrateExportDialog', () => {
       metadataPath: '/tmp/out/assay-ro-crate/ro-crate-metadata.json',
       fileCount: 3,
       totalBytes: 4096,
-      validation: { passed: 30, failed: 0 },
+      validation: {
+        passed: 30,
+        failed: 0,
+        declaredProfiles: [
+          { id: 'https://w3id.org/ro/crate/1.1', checkedAgainst: 'ro-crate-1.1' },
+          { id: 'https://w3id.org/ro/wfrun/process/0.5', checkedAgainst: null }
+        ]
+      },
       refusedCount: 1,
       refused: [
         {
@@ -113,6 +120,14 @@ describe('RoCrateExportDialog', () => {
     expect(container.querySelector('[data-testid="ro-crate-export-validation"]')?.textContent).toBe(
       'RO-Crate verification passed: 30 checks.'
     )
+    // …and which of the declared profiles those 30 checks covered. A crate that records runs declares the
+    // process profile too, and naming only the count would read as coverage of both.
+    const profiles = container.querySelector('[data-testid="ro-crate-export-declared-profiles"]')
+    expect(profiles?.querySelectorAll('li')).toHaveLength(2)
+    expect(profiles?.textContent).toContain('https://w3id.org/ro/crate/1.1')
+    expect(profiles?.textContent).toContain('checked against RO-Crate 1.1')
+    expect(profiles?.textContent).toContain('https://w3id.org/ro/wfrun/process/0.5')
+    expect(profiles?.textContent).toContain('not checked here; this app judges RO-Crate 1.1 only')
     // A refused version is named as a count, so a smaller crate than expected is never silent.
     expect(container.querySelector('[data-testid="ro-crate-export-refused"]')?.textContent).toBe(
       'Refused 1 published versions whose bytes no longer match the recorded checksum.'
@@ -270,6 +285,9 @@ describe('RoCrateExportDialog', () => {
         ok: true,
         passed: 2,
         failed: 0,
+        // A crate another writer produced: readable here, but its profile is not one this app implements,
+        // so the panel must say "not checked" rather than let 2/2 look like coverage of it.
+        declaredProfiles: [{ id: 'https://w3id.org/ro/crate/1.3', checkedAgainst: null }],
         assertions: [
           { id: 'graph-flattened-entries', level: 'spec-must', requirement: '…', ok: true },
           { id: 'file-sha256-recorded', level: 'export-contract', requirement: '…', ok: true }
@@ -289,6 +307,9 @@ describe('RoCrateExportDialog', () => {
     expect(
       container.querySelector('[data-testid="ro-crate-inspect-metadata-path"]')?.textContent
     ).toBe('/tmp/foreign-crate/ro-crate-metadata.json')
+    const declared = container.querySelector('[data-testid="ro-crate-inspect-declared-profiles"]')
+    expect(declared?.textContent).toContain('https://w3id.org/ro/crate/1.3')
+    expect(declared?.textContent).toContain('not checked here; this app judges RO-Crate 1.1 only')
     expect(
       container.querySelector('[data-testid="ro-crate-inspect-all-passed"]')?.textContent
     ).toBe('Every check this app can apply passed.')
@@ -304,6 +325,8 @@ describe('RoCrateExportDialog', () => {
         ok: false,
         passed: 1,
         failed: 2,
+        // Nothing declared is a real state, and it must not be shown as "not checked" rows.
+        declaredProfiles: [],
         assertions: [
           { id: 'graph-flattened-entries', level: 'spec-must', requirement: '…', ok: true },
           {
@@ -340,6 +363,10 @@ describe('RoCrateExportDialog', () => {
     expect(list?.textContent).toContain('expected by this app of its own crates')
     // A report with failures is not a success: the all-passed line has no business on screen.
     expect(container.querySelector('[data-testid="ro-crate-inspect-all-passed"]')).toBeNull()
+    // An empty declaration is stated as empty — not left blank, and not turned into a fake row.
+    expect(
+      container.querySelector('[data-testid="ro-crate-inspect-declared-profiles"]')?.textContent
+    ).toContain('This crate declares no profile.')
   })
 
   it.each([

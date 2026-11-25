@@ -31,7 +31,8 @@ import type {
   ProxySettings,
   CreateExternalComputeEndpointRequest,
   ValidateProviderRequest,
-  InstallHermesRequest
+  InstallHermesRequest,
+  InstallDeepSeekHarnessRequest
 } from '../../shared/settings'
 import type { EgressApprovalRespondRequest } from '../../shared/egress'
 import type {
@@ -105,6 +106,7 @@ type CoreSettingsCommandStore = Pick<
   | 'getSkillDetail'
   | 'installClaude'
   | 'installHermes'
+  | 'installDeepSeekHarness'
   | 'installCodebuddy'
   | 'installCodex'
   | 'installOpencode'
@@ -276,6 +278,11 @@ const settingsCoreApplicationCommands = Object.freeze({
     readonly [request: InstallCodebuddyRequest],
     StoreResult<'installCodebuddy'>
   >('settings:install-codebuddy'),
+  installDeepSeekHarness: defineApplicationCommand<
+    'settings:install-deepseek-harness',
+    readonly [InstallDeepSeekHarnessRequest],
+    StoreResult<'installDeepSeekHarness'>
+  >('settings:install-deepseek-harness'),
   installHermes: defineApplicationCommand<
     'settings:install-hermes',
     readonly [request: InstallHermesRequest],
@@ -538,6 +545,7 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.getSettings,
   settingsCoreApplicationCommands.getSkillDetail,
   settingsCoreApplicationCommands.installClaude,
+  settingsCoreApplicationCommands.installDeepSeekHarness,
   settingsCoreApplicationCommands.installCodebuddy,
   settingsCoreApplicationCommands.installCodex,
   settingsCoreApplicationCommands.installHermes,
@@ -713,6 +721,10 @@ const registerCoreSettingsApplicationCommands = (
       'settings:install-codebuddy': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-codebuddy')
         return dependencies.service.installCodebuddy(args[0], dependencies.emitInstallEvent)
+      },
+      'settings:install-deepseek-harness': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:install-deepseek-harness')
+        return dependencies.service.installDeepSeekHarness(args[0], dependencies.emitInstallEvent)
       },
       'settings:install-hermes': ({ args, callerContext }) => {
         requireLocalCaller(callerContext, 'settings:install-hermes')

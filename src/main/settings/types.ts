@@ -198,6 +198,9 @@ export type StoredSettings = {
   // Detected Hermes executable path + reported version. Hermes ships its own ACP server, so there is no
   // adapter to version-gate; the version is shown so a too-old build is visible before a turn fails.
   hermesPath?: string
+  // Detected DeepSeek Harness ACP server path + version (npm console script).
+  deepseekHarnessPath?: string
+  deepseekHarnessVersion?: string
   hermesVersion?: string
   activeProviderId?: string
   // Last explicitly configured Claude subscription mode. Kept separately from activeProviderId so

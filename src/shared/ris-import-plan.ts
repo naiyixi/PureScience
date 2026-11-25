@@ -169,6 +169,7 @@ export const planParsedImport = (
         issue: item.issue,
         pages: item.pages,
         publisher: item.publisher,
+        edition: item.edition,
         itemType: item.itemType === undefined ? undefined : RIS_TO_REFERENCE_TYPE[item.itemType],
         doi: item.doi,
         pmid: item.pmid,

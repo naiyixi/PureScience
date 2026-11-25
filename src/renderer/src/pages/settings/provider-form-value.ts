@@ -106,6 +106,9 @@ export const defaultProviderKindKey = (
     case 'hermes':
       // Hermes reaches OpenAI-compatible /v1/chat/completions endpoints (model.provider: 'custom').
       return 'official:openai'
+    case 'deepseek-harness':
+      // Its DEEPSEEK_BASE_URL is an OpenAI-compatible endpoint.
+      return 'official:deepseek'
     default: {
       // The never assignment keeps the switch exhaustive at compile time. Persisted state could
       // still hold a stale value outside the union; this runs during render, so degrade to the

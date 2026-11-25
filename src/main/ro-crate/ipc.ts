@@ -257,7 +257,11 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
           metadataPath: result.metadataPath,
           fileCount: result.files.length,
           totalBytes: result.files.reduce((total, file) => total + file.sizeBytes, 0),
-          validation: { passed: result.validation.passed, failed: result.validation.failed },
+          validation: {
+            passed: result.validation.passed,
+            failed: result.validation.failed,
+            declaredProfiles: result.validation.declaredProfiles
+          },
           refusedCount: refused.length,
           refused
         }

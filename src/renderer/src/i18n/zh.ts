@@ -1549,7 +1549,8 @@ export const zh = {
   'settings.activeModelHint': '驱动新智能体会话的模型。',
   'settings.visionModel': '视觉模型',
   'settings.visionModelDisabled': '禁用（不翻译图片）',
-  'settings.visionModelSavedNotOffered': '已保存的视觉模型不在这次的候选里（供应商信息可能还没刷新）。清空即停止图片翻译。',
+  'settings.visionModelSavedNotOffered':
+    '已保存的视觉模型不在这次的候选里（供应商信息可能还没刷新）。清空即停止图片翻译。',
   'settings.visionModelClear': '清除',
   'settings.visionModelHint':
     '当主模型不支持图片输入时，附加的图片会交给这个模型分析，并以文本证据的形式注入会话。分析结果会被缓存，同一张图不会重复付费。',
@@ -2231,6 +2232,11 @@ export const zh = {
   'settings.agentCodeBuddyName': 'CodeBuddy',
   'settings.agentCodeBuddyDesc': '腾讯的编码智能体，通过 OpenAI 兼容端点连接。',
   'settings.agentCodeBuddyNotReady': '尚未检测到 CodeBuddy。',
+  'settings.agentDeepSeekHarnessName': 'DeepSeek Harness',
+  'settings.agentDeepSeekHarnessDesc':
+    '以独立的 ACP 服务（npm 包 deepseek-harness-acp）接入，不需要另外安装交互式 dsh。',
+  'settings.agentDeepSeekHarnessNotReady':
+    '未检测到 DeepSeek Harness 服务。安装后重新检测即可接入。',
   'settings.agentHermesName': 'Hermes',
   'settings.agentHermesDesc':
     'Hermes Agent 通过自带的 ACP 服务接入（`hermes acp`），由 pipx 安装、本应用自动探测。',

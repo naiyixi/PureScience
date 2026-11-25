@@ -232,7 +232,7 @@ const GROUP_COUNT = 41
 // +2 for the RO-Crate export attribution (4.3: settings:set-export-author / settings:set-export-license):
 // both are ordinary local settings writes, counted on the internal and local Web surfaces and refused
 // on the remote one — nothing about an author name is a remote capability.
-const INTERNAL_COMMAND_COUNT = 385
+const INTERNAL_COMMAND_COUNT = 386
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -256,7 +256,7 @@ const INTERNAL_COMMAND_COUNT = 385
 // +1 for the runtime repair (settings:repair-runtime, LOCAL): it rides the same settings channel as the
 // uninstall commands and is not reachable from the remote surface.
 // 4.3: +2 local Web commands (settings:set-export-author / set-export-license).
-const LOCAL_WEB_COMMAND_COUNT = 383
+const LOCAL_WEB_COMMAND_COUNT = 384
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 // 236 with the session run-data measurement (sessions:read-notebook-usage), which is mapped the same way.
@@ -284,7 +284,7 @@ const REMOTE_WEB_COMMAND_COUNT = 239
 // one. An import also writes files, which a paired browser must never be able to ask for.
 
 // 4.3: +2 fail-closed rejections — the export attribution writes are LOCAL, so a remote caller is refused.
-const REMOTE_REJECTED_COMMAND_COUNT = 144
+const REMOTE_REJECTED_COMMAND_COUNT = 145
 // +2 for the portable-session package: the command line exports and imports through the same narrow
 // Task view the rest of its machine-readable work uses, so these two land here as well as on the local
 // Web profile. They are LOCAL, so they add nothing to the remote dispatch.

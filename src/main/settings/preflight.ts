@@ -20,6 +20,8 @@ export type PreflightInput = {
   codebuddyPathExists: boolean
   // Whether the recorded Hermes executable still reports a version.
   hermesPathExists: boolean
+  // Whether the recorded DeepSeek Harness ACP server still reports a version.
+  deepseekHarnessPathExists: boolean
   // The selected framework, resolved (default applied) by the caller.
   agentFrameworkId: AgentFrameworkId
   // Whether a provider's credentials are usable (codex subscriptions always; custom must decrypt).
@@ -39,6 +41,7 @@ const computePreflight = ({
   codexPathExists,
   codebuddyPathExists,
   hermesPathExists,
+  deepseekHarnessPathExists,
   agentFrameworkId,
   isProviderKeyUsable,
   activeProviderCompatible
@@ -48,12 +51,14 @@ const computePreflight = ({
   const codexReady = Boolean(settings.codex?.resolvedPath) && codexPathExists
   const codebuddyReady = Boolean(settings.codebuddyPath) && codebuddyPathExists
   const hermesReady = Boolean(settings.hermesPath) && hermesPathExists
+  const deepseekHarnessReady = Boolean(settings.deepseekHarnessPath) && deepseekHarnessPathExists
   const readyByFramework: Record<AgentFrameworkId, boolean> = {
     'claude-code': claudeReady,
     opencode: opencodeReady,
     codex: codexReady,
     codebuddy: codebuddyReady,
-    hermes: hermesReady
+    hermes: hermesReady,
+    'deepseek-harness': deepseekHarnessReady
   }
   const agentReady = readyByFramework[agentFrameworkId]
 
@@ -77,6 +82,7 @@ const computePreflight = ({
     codexReady,
     codebuddyReady,
     hermesReady,
+    deepseekHarnessReady,
     agentFrameworkId,
     agentReady,
     activeProviderReady

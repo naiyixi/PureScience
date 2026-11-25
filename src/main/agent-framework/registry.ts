@@ -1,6 +1,7 @@
 import { claudeCodeFramework } from './claude-code'
 import { codeBuddyFramework } from './codebuddy'
 import { codexFramework } from './codex'
+import { deepSeekHarnessFramework } from './deepseek-harness'
 import { hermesFramework } from './hermes'
 import { opencodeFramework } from './opencode'
 import type { AgentFramework, AgentFrameworkId } from './types'
@@ -10,7 +11,8 @@ const FRAMEWORKS: Record<AgentFrameworkId, AgentFramework> = {
   opencode: opencodeFramework,
   codex: codexFramework,
   codebuddy: codeBuddyFramework,
-  hermes: hermesFramework
+  hermes: hermesFramework,
+  'deepseek-harness': deepSeekHarnessFramework
 }
 
 // The default framework until framework selection is wired into settings.

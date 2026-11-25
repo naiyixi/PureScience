@@ -8,6 +8,8 @@
 //     validation verdict the writer already computed against the bytes it wrote), so the window reports
 //     a result instead of a promise.
 
+import type { RoCrateDeclaredProfile } from './ro-crate'
+
 export const RO_CRATE_EXPORT_CHANNEL = 'ro-crate:export-project'
 
 /** The software identity every crate records as its producer. */
@@ -56,8 +58,17 @@ export type RoCrateExportSuccess = {
   fileCount: number
   /** Total byte length of those payload files, as re-measured after writing. */
   totalBytes: number
-  /** The writer's own verdict, from the same assertions the crate is validated against. */
-  validation: Readonly<{ passed: number; failed: number }>
+  /**
+   * The writer's own verdict, from the same assertions the crate is validated against — plus the profiles
+   * the crate it just wrote declares. The assertions implement RO-Crate 1.1 and nothing else, so when the
+   * crate also declares a workflow profile (it does once it records runs) the panel has to name which of
+   * the two was actually judged; the counts alone would read as coverage of both.
+   */
+  validation: Readonly<{
+    passed: number
+    failed: number
+    declaredProfiles: readonly RoCrateDeclaredProfile[]
+  }>
   /** Published Versions the writer refused because their bytes no longer hashed to the record. */
   refusedCount: number
   refused: readonly RoCrateExportRefusedVersion[]
