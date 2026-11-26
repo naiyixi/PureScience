@@ -770,7 +770,11 @@ workflow（diff 可见），而不是悄悄加个 flag。
 | 指向 GitHub / Discord / X 的按钮 | 全部摘掉，指向官网；报错上报链接同改 | 设置页星标/Discord/X 三处删除；`APP.links` 只剩 `website/support/releaseNotes` |
 | 小字说明过多 | 两条规则写进 `docs/development.md` 与 `.en.md`：更新说明只写读者看得见的变化；让布局解释，不加小字说明 | — |
 | CodeBuddy 只能手动安装 | 卡片早就有 npm 源，`onInstall` 对非字面量 `'npm'` 的源静默 `return undefined` ⇒ 按钮点了什么都不发生。改成有源就装 | `settings` 733 passed |
-| Pi / Hermes / DeepSeek Harness 接入 | **未开工**（立案）：`AgentFrameworkId` 是贯穿探测/解析/持久化/安装/UI/e2e 的联合类型，必须真跑 ACP 握手才算完成 | `docs/plan-2026-11-23-agent-catalog.md`（三者的安装与 ACP 形态已核实） |
+| Pi / Hermes / DeepSeek Harness 接入 | **两家已接入，只剩 Pi（2026-11-27 就地更正；旧口径「未开工」是 11-23 写的，已过期）**：DeepSeek Harness 是第六个后端（`f4d4199b`，探测→卡片→安装全链，`AgentFrameworkId` 与 `AGENT_FRAMEWORK_IDS` 均已含 `deepseek-harness`），Hermes 是第五个（`7ebc2ab7` 接入 + `409bc46f` 探测 + `35c81794` 卡片下载入口；pipx 装法）。**Pi 仍未开工**：`pi-acp` 是社区适配器（不是官方 ACP 服务），`initialize` 回包里带终端登录 `authMethods` ⇒ 界面必须如实提示「首次需在终端登录」，不能写成一键可用 | 两家的真进程握手读数：`docs/evidence/2026-11-24-hermes-acp-handshake.md`、`docs/evidence/2026-11-24-deepseek-harness-and-pi-acp-handshake.md`（Pi 的握手也在后者里，缺的只有接入）；形态与安装源：`docs/plan-2026-11-23-agent-catalog.md` |
 
-P0 侧未关闭：`artifact-replay.spec.ts:58`、`notebook-python-provisioned-runtime.spec.ts:34` 在 `45166052550`
-（head `e89a79de`）仍红；`connector-custom-detail.spec.ts:16`、`storage-migration.spec.ts:74` 新出现（待判 flaky 与否）。
+P0 侧（2026-11-27 现取，替换掉旧的那批「未关闭」）：Nightly `45891157354`（head `a4b5a985`，认证作业
+`140161529229`）**139 支 spec ⇒ 127 passed / 12 skipped / 0 failed / 0 flaky（50.1m）**。旧清单点名的四支
+在这一趟里都有自己的一行：`artifact-replay.spec.ts`（6/139）、`connector-custom-detail.spec.ts`（11/139）、
+`notebook-python-provisioned-runtime.spec.ts`（58/139）、`storage-migration-unfinished.spec.ts`（127、128/139）
+—— 它们当时是**间歇红**，不是一直红。另：旧清单里的 `storage-migration.spec.ts:74` 这个行号已不存在，
+该 spec 现在是 `:64` 与 `:109` 两支用例。

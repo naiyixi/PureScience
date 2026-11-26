@@ -1,5 +1,78 @@
 # 下一阶段队列与轮次约定（2026-10-03 起用；每轮开工前先读这一份）
 
+## 二百二十、本轮追加（执行器，2026-11-27 07:5x–）—— 卡住的启动那几行标记现在有人读它：失败句直接点名最后一步；顺手按现取读数改掉两处过期结论
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮 `origin/main == 3d154926`；它的上一笔 `a4b5a985` 上 `Nightly` / `Windows Full Test` 双 `success`，
+  `gh run list` 无在飞车道 ⇒ **本次推送不取消任何人的判决**。
+- 主检出的当前分支是 `probe/upgrade-instrument-and-sweep`（11-24 的旧线）、106 个未提交路径是会话在制
+  ⇒ **一个字节没碰**；本轮改动全部落在隔离工作树 `/tmp/ps-r216`（基于 `3d154926`），从那里推 `HEAD:main`。
+- 防重做：上一轮 `a4b5a985` 已交付标记本体（`src/main/diagnostics/startup-step.ts` 五点记录 + `writeSync(1,·)`）
+  与它的仪器自检；**本轮不重做标记**，只补「谁读它」这一半。
+- B 段仍耗尽（A7、S3 完成；M2 卡产品决定）⇒ 按排期纪律取自己具名的未闭项，不新造大件。
+
+### 一、交付：`[startup-step]` 这几行现在由失败句自己点名
+
+标记是**同步直写描述符**的（主线程卡在原生调用里也落得下来），可它的读者此前只有人眼：P0 失败的消息里带的是
+「最后 20 行日志」，读者得自己在里面找那一行；日志一长还会被截断。
+
+改动只有一处（`e2e/fixtures/app-process-log.ts`）：新增 `describeStartupSteps()`，从失败消息**已经在读**的那份
+tail 里抽 `[startup-step] <step> at <iso>`，合成一行排在 `launch log:` 之后：
+
+```
+startup steps: last 'tray-call-start' at 2026-11-27T00:11:02.512Z ⇒ window-creation-start → window-created → tray-call-start
+```
+
+两条纪律写进实现（也都是用例钉住的）：① **词表外的一律不算步骤** —— 模块内 `STARTUP_STEPS` 是闭集，写不出别的名字，
+所以 `[startup-step] Tray-Created`、`[startup-step] at …`、正文里提一句的那三行都被忽略；② **「tail 里没有」不写成
+「应用没写」** —— tail 有界，所以那句话是 `none among the last N line(s) read — that is not a claim that no step was written`。
+这条正是 `docs/evidence/2026-11-27-startup-step-marker-durable.md` §五那三条分流要的那把钥匙：下一次「没开窗」时，
+裁判判到哪一步不必再翻日志。
+
+### 二、门禁读数（本机，隔离工作树 `/tmp/ps-r216` @ `3d154926` + 本笔）
+
+| 项               | 读数                                                                              |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `npx vitest run test/app-process-log.test.ts` | **18 passed**（原 14 + 新 4）                                     |
+| 变异：把「tail 里没有」改写成「从未写过步骤」 | **1 failed**（就是为这条写的 guard，恢复后 18 passed）             |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0**                                        |
+| `npx eslint --no-cache`（两个文件） | **EXIT=0**，0 problems                                                      |
+| 真机读数         | **未取，不冒充**：本机不起实例（内存闸），这条读数只在打包认证车道**失败时**才产出；判据见上面那份 evidence §五 |
+
+### 三、结案：`session-vision-evidence-card` 的真窗口读数早就在车道里
+
+Nightly `45891157354` @ `a4b5a985`（认证作业 `140161529229`）里它是第 **121/139** 支，跑在 21:35:53–21:36:18，
+作业日志原文三行（本次现取，不是单测推断）：
+
+```
+[ic36] planted one vision-evidence row for session e2e-session-1
+[ic36] the card says: "aaaaaaaaaaaa · image/png · extractor bbbbbbbbbbbb · v3"
+[ic36] controls in the entry: 0
+```
+
+⇒ 卡片读的是**真行**（会话 id 取自应用自己落盘的那份会话），条目上**没有可点控件**（只读面，不会假装能操作）。
+这一条从「缺陷队列剩一支」里移出。同一趟还带上 §二百一十九 ② 的判据：`No handler registered for
+'notebook-env:status'` **0 次**、`flaky` **0 次** ⇒ 上一轮那三支 P0 的修法站住了。
+
+### 四、两处过期结论（就地更正，附现取读数）
+
+- `docs/plan-2026-11-18-capability-gap-roadmap.md` 里「Pi / Hermes / DeepSeek Harness 接入 = **未开工**」：三个里
+  **两家早已接入** —— DeepSeek Harness `f4d4199b`（第六个后端，探测→卡片→安装）、Hermes `7ebc2ab7` 接入 +
+  `409bc46f` 探测 + `35c81794` 卡片下载入口；只剩 **Pi 未开工**。原文那句写在 11-23，早于这两笔，属写时对、读时错。
+- 同档末尾「P0 侧未关闭」那四支：本轮现取 `45891157354` = **127 passed / 12 skipped / 0 failed / 0 flaky（50.1m）**，
+  四支各自在这一趟里都有**自己那一行**（6/139、11/139、58/139、127+128/139）⇒ 它们是间歇红，不是常红；
+  顺带纠正一处已失效的行号（`storage-migration.spec.ts:74` 不存在，该 spec 现在是 `:64` 与 `:109`）。
+
+### 五、下一轮第一步
+
+- ① 读本笔推送后的 `Nightly` / `Windows Full Test` 判决（本笔动 `e2e/fixtures/**` 与 `test/**`）；红了先按
+  「失败文件是否本批碰过」归因，别拿「抽风」当挡箭牌。
+- ② 队列里剩下的**真缺口只有 Pi 接入**（握手已在 `docs/evidence/2026-11-24-deepseek-harness-and-pi-acp-handshake.md`
+  核实：`pi-acp` 是**社区适配器**、`initialize` 回包带终端登录 `authMethods`）⇒ 牵动 `AgentFrameworkId` 联合类型、
+  探测、安装源、卡片与 pins，属大件，建议整轮做并配一次真进程握手读数；界面文案必须如实写「首次需在终端登录」。
+- ③ M2（本地解析模型资产）仍卡产品决定：没有「权重 + 发布方校验值」清单就不下载，等拍板。
+
 ## 二百一十九、本轮追加（执行器，2026-11-25 21:0x–）—— v2.33.7 发布核验结案；P0 三支 flaky 的根因是渲染层对同一条通道最后一次没接住的 await
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
