@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { useLanguage } from '@/i18n'
 import {
   Select,
@@ -30,6 +32,12 @@ const VisionModelSelect = (): React.JSX.Element | null => {
   const providers = useSettingsStore((state) => state.providers)
   const visionModel = useSettingsStore((state) => state.visionModel)
   const setVisionModel = useSettingsStore((state) => state.setVisionModel)
+
+  // Picking a Vision model can be refused by the main process — the model may not be offered by that
+  // provider any more, may not take image input, or may not fit the active Agent Framework. Swallowing the
+  // rejection (which this used to do) makes a refusal indistinguishable from a dead click: the label does
+  // not change, nothing is said, and "看得见点不到" comes back with a new face.
+  const [error, setError] = useState<string | undefined>(undefined)
 
   // A provider is a vision candidate at the *model* level, not the provider level: a DeepSeek
   // account whose active (main) model is text-only still serves deepseek-v4-flash-vision-exp, so the
@@ -103,8 +111,12 @@ const VisionModelSelect = (): React.JSX.Element | null => {
     .filter((group) => group.options.length > 0 || group.provider.id === current?.provider.id)
 
   const change = (value: string): void => {
+    setError(undefined)
+
     if (value === '__clear__') {
-      void setVisionModel(undefined).catch(() => undefined)
+      void setVisionModel(undefined).catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      })
       return
     }
     const [providerId, model] = value.split(SEP)
@@ -113,7 +125,9 @@ const VisionModelSelect = (): React.JSX.Element | null => {
       model,
       reasoningEffort: 'default'
     }
-    void setVisionModel(configuration).catch(() => undefined)
+    void setVisionModel(configuration).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    })
   }
 
   return (
@@ -156,6 +170,11 @@ const VisionModelSelect = (): React.JSX.Element | null => {
             ))}
           </SelectContent>
         </Select>
+        {error ? (
+          <span role="alert" className="text-xs text-destructive">
+            {error}
+          </span>
+        ) : null}
         {current ? (
           <button
             type="button"

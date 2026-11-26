@@ -52,8 +52,18 @@ import {
   detectCodeBuddy,
   type CodeBuddyDetectDeps
 } from './codebuddy-detect'
-import { DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps, detectAgentCli } from './agent-cli-detect'
-import { createDefaultHermesDetectDeps, detectHermes, type HermesDetectDeps } from './hermes-detect'
+import {
+  DEEPSEEK_HARNESS_CLI,
+  collectCandidateDirs as collectCliCandidateDirs,
+  createAgentCliDetectDeps,
+  detectAgentCli
+} from './agent-cli-detect'
+import {
+  collectCandidateDirs as collectHermesCandidateDirs,
+  createDefaultHermesDetectDeps,
+  detectHermes,
+  type HermesDetectDeps
+} from './hermes-detect'
 import {
   detectCodex,
   parseVersion as parseCodexVersion,
@@ -603,6 +613,12 @@ export class AgentRuntimeManager {
   async detectHermes(): Promise<void> {
     const detected = await detectHermes(this.hermesDetectDeps)
 
+    if (!detected) {
+      createLogger('settings-detect').info('hermes detect: nothing runnable', {
+        searchedDirs: collectHermesCandidateDirs(this.hermesDetectDeps)
+      })
+    }
+
     if (detected) {
       await this.repository.setHermesInfo(detected.resolvedPath, detected.version)
     } else {
@@ -612,7 +628,17 @@ export class AgentRuntimeManager {
   }
 
   async detectDeepSeekHarness(): Promise<void> {
-    const detected = await detectAgentCli(DEEPSEEK_HARNESS_CLI, createAgentCliDetectDeps())
+    const deps = createAgentCliDetectDeps()
+    const detected = await detectAgentCli(DEEPSEEK_HARNESS_CLI, deps)
+
+    if (!detected) {
+      // "not installed" from a card is a claim about this machine; it must be checkable. Logging the dirs
+      // that were searched turns an unanswerable "装了我为什么看不到" into a one-line answer.
+      createLogger('settings-detect').info('deepseek harness detect: nothing runnable', {
+        searchedDirs: collectCliCandidateDirs(deps, DEEPSEEK_HARNESS_CLI),
+        binaryNames: DEEPSEEK_HARNESS_CLI.binaryNames
+      })
+    }
 
     if (detected) {
       await this.repository.setDeepSeekHarnessInfo(detected.resolvedPath, detected.version)

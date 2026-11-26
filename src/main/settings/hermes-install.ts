@@ -148,6 +148,21 @@ export const installHermesWithPipx = async (
     return { installId: options.installId, ok: false, error: outcome.error }
   }
 
+  // pipx treats "already installed" as an error (exit 1) and prints `'hermes-agent' already seems to be
+  // installed. Not modifying existing installation...`. For a one-click install that must be idempotent:
+  // the user's goal is "Hermes is present", not "pipx created a venv right now". The caller re-detects
+  // afterwards, so a truly broken existing venv still fails there — with a message about Hermes, not pipx.
+  const alreadyInstalled = tail.join('').toLowerCase().includes('already seems to be installed')
+
+  if (outcome.code !== 0 && alreadyInstalled) {
+    log(
+      options,
+      'stdout',
+      'pipx: hermes-agent already installed — treating as success and re-detecting.'
+    )
+    return { installId: options.installId, ok: true, exitCode: outcome.code ?? 0 }
+  }
+
   if (outcome.code !== 0) {
     const detail = tail.join('').trim().split('\n').slice(-6).join('\n')
     return {
