@@ -114,10 +114,14 @@ test('two turns keep two summary rows — the finished one folded, the newest op
 
   await sendTurn(page, 'First turn of the pair.', 1)
   await sendTurn(page, 'Second turn of the pair.', 2)
-  await page.waitForTimeout(2_000)
 
   const groups = page.locator('[data-testid="tool-group"]')
   const headers = page.locator('[data-testid="tool-group-header"]')
+  // Read the pair only once it has settled. Turn 1 folds when its turn-end event lands, so a one-shot read
+  // 2 s after the send can catch three rows — turn 1's two calls still standing as their own groups beside
+  // the open turn (observed in run 45629592887: "Fetched a page1 step" ×2 + "Fetched 2 pages 2 steps").
+  // Polling does not weaken the claim: a third row that never folds still fails here.
+  await expect(groups).toHaveCount(2, { timeout: 30_000 })
   const count = await groups.count()
   const summaries = await headers.evaluateAll((nodes) =>
     nodes.map((node) => ({

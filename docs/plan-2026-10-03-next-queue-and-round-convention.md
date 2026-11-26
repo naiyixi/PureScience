@@ -22989,3 +22989,85 @@ AssertionError: expected 45410861056 to be 45410869248
 - ① issue #13 的第二条（`session-fork` 的 `Messages: 2`）按**三连绿**结案：数 `8cf5c9f` 之后每一次
   `macos-arm64` 的 P0 里该 spec 的结果，够三条就给结论、不够就写明还差几条 —— 纯读数工作，不改代码。
 - ② 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同批文件。
+
+## 三百六十三、本轮追加（执行器，2026-11-26 08:0x–）—— 七连绿是拿日志逐行数出来的；顺手更正一条把 flaky 记成「无」的表
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main a57e84c5` **互不为祖先**），
+  工作树 102 个改动 + 8 个未跟踪**全是会话在制**（`settings/**`、九语 i18n、`ro-crate*`、`shared/citation/*`、
+  `vision-model-options`、`agent-cli-detect`、`deepseek-harness`、`diagnostics/module-load`，mtime 停在 11-25 21:53）
+  ⇒ 一个字节没碰。本轮在 `git worktree add --detach /tmp/ps-round-263 origin/main` 的隔离树里做。
+- `package.json` = **2.33.8**，`gh release list` 的 Latest = **v2.33.8**；上一轮的 `a57e84c5` 双车道现取：
+  Nightly `45709744863` 七作业全 success（含 `Build macos-x64` 与 `publish`），Windows `45709744798` **8/8 分片 success**。
+- 上一轮记事本的下一步（①读判决 ②把 fork 六连绿落进 `docs/evidence` ③M2 卡产品决定）⇒ ①② 本轮做完，③ 仍卡决定。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽；C 段外部阻塞 ⇒ 取缺陷队列（issue #13）。
+
+### 一 读数：七连绿（`macos-arm64`，逐行数出来的）
+
+| # | run | head | P0 | `session-fork` | 该 run 的 flaky |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 45709744863 | `a57e84c5` | passed（127 passed / 44.6m） | 首跑通过 | 0 |
+| 2 | 45673395862 | `82064383` | passed（127 passed / 48.9m） | 首跑通过 | 0 |
+| 3 | 45651334823 | `16e58032` | passed（126 passed / 51.5m） | 首跑通过 | 1：`connector-custom-detail` |
+| 4 | 45650744918 | `f9b9b4ee` | passed（125 passed / 53.4m） | 首跑通过 | 2：`session-vision-evidence-card`、`workspace-activity-group-expand-all`（都是 app 装配 180 s 超时） |
+| 5 | 45629592887 | `d25bb717` | passed（126 passed / 44.7m） | 首跑通过 | 1：`session-turn-readings-real-window`（`groups=3`） |
+| 6 | 45625097953 | `f62ffdec` | passed（127 passed / 36.2m） | 首跑通过 | 0 |
+| 7 | 45592089343 | `48ca13ce` | passed | 首跑通过 | 3：`lock-import`、`notebook-interrupted-run`、`packages-mutation` |
+
+判据（怎么算「首跑通过」而不是「没跑」）：排队行 + 结论行 + 它自己的两条 `[session-fork] pressing …`
+真按压读数三者齐，且结论行不带 `(retries)` / `retry #N`。七份日志全齐、全无重试。
+
+### 二 更正一处失真
+
+issue #13 第五条评论的表里，run 3 / 4 / 5 的 flaky 列写「无」，现取日志逐条点名是 **1 / 2 / 1**。
+这些 flaky 都不是 `session-fork`（结论不变），但「无」会让后来者把同族竞态当成已绝迹 ⇒ 已在 issue 上
+发更正评论（第六条），并把逐条点名落进本档引用的证据档。
+
+### 三 交付：同族第三处按「取样早了」修（`session-turn-readings-real-window`）
+
+重试前首跑逐字：`[e1-pair] groups=3`，两个 `"Fetched a page1 step"`（第一回合的两条调用**还没折成一行摘要**）
+加一个 `"Fetched 2 pages 2 steps"`。重试读到的才是折好的两行 ⇒ 与 `82064383` 同族：点击/回合只发起写入，
+spec 用固定 `waitForTimeout(2_000)` 后一次性 `count()` 取样。
+
+| 文件 | 改动 |
+| --- | --- |
+| `e2e/certification/session-turn-readings-real-window.spec.ts` | 删掉固定 2 s 等待，改成 `await expect(groups).toHaveCount(2, { timeout: 30_000 })` 再读摘要；断言强度不变（真多一行且永不折叠时它超时失败） |
+| `docs/evidence/2026-11-26-session-fork-six-green-and-turn-readings-race.md` | 七连绿逐行读数 + flaky 更正 + `groups=3` 的读数 + 那条 app 装配超时的立案 |
+
+### 四 门禁（本机，隔离工作树）
+
+| 项 | 读数 |
+| --- | --- |
+| `playwright test …session-turn-readings-real-window.spec.ts --list` | EXIT=0，2 tests / 1 file |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
+| `npx eslint --no-cache`（改动文件） | **EXIT=0**（0 problems） |
+| `bash scripts/pre-push-checks.sh` | 见提交前读数 |
+
+真窗口读数本轮**不预支**：这条 spec 的判据在下一次 `macos-arm64` 的 P0（`[113/139]` 之后那一段）。
+本机内存闸（空闲页 / swap）不允许 build + 起实例，按规矩不起。
+
+### 五 立案：app 装配阶段 180 s 没有窗口（未改代码）
+
+run 4 的两条 flaky 不是断言竞态，而是应用**根本没开窗**：`firstWindow: Timeout 180000ms exceeded`，
+`process: is still running`，启动日志最后一行是 `phase: 'web-service-started', elapsedMs: 3458`。
+现有日志里「上一个实例还占着单实例锁 ⇒ 新实例转交后退出」与「窗口创建路径自身挂住」**同形**，
+所以修法不是改窗口创建，而是先给单实例分支一条具名行（拿到锁 / 没拿到并把 argv 转交给谁），
+落点在 `src/main/app-startup.ts` 的 `requestSingleInstanceLock` 周围。拿不到这条读数前不许加大 e2e 的
+180 s 装配超时。详见证据档 §六。
+
+### 六 边界与具名未办
+
+1. 七份日志是同一台 runner 上的七次执行；「七连绿」不等于竞态绝迹，issue #13 的总判据仍是
+   「同一发版在两个平台连续三次全绿 + 两处不再出现」。
+2. 另外三支 flaky（`lock-import` / `notebook-interrupted-run` / `packages-mutation` / `session-vision-evidence-card` /
+   `workspace-activity-group-expand-all`）本轮只入档、未逐支处理；后两支属 §五 立案（app 装配），前三支还需要各自的读数。
+3. M2（本地解析模型资产）与「空闲 python 内核的回收策略」仍卡**产品决定**，本轮不动。
+
+### 七 下一轮第一步
+
+- ① 下一次 `macos-arm64` 的 P0 落定后，读 `session-turn-readings-real-window` 是否首跑通过（`toHaveCount(2)` 不再超时），
+  同时读 §五 立案那两条 flaky 是否再出现。
+- ② 若 M2 得到拍板，按 `references/local-parsing-models-and-figures.md` 与 `verified-model-asset-acquisition.md` 起步；
+  未拍板就继续取缺陷队列（`gh issue list --state open`）。
+- ③ 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同批文件。
