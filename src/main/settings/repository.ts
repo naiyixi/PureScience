@@ -583,6 +583,56 @@ export const sanitizeProxySettings = (value: unknown): ProxySettings | undefined
 // Rebuilds the per-scenario model overrides from untrusted JSON: only the three known scenario ids
 // survive, and each override needs a non-empty providerId + model. Unknown ids/entries are dropped
 // (they inherit the active model); a malformed payload yields undefined (no overrides).
+
+// Rebuilds the Vision relay target from untrusted JSON. Until this existed the field was written but
+// never read back: every getSettings() went through this whitelist, which did not carry it, so the
+// picker's choice was persisted to disk and then discarded on the next read — the dropdown snapped back
+// to "禁用" and the relay never engaged, with no error anywhere to explain it.
+
+// Agent CLI locations recorded by detection and by one-click install. These used to be written and then
+// dropped on the next read by this whitelist, which is why a machine with all three installed kept showing
+// "未安装" cards: pipx/npm succeeded, detection found the binary, the path landed in settings.json — and the
+// very next getSettings() discarded it, so the status card and the preflight both saw nothing.
+const AGENT_PATH_FIELDS = [
+  'codebuddyPath',
+  'codebuddyVersion',
+  'hermesPath',
+  'hermesVersion',
+  'deepseekHarnessPath',
+  'deepseekHarnessVersion'
+] as const
+
+const keepAgentPaths = (value: Record<string, unknown>, settings: StoredSettings): void => {
+  for (const field of AGENT_PATH_FIELDS) {
+    const recorded = asString(value[field])?.trim()
+
+    if (recorded) settings[field] = recorded
+  }
+}
+
+export const sanitizeVisionModel = (
+  value: unknown
+): VisionModelConfiguration | undefined => {
+  if (!isRecord(value)) return undefined
+
+  const providerId = asString(value.providerId)?.trim()
+  const model = asString(value.model)?.trim()
+  if (!providerId || !model) return undefined
+
+  const effort = value.reasoningEffort
+  const reasoningEffort =
+    effort === 'default' ||
+    effort === 'low' ||
+    effort === 'medium' ||
+    effort === 'high' ||
+    effort === 'xhigh' ||
+    effort === 'max'
+      ? effort
+      : 'default'
+
+  return { providerId, model, reasoningEffort }
+}
+
 export const sanitizeScenarioModels = (value: unknown): ScenarioModels | undefined => {
   if (!isRecord(value)) return undefined
 
@@ -846,6 +896,26 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   const scenarioModels = sanitizeScenarioModels(value.scenarioModels)
 
   if (scenarioModels) settings.scenarioModels = scenarioModels
+
+  const visionModel = sanitizeVisionModel(value.visionModel)
+
+  if (visionModel) settings.visionModel = visionModel
+
+  keepAgentPaths(value, settings)
+
+  if (isRecord(value.computeBookmarks)) {
+    const bookmarks: Record<string, string[]> = {}
+
+    for (const [providerId, paths] of Object.entries(value.computeBookmarks)) {
+      const kept = Array.isArray(paths)
+        ? paths.filter((entry): entry is string => typeof entry === 'string' && entry.trim() !== '')
+        : []
+
+      if (kept.length > 0) bookmarks[providerId] = kept
+    }
+
+    if (Object.keys(bookmarks).length > 0) settings.computeBookmarks = bookmarks
+  }
 
   const externalComputeEndpoints = sanitizeExternalComputeEndpoints(value.externalComputeEndpoints)
 

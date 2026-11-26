@@ -134,6 +134,45 @@ describe('settings repository', () => {
     })
   })
 
+  // 这两条盯着一类"写了等于没写"的缺陷: 文件里存下来, 读回来却没了。
+  it('keeps the Vision relay target across a read', () => {
+    const settings = sanitizeSettings({
+      providers: [{ id: 'p1', type: 'official', vendorId: 'deepseek', name: 'DeepSeek' }],
+      visionModel: {
+        providerId: 'p1',
+        model: 'deepseek-v4-flash-vision-exp',
+        reasoningEffort: 'default'
+      }
+    })
+
+    expect(settings.visionModel).toEqual({
+      providerId: 'p1',
+      model: 'deepseek-v4-flash-vision-exp',
+      reasoningEffort: 'default'
+    })
+  })
+
+  it('keeps the detected agent CLI paths across a read', () => {
+    const settings = sanitizeSettings({
+      providers: [],
+      codebuddyPath: '/Users/me/.local/bin/codebuddy',
+      codebuddyVersion: '2.179.2',
+      hermesPath: '/Users/me/.local/bin/hermes',
+      hermesVersion: '0.23.3',
+      deepseekHarnessPath: '/opt/homebrew/bin/deepseek-harness-acp',
+      deepseekHarnessVersion: '0.1.27'
+    })
+
+    expect(settings).toMatchObject({
+      codebuddyPath: '/Users/me/.local/bin/codebuddy',
+      codebuddyVersion: '2.179.2',
+      hermesPath: '/Users/me/.local/bin/hermes',
+      hermesVersion: '0.23.3',
+      deepseekHarnessPath: '/opt/homebrew/bin/deepseek-harness-acp',
+      deepseekHarnessVersion: '0.1.27'
+    })
+  })
+
   it('migrates two legacy Codex subscription cards into one active-mode provider', () => {
     const settings = sanitizeSettings({
       activeProviderId: 'builtin-codex-isolated',
