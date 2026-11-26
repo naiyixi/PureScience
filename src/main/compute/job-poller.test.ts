@@ -1533,7 +1533,14 @@ describe('compute_done notification on dispatch_failed (error) jobs', () => {
     const t2 = poller.tick()
     releaseUpdate()
     await Promise.all([t1, t2])
-    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    // Wait for the write itself, not for a duration. The emit is fire-and-forget and reaches `update`
+    // only after a host lookup and a harvest-directory scan; a fixed 10 ms sleep here failed on a loaded
+    // runner with `update` never called (and passed 3/3 in isolation) — the same shape the sibling test
+    // above already lost to. The duplicate guard is still asserted on the other side of the write: once
+    // the first emit lands, the second tick gets room to run and the count must stay at one.
+    await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     // Only ONE emit despite two overlapping ticks selecting the same unnotified row.
     expect(update).toHaveBeenCalledTimes(1)
