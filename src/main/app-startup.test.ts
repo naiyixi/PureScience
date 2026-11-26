@@ -124,6 +124,40 @@ describe('orchestrateAppStartup', () => {
     expect(onSecondInstance).toHaveBeenCalledWith(['app'])
   })
 
+  it('names which side of the lock this launch was on, before anything can hang', async () => {
+    // The launch log of a launch the OS turned into a secondary used to end at `single-instance-lock`,
+    // the same shape as a lock call that never returned. These two phases are that difference.
+    const primaryDiagnostics = { phase: vi.fn(), complete: vi.fn(), cancel: vi.fn(), fail: vi.fn() }
+    await orchestrateAppStartup(makeDeps({ diagnostics: primaryDiagnostics }))
+
+    expect(primaryDiagnostics.phase.mock.calls).toEqual([
+      ['single-instance-lock'],
+      ['single-instance-held'],
+      ['prepare-runtime'],
+      ['install-lifecycle']
+    ])
+    expect(primaryDiagnostics.complete).toHaveBeenCalledWith({ instance: 'primary' })
+
+    const secondaryDiagnostics = {
+      phase: vi.fn(),
+      complete: vi.fn(),
+      cancel: vi.fn(),
+      fail: vi.fn()
+    }
+    await orchestrateAppStartup(
+      makeDeps({
+        acquireSingleInstanceLock: vi.fn(() => false),
+        diagnostics: secondaryDiagnostics
+      })
+    )
+
+    expect(secondaryDiagnostics.phase.mock.calls).toEqual([
+      ['single-instance-lock'],
+      ['single-instance-secondary', { forwardedTo: 'running-instance' }]
+    ])
+    expect(secondaryDiagnostics.complete).toHaveBeenCalledWith({ instance: 'secondary' })
+  })
+
   it('terminalizes startup diagnostics at the phase that rejects without changing the failure', async () => {
     const failure = new Error('backend import failed')
     const diagnostics = {

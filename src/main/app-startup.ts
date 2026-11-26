@@ -62,11 +62,18 @@ export const orchestrateAppStartup = async <Context>(
 
   try {
     deps.diagnostics?.phase('single-instance-lock')
-    if (!deps.acquireSingleInstanceLock({ onSecondInstance: relay.signal })) {
+    const held = deps.acquireSingleInstanceLock({ onSecondInstance: relay.signal })
+    if (!held) {
+      // Named at the branch. Without this line a launch that the OS turned into a secondary ended its
+      // log at `single-instance-lock`, which is the same shape as a lock call that never returned —
+      // and "this launch handed its argv to the running instance and quit" is a different fact from
+      // "startup hung before it could say anything".
+      deps.diagnostics?.phase('single-instance-secondary', { forwardedTo: 'running-instance' })
       deps.quit()
       deps.diagnostics?.complete({ instance: 'secondary' })
       return
     }
+    deps.diagnostics?.phase('single-instance-held')
 
     deps.diagnostics?.phase('prepare-runtime')
     const context = await deps.prepare()

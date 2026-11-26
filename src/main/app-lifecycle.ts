@@ -386,6 +386,10 @@ export const installAppLifecycle = (
   if (deps.createInitialWindow !== false) {
     mainWindow = openWindow()
     deps.log?.info('main window created')
+  } else {
+    // Named rather than silent: headless web mode legitimately runs with no window, and a launch that
+    // said nothing here made "asked not to open a window" indistinguishable from "never got that far".
+    deps.log?.info('initial window disabled for this launch (serving without a desktop window)')
   }
   try {
     trayBox.current = deps.createTray({

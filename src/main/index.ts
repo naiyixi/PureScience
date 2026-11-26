@@ -230,6 +230,16 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       onSecondInstance: (argv) => preStartupSecondInstanceRelay.signal(argv)
     })
   ) {
+    // The log sink is deliberately not open yet — a secondary launch must never rotate or append to the
+    // primary's file — so this branch has no other place to be named. Without this line its launch log is
+    // empty, which reads exactly like a launch that died before writing anything.
+    try {
+      console.error(
+        '[startup] single-instance lock not acquired — argv forwarded to the running instance; this launch exits'
+      )
+    } catch {
+      // A closed stderr pipe must not change how a secondary launch exits.
+    }
     app.quit()
     return
   }
@@ -756,6 +766,13 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
     // is bound with the live backend handles; the agent teardown latches shutting-down and awaits the
     // process tree so a Windows taskkill /T completes before app.exit.
     installAppLifecycle: (ctx) => {
+      // The window decision, named before it is acted on. A launch that legitimately serves without a
+      // desktop window and one whose window creation never returned both used to leave the launch log
+      // ending at `install-lifecycle`, so "no window ever appeared" could not be read as either fact.
+      startupDiagnostics?.phase('initial-window', {
+        headless: ctx.webMode.headless,
+        createInitialWindow: !ctx.webMode.headless
+      })
       const { showMainWindow, getMainWindow, isMainWindowHidden } = ctx.installAppLifecycle(
         withApplicationRuntimeShutdown(
           {

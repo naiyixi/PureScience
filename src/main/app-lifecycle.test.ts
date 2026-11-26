@@ -304,6 +304,27 @@ describe('installAppLifecycle', () => {
     expect(windows).toHaveLength(1)
   })
 
+  it('names a launch that asked for no window instead of leaving the log silent', () => {
+    // Both halves are read the same way by whoever debugs "the app never opened a window": a named
+    // decision says the launch was told to serve without one, silence says it never got that far.
+    const info = vi.fn()
+    setup({
+      createInitialWindow: false,
+      log: { debug: vi.fn(), info, warn: vi.fn(), error: vi.fn() }
+    })
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      'initial window disabled for this launch (serving without a desktop window)',
+      'tray created'
+    ])
+
+    const createdInfo = vi.fn()
+    setup({ log: { debug: vi.fn(), info: createdInfo, warn: vi.fn(), error: vi.fn() } })
+    expect(createdInfo.mock.calls.map(([message]) => message)).toEqual([
+      'main window created',
+      'tray created'
+    ])
+  })
+
   it('exposes the current main window without showing or focusing it', () => {
     const { app, windows, getMainWindow } = setup({ platform: 'darwin' })
     const original = windows[0]
