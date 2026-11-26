@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import { augmentedPathEnv } from './shell-path'
+import { createLogger } from '../logger'
 import { withVersionProbeCache } from './version-probe-cache'
 
 const execFileAsync = promisify(execFile)
@@ -146,7 +147,14 @@ const runVersionProbe =
           })
 
       return parseVersion(stdout)
-    } catch {
+    } catch (error) {
+      // "换了台机器就看不见"必须是可读的: 二进制在、但跑不起来（常见于 node 不在应用继承的 PATH 上）
+      // 与"二进制不在"是两件事, 前者以前只会显示成"未安装"。
+      createLogger('settings-detect').warn('agent cli version probe failed', {
+        binaryPath,
+        message: error instanceof Error ? error.message : String(error)
+      })
+
       return undefined
     }
   }

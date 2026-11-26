@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import { augmentedPathEnv } from './shell-path'
+import { createLogger } from '../logger'
 import { withVersionProbeCache } from './version-probe-cache'
 
 const execFileAsync = promisify(execFile)
@@ -147,7 +148,12 @@ const runHermesVersion =
             })
 
       return parseHermesVersion(stdout)
-    } catch {
+    } catch (error) {
+      createLogger('settings-detect').warn('hermes version probe failed', {
+        binaryPath,
+        message: error instanceof Error ? error.message : String(error)
+      })
+
       return undefined
     }
   }

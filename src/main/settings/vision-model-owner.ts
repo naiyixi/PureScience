@@ -1,8 +1,11 @@
 import {
+  isClaudeSubscriptionProvider,
   isCodexSubscriptionProvider,
   providerValidationFailed,
   type VisionModelConfiguration
 } from '../../shared/settings'
+import type { StoredProvider } from './types'
+import { isVendorModelMultimodal } from '../../shared/provider-registry'
 import { DEFAULT_AGENT_FRAMEWORK_ID, getAgentFramework } from '../agent-framework'
 import type { AgentBackendResolver, ExplicitAgentBackendTarget } from './backend-resolver'
 import type { ProviderAccountsModule } from './provider-accounts'
@@ -13,6 +16,23 @@ type VisionModelOwnerOptions = Readonly<{
   providers: ProviderAccountsModule
   backendResolver: Pick<AgentBackendResolver, 'captureConfiguredSelection'>
 }>
+
+
+// Whether THIS model takes image input — decided by the model, not by whichever model the provider is
+// currently set to. The Vision relay exists precisely for the case where the main model is text-only and
+// a separate model does the seeing; asking the provider (which reports the *active* model's capability)
+// made that configuration impossible to save: the picker offered deepseek-v4-flash-vision-exp and the
+// write was refused with "does not support image input". The user saw a click that did nothing.
+const acceptsImageInput = (provider: StoredProvider, model: string): boolean => {
+  if (isCodexSubscriptionProvider(provider.type)) return true
+  if (isClaudeSubscriptionProvider(provider.type)) return true
+  if (provider.type === 'custom') return provider.supportsImageInput === true
+  if (provider.type === 'official' && provider.vendorId) {
+    return isVendorModelMultimodal(provider.vendorId, model)
+  }
+
+  return provider.supportsImageInput === true
+}
 
 // Owns the optional Vision model relay target . The Vision model is a fixed
 // provider+model pair used ONLY to translate image input when the active backend is text-only.
@@ -51,7 +71,7 @@ class VisionModelOwner {
           'The selected Vision model is not available for the active Agent Framework. Refresh the model catalog.'
         )
       }
-      if (target.provider.supportsImageInput !== true) {
+      if (!acceptsImageInput(provider, configuration.model)) {
         throw new Error('The selected Vision model does not support image input.')
       }
     }
@@ -82,7 +102,7 @@ class VisionModelOwner {
     if (
       !target.frameworkCompatible ||
       (framework.id === 'codex' && !target.modelBridgeSupported) ||
-      target.provider.supportsImageInput !== true
+      !acceptsImageInput(provider, configuration.model)
     ) {
       throw new Error('The configured Vision model is unavailable for image input.')
     }

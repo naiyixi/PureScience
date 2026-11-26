@@ -188,11 +188,52 @@ describe('VisionModelOwner.set', () => {
     expect(repository.setVisionModel).not.toHaveBeenCalled()
   })
 
+
+  // 用户那台机器就是这个形状: provider 的主模型是 deepseek-v4-flash(纯文本), 视觉变体是
+  // deepseek-v4-flash-vision-exp。此前"是否吃图"问的是 provider 的当前模型, 于是这一对永远存不进去,
+  // 下拉里却列着它 —— 点了没反应。判定必须落在所选模型上。
+  it('accepts a vision variant of a text-only provider', async () => {
+    const { owner, repository, providers } = createOwner({
+      repository: {
+        getSettings: vi.fn(async () =>
+          makeSettings({
+            providers: [
+              makeProvider({
+                type: 'official',
+                vendorId: 'deepseek',
+                model: 'deepseek-v4-flash'
+              })
+            ]
+          })
+        ),
+        setVisionModel: vi.fn(async () => makeSettings())
+      }
+    })
+    providers.resolveRuntimeTarget = vi.fn(() => makeRuntimeTarget()) as never
+
+    await owner.set({
+      providerId: 'vision-provider',
+      model: 'deepseek-v4-flash-vision-exp',
+      reasoningEffort: 'default'
+    })
+
+    expect(repository.setVisionModel).toHaveBeenCalledWith({
+      providerId: 'vision-provider',
+      model: 'deepseek-v4-flash-vision-exp',
+      reasoningEffort: 'default'
+    })
+  })
+
   it('rejects a model that does not support image input', async () => {
-    const { owner, repository, providers } = createOwner()
-    providers.resolveRuntimeTarget = vi.fn(() =>
-      makeRuntimeTarget({ provider: { supportsImageInput: false } })
-    ) as never
+    const { owner, repository, providers } = createOwner({
+      repository: {
+        getSettings: vi.fn(async () =>
+          makeSettings({ providers: [makeProvider({ supportsImageInput: false })] })
+        ),
+        setVisionModel: vi.fn(async () => makeSettings())
+      }
+    })
+    providers.resolveRuntimeTarget = vi.fn(() => makeRuntimeTarget()) as never
     await expect(
       owner.set({ providerId: 'vision-provider', model: 'm', reasoningEffort: 'default' })
     ).rejects.toThrow(/does not support image input/)
@@ -267,6 +308,7 @@ describe('VisionModelOwner.admit', () => {
       repository: {
         getSettings: vi.fn(async () =>
           makeSettings({
+            providers: [makeProvider({ supportsImageInput: false })],
             visionModel: {
               providerId: 'vision-provider',
               model: 'vision-model',
@@ -277,9 +319,7 @@ describe('VisionModelOwner.admit', () => {
         setVisionModel: vi.fn(async () => makeSettings())
       }
     })
-    providers.resolveRuntimeTarget = vi.fn(() =>
-      makeRuntimeTarget({ provider: { supportsImageInput: false } })
-    ) as never
+    providers.resolveRuntimeTarget = vi.fn(() => makeRuntimeTarget()) as never
     await expect(owner.admit()).rejects.toThrow(/unavailable for image input/)
   })
 })

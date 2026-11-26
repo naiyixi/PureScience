@@ -614,7 +614,7 @@ export class AgentRuntimeManager {
     const detected = await detectHermes(this.hermesDetectDeps)
 
     if (!detected) {
-      createLogger('settings-detect').info('hermes detect: nothing runnable', {
+      createLogger('settings-detect').warn('hermes detect: nothing runnable', {
         searchedDirs: collectHermesCandidateDirs(this.hermesDetectDeps)
       })
     }
@@ -634,7 +634,7 @@ export class AgentRuntimeManager {
     if (!detected) {
       // "not installed" from a card is a claim about this machine; it must be checkable. Logging the dirs
       // that were searched turns an unanswerable "装了我为什么看不到" into a one-line answer.
-      createLogger('settings-detect').info('deepseek harness detect: nothing runnable', {
+      createLogger('settings-detect').warn('deepseek harness detect: nothing runnable', {
         searchedDirs: collectCliCandidateDirs(deps, DEEPSEEK_HARNESS_CLI),
         binaryNames: DEEPSEEK_HARNESS_CLI.binaryNames
       })
