@@ -23044,8 +23044,11 @@ spec 用固定 `waitForTimeout(2_000)` 后一次性 `count()` 取样。
 | `npx eslint --no-cache`（改动文件） | **EXIT=0**（0 problems） |
 | `bash scripts/pre-push-checks.sh` | 见提交前读数 |
 
-真窗口读数本轮**不预支**：这条 spec 的判据在下一次 `macos-arm64` 的 P0（`[113/139]` 之后那一段）。
-本机内存闸（空闲页 / swap）不允许 build + 起实例，按规矩不起。
+真窗口读数（**本笔自己的那一趟**，`Nightly 45727316594` / `build / Build macos-arm64`，head `e6f7295b`）：
+`[121/139] session-turn-readings-real-window.spec.ts:100:5` 于 01:35:23 → 01:35:45（22 秒）**首跑通过**
+（结论行无 `(retries)`），`[e1-pair] groups=2`，两行都是折好的「2 steps」；改前那一跑是 `groups=3`。
+同一趟 `session-fork` 第 8 次首跑通过（`[114/139]`），另 1 条 flaky 是 `session-density-reading`（与本条无关）。
+本机内存闸（空闲页 / swap）不允许 build + 起实例，按规矩不起；读数取自车道。
 
 ### 五 立案：app 装配阶段 180 s 没有窗口（未改代码）
 
@@ -23066,8 +23069,8 @@ run 4 的两条 flaky 不是断言竞态，而是应用**根本没开窗**：`fi
 
 ### 七 下一轮第一步
 
-- ① 下一次 `macos-arm64` 的 P0 落定后，读 `session-turn-readings-real-window` 是否首跑通过（`toHaveCount(2)` 不再超时），
-  同时读 §五 立案那两条 flaky 是否再出现。
+- ① 本笔那一趟已把读数给回来（`groups=2` 首跑通过）；下一次 P0 只需复核这条不再出现、并盯 §五 立案那两条
+  app 装配超时是否再出现（`firstWindow` 180 s / `setting up "app"` 180 s）。
 - ② 若 M2 得到拍板，按 `references/local-parsing-models-and-figures.md` 与 `verified-model-asset-acquisition.md` 起步；
   未拍板就继续取缺陷队列（`gh issue list --state open`）。
 - ③ 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同批文件。
