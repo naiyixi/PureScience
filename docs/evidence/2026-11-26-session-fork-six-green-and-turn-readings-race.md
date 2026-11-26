@@ -102,7 +102,19 @@ Error: The Electron app never opened a window: electronApplication.firstWindow: 
 | `npx eslint --no-cache e2e/certification/session-turn-readings-real-window.spec.ts` | **EXIT=0**（0 problems） |
 | `bash scripts/pre-push-checks.sh`（提交后跑） | **EXIT=0** —— 敏感词零命中 / README 横幅 v2.33.8 与双语一致 / 新增文件 lint 0 problems / 79 个启动器可解析 |
 
-真窗口读数：本条不预支，判据在下一次 `macos-arm64` 的 P0（该 spec 在 `[113/139]` 行之后）。
+真窗口读数（**现取**，`Nightly 45727316594` 的 `build / Build macos-arm64`，head `e6f7295b`，本笔提交自己那一趟）：
+
+```
+[121/139] e2e/certification/session-turn-readings-real-window.spec.ts:100:5 › two turns keep two summary rows — the finished one folded, the newest open
+（01:35:23 → 01:35:45，22 秒，结论行无 "(retries)" 前缀 ⇒ 首跑通过）
+[e1-pair] groups=2 [{"expanded":"false","text":"Fetched 2 pages2 steps · 2ms · usage not recorded"},
+                    {"expanded":"true","text":"Fetched 2 pages2 steps · 3ms · usage not recorded"}]
+```
+
+改前那一跑读到的是 `groups=3`（两条单步并立），改后一次就到 `groups=2` 且两行都是折好的「2 steps」——
+证的是**取样时机**被修对了，不是断言被放松（第三行若永不折叠，`toHaveCount(2)` 会超时失败）。
+同一趟的 `session-fork` 是第 8 次首跑通过（`[114/139]`）。该趟另有 1 条 flaky：`session-density-reading`
+（retry #1），与本条无关。
 
 ## 八 边界
 
