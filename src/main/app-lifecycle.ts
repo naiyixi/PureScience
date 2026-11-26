@@ -391,6 +391,12 @@ export const installAppLifecycle = (
     // said nothing here made "asked not to open a window" indistinguishable from "never got that far".
     deps.log?.info('initial window disabled for this launch (serving without a desktop window)')
   }
+  // Named before the call, not only after it succeeds. A packaged certification launch (2026-11-26,
+  // `lock-import` on a macos-arm64 runner) ended its log at `main window created` and never reached
+  // `tray created`, so the log could not separate "the status-bar item was asked for and never came
+  // back" from "no tray was attempted at all" — the same ambiguity the two lines above were added to
+  // remove. Whoever reads a stuck launch needs the step that started as its own fact.
+  deps.log?.info('tray creation starting')
   try {
     trayBox.current = deps.createTray({
       onShow: showMainWindow,
@@ -398,6 +404,9 @@ export const installAppLifecycle = (
       onQuit: () => deps.quit()
     })
     if (trayBox.current) deps.log?.info('tray created')
+    // An absent tray is a fact with consequences (close-to-tray stops existing), so it is named rather
+    // than left to be inferred from the silence that also covers "never got here".
+    else deps.log?.info('no tray for this host; continuing without one')
   } catch (error) {
     // A tray the host refused must not cost the window or the quit path. Named rather than swallowed:
     // no tray silently turns close-to-tray into quit-on-close on Windows/Linux (see classifyClose).

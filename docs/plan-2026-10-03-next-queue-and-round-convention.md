@@ -23148,3 +23148,70 @@ run 4 的两条 flaky 不是断言竞态，而是应用**根本没开窗**：`fi
 - ② 若这台机器上没有会话在制与我同批的文件，回到缺陷队列：`session-density-reading` /
   `connector-custom-detail` 两条还没逐支处理。
 - ③ 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入、`diagnostics/module-load`）落定后再动同批文件。
+
+## 三百六十五、本轮追加（执行器，2026-11-26 19:1x–）—— 「窗口没开」这条读数终于能分开两种卡点；顺手排除了单实例那一支
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 28579ed6`
+  **互不为祖先**，落后 20 笔），工作树 98 个改动 + 8 个未跟踪**仍是会话在制**（`settings/**`、九语 i18n、
+  `ro-crate*`、`shared/citation/*`、`references/*`、`diagnostics/module-load`、`deepseek-harness` …
+  mtime 最近到 18:34）⇒ 一个字节没碰。本轮在 `git worktree add --detach /tmp/ps-tray-step origin/main` 做。
+- `gh release list` 现取：Latest 仍是 **v2.33.9**，而 `origin/main 28579ed6` 是 `release: v2.33.10`，
+  对应 `Release 45802717523` **在跑**（preflight/Verify/macos-x64/linux-x64 已 success，macos-arm64 与
+  windows-x64 在 build）；主干 `Nightly 45802716168` 也在跑 ⇒ **本轮不往 main 推**，等两者落定再推。
+- 本轮**不重做**：`09dfed08`（首窗预算夹取）已在 main 且它的 Nightly 全绿——见下一节读数。
+
+### 一 读数：`09dfed08` 的 Nightly 全绿，P0 只剩一条 flaky，且它是「点名过」的失败
+
+| 项 | 读数 |
+| --- | --- |
+| `Nightly 45777604322`（head `09dfed08`） | 七个作业**全 success**（Verify / 四平台 build / publish） |
+| P0 摘要 | `1 flaky / 11 skipped / 127 passed (58.7m)`，`electron P0 reading: passed` |
+| 那条 flaky | `lock-import.spec.ts:185` 首跑失败、retry #1 通过 |
+| 首跑失败行 | `The Electron app never opened a window: firstWindow: Timeout 180000ms exceeded`，`process: is still running` |
+| 夹取是否生效 | 同作业 **19 行** `[e2e] first-window budget: 180000ms requested, …ms left …` ⇒ 在打包车道上真跑过 |
+
+这条 flaky 自己没有夹取行是**设计内**：`lock-import.spec.ts` 第 47 行 `test.setTimeout(300_000)`，
+`min(180000, 295000) = 180000`，所以它等满 180 s 后由我们的具名路径报出（不是 runner 的
+`Test timeout … setting up "app"`）——`09dfed08` 要的就是这个。
+
+### 二 交付：把「托盘这一步开始了」也写进日志
+
+上一轮立案时两种可能同形（① 单实例锁被占 ⇒ 新实例转交后退回；② 窗口创建自己挂住）。本轮读数据此
+**排除①**：日志里有 `install-lifecycle` → `initial-window`（说明过了 `single-instance-held`）、
+`createInitialWindow: true`、且应用自报 `main window created`。剩下的一段是
+`main window created` → `createTray(...)` → `tray created`，而失败那趟尾巴停在第一行。
+
+| 文件 | 改动 |
+| --- | --- |
+| `src/main/app-lifecycle.ts` | 调用 `createTray` **之前**落 `tray creation starting`；`createTray` 返回 `undefined` 时落 `no tray for this host; continuing without one`（无托盘会改变关闭语义，不能用沉默代替） |
+| `src/main/app-lifecycle.test.ts` | 三处既有的日志序列断言跟着补；新增 2 例：①「调用**之前**就已经落行」（`onTrayAttempt` 钩子在进入原生调用那一刻读日志）② 无托盘主机具名 |
+| `docs/evidence/2026-11-26-tray-step-named-and-single-instance-ruled-out.md` | 逐字读数、排除①的三条判据、下一次的判据 |
+
+### 三 门禁（本机，隔离树 `/tmp/ps-tray-step` @ `28579ed6`）
+
+| 项 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/app-lifecycle.test.ts` | **50 passed** |
+| 变异：把 `tray creation starting` 挪到调用之后 | **2 failed**；恢复后 50 passed |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
+| `npx eslint --no-cache`（两文件） | **EXIT=0**，0 problems |
+
+### 四 边界与具名未办
+
+1. **本轮没有真机读数**：这条日志只在打包车道（`PURESCIENCE_E2E_EXECUTABLE`）出现，本机内存闸不允许起实例。
+   判据写在证据档 §六：下一次同形状失败应停在 `tray creation starting`（⇒ 状态栏原生调用不返回）；
+   仍停在 `main window created` 则卡点与托盘无关，改查 `openWindow()` 的返回与日志落盘路径。
+2. **「窗口建好但 Playwright 没收到 window 事件」的机制仍是假说**（主进程在同步原生调用里不返回 ⇒ CDP 的
+   target 事件送不出去）。本轮没有为它改行为——先让日志分辨，再谈「托盘失败即弃 / 延后到窗口首帧之后」。
+3. v2.33.10 的发布页与资产本轮**尚未核验**（`Release 45802717523` 在跑）⇒ 下一轮第一步。
+4. M2（本地解析模型资产）与「空闲 python 内核回收」仍卡**产品决定**，本轮不动。
+
+### 五 下一轮第一步
+
+- ① `Release 45802717523` 落定后按「发布核验」口径读页与资产（17 个资产、`sourceSha` 与
+  `git rev-parse 'v2.33.10^{commit}'` 逐字符比对、`gh release list` 判 Latest）。
+- ② 本轮的提交在发布落定、主干车道判决到齐后再推（推之前先看有没有在飞车道，别顶掉它）。
+- ③ 之后回到缺陷队列：`session-density-reading` / `connector-custom-detail`，以及 `lock-import` 这条
+  新判据的第一次回收（要等下一次 P0 出现同形状才有机读）。

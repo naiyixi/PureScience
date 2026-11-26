@@ -156,6 +156,8 @@ const setup = (
     trayHost?: boolean
     // Makes createTray throw, the way a host that refuses a status-bar item behaves.
     trayThrows?: boolean
+    // Runs at the moment the native call is entered, so a test can read what the log said BEFORE it.
+    onTrayAttempt?: () => void
     detectActiveSessions?: () => ActiveSessionInfo[]
     confirmClose?: (
       variant: CloseConfirmVariant,
@@ -191,6 +193,7 @@ const setup = (
     },
     createTray: (handlers) => {
       order.push('tray')
+      overrides.onTrayAttempt?.()
       if (overrides.trayThrows) throw new Error('host refused the status-bar item')
       trayHandlers = handlers
       return tray as unknown as import('electron').Tray | undefined
@@ -262,6 +265,7 @@ describe('installAppLifecycle', () => {
     expect(windows).toHaveLength(1)
     expect(info.mock.calls.map(([message]) => message)).toEqual([
       'main window created',
+      'tray creation starting',
       'tray created'
     ])
   })
@@ -281,7 +285,12 @@ describe('installAppLifecycle', () => {
     // And the absence of a tray is reflected honestly in close behavior: no hide-to-tray, quit on close.
     expect(closeOpts[0].classifyClose()).toBe('quit')
     // The step that finished says so; the one that failed says so by name instead of vanishing.
-    expect(info.mock.calls.map(([message]) => message)).toEqual(['main window created'])
+    // Both the start and the failure are on the record: the launch said it was about to ask, then said
+    // the host refused — a reader is never left guessing whether the tray was attempted.
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      'main window created',
+      'tray creation starting'
+    ])
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0][0]).toBe('tray creation failed; continuing without a tray')
     expect(warn.mock.calls[0][1]).toMatchObject({ errorCategory: expect.any(String) })
@@ -314,6 +323,7 @@ describe('installAppLifecycle', () => {
     })
     expect(info.mock.calls.map(([message]) => message)).toEqual([
       'initial window disabled for this launch (serving without a desktop window)',
+      'tray creation starting',
       'tray created'
     ])
 
@@ -321,7 +331,38 @@ describe('installAppLifecycle', () => {
     setup({ log: { debug: vi.fn(), info: createdInfo, warn: vi.fn(), error: vi.fn() } })
     expect(createdInfo.mock.calls.map(([message]) => message)).toEqual([
       'main window created',
+      'tray creation starting',
       'tray created'
+    ])
+  })
+
+  it('names the tray step before the native call, so a stalled status-bar item is still on the record', () => {
+    // The reading this comes from: a packaged certification launch (2026-11-26, `lock-import` on a
+    // macos-arm64 runner) ended its log at `main window created` and never reached `tray created`. With
+    // only the completion lines, "the call began and never returned" and "no call was attempted" print
+    // identically — so the line has to be emitted BEFORE the call, not after it.
+    const info = vi.fn()
+    const saidAtAttempt: string[][] = []
+    setup({
+      log: { debug: vi.fn(), info, warn: vi.fn(), error: vi.fn() },
+      onTrayAttempt: () => saidAtAttempt.push(info.mock.calls.map(([message]) => String(message)))
+    })
+
+    expect(saidAtAttempt).toEqual([['main window created', 'tray creation starting']])
+  })
+
+  it('names a host with no tray instead of leaving that absence to be inferred', () => {
+    // No tray changes user-visible behavior (close-to-tray stops existing), so the log has to say it did
+    // not happen rather than stay silent in a way that also covers "the attempt never got made".
+    const info = vi.fn()
+    setup({
+      trayHost: false,
+      log: { debug: vi.fn(), info, warn: vi.fn(), error: vi.fn() }
+    })
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      'main window created',
+      'tray creation starting',
+      'no tray for this host; continuing without one'
     ])
   })
 
