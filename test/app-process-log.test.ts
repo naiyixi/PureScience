@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest'
 import {
   appProcessLogPath,
   describeAppExit,
+  describeStartupSteps,
   launchFailureMessage,
   launchHeader,
   launchLogFileName,
@@ -91,6 +92,46 @@ describe('naming the launch failure', () => {
     expect(message).toContain('is still running')
     expect(message).toContain('wrote nothing')
     expect(message).not.toContain('last 0 lines')
+  })
+
+  it('names the last startup step in one phrase, so a wedged launch is read without hunting the tail', () => {
+    const message = launchFailureMessage({
+      reason: 'Timeout 180000ms exceeded while waiting for event "window"',
+      logPath: '/tmp/tr/app-process/004-z.log',
+      exit: undefined,
+      tail: [
+        '[main] main window created',
+        '[startup-step] window-creation-start at 2026-11-27T00:11:02.101Z',
+        '[startup-step] window-created at 2026-11-27T00:11:02.480Z',
+        '[startup-step] tray-call-start at 2026-11-27T00:11:02.512Z'
+      ]
+    })
+    expect(message).toContain("startup steps: last 'tray-call-start' at 2026-11-27T00:11:02.512Z")
+    expect(message).toContain('window-creation-start → window-created → tray-call-start')
+  })
+
+  it('does not read "none in the tail" as "the app never recorded a step"', () => {
+    const message = launchFailureMessage({
+      reason: 'Timeout 30000ms exceeded while waiting for event "window"',
+      logPath: '/tmp/tr/app-process/005-w.log',
+      exit: undefined,
+      tail: ['[main] only an ordinary line', '[main] and another']
+    })
+    expect(message).toContain('none among the last 2 line(s) read')
+    expect(message).toContain('not a claim that no step was written')
+    expect(message).not.toContain('never wrote a startup step')
+  })
+
+  it('ignores a look-alike line that no closed-vocabulary step could have produced', () => {
+    const lines = [
+      '[startup-step] window-created at 2026-11-27T00:11:02.480Z',
+      '[startup-step] at 2026-11-27T00:11:03.000Z',
+      'note: [startup-step] explained in the module comment',
+      '[startup-step] Tray-Created at 2026-11-27T00:11:04.000Z'
+    ]
+    expect(describeStartupSteps(lines)).toBe(
+      "last 'window-created' at 2026-11-27T00:11:02.480Z ⇒ window-created"
+    )
   })
 })
 

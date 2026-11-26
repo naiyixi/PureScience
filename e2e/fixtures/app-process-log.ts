@@ -79,8 +79,35 @@ const describeAppExit = (exit: AppExit | undefined): string =>
 const LAUNCH_FAILURE_PREFIX = 'The Electron app never opened a window'
 
 /**
- * The failure text. It names three things a reader previously had to guess at: which launch log is theirs,
- * whether the process died or was alive, and the tail of that launch's own output.
+ * The startup steps the app recorded before its window never arrived.
+ *
+ * `[startup-step] …` lines are written with `writeSync` on descriptor 1 on purpose: a stream write only
+ * queues, so a main thread that stops returning in a native call never drains it (`src/main/diagnostics/
+ * startup-step.ts`). That makes this line the one reading a wedged launch still leaves behind. Read here as
+ * one phrase so the failure sentence names the step instead of leaving the reader to spot it in the tail.
+ *
+ * A step outside the module's closed vocabulary cannot be written by the app, so anything else that looks
+ * like a marker is ignored rather than reported as a step.
+ */
+const STARTUP_STEP_LINE = /^\[startup-step\] ([a-z-]+) at (.+)$/
+
+const describeStartupSteps = (lines: string[]): string => {
+  const steps: { name: string; at: string }[] = []
+  for (const line of lines) {
+    const match = STARTUP_STEP_LINE.exec(line.trim())
+    if (match !== null) steps.push({ name: match[1], at: match[2] })
+  }
+  // The tail is bounded, so "none here" is not "none written" — say which of the two this is.
+  if (steps.length === 0) {
+    return `none among the last ${String(lines.length)} line(s) read — that is not a claim that no step was written`
+  }
+  const last = steps[steps.length - 1]
+  return `last '${last.name}' at ${last.at} ⇒ ${steps.map((step) => step.name).join(' → ')}`
+}
+
+/**
+ * The failure text. It names four things a reader previously had to guess at: which launch log is theirs,
+ * whether the process died or was alive, how far the app said it got, and the tail of its own output.
  */
 const launchFailureMessage = (input: {
   reason: string
@@ -91,7 +118,8 @@ const launchFailureMessage = (input: {
   const lines = [
     `${LAUNCH_FAILURE_PREFIX}: ${input.reason}`,
     `  process: ${describeAppExit(input.exit)}`,
-    `  launch log: ${input.logPath}`
+    `  launch log: ${input.logPath}`,
+    `  startup steps: ${describeStartupSteps(input.tail)}`
   ]
   if (input.tail.length === 0) {
     lines.push('  (that launch wrote nothing before it was lost — the log file is absent or empty)')
@@ -195,6 +223,7 @@ export {
   appProcessLogDir,
   appProcessLogPath,
   describeAppExit,
+  describeStartupSteps,
   launchFailureMessage,
   launchHeader,
   launchLogFileName,
