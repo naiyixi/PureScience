@@ -23215,3 +23215,66 @@ run 4 的两条 flaky 不是断言竞态，而是应用**根本没开窗**：`fi
 - ② 本轮的提交在发布落定、主干车道判决到齐后再推（推之前先看有没有在飞车道，别顶掉它）。
 - ③ 之后回到缺陷队列：`session-density-reading` / `connector-custom-detail`，以及 `lock-import` 这条
   新判据的第一次回收（要等下一次 P0 出现同形状才有机读）。
+
+## 三百六十六、本轮追加（执行器，2026-11-27 04:1x–）—— 上一轮加的托盘行也可能落不下来：改成直写文件描述符
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 991d464a`
+  互不为祖先），工作树 106 个改动仍是会话在制 ⇒ 一个字节没碰；本轮在
+  `git worktree add --detach /tmp/ps-startup-step origin/main` 的隔离树里做。
+- `gh release list` 现取：Latest = **v2.33.10**（`draft=false` / `isPrerelease=false`，17 个资产，
+  `sourceSha = 28579ed6…` 与 `git rev-parse 'v2.33.10^{commit}'` **逐字符相同**）⇒ §三百六十五 §五① 结案。
+- `991d464a` 双车道现取：`Nightly 45870146584` 七作业全 success（`macos-arm64` 的 P0 `127 passed (51.4m)`，
+  `electron P0 reading: passed`，无 flaky 行）、`Windows Full Test` success。
+- 本笔**不重做**：`connector-custom-detail` 的点击后立刻回读已在 `82064383` 修过（现取 `origin/main` 的
+  spec 第 78 行是 `await expect.poll(readPermission …)`），本轮只把它从「未逐支处理」清单里结案。
+
+### 一 读数：四支 spec 的「没开窗」是同一种形状，且上一轮的托盘行靠不住
+
+| run | head | spec |
+| --- | --- | --- |
+| `45650744918` | `f9b9b4ee` | `session-vision-evidence-card`、`workspace-activity-group-expand-all` |
+| `45727316594` | `e6f7295b` | `session-density-reading` |
+| `45777604322` | `09dfed08` | `lock-import` |
+
+四处失败行逐字相同：`The Electron app never opened a window: … Timeout 180000ms exceeded`，
+`process: is still running`。`session-density-reading` 那趟的尾巴是
+`phase: 'web-service-started'` → `phase: 'install-lifecycle'` → `[main] main window created` 之后空白 ——
+窗确实建出来了，主线程没有再把任何东西交出去。上一轮加的 `tray creation starting` 走的是同一条异步
+stdout 镜像，卡住时同样不会落下 ⇒ 它无法区分「叫过托盘没回来」与「根本没走到托盘」。
+
+### 二 交付：启动步骤的同步落盘标记
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/main/diagnostics/startup-step.ts`（新） | 闭集词表 + `writeSync(1, …)` 直写描述符 + 写失败只吞自己；模块头写明「卡住的启动怎么读」四条判据 |
+| `src/main/app-lifecycle.ts` | 五点记录（`window-creation-start` / `window-created` / `tray-call-start` / `tray-created` / `tray-absent` / `tray-failed`），前两点在原生建窗前后、第三点在原生托盘调用**之前**；`markStartupStep` 兜住注入录像器的异常 |
+| `src/main/index.ts` | 与 `shutdownBreadcrumb` 并排建录像器，经 `onStartupStep` 接进生命周期（退出侧已有一条同形状的同步记录，这里是它的入口侧对应物） |
+| 两份用例 | 步骤顺序、进原生调用时已在记录里、拒托盘 / 无托盘 / 无窗口三种词、录像器抛错不改启动 |
+
+### 三 门禁（本机，隔离树 `/tmp/ps-startup-step` @ `991d464a`）
+
+| 项 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/app-lifecycle.test.ts src/main/diagnostics/startup-step.test.ts` | **59 passed** |
+| 变异：`tray-call-start` 挪到原生调用之后 | **2 failed**；恢复后 55 passed |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
+| `npx eslint --no-cache`（五个文件） | **EXIT=0**，0 problems |
+
+### 四 边界与具名未办
+
+1. **本条没有真机读数**：只在打包车道产生，本机内存闸不起实例。判据见证据档 §五：
+   下一次同形状失败的尾巴应是 `[startup-step] tray-call-start`（⇒ 状态栏原生调用不返回）、
+   `window-creation-start`（⇒ 卡在原生建窗）或六条齐全（⇒ 主线程没卡，改查夹具的窗口事件投递）。
+2. `connector-custom-detail` 与 `session-density-reading` 两条从「未逐支处理」清单里移除的依据不同：
+   前者已由 `82064383` 交付（并读现取源码确认），后者归入本条的「没开窗」立案。
+3. 六条标记是闭集；新增步骤必须同时改 `STARTUP_STEPS` 与模块头的读法表。
+4. M2（本地解析模型资产）与「空闲 python 内核回收」仍卡**产品决定**，本轮不动。
+
+### 五 下一轮第一步
+
+- ① 读本笔的 `Nightly` 与 `Windows Full Test`（完整 40 位 SHA）；P0 若再出现「没开窗」，按 §四分流的
+  三条判据读新尾巴。
+- ② 缺陷队列里还剩 `session-vision-evidence-card` 一支没单独取过读数（它与本笔同族，很可能同一读数即可结案）。
+- ③ 共享树那批在制品落定后再动同批文件。

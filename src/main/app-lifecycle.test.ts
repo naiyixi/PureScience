@@ -15,6 +15,7 @@ import type {
   CloseConfirmVariant,
   WindowFindAppearance
 } from '../shared/window-controls'
+import type { StartupStep } from './diagnostics/startup-step'
 
 type QuitEvent = { preventDefault: () => void; defaultPrevented: boolean }
 type Handler = (event: QuitEvent) => void
@@ -132,6 +133,10 @@ type Harness = {
   confirmClose: ReturnType<typeof vi.fn>
   // The order native objects were created in — install order is a contract (window before tray).
   order: string[]
+  // Startup steps the lifecycle recorded synchronously, in order.
+  steps: StartupStep[]
+  // What had been recorded at the moment the native window call was entered.
+  stepsAtWindowCreation: StartupStep[][]
 }
 
 const setup = (
@@ -151,6 +156,7 @@ const setup = (
       | 'onAppearanceChanged'
       | 'releaseDatabaseHandles'
       | 'onShutdownPhase'
+      | 'onStartupStep'
     >
   > & {
     trayHost?: boolean
@@ -168,6 +174,8 @@ const setup = (
   const app = makeFakeApp()
   const windows: FakeWindow[] = []
   const order: string[] = []
+  const steps: StartupStep[] = []
+  const stepsAtWindowCreation: StartupStep[][] = []
   const trayHost = overrides.trayHost ?? true
   const tray = trayHost ? { destroy: vi.fn() } : undefined
   let trayHandlers: TrayHandlers | undefined
@@ -186,6 +194,7 @@ const setup = (
     app: app as unknown as AppLifecycleDeps['app'],
     createMainWindow: (opts) => {
       order.push('window')
+      stepsAtWindowCreation.push([...steps])
       closeOpts.push(opts)
       const w = makeFakeWindow()
       windows.push(w)
@@ -203,6 +212,11 @@ const setup = (
     flushSessionPersistence,
     releaseDatabaseHandles: overrides.releaseDatabaseHandles,
     onShutdownPhase: overrides.onShutdownPhase,
+    onStartupStep:
+      overrides.onStartupStep ??
+      ((step: StartupStep): void => {
+        steps.push(step)
+      }),
     log: overrides.log,
     flushLogs: overrides.flushLogs,
     logFlushTimeoutMs: overrides.logFlushTimeoutMs,
@@ -230,7 +244,9 @@ const setup = (
     isMainWindowHidden,
     closeOpts,
     confirmClose,
-    order
+    order,
+    steps,
+    stepsAtWindowCreation
   }
 }
 
@@ -364,6 +380,74 @@ describe('installAppLifecycle', () => {
       'tray creation starting',
       'no tray for this host; continuing without one'
     ])
+  })
+
+  it('records every startup step synchronously, with the step entered before each native call', () => {
+    // The log tail of a stuck launch says where the log got to, not where the process did: it is mirrored
+    // to stdout, which is a stream, so a main thread blocked in a native call never drains it. These
+    // markers are written straight to the descriptor instead, so the last one names the step in progress.
+    const { steps, stepsAtWindowCreation, order } = setup()
+
+    expect(order).toEqual(['window', 'tray'])
+    // Recorded BEFORE the native window call, so a launch that never returns from it is still named.
+    expect(stepsAtWindowCreation).toEqual([['window-creation-start']])
+    expect(steps).toEqual([
+      'window-creation-start',
+      'window-created',
+      'tray-call-start',
+      'tray-created'
+    ])
+  })
+
+  it('records the tray step entered before the native call, not only its outcome', () => {
+    // Read at the moment the native call is entered: the tool must show that the step was already on the
+    // record, otherwise "asked and never came back" and "never asked" print the same tail.
+    const stepsAtAttempt: StartupStep[][] = []
+    let recorded: StartupStep[] = []
+    setup({
+      onStartupStep: (step) => {
+        recorded = [...recorded, step]
+      },
+      onTrayAttempt: () => stepsAtAttempt.push([...recorded])
+    })
+
+    expect(stepsAtAttempt).toEqual([['window-creation-start', 'window-created', 'tray-call-start']])
+  })
+
+  it('names a refused tray and a host without one in the same vocabulary as a success', () => {
+    const refused = setup({ trayThrows: true })
+    expect(refused.steps).toEqual([
+      'window-creation-start',
+      'window-created',
+      'tray-call-start',
+      'tray-failed'
+    ])
+
+    const absent = setup({ trayHost: false })
+    expect(absent.steps).toEqual([
+      'window-creation-start',
+      'window-created',
+      'tray-call-start',
+      'tray-absent'
+    ])
+  })
+
+  it('records no window steps for a launch asked to serve without one', () => {
+    const { steps, stepsAtWindowCreation } = setup({ createInitialWindow: false })
+    expect(stepsAtWindowCreation).toEqual([])
+    expect(steps).toEqual(['tray-call-start', 'tray-created'])
+  })
+
+  it('starts normally even when the marker recorder itself throws', () => {
+    // A diagnostic that cannot be written must not become the failure being diagnosed.
+    const { windows, trayHandlers, steps } = setup({
+      onStartupStep: () => {
+        throw new Error('diagnostic sink unavailable')
+      }
+    })
+    expect(windows).toHaveLength(1)
+    expect(trayHandlers).toBeDefined()
+    expect(steps).toEqual([])
   })
 
   it('exposes the current main window without showing or focusing it', () => {

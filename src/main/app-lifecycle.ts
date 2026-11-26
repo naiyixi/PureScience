@@ -19,6 +19,7 @@ import type {
   CloseConfirmVariant,
   WindowFindAppearance
 } from '../shared/window-controls'
+import type { StartupStep, StartupStepRecorder } from './diagnostics/startup-step'
 
 // Menu action callbacks the tray is wired to.
 export type TrayHandlers = { onShow: () => void; onHide: () => void; onQuit: () => void }
@@ -51,6 +52,10 @@ export type AppLifecycleDeps = {
   // P0-1). Called alongside the log phases and required to be synchronous: an abort after the last
   // write must still leave a record behind.
   onShutdownPhase?: (phase: string, fields?: DiagnosticFields) => void
+  // Records the last startup step SYNCHRONOUSLY (see diagnostics/startup-step). The ordinary log is an
+  // asynchronous sink: a launch whose main thread stops returning leaves a tail that says where the log
+  // got to, not where the process did. Optional so dependency-injected hosts stay valid.
+  onStartupStep?: StartupStepRecorder
   // Requests active ACP turns to cancel, then waits a bounded interval for terminal usage events.
   prepareForQuit: () => Promise<ShutdownStepOutcome | void>
   // Drains renderer runtime events and its ordered Session write queue before the window disappears.
@@ -383,9 +388,22 @@ export const installAppLifecycle = (
   // in the same job opened normally. Creating the window first means the UI exists before the tray is
   // attempted, and the two log lines below say which step a future stuck launch was in — the launch log
   // could not tell them apart before.
+  // A diagnostic must never be able to change how the application starts. The recorder that ships is
+  // already written not to throw (see diagnostics/startup-step), and this guard keeps the same promise
+  // true of any recorder injected by a host or a test.
+  const markStartupStep = (step: StartupStep): void => {
+    try {
+      deps.onStartupStep?.(step)
+    } catch {
+      return
+    }
+  }
+
   if (deps.createInitialWindow !== false) {
+    markStartupStep('window-creation-start')
     mainWindow = openWindow()
     deps.log?.info('main window created')
+    markStartupStep('window-created')
   } else {
     // Named rather than silent: headless web mode legitimately runs with no window, and a launch that
     // said nothing here made "asked not to open a window" indistinguishable from "never got that far".
@@ -397,20 +415,28 @@ export const installAppLifecycle = (
   // back" from "no tray was attempted at all" — the same ambiguity the two lines above were added to
   // remove. Whoever reads a stuck launch needs the step that started as its own fact.
   deps.log?.info('tray creation starting')
+  markStartupStep('tray-call-start')
   try {
     trayBox.current = deps.createTray({
       onShow: showMainWindow,
       onHide: hideMainWindow,
       onQuit: () => deps.quit()
     })
-    if (trayBox.current) deps.log?.info('tray created')
+    if (trayBox.current) {
+      deps.log?.info('tray created')
+      markStartupStep('tray-created')
+    }
     // An absent tray is a fact with consequences (close-to-tray stops existing), so it is named rather
     // than left to be inferred from the silence that also covers "never got here".
-    else deps.log?.info('no tray for this host; continuing without one')
+    else {
+      deps.log?.info('no tray for this host; continuing without one')
+      markStartupStep('tray-absent')
+    }
   } catch (error) {
     // A tray the host refused must not cost the window or the quit path. Named rather than swallowed:
     // no tray silently turns close-to-tray into quit-on-close on Windows/Linux (see classifyClose).
     trayBox.current = undefined
+    markStartupStep('tray-failed')
     deps.log?.warn('tray creation failed; continuing without a tray', diagnosticErrorFields(error))
   }
 

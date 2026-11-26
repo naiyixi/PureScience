@@ -47,6 +47,7 @@ import { createLogger, diagnosticErrorFields, flushLogs, suppressConsoleMirror }
 import { createProcessFailureCapture } from './crash-diagnostics'
 import { createConsolePipeGuard } from './console-pipe-guard'
 import { classifyPreviousShutdown, createShutdownBreadcrumbWriter } from './shutdown-breadcrumb'
+import { createStartupStepRecorder, writeStartupStepToStdout } from './diagnostics/startup-step'
 import { randomUUID } from 'node:crypto'
 import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
 import { measurePackageCacheRedundancy } from './storage/usage'
@@ -308,6 +309,13 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
     logDir: app.getPath('logs'),
     runId: randomUUID()
   })
+  // The startup log is mirrored to stdout, which is a stream: when the main thread stops returning inside a
+  // native call, whatever was queued behind the stall never reaches the reader, so the tail names where the
+  // LOG got to rather than where the process did. Measured on four packaged certification launches across
+  // three runs (2026-11-25/26): the process was still alive and the tail ended at `main window created`,
+  // twice after that line was added to explain exactly this. These markers are written straight to the descriptor, so the
+  // last one a stuck launch leaves behind names the step it was in.
+  const recordStartupStep = createStartupStepRecorder({ write: writeStartupStepToStdout })
   const previousShutdown = classifyPreviousShutdown(app.getPath('logs'))
   if (previousShutdown.kind === 'incomplete') {
     log.warn('previous shutdown did not record completion', {
@@ -834,7 +842,10 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
             },
             // P0-1: durable, synchronous per-phase record so the next launch can name this run's last
             // phase even if the process aborts inside native teardown.
-            onShutdownPhase: (phase, fields) => shutdownBreadcrumb(phase, fields)
+            onShutdownPhase: (phase, fields) => shutdownBreadcrumb(phase, fields),
+            // Same reason on the way in: the last startup step reached has to survive a main thread that
+            // never returns (see the marker's header for how a stuck launch is read).
+            onStartupStep: recordStartupStep
           },
           {
             // Application composition owns the one bounded ACP/Notebook shutdown. Remaining surfaces
