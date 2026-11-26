@@ -48,6 +48,22 @@
 | `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
 | `npx eslint --no-cache`（五个文件） | **EXIT=0**，0 problems |
 
+## 三之二 仪器自检：同步写的那一行在进程卡住时真的到了读的人手里（现取）
+
+单测证明不了这件事（单测跑在自己没卡住的进程里），所以在真进程上做了一次最小复现：
+
+```
+子进程：writeSync(1, '[startup-step] tray-call-start at PROBE\n') → 空转 3 秒 → process.stdout.write('[stream] after the block\n')
+父进程：spawn 它，逐块打到达时间
+读数：+40ms  "[startup-step] tray-call-start at PROBE\n"
+      +3042ms "[stream] after the block\n"
+      exit 0 after 3054ms
+```
+
+同步那一行在 40 ms 就到了父进程，而子进程直到 3042 ms 才继续 —— 这正是「主线程卡在原生调用里时，
+标记仍能落到读的人手里、而流写不能」的现场证据。它证明的是机制，不是产品；产品侧的读数仍等下一次
+打包车道的同形状失败。
+
 ## 四 边界
 
 1. **本条没有真机读数**：它只在打包车道产生；本机内存闸不允许起实例。判据写在下一节。
