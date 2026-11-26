@@ -16,6 +16,7 @@ import {
   type LaunchLogIdentity
 } from './app-process-log'
 import { RendererFailureGate } from './renderer-failure-gate'
+import { resolveWindowBudgetMs } from './launch-budget'
 
 const APP_ROOT = resolve(process.cwd())
 const FAKE_AGENT_PATH = resolve(APP_ROOT, 'e2e', 'fixtures', 'fake-opencode.mjs')
@@ -340,7 +341,8 @@ const makeTreeWritable = async (root: string): Promise<void> => {
 const openMainWindow = async (
   application: ElectronApplication,
   rendererFailures: RendererFailureGate,
-  logPath: string
+  logPath: string,
+  remainingBudgetMs: () => number
 ): Promise<Page> => {
   const ready = async (window: unknown): Promise<Page> => {
     const page = window as Page
@@ -367,10 +369,27 @@ const openMainWindow = async (
   // spec measured `firstWindow: Timeout 90000ms exceeded` — 90 s was not enough while 125 specs shared the
   // host. A 30 s wait reported "the app never opened a window" for a bundle that was merely being scanned. The dev lane keeps 30 s, so a real
   // hang is still a hang; both can be overridden.
+  //
+  // Whatever that number is, it is only a request: Playwright's per-test timeout (120 s) kills the worker
+  // first, so a longer request could never reach the named failure below. v2.33.9's P0 showed exactly that
+  // shape (`Test timeout of 120000ms exceeded while setting up "app"`, references-page-selection on its
+  // first attempt, retry passed) — the report had no launch log and no process state. The request is
+  // therefore clamped to what is left of the test's budget, and a clamp is printed: a reader must be able
+  // to tell "we waited our budget" from "the runner cut us off".
   const packagedLane = Boolean(process.env.PURESCIENCE_E2E_EXECUTABLE)
-  const windowTimeoutMs = Number(
+  const configuredWindowTimeoutMs = Number(
     process.env.PURESCIENCE_E2E_WINDOW_TIMEOUT_MS ?? (packagedLane ? 180_000 : 30_000)
   )
+  const windowTimeoutMs = resolveWindowBudgetMs({
+    configuredMs: configuredWindowTimeoutMs,
+    remainingMs: remainingBudgetMs()
+  })
+  if (windowTimeoutMs < configuredWindowTimeoutMs) {
+    console.log(
+      `[e2e] first-window budget: ${String(configuredWindowTimeoutMs)}ms requested, ` +
+        `${String(windowTimeoutMs)}ms left before the test's own deadline — waiting the smaller one`
+    )
+  }
   const page = await openWindowOrNameFailure({
     firstWindow: () => application.firstWindow({ timeout: windowTimeoutMs }),
     exited,
@@ -397,12 +416,15 @@ class ElectronAppHarness implements ElectronApp {
     private readonly evidence: {
       testTitle: string
       retry: number
+      /** Milliseconds left before the test's own Playwright timeout; `Infinity` when there is none. */
+      remainingBudgetMs: () => number
     }
   ) {}
 
   static async create(evidence?: {
     testTitle: string
     retry: number
+    remainingBudgetMs: () => number
   }): Promise<ElectronAppHarness> {
     // Windows keeps two budgets in view here: MAX_PATH for every nested file the app creates, and the app's
     // own up-front refusal to move data to a root that leaves no room under it. The runner's TEMP is
@@ -422,7 +444,7 @@ class ElectronAppHarness implements ElectronApp {
         storageRoot: join(testRoot, 'storage'),
         userDataRoot: join(testRoot, 'electron-profile')
       },
-      evidence ?? { testTitle: '', retry: 0 }
+      evidence ?? { testTitle: '', retry: 0, remainingBudgetMs: () => Number.POSITIVE_INFINITY }
     )
     try {
       await mkdir(harness.roots.storageRoot, { recursive: true })
@@ -762,7 +784,12 @@ class ElectronAppHarness implements ElectronApp {
       this.roots.fakeRemoteItRoot,
       { path: logPath, identity }
     )
-    this.currentPage = await openMainWindow(this.application, this.rendererFailures, logPath)
+    this.currentPage = await openMainWindow(
+      this.application,
+      this.rendererFailures,
+      logPath,
+      this.evidence.remainingBudgetMs
+    )
   }
 
   /** The file the fixture's closing evidence line points at: this harness's most recent launch. */
@@ -880,9 +907,18 @@ const test = base.extend<{ app: ElectronApp }>({
   app: async ({}, install, testInfo) => {
     // The launch logs are named after the spec and the attempt, so a log left behind by a failed run says
     // which test produced it (and a retry does not overwrite the first attempt's evidence).
+    //
+    // The first-window wait is bounded by what is left of THIS test's Playwright budget, not just by the
+    // lane default: a request longer than the budget can never be honoured, and the runner's own
+    // `Test timeout … while setting up "app"` carries none of the launch evidence (see launch-budget.ts).
+    const startedAt = Date.now()
     const app = await ElectronAppHarness.create({
       testTitle: testInfo.titlePath.join(' / '),
-      retry: testInfo.retry
+      retry: testInfo.retry,
+      remainingBudgetMs: () =>
+        testInfo.timeout > 0
+          ? testInfo.timeout - (Date.now() - startedAt)
+          : Number.POSITIVE_INFINITY
     })
 
     try {

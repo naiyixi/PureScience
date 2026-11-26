@@ -23074,3 +23074,77 @@ run 4 的两条 flaky 不是断言竞态，而是应用**根本没开窗**：`fi
 - ② 若 M2 得到拍板，按 `references/local-parsing-models-and-figures.md` 与 `verified-model-asset-acquisition.md` 起步；
   未拍板就继续取缺陷队列（`gh issue list --state open`）。
 - ③ 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入）落定后再动同批文件。
+
+## 三百六十四、本轮追加（执行器，2026-11-26 15:3x–）—— 打包车道请了 180 秒，可 runner 只给 120 秒：那条「点名失败」的路径从来没机会跑
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 94d44f81`
+  **互不为祖先**，落后 41 笔），工作树 30 个改动 + 8 个未跟踪**仍是会话在制**（`src/main/index.ts` 的
+  `diagnostics/module-load`、`session-persistence/*`、`ro-crate*`、`shared/citation/*`、`settings/**`，
+  mtime 停在 11-25 21:41）⇒ 一个字节没碰。本轮在 `git worktree add --detach /tmp/ps-round-264 origin/main`
+  的隔离树里做。
+- `package.json` = **2.33.9**，`gh release list` 的 Latest = **v2.33.9**；B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）
+  仍耗尽；C 段外部阻塞 ⇒ 取缺陷队列（`issue #13`）。
+- 本笔**不重做**：`9d6c9cba`（启动日志点名单实例侧与开窗决定）、`e6f7295b`（`groups=3` 取样改重试计数）、
+  `a1b8f44d` / `92fa25f7`（读数与 §三百六十三 回填）都已在 main 上。
+
+### 一 发布核验：v2.33.9 已落地（现取）
+
+| 项 | 读数 |
+| --- | --- |
+| `gh release view v2.33.9` | `draft=false` / `isPrerelease=false`；`gh release list` 判为 **Latest** |
+| 资产 | **17 个**：四平台包（mac arm64/x64 dmg+zip、linux AppImage+deb、win setup.exe+zip+blockmap）+ `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest*.yml` + `arm64-mac.yml`/`x64-mac.yml` |
+| `sourceSha` | `94d44f81fb60df53fd07b9bcbc6e773b50c0d9d2`，与 `git rev-parse 'v2.33.9^{commit}'` **逐字符相同** |
+| 正文 | 81,884 字节，成熟度块在位；正文自己写着「`references-page-selection` 仍偶发红，且没有加重试去盖住它」——与本轮读数一致 |
+
+（`gh release download` 第一次 TLS 超时，改 `curl -sSL --max-time 90` 直接取资产成功；两条路的区别只在前者跟随 302。）
+
+### 二 读数：`94d44f81` 的 Nightly 红是产物上传侧，不是产品
+
+- `Nightly 45764638376`：`build / Build macos-x64`（job `139729574664`）红在
+  `##\[error\]Failed to CreateArtifact: Unable to make request: ENOTFOUND`；同作业的打包与 mac 冒烟均 success，
+  认证件也写出（`release certification: macos-x64 macSignature=unsigned`）。
+- `Nightly 45752750012`（head `9d6c9cba`）红在 `Build macos-arm64`，同一句 `ENOTFOUND`（job `139692262452`）。
+- 同一提交的 `Release 45764638462` **success**、`Windows Full Test 45764638252` **success**（8/8）。
+  两次同形 + 另一条车道绿 ⇒ 判为上传基础设施抖动，**不立案、不改代码、不重跑单 job**。
+
+### 三 交付：首窗预算夹到测试自己的剩余预算（`e2e/fixtures/launch-budget.ts` + `electron-app.ts`）
+
+读者读到的现取失败行是 `Test timeout of 120000ms exceeded while setting up "app"` —— 而那趟 P0 的
+唯一 flaky 就是 `references-page-selection`（首跑失败、retry #1 通过）。原因是结构矛盾：
+
+| 事实 | 值 |
+| --- | --- |
+| `playwright.config.ts` 每用例预算 | **120 000 ms** |
+| 打包车道向 `firstWindow()` 请求的等待 | **180 000 ms** |
+
+180 s > 120 s ⇒ 窗口真要慢过 120 s 时，先到的是 runner 的通用超时；fixture 里那套「点名 + 贴最后 20 行启动
+输出」的失败路径（`openWindowOrNameFailure`）在打包车道**从未有机会执行**。修法不是调大超时，而是让请求服从
+真正会生效的上限：`min(配置值, 剩余预算 - 5 000)`，下限 1 000 ms（`timeout: 0` 在 Playwright 里等于「永不超时」），
+发生夹取时打印一行 `[e2e] first-window budget: 180000ms requested, 115000ms left before the test's own deadline`。
+
+### 四 门禁（本机，隔离工作树）
+
+| 项 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/ci/e2e-launch-budget.test.ts` | **9 passed**（6 条解析语义 + 3 条 fixture 源码契约） |
+| 变异（fixture 改回传配置值） | **1 failed**；恢复后 9 passed |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
+| `npx eslint --no-cache`（三文件） | **EXIT=0**，0 problems |
+
+### 五 边界与具名未办
+
+1. **夹取没有真机读数**：只在打包车道生效，本机内存闸（空闲页 4 060、swap 11.2 G/12.2 G）不起实例。
+   判据：下一次 `references-page-selection` 若再红，失败行应为 `The Electron app never opened a window: …`
+   加启动尾巴（而不是通用的 `Test timeout … setting up "app"`）。
+2. **装配为什么慢仍未定因**：`9d6c9cba` 已留下具名行，本单元保证那些行在超时那一刻能被读出来。
+3. M2 与「空闲内核回收」仍卡**产品决定**，本轮不动。
+
+### 六 下一轮第一步
+
+- ① 复核本笔的 Nightly：`macos-arm64` 的 P0 是否仍 passed、`references-page-selection` 是否再出现；
+  若出现，按 §五① 的判据读新的失败行（这决定装配慢该往哪一层收）。
+- ② 若这台机器上没有会话在制与我同批的文件，回到缺陷队列：`session-density-reading` /
+  `connector-custom-detail` 两条还没逐支处理。
+- ③ 共享树那批（`settings/**`、i18n、`ro-crate`、citation 导入、`diagnostics/module-load`）落定后再动同批文件。
