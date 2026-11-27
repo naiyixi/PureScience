@@ -1,5 +1,39 @@
 # PureScience 更新日记
 
+## v2.33.11 — 2026-11-26
+
+### 一、CodeBuddy：发给模型的其实是占位符
+
+`models.json` 里写的是 `"apiKey": "${PURESCIENCE_CODEBUDDY_API_KEY}"`。CodeBuddy 启动时按环境变量展开，
+变量缺席就**保留占位符原文**——而启动环境里注入的是另一个名字（`CODEBUDDY_API_KEY`）。于是请求带着这串
+占位符去鉴权：
+
+```
+401 Authentication Fails, Your api key: ****KEY} is invalid
+```
+
+界面、模型列表、配置文件看上去全部正确。现在两个名字都注入，用例钉住「模板引用的变量必须在 env 里同名存在」。
+
+### 二、DeepSeek Harness：跑在不支持 fts5 的 node 上
+
+启动即崩，插件树加载失败：
+
+```
+session-search SQLite index failed to open: no such module: fts5
+```
+
+本机实测：`/opt/homebrew/bin/node` v23.11.0 **没有** fts5；`~/.local/bin/node` v22.22.3 有。CLI 走 shebang，
+用哪个 node 由 PATH 顺序决定，而应用启动时的 PATH 很短，于是落在没有 fts5 的那个上。现在启动前按「能不能
+建 fts5 表」挑解释器，命中就用 `node <cli>` 显式启动。
+
+### 三、连接失败不再只说「分类=error」
+
+Hermes 的 adapter 明明启动了，一秒内被 supersede 并 SIGTERM，第二代连接也立刻失败——日志只有
+`errorCategory: "error"`，与任何其它失败无从区分。现在连接失败会带上错误名与脱敏后的原文（`sk-`/`pk-`/`ak-`
+与长 token 一律打码）。Hermes 这一条**本次未修复**，只是让下一次失败自己说明原因。
+
+---
+
 ## v2.33.10 — 2026-11-26
 
 ### 一、写进去的东西，读回来没了
