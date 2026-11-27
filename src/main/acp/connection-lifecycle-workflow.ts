@@ -74,6 +74,20 @@ const errorMessage = (error: unknown): string => {
   }
 }
 
+// `diagnosticErrorFields` deliberately reduces an error to a category. That is enough to say *what kind* of
+// failure happened, and useless for saying which one — a Hermes connect that dies in the same second as it
+// starts logged only `errorCategory: "error"`, which is the same reading as every other failure. The message
+// is logged here, with credentials masked, because "连接失败, 分类=error" answers nothing.
+const describeFailure = (error: unknown): { errorName?: string; errorMessage?: string } => {
+  if (!(error instanceof Error)) return {}
+
+  const masked = error.message
+    .replace(/\b(sk|pk|ak)-[A-Za-z0-9_-]{6,}/g, '$1-***')
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, '***')
+
+  return { errorName: error.name, errorMessage: masked.slice(0, 400) }
+}
+
 class AcpConnectionLifecycleWorkflow {
   constructor(private readonly options: AcpConnectionLifecycleWorkflowOptions) {}
 
@@ -214,6 +228,7 @@ class AcpConnectionLifecycleWorkflow {
           } catch (error) {
             safeLogError('agent connection failure notification failed', {
               ...diagnosticErrorFields(error),
+              ...describeFailure(error),
               ...this.options.diagnosticContext(spawnedFramework, generation)
             })
           }

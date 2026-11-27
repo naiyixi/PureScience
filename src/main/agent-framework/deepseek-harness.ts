@@ -1,5 +1,7 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { createLogger } from '../logger'
 import type { SessionModeState } from '@agentclientprotocol/sdk'
 
 import {
@@ -29,6 +31,58 @@ import { renderAppMcpToolReferences } from './app-mcp-names'
 export const deepSeekHarnessStorageDir = (storageRoot: string): string =>
   join(storageRoot, 'deepseek-harness')
 
+// The harness opens its session-search index with `node:sqlite` and runs `CREATE VIRTUAL TABLE … fts5`.
+// Not every Node build ships SQLite with FTS5 — Homebrew's v23.11.0 on this machine does not, while v22.22.3
+// does. The CLI is launched through its shebang, so whichever `node` the app's PATH resolves decides whether
+// the plugin tree loads at all: under a build without FTS5 the whole harness dies with
+// `session-search SQLite index failed to open: no such module: fts5` before ACP ever answers.
+//
+// So the interpreter is chosen by capability, not by PATH order: the first candidate that can actually
+// create an fts5 table runs the CLI, and the shebang is bypassed for that case.
+const FTS5_PROBE =
+  "try{const{DatabaseSync}=require('node:sqlite');new DatabaseSync(':memory:').exec('CREATE VIRTUAL TABLE t USING fts5(x)');}catch(e){process.exit(3)}"
+
+const nodeCandidates = (): string[] => {
+  const fromPath = (process.env.PATH ?? '')
+    .split(':')
+    .filter(Boolean)
+    .map((dir) => join(dir, 'node'))
+  const known = [
+    join(homedir(), '.local', 'bin', 'node'),
+    '/opt/homebrew/bin/node',
+    '/usr/local/bin/node',
+    join(homedir(), '.hermes', 'node', 'bin', 'node')
+  ]
+
+  return [...new Set([...fromPath, ...known])]
+}
+
+let cachedNode: string | null | undefined
+
+const resolveFts5Node = (): string | undefined => {
+  if (cachedNode !== undefined) return cachedNode ?? undefined
+
+  for (const candidate of nodeCandidates()) {
+    try {
+      execFileSync(candidate, ['--no-warnings', '-e', FTS5_PROBE], {
+        timeout: 5000,
+        stdio: 'ignore'
+      })
+      cachedNode = candidate
+
+      return candidate
+    } catch {
+      continue
+    }
+  }
+  createLogger('agent-spawn').warn(
+    'no node with SQLite FTS5 found; the harness may fail to load its plugins'
+  )
+  cachedNode = null
+
+  return undefined
+}
+
 // An npm console script is a shell shim on Windows (`deepseek-harness-acp.cmd`), which Node cannot launch
 // without a shell.
 const isShellShim = (executablePath: string): boolean =>
@@ -55,12 +109,22 @@ export const deepSeekHarnessFramework: AgentFramework = {
 
   spawn(input: AgentSpawnInput): ChildProcessWithoutNullStreams {
     const needsShell = isShellShim(input.executablePath)
+    const node = needsShell ? undefined : resolveFts5Node()
+    const env = { ...augmentedPathEnv(process.env), ...input.env }
+
+    if (node) {
+      return spawn(node, [input.executablePath, ...(input.args ?? [])], {
+        env,
+        stdio: 'pipe',
+        windowsHide: true
+      })
+    }
 
     return spawn(
       needsShell ? `"${input.executablePath}"` : input.executablePath,
       [...(input.args ?? [])],
       {
-        env: { ...augmentedPathEnv(process.env), ...input.env },
+        env,
         stdio: 'pipe',
         windowsHide: true,
         shell: needsShell

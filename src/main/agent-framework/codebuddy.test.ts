@@ -53,6 +53,10 @@ describe('codeBuddyFramework', () => {
     expect(config.env?.CODEBUDDY_API_KEY).toBe('k')
     expect(config.env?.CODEBUDDY_BASE_URL).toBe('https://gw/v1')
     expect(config.env?.CODEBUDDY_MODEL).toBe('m')
+    // 模板与变量必须同名: CodeBuddy 启动时按环境变量展开 `${...}`, 变量缺席就保留占位符原文, 于是请求会
+    // 带着 "${PURESCIENCE_CODEBUDDY_API_KEY}" 去鉴权并换来 401 `Your api key: ****KEY} is invalid` ——
+    // 界面、模型列表、配置文件看上去全部正确。这一行钉住的是那对对不上的名字。
+    expect(config.env?.PURESCIENCE_CODEBUDDY_API_KEY).toBe('k')
 
     const modelsFile = config.configFiles?.find((file) => file.path.endsWith('models.json'))
     expect(modelsFile?.mode).toBe(0o600)
@@ -110,4 +114,5 @@ describe('codeBuddyFramework', () => {
     expect(setup.promptPrefix).toContain('append one')
     expect(setup.promptPrefix).toContain('remind me')
   })
+
 })

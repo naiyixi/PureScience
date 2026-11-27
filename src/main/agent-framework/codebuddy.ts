@@ -159,6 +159,11 @@ export const codeBuddyFramework: AgentFramework = {
     return {
       env: {
         CODEBUDDY_CONFIG_DIR: configDir,
+        // models.json references `${PURESCIENCE_CODEBUDDY_API_KEY}`. CodeBuddy resolves `${...}` from the
+        // process env at CLI start and KEEPS the placeholder when the variable is absent — which is exactly
+        // what produced `Your api key: ****KEY} is invalid` (401 authentication_error) while the picker and
+        // the config both looked correct. The template and this variable must be spelled identically.
+        [CODEBUDDY_API_KEY_ENV]: provider.key,
         CODEBUDDY_API_KEY: provider.key,
         CODEBUDDY_BASE_URL: baseUrl,
         CODEBUDDY_MODEL: provider.model,
