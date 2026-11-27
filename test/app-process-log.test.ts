@@ -211,6 +211,63 @@ describe('openWindowOrNameFailure', () => {
     expect(error.message).toContain('is still running')
     expect(error.message).toContain('[main] still restoring')
   })
+
+  it('adopts a window the connection already knows about instead of failing on the missed event', async () => {
+    const open = vi.fn(async (window: unknown) => `ready:${String(window)}`)
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    try {
+      const page = await openWindowOrNameFailure({
+        firstWindow: () =>
+          Promise.reject(new Error('electronApplication.firstWindow: Timeout 180000ms exceeded')),
+        windows: () => ['window-the-event-never-delivered'],
+        exited: never,
+        logPath: '/tmp/tr/app-process/006-z.log',
+        readTail: async () => ['[main] main window created'],
+        open
+      })
+
+      expect(page).toBe('ready:window-the-event-never-delivered')
+      expect(open).toHaveBeenCalledWith('window-the-event-never-delivered')
+      expect(log.mock.calls.flat().join('\n')).toContain(
+        '[e2e] window event missed: 1 window(s) were already open'
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('says the connection knew of no window when the app never published one', async () => {
+    const error = await openWindowOrNameFailure({
+      firstWindow: () => Promise.reject(new Error('firstWindow: Timeout 180000ms exceeded')),
+      windows: () => [],
+      exited: never,
+      logPath: '/tmp/tr/app-process/007-w.log',
+      readTail: async () => ['[main] main window created'],
+      open: async (window) => window
+    }).catch((thrown: unknown) => thrown as Error)
+
+    expect(error.message).toContain('windows the connection knows about: none')
+    expect(error.message).toContain('firstWindow: Timeout 180000ms exceeded')
+    expect(error.message).toContain('[main] main window created')
+  })
+
+  it('does not read a closed target as "zero windows"', async () => {
+    const error = await openWindowOrNameFailure({
+      firstWindow: () => Promise.reject(new Error('firstWindow: Timeout 180000ms exceeded')),
+      windows: () => {
+        throw new Error('Target page, context or browser has been closed')
+      },
+      exited: never,
+      logPath: '/tmp/tr/app-process/008-w.log',
+      readTail: async () => [],
+      open: async (window) => window
+    }).catch((thrown: unknown) => thrown as Error)
+
+    expect(error.message).toContain(
+      'windows the connection knows about: not reported by this caller'
+    )
+    expect(error.message).not.toContain('windows the connection knows about: none')
+  })
 })
 
 describe('readTailLines', () => {

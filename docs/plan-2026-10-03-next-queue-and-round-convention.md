@@ -23351,3 +23351,72 @@ stdout 镜像，卡住时同样不会落下 ⇒ 它无法区分「叫过托盘�
   三条判据读新尾巴。
 - ② 缺陷队列里还剩 `session-vision-evidence-card` 一支没单独取过读数（它与本笔同族，很可能同一读数即可结案）。
 - ③ 共享树那批在制品落定后再动同批文件。
+
+## 三百六十七、本轮追加（执行器，2026-11-27 14:4x–）—— 「窗口开了但事件丢了」现在有判据也有恢复；issue #13 三连绿结案
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main ecc688de` 互不为祖先），
+  工作树 **109 个改动**仍是会话在制（`CHANGELOG`/双语 README/`package*`/`prisma/schema.prisma`/`settings/**`/`ro-crate*`/
+  `logger*`/`crash-diagnostics`/`references/**`/`agent-framework/*`…）⇒ 一个字节没碰；本轮全部工作在
+  `git worktree add --detach /tmp/ps-wincount origin/main` 的隔离树里做。
+- 在飞车道**现取为 0**（`ecc688de` 的 Release / Nightly / Windows 三条都已 completed success）。
+- `gh release list` 现取：Latest = **v2.33.11**（`draft=false` / `isPrerelease=false` / 17 资产 / `sourceSha` 逐字符等于
+  `v2.33.11^{commit}`）⇒ §三百六十六 §五① 的发布核验结案。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽、C 段外部阻塞 ⇒ 取缺陷队列唯一还开着的 **issue #13** 的最后一支。
+
+### 一 结论先行：issue 里给的「认领已存在窗口」那条候选，Playwright 本来就有
+
+`node_modules/playwright-core/lib/coreBundle.js` 的 `ElectronApplication.firstWindow()` 第一行就是
+`if (this._windows.size) return this._windows.values().next().value;` ⇒ 「先查 `windows()` 再等」不是缺口，
+照着写一遍等于第二套实现且永不生效。**但**这条读数把判据收紧了：`firstWindow()` 开等那一刻集合是空的，
+超时那一刻若非空，就只可能是事件漏了。所以缺的是**判据与恢复**，不是重写一遍等待。
+
+### 二 交付（e2e 夹具，三文件 + 一份证据档）
+
+| 文件 | 内容 |
+| --- | --- |
+| `e2e/fixtures/app-process-log.ts` | `WindowWatch` 加可选 `windows?: () => unknown[]`；`describeKnownWindows()` 三态；失败句新增一行 `windows the connection knows about: …`；超时分支集合非空 ⇒ 打印 `[e2e] window event missed: N window(s) …` 并认领第一个窗口（认领后仍过 `open`：observe + `domcontentloaded`） |
+| `e2e/fixtures/electron-app.ts` | `windows: () => application.windows()` 接进调用点 |
+| `test/app-process-log.test.ts` | 新增 3 例：认领并留具名行 / 空集合时点名 `none` / `windows()` 抛错时不得读成 0 个 |
+| `docs/evidence/2026-11-27-window-count-in-launch-failure.md` | Playwright 源码读数、三态表、门禁读数、issue 结案读数与差异说明 |
+
+### 三 门禁（隔离树 `/tmp/ps-wincount` @ `ecc688de`）
+
+| 项 | 读数 |
+| --- | --- |
+| `npx vitest run test/app-process-log.test.ts` | **21 passed**（18 + 3） |
+| 变异①认领分支置恒假 / ②抛错读成 `[]` / ③空集合改成「not reported」 | 各 **1 failed**；恢复后 21 passed |
+| `vitest scripts/ci/e2e-launch-budget.test.ts scripts/ci/classify-pr-changes.test.ts test/app-process-log.test.ts` | **71 passed**（夹具源码契约与 Windows 信号清单未被接线打断） |
+| `typecheck:node` / `typecheck:web` | **EXIT=0** / **EXIT=0** |
+| `npx eslint --no-cache`（三文件） | 0 problems |
+
+### 四 读数：issue #13 三连绿（三个连续提交 × 两条车道）
+
+| # | 提交 | Nightly（macos-arm64 的 P0） | Windows Full Test | `Smoke test Windows installer` |
+| --- | --- | --- | --- | --- |
+| 1 | `991d464a` | 127 passed (51.4m) / 0 flaky / `never opened a window` 0 次 | success | success |
+| 2 | `ea8c4ce2` | 127 passed (46.5m) / 0 flaky / 0 次 | success | success |
+| 3 | `ecc688de` | 127 passed (33.4m) / 0 flaky / 0 次 | success | success |
+
+`session-fork` 的 `Messages: 2` 在这三趟里也都首跑通过（+ 先前 6 次 = **9 次连续**）。对照 `09dfed08` 那趟是
+`1 flaky` + 1 次 `never opened a window` ⇒ 不是「一直没跑」，是真从「有」变成「三个连续提交都没有」。
+**口径差异**：issue 原文写「同一发版在两个平台连续 3 次」，而同一次发版只构建一次 ⇒ 本轮取「三个连续提交」，
+并把这条差异写进 issue 与证据档。
+
+### 五 边界与具名未办
+
+1. **本条没有真机读数**：只在打包车道产生，本机不起实例。认领分支由注入证明（3 例 + 3 变异）。下一次同形状复发时
+   的判据已钉死：失败句里 `windows the connection knows about:` 是 `none`（⇒ 应用没把窗口发布给连接，回产品侧）
+   还是 `N (…)`（⇒ 事件漏了，已自动认领并留具名行）。
+2. `session-vision-evidence-card` / `workspace-activity-group-expand-all` 两支在本轮三连绿里同样是 0 次出现
+   ⇒ 按同族结案（它们的失败行与本条同形状，已并入该立案）。
+3. M2（本地解析模型资产）与「空闲 python 内核回收」仍卡**产品决定**，本轮不动。
+
+### 六 下一轮第一步
+
+- ① 读本笔的 `Nightly` 与 `Windows Full Test`（完整 40 位 SHA）；本笔动的是 `e2e/fixtures/**` 与 `test/**`，
+  两条车道都会跑到。
+- ② issue 队列已清空 ⇒ 下一单元的来源改为：从 `docs/evidence/` 最近三条「具名未办」里挑连锁最小的一条，
+  或把 M2 的产品决定摆到台面上（B 段唯一阻塞项，需用户拍板）。
+- ③ 共享树那批在制品（109 个路径）落定后再动同批文件；`settings/**`、i18n、`ro-crate`、`references/**` 继续不碰。

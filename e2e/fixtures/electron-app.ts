@@ -392,6 +392,9 @@ const openMainWindow = async (
   }
   const page = await openWindowOrNameFailure({
     firstWindow: () => application.firstWindow({ timeout: windowTimeoutMs }),
+    // The reading that says whether a timeout meant "the app opened a window nobody heard about" or "no
+    // window at all": Playwright's own view, which `firstWindow()` consults before it starts waiting.
+    windows: () => application.windows(),
     exited,
     logPath,
     readTail: () => readTailLines(logPath, 20),
