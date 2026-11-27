@@ -22,7 +22,10 @@ const stall = (windowMs: number): EventLoopStallRecord => ({
     mainThreadMs: Math.round(windowMs * 0.9),
     unobservedMs: 0,
     samples: 18,
-    frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }]
+    reportedSamples: 18,
+    filteredSamples: 0,
+    frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }],
+    filtered: []
   },
   host: {
     status: 'sampled',
@@ -82,7 +85,10 @@ describe('stall record ring', () => {
       mainThreadMs: 6_660,
       unobservedMs: 0,
       samples: 18,
-      frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }]
+      reportedSamples: 18,
+      filteredSamples: 0,
+      frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }],
+      filtered: []
     })
     expect(record.host).toMatchObject({ status: 'sampled', continuity: 'kept-sampling' })
     expect(record.freeMemMb).toBe(120)

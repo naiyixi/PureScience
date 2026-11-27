@@ -45,7 +45,14 @@ const quietFsProbe = {
 const presamplerStub = (
   // `samples` is filled from the frames unless a case names it: a fixture that reports frames is describing
   // samples that named them, while the "everything landed on filtered code" case has samples and no frames.
-  profile?: Omit<StackProfile, 'samples'> & { samples?: number }
+  // The same goes for the reported/filtered split: a case that only cares about frames should not have to
+  // spell out the accounting.
+  profile?: Omit<StackProfile, 'samples' | 'reportedSamples' | 'filteredSamples' | 'filtered'> & {
+    samples?: number
+    reportedSamples?: number
+    filteredSamples?: number
+    filtered?: StackProfile['filtered']
+  }
 ): {
   presampler: RollingStackProfile
   take: ReturnType<typeof vi.fn>
@@ -56,7 +63,12 @@ const presamplerStub = (
     profile
       ? {
           ...profile,
-          samples: profile.samples ?? profile.frames.reduce((sum, frame) => sum + frame.samples, 0)
+          samples: profile.samples ?? profile.frames.reduce((sum, frame) => sum + frame.samples, 0),
+          reportedSamples:
+            profile.reportedSamples ??
+            profile.frames.reduce((sum, frame) => sum + frame.samples, 0),
+          filteredSamples: profile.filteredSamples ?? 0,
+          filtered: profile.filtered ?? []
         }
       : undefined
   )
@@ -293,7 +305,58 @@ describe('event loop stall watchdog', () => {
       mainThreadMs: 4_900,
       unobservedMs: 0,
       samples: 46,
-      frames
+      reportedSamples: 46,
+      filteredSamples: 0,
+      frames,
+      filtered: []
+    })
+    watchdog.stop()
+  })
+
+  // The summarizer's buckets are worthless if the record drops them: this module's whole history is contracts
+  // that were computed and then never copied into the line a reader sees. Asserted on the record the log gets.
+  it('carries the filtered buckets into the stall record', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const frames: StallFrame[] = [{ frame: 'tick (out/main/index.js:120)', samples: 1 }]
+    const { presampler } = presamplerStub({
+      mainThreadMs: 4_900,
+      unobservedMs: 0,
+      samples: 431,
+      reportedSamples: 2,
+      filteredSamples: 429,
+      frames,
+      filtered: [
+        { reason: 'node-internal', samples: 429, ms: 4_860, top: 'node:internal/fs/utils' }
+      ]
+    })
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({}),
+      createPresampler: () => presampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
+    })
+
+    time.advance(5_000, 4_900)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    const stack = warned[0]?.data.stack
+    expect(stack).toMatchObject({
+      status: 'profiled',
+      samples: 431,
+      reportedSamples: 2,
+      filteredSamples: 429,
+      filtered: [
+        { reason: 'node-internal', samples: 429, ms: 4_860, top: 'node:internal/fs/utils' }
+      ]
     })
     watchdog.stop()
   })
@@ -634,6 +697,81 @@ describe('reading a V8 profile', () => {
     expect(profile.unobservedMs).toBe(0)
     expect(profile.samples).toBe(3)
     expect(profile.mainThreadMs).toBe(33)
+    // The count alone still leaves the question open ("filtered by what?"). The bucket answers it: these were
+    // `(program)` samples, and `(program)` names no code, so no `top` is invented for it.
+    expect(profile.reportedSamples).toBe(0)
+    expect(profile.filteredSamples).toBe(3)
+    expect(profile.filtered).toEqual([{ reason: 'program', samples: 3, ms: 33 }])
+  })
+
+  // The shape the daily app actually produced (2026-11-27, packaged 2.33.10): a 23.3 s window, 431 samples,
+  // and two one-sample frames as the only "answer". 429 samples had landed on code the filter drops. This
+  // case pins the fix — a window dominated by node's own JavaScript must name the module, and must still say
+  // how much of the window the buckets account for.
+  it('names the node module a window-dominating bucket came from', () => {
+    const profile: V8Profile = {
+      startTime: 1,
+      nodes: [
+        {
+          id: 1,
+          callFrame: {
+            functionName: 'readFileSync',
+            url: 'node:internal/fs/utils',
+            lineNumber: 300
+          }
+        },
+        { id: 2, callFrame: { functionName: '(program)', url: '', lineNumber: -1 } }
+      ],
+      samples: [1, 1, 1, 2],
+      timeDeltas: [11_000, 11_000, 11_000, 11_000]
+    }
+
+    const summary = summarizeProfile(profile, 50)
+    expect(summary.frames).toEqual([])
+    expect(summary.samples).toBe(4)
+    expect(summary.reportedSamples).toBe(0)
+    expect(summary.filteredSamples).toBe(4)
+    // Biggest bucket first, and it carries the module path — the thing a reader can go and look at.
+    expect(summary.filtered).toEqual([
+      { reason: 'node-internal', samples: 3, ms: 33, top: 'node:internal/fs/utils' },
+      { reason: 'program', samples: 1, ms: 11 }
+    ])
+    // The split adds up to the window: neither side can silently lose samples.
+    expect(summary.reportedSamples + summary.filteredSamples).toBe(summary.samples)
+  })
+
+  // `(garbage collector)` and `(program)` arrive with an empty url in some runtimes. If the url were consulted
+  // first they would all read as `native`, and "the collector held us" would look like "C++ below our frames".
+  it('buckets GC and program pseudo-frames by their name, not by their empty url', () => {
+    const profile: V8Profile = {
+      startTime: 1,
+      nodes: [
+        { id: 1, callFrame: { functionName: '(garbage collector)', url: '', lineNumber: -1 } },
+        { id: 2, callFrame: { functionName: '(program)', url: '', lineNumber: -1 } },
+        { id: 3, callFrame: { functionName: 'inflate', url: '', lineNumber: -1 } },
+        {
+          id: 4,
+          callFrame: {
+            functionName: 'parseRow',
+            url: 'file:///app/out/main/index.js',
+            lineNumber: 5
+          }
+        }
+      ],
+      samples: [1, 2, 3, 4, 4],
+      timeDeltas: [11_000, 11_000, 11_000, 11_000, 11_000]
+    }
+
+    const summary = summarizeProfile(profile, 50)
+    const byReason = new Map(summary.filtered.map((bucket) => [bucket.reason, bucket]))
+    expect(byReason.get('gc')?.samples).toBe(1)
+    expect(byReason.get('program')?.samples).toBe(1)
+    // A native frame with a name keeps it; one without a name stays unnamed rather than "(anonymous)".
+    expect(byReason.get('native')).toMatchObject({ samples: 1, top: 'inflate' })
+    // And the reportable frame is still named as before — bucketing is additive, not a replacement.
+    expect(summary.frames).toEqual([{ frame: 'parseRow (out/main/index.js:6)', samples: 2 }])
+    expect(summary.reportedSamples).toBe(2)
+    expect(summary.filteredSamples).toBe(3)
   })
 
   // The coarse cadence means the last sample before the stall can be up to a whole interval early: the window

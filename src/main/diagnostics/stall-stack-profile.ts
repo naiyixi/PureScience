@@ -17,6 +17,9 @@ import { Session } from 'node:inspector'
 // second instead of 1000.
 const DEFAULT_PRESAMPLE_INTERVAL_US = 50_000
 const MAX_REPORTED_FRAMES = 3
+// Same bound on the other side of the filter: the buckets that answered "where did the rest go" are also a
+// list a reader scans, not a dump.
+const MAX_FILTERED_BUCKETS = 3
 // Samples are attributed to the stall that just ended; a little slack absorbs both the tick's own scheduling
 // and the coarse cadence (the last pre-stall sample can be a whole interval early).
 const PROFILE_WINDOW_SLACK_MS = 50
@@ -29,6 +32,33 @@ const PROFILE_UNOBSERVED_DELTA_MS = 500
 
 export type StallFrame = { frame: string; samples: number }
 
+// The filter below is for *naming*, not for hiding — and it hid anyway. Measured in this machine's daily app
+// (packaged 2.33.10, 2026-11-27): one 23.3 s window came back `profiled` with `samples: 431` and `frames`
+// holding two entries of one sample each. 429 samples had landed on frames the filter drops, so the record
+// could not say where the time went, while the two survivors read like the answer. Every dropped sample now
+// goes into a named bucket with its own sample count and milliseconds, and the two biggest buckets that can
+// name code carry the busiest frame inside them (`node-internal` → `node:internal/fs/utils`).
+
+// A sample that landed on code this module does not name as a frame still says something about the window:
+// which family of code held the loop. These are the families the filter already knows how to tell apart, and
+// they are named rather than merged because they lead to different next steps: `node-internal` is node's own
+// JavaScript (fs, zlib, JSON plumbing) and can be pinned to a module path, `native` is C++ below any JS frame,
+// `gc` is the collector, `program` is V8's unattributed pseudo-frame, and `instrumentation` is this module's
+// own watchdog/profile files.
+export type StallFrameFilterReason =
+  'node-internal' | 'native' | 'gc' | 'program' | 'instrumentation'
+
+export type StallFilteredFrame = {
+  reason: StallFrameFilterReason
+  samples: number
+  // The main-thread time those samples account for, in the same unit as `mainThreadMs` — so a reader can
+  // compare a bucket against the window without converting samples by hand.
+  ms: number
+  // The busiest frame inside the bucket, for the two reasons that can name one. Absent for `gc` / `program`:
+  // the reason already is the name, and inventing a label there would be inventing detail.
+  top?: string
+}
+
 // `samples` is how many samples the window itself contains — the denominator behind `frames`. It is kept
 // because "no frame worth reporting" has two very different causes: the sampler recorded nothing at all
 // (then the window is reported as unobserved), or it recorded samples that all sit on frames this module
@@ -38,7 +68,16 @@ export type StackProfile = {
   mainThreadMs: number
   unobservedMs: number
   samples: number
+  // How the window's samples split: those that landed on a reported frame, and those the filter dropped.
+  // Both lists below are cut to their top few, so their sums cannot answer this — the split is kept as
+  // scalars so `samples` stays verifiable against `frames` + `filtered` (plus any samples inside an
+  // unobserved gap, which `unobservedMs` already accounts for).
+  reportedSamples: number
+  filteredSamples: number
   frames: StallFrame[]
+  // What the dropped samples were doing. Without this a window that was 99 % filtered code reported
+  // `frames: [two unrelated entries]`, which reads like an answer (see the header).
+  filtered: StallFilteredFrame[]
 }
 
 export type V8Profile = {
@@ -69,6 +108,30 @@ const frameLabel = (url: string, functionName: string, lineNumber: number): stri
   return `${functionName || '(anonymous)'} (${file}:${lineNumber + 1})`
 }
 
+// The filter above decides what gets *named*; this decides what gets *bucketed*, and every dropped sample
+// goes into exactly one bucket. Order matters: `(garbage collector)` and `(program)` carry an empty url in
+// some runtimes, so they are recognised by the pseudo-frame name before the url is consulted.
+const filteredReason = (url: string, functionName: string): StallFrameFilterReason => {
+  if (functionName === '(garbage collector)') return 'gc'
+  if (functionName === '(program)') return 'program'
+  if (url.startsWith('node:')) return 'node-internal'
+  if (!url) return 'native'
+  return 'instrumentation'
+}
+
+const filteredLabel = (
+  reason: StallFrameFilterReason,
+  url: string,
+  functionName: string,
+  lineNumber: number
+): string | undefined => {
+  if (reason === 'node-internal') return url.replace(/\?.*$/, '')
+  if (reason === 'native')
+    return functionName && functionName !== '(anonymous)' ? functionName : undefined
+  if (reason === 'instrumentation') return frameLabel(url, functionName, lineNumber)
+  return undefined
+}
+
 // Exported so a test can pin the one rule that has already been wrong once: a delta wider than the sampler's
 // cadence is time nobody observed, not main-thread run time (see PROFILE_UNOBSERVED_DELTA_MS).
 export const summarizeProfile = (
@@ -83,10 +146,16 @@ export const summarizeProfile = (
   const totalUs = profile.timeDeltas.reduce((sum, delta) => sum + (delta ?? 0), 0)
   const fromUs = totalUs - (stalledForMs + slackMs) * 1000
   const counts = new Map<string, number>()
+  const filteredBuckets = new Map<
+    StallFrameFilterReason,
+    { samples: number; us: number; labels: Map<string, number> }
+  >()
   let mainThreadUs = 0
   let unobservedUs = 0
   let cumulativeUs = 0
   let inWindowSamples = 0
+  let reportedSamples = 0
+  let filteredSamples = 0
   const unobservedFromUs = PROFILE_UNOBSERVED_DELTA_MS * 1000
   for (let index = 0; index < profile.samples.length; index += 1) {
     const deltaUs = profile.timeDeltas[index] ?? 0
@@ -101,7 +170,27 @@ export const summarizeProfile = (
     }
     mainThreadUs += deltaUs
     const frame = framesById.get(profile.samples[index])
-    if (!frame || !isReportableFrame(frame.url, frame.functionName)) continue
+    if (!frame) {
+      // No node for this sample at all: nothing to name, and nothing to bucket it by either. Counting it as
+      // filtered would claim a reason the profile did not give.
+      continue
+    }
+    if (!isReportableFrame(frame.url, frame.functionName)) {
+      const reason = filteredReason(frame.url, frame.functionName)
+      const bucket = filteredBuckets.get(reason) ?? {
+        samples: 0,
+        us: 0,
+        labels: new Map<string, number>()
+      }
+      bucket.samples += 1
+      bucket.us += deltaUs
+      const label = filteredLabel(reason, frame.url, frame.functionName, frame.lineNumber)
+      if (label) bucket.labels.set(label, (bucket.labels.get(label) ?? 0) + 1)
+      filteredBuckets.set(reason, bucket)
+      filteredSamples += 1
+      continue
+    }
+    reportedSamples += 1
     const label = frameLabel(frame.url, frame.functionName, frame.lineNumber)
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
@@ -114,13 +203,28 @@ export const summarizeProfile = (
     .map(([frame, samples]) => ({ frame, samples }))
     .sort((left, right) => right.samples - left.samples)
     .slice(0, MAX_REPORTED_FRAMES)
+  const filtered: StallFilteredFrame[] = [...filteredBuckets.entries()]
+    .map(([reason, bucket]) => {
+      const top = [...bucket.labels.entries()].sort((left, right) => right[1] - left[1])[0]?.[0]
+      return {
+        reason,
+        samples: bucket.samples,
+        ms: Math.round(bucket.us / 1000),
+        ...(top ? { top } : {})
+      }
+    })
+    .sort((left, right) => right.samples - left.samples)
+    .slice(0, MAX_FILTERED_BUCKETS)
   return {
     mainThreadMs: Math.round(mainThreadUs / 1000),
     unobservedMs: Math.round(unobservedUs / 1000),
     // The window's own sample count, independent of which frames survived the filter above: it is what
     // separates "the sampler never ran" from "it ran and saw only code we do not report".
     samples: inWindowSamples,
-    frames
+    reportedSamples,
+    filteredSamples,
+    frames,
+    filtered
   }
 }
 

@@ -23420,3 +23420,63 @@ stdout 镜像，卡住时同样不会落下 ⇒ 它无法区分「叫过托盘�
 - ② issue 队列已清空 ⇒ 下一单元的来源改为：从 `docs/evidence/` 最近三条「具名未办」里挑连锁最小的一条，
   或把 M2 的产品决定摆到台面上（B 段唯一阻塞项，需用户拍板）。
 - ③ 共享树那批在制品（109 个路径）落定后再动同批文件；`settings/**`、i18n、`ro-crate`、`references/**` 继续不碰。
+
+## 三百六十八、本轮追加（执行器，2026-11-27 19:0x–）—— 停顿记录「profiled」了却答不出那 23 秒：429 个采样被过滤器吞掉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`，与 `origin/main 9c639771`
+  互不为祖先），工作树 106+ 个改动仍是会话在制 ⇒ 一个字节没碰；本轮全部工作在
+  `git worktree add --detach /tmp/ps-stallfilter origin/main` 的隔离树里做。
+- 在飞车道**现取为 0**；`9c639771` 的 `Nightly` 与 `Windows Full Test` 都 **success**（§三百六十七 §六① 结案）。
+- issue 队列现取为空；B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）耗尽、C 段外部阻塞 ⇒ 按上一节 §六② 的指引
+  从**真机日志**里取缺陷（本轮不重做 `stall-stack-profile` 既有任何一条：`28eb976d` 常开采样、
+  `PROFILE_UNOBSERVED_DELTA_MS`、`samples` 那三处都在 `9c639771` 里，未改）。
+- 顺带核掉一条**旧构建读数**：今天 04:41–04:43 的 `agent connection failed` 只带 `errorCategory`
+  没有 message，而 `describeFailure`（脱敏后的 message）已在 `fada68bb` 落地、随 v2.33.11 发布，
+  装机版是 **2.33.10** ⇒ 结案为旧构建读数，不重做。再立案判据：装机到 ≥2.33.11 后再出现同形状仍无
+  `errorMessage` 字段，才是新缺陷。
+
+### 一 读数：23 秒的窗口，431 个采样，记录只给出两个 1 采样帧
+
+真机（打包 2.33.10，`runId 7b2011df`，`2026-11-27T04:40:22.496Z`）：`windowMs 23276` / `lateMs 22776` /
+`cpuMs 8811` / `attribution cpu-bound-in-process`，`stack.samples = 431`、`unobservedMs = 0`，
+而 `frames` 只有两项、各 1 个采样 ⇒ **429 个采样落在被过滤的帧上，记录一个字也没说它们是谁**。
+同一刻五个 `runtime:*` / `settings:*` 通道排队 `heldMs 22773`（`ownMs` 400–1600 ms）⇒ 主线程真被占住，
+不是那些通道自己慢。
+
+### 二 交付（`src/main/diagnostics/` 三文件 + 两处夹具 + 证据档）
+
+| 文件 | 内容 |
+| --- | --- |
+| `stall-stack-profile.ts` | 每个被滤掉的采样进具名桶（`node-internal` / `native` / `gc` / `program` / `instrumentation`），桶带 `samples` + `ms`，能命名代码的三类带桶内最忙帧（`node-internal` → 模块路径）；新增 `reportedSamples` / `filteredSamples` 两个标量让 `samples` 可对账；模块头写明这次的真机读数 |
+| `event-loop-stall-watchdog.ts` | `StallStack` 的 profiled 分支改成 `{ status: 'profiled' } & StackProfile`，记录用 `{ status, ...profile }` —— 手抄字段表这个形状上次扩字段就漏过东西 |
+| `event-loop-stall-watchdog.test.ts` | 夹具自动补齐新字段；新增 3 例（点名 node 模块 / GC 与 `program` 按伪帧名归桶 / 桶随记录落地） |
+| `stall-record-ring.test.ts`、`support-bundle.test.ts` | 夹具补新字段（严格相等断言跟着收紧） |
+| `docs/evidence/2026-11-27-stall-filtered-samples.md` | 逐字读数、缺口算术、读法表、门禁与边界 |
+
+### 三 门禁（隔离树 `/tmp/ps-stallfilter` @ `9c639771`）
+
+| 项 | 读数 |
+| --- | --- |
+| `vitest run` 四文件（看门狗 / 记录环 / 支持包 / 归因） | **73 passed** |
+| 变异①`node:` 分支置恒假 | **1 failed**；恢复后 33 passed |
+| 变异②记录里 `filtered` 置空 | **1 failed**；恢复后 33 passed |
+| `NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck:node` | **EXIT=0** |
+| `npx eslint --no-cache`（五文件） | **EXIT=0**，0 problems |
+
+### 四 边界与具名未办
+
+1. **没有新字段的真机读数**：新字段只在下次打包版再出现同形状停顿时落进日志。判据：下一条
+   `event loop stalled` 若 `samples` 大而 `frames` 之和小，`filtered` 必须非空且
+   `reportedSamples + filteredSamples === samples`（无观测缺口时）。
+2. **23 秒的成因仍未定**：本轮只让下一次说得清是哪一类代码，没改任何执行路径，也不声称提速。
+3. M2（本地解析模型资产）与「空闲 python 内核回收」仍卡**产品决定**，本轮不动。
+
+### 五 下一轮第一步
+
+- ① 读本笔的 `Nightly` 与 `Windows Full Test`（完整 40 位 SHA）；本笔只动 `src/main/diagnostics/**` 与 `docs/**`。
+- ② 真机日志里还剩两条没有单独立案的慢通道：`sessions:save-session`（11-26 15:21–17:07 连续 156/123/100/83/63/60/56 s，
+  `cpuShare` 0.25–0.77）与 `reviewer:get-for-session`（71 次，中位 481 ms，p95 3.6 s，最大 36.6 s，`cpuShare` 0.97）——
+  先按「失败/慢读数是否本批碰过」与「是否已有仪器」判，再决定是接线还是新写。
+- ③ 共享树那批在制品（106+ 路径）落定后再动同批文件。

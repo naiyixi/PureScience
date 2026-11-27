@@ -17,6 +17,7 @@ import {
   createRollingStackProfile,
   type RollingStackProfile,
   type StackProfile,
+  type StallFilteredFrame,
   type StallFrame
 } from './stall-stack-profile'
 
@@ -62,20 +63,18 @@ const DEFAULT_PRESAMPLE_ROTATE_MS = 30_000
 
 export type StallAttribution = ActivityAttribution
 
-export type { StallFrame, StackProfile }
+export type { StallFilteredFrame, StallFrame, StackProfile }
 
 export type StallStack =
   // `unobservedMs` is the part of the window the profiler did not sample at all: it is neither main-thread
   // run time nor evidence of anything we did. `samples` is how many samples the window itself holds, so a
   // record with no reportable frame can still say whether the sampler ran (`samples > 0`) or nobody looked
   // (then the whole window is folded into `unobservedMs`).
-  | {
-      status: 'profiled'
-      mainThreadMs: number
-      unobservedMs: number
-      samples: number
-      frames: StallFrame[]
-    }
+  //
+  // The profile is spread in rather than listed field by field: it grew once already (the filtered-sample
+  // split) and a hand-copied field list silently drops the next one, which is the same shape as the bug that
+  // growth fixed.
+  | ({ status: 'profiled' } & StackProfile)
   // No sampler at all (no inspector, or one the runtime refused). Saying that keeps "we did not catch it"
   // from reading like "there was nothing to catch".
   | { status: 'unavailable' }
@@ -293,13 +292,7 @@ export const startEventLoopStallWatchdog = (
         ...base,
         attribution,
         cause,
-        stack: {
-          status: 'profiled',
-          mainThreadMs: profile.mainThreadMs,
-          unobservedMs: profile.unobservedMs,
-          samples: profile.samples,
-          frames: profile.frames
-        },
+        stack: { status: 'profiled', ...profile },
         host
       })
     })
