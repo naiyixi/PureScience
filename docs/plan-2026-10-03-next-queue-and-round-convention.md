@@ -23480,3 +23480,58 @@ stdout 镜像，卡住时同样不会落下 ⇒ 它无法区分「叫过托盘�
   `cpuShare` 0.25–0.77）与 `reviewer:get-for-session`（71 次，中位 481 ms，p95 3.6 s，最大 36.6 s，`cpuShare` 0.97）——
   先按「失败/慢读数是否本批碰过」与「是否已有仪器」判，再决定是接线还是新写。
 - ③ 共享树那批在制品（106+ 路径）落定后再动同批文件。
+
+## 三百六十九、本轮追加（执行器，2026-11-28 20:2x–）—— 工具失败那行说不出是哪个工具：提供方沉默时改用库存身份
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 进轮：共享树仍停在 `probe/upgrade-instrument-and-sweep`（`HEAD f38e26f2`），工作树 109 个路径是会话在制 ⇒
+  一个字节没碰；本轮全部工作在 `git worktree add --detach /tmp/ps-toolname origin/main`（`c37b3302`）里做。
+- `c37b3302` 的三条车道现取全绿（`Nightly` success 2026-11-27T12:17Z / `Windows Full Test` success 11:18Z /
+  `Scheduled Regression` success 2026-11-28T12:08Z），`gh release list` 的 Latest 仍是 **v2.33.11**、
+  `package.json` 2.33.11 ⇒ 上一轮那一笔已结案，本轮不重做 `stall-stack-profile` 的任何一条。
+- 上一节 §五② 点的两条慢通道**都已带分段**：`sessions:save-session` 在
+  `session-persistence/coordinator.ts`（`queuedMs`/`loadMs`/`cloneMs`），`reviewer:get-for-session` 在
+  `reviewer/ipc.ts`（`SLOW_REVIEW_LOAD_MS` 与三段）⇒ 按「缺口先查还在不在」结案，不开第二套。
+- 本轮改从**真机日志里没有仪器的那一格**取：`tool call failed` 说不出工具。
+
+### 一 读数：35 行失败，14 行没有身份，5 次超时全在里面
+
+打包 2.33.10 的两份轮转日志（`~/Library/Logs/PureScience/main{,.1}.log`）现取：`tool call failed` 共 35 行，
+`tool` 为 `other` 的 8 行、**没有该字段**的 6 行；`reason` 为 `MCP error -32001: Request timed out` 的 5 行
+逐行核对后**全部**是 `tool: "other"` ⇒ 用户这两天遇到的工具超时，日志说不出是哪个工具。
+
+### 二 交付（`src/main/acp/session-update-projector.ts` + 两例用例 + 证据档）
+
+| 文件 | 内容 |
+| --- | --- |
+| `session-update-projector.ts` | 新增 `canonicalMcpToolFromTitle()`：title 只当**查表键**（`isMcpToolName` → `resolveCanonicalMcpToolIdentity`），解析出的工具段必须匹配 `^[A-Za-z0-9_.-]{1,64}$`；`tool` 取值顺序在 `providerToolName` 之后加这一步 |
+| `session-update-projector.test.ts` | 新增 2 例：按 title 命名（`purescience_artifacts/write_artifact_file`）；带 URL 的自由文本 title 既不得进 `tool`、也不得出现在整条诊断里 |
+| `docs/evidence/2026-11-28-tool-failure-identity-from-title.md` | 逐行读数表、为什么不能记 title（既有用例钉着）、门禁、判据与边界 |
+
+**不记 title 本身**：title 是提供方自由文本、会带 URL/路径，既有用例已断言诊断里不得出现 `example.com`；
+本轮沿用同一条口径，把它降级成查表键。
+
+### 三 门禁（隔离树 `/tmp/ps-toolname` @ `c37b3302` + 本笔）
+
+| 项 | 读数 |
+| --- | --- |
+| `vitest run` projector 单文件 | **13 passed**（11 + 2） |
+| 变异①摘掉 title 那一步 / ②去掉形状守卫 | 各 **1 failed**；恢复后 13 passed |
+| `vitest run` 三套件（projector / runtime-session-composition / runtime） | **462 passed / 3 files** |
+| `typecheck:node`（8192 堆）/ `eslint --no-cache`（两文件） | **EXIT=0** / **EXIT=0**，0 problems |
+
+### 四 边界与具名未办
+
+1. **新行为没有真机读数**：效果要等下一版装机后才进日志；判据写在证据档 §五①。
+2. `-32001` 的成因仍未定：本轮只让下一次说得清是谁，不声称修好超时。
+3. 6 行「连 `tool` 都没有」的记录要归因得在 `runtime-events` 保留原始更新形状（每条事件加字段），属另一笔。
+4. M2（本地解析模型资产）与「空闲 python 内核回收」仍卡**产品决定**，本轮不动。
+
+### 五 下一轮第一步
+
+- ① 读本笔的 `Nightly` 与 `Windows Full Test`（完整 40 位 SHA）；本笔只动 `src/main/acp/**` 与 `docs/**`。
+- ② 下一单元候选：`ipc handler was slow` 里还有未分段的尾部读（`notifications:get-snapshot` 中位 317 ms、
+  p95 2.3 s、最大 9.4 s，89 次；`artifacts:read-preview` 中位 339 ms）——先按既有仪器（`heldMs`/`ownMs`）判
+  它是在等引擎还是在做自己的活，再决定接不接分段，别先写第二套。
+- ③ 共享树那批在制品落定后再动同批文件。

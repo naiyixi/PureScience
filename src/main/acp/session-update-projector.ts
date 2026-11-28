@@ -116,6 +116,27 @@ const toolObservation = (
     : {}
 }
 
+// A provider that reports no tool name of its own leaves the failure line without one: measured on the
+// device across the two rotated logs, 35 `tool call failed` rows — 8 said only `other`, and 6 named no
+// tool at all. All five `MCP error -32001: Request timed out` rows sat in that unnamed set, so the log
+// could not say which tool kept timing out. The title is the provider's own label and often *is* the
+// callable name, but it is also free text that can carry a URL or a path, and this diagnostic is
+// exactly what reaches logs and support bundles. So a title is only used to look up an identity in
+// this app's own MCP inventory, and only when the resolved tool segment is shape-clean; anything else
+// keeps the old, narrower answer.
+const INVENTORY_TOOL_SEGMENT = /^[A-Za-z0-9_.-]{1,64}$/
+
+const canonicalMcpToolFromTitle = (
+  title: string | undefined,
+  mcpServerNames: readonly string[]
+): string | undefined => {
+  if (!title || !isMcpToolName(title, mcpServerNames)) return undefined
+  const identity = resolveCanonicalMcpToolIdentity(title, mcpServerNames)
+  const separator = identity?.indexOf('/') ?? -1
+  if (!identity || separator <= 0) return undefined
+  return INVENTORY_TOOL_SEGMENT.test(identity.slice(separator + 1)) ? identity : undefined
+}
+
 // Translates provider Session notifications into immutable effects and applies them once in order;
 // event retention, aggregates, and ContextUsageTracker remain the actual state writers.
 class AcpSessionUpdateProjector {
@@ -226,9 +247,10 @@ class AcpSessionUpdateProjector {
         effects.push(deepFreeze({ kind: 'context-refresh' as const, sessionId: routed.sessionId }))
       }
       if (event.kind === 'tool' && event.status === 'failed') {
-        const canonicalTool = event.providerToolName
-          ? resolveCanonicalMcpToolIdentity(event.providerToolName, routing.mcpServerNames)
-          : undefined
+        const canonicalTool =
+          (event.providerToolName
+            ? resolveCanonicalMcpToolIdentity(event.providerToolName, routing.mcpServerNames)
+            : undefined) ?? canonicalMcpToolFromTitle(event.title, routing.mcpServerNames)
         effects.push(
           deepFreeze({
             kind: 'tool-failure-diagnostic' as const,

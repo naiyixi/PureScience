@@ -451,6 +451,67 @@ describe('AcpSessionUpdateProjector', () => {
     expect(JSON.stringify(effects[2])).not.toContain('do-not-log')
   })
 
+  it('names an MCP tool from the title when the provider reports no name of its own', () => {
+    const projector = createProjector()
+    const effects = projector.route(
+      {
+        sessionId: 'session-1',
+        update: {
+          sessionUpdate: 'tool_call',
+          toolCallId: 'tool-opencode',
+          title: 'purescience_artifacts_write_artifact_file',
+          kind: 'other',
+          status: 'failed',
+          content: [
+            {
+              type: 'content',
+              content: { type: 'text', text: 'MCP error -32001: Request timed out' }
+            }
+          ]
+        }
+      },
+      {
+        eventId: 'event-tool-title',
+        visible: true,
+        reconnectPending: false,
+        mcpServerNames: ['purescience_artifacts']
+      }
+    )
+
+    expect(effects.find((effect) => effect.kind === 'tool-failure-diagnostic')).toMatchObject({
+      tool: 'purescience_artifacts/write_artifact_file',
+      toolCallId: 'tool-opencode',
+      reason: 'MCP error -32001: Request timed out'
+    })
+  })
+
+  it('keeps an inventory-shaped title out of the line when its tool segment is free text', () => {
+    const projector = createProjector()
+    const effects = projector.route(
+      {
+        sessionId: 'session-1',
+        update: {
+          sessionUpdate: 'tool_call',
+          toolCallId: 'tool-leaky',
+          title: 'purescience_artifacts_open https://example.com/secret',
+          kind: 'other',
+          status: 'failed'
+        }
+      },
+      {
+        eventId: 'event-tool-leaky',
+        visible: true,
+        reconnectPending: false,
+        mcpServerNames: ['purescience_artifacts']
+      }
+    )
+
+    const diagnostic = effects.find((effect) => effect.kind === 'tool-failure-diagnostic')
+    expect(diagnostic).toMatchObject({ tool: 'other' })
+    expect(JSON.stringify(diagnostic)).not.toContain('example.com')
+    expect(JSON.stringify(diagnostic)).not.toContain('purescience_artifacts_open')
+  })
+
   it('suppresses empty message events after retaining their context refresh ordering', () => {
     const projector = createProjector()
     const effects = projector.route(
